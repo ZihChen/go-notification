@@ -1,0 +1,366 @@
+package usecase
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"time"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.uber.org/zap"
+
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repository"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
+)
+
+// MessageUseCase 訊息用例
+type MessageUseCase struct {
+	campaignRepo      repository.MessageCampaignRepository
+	playerMessageRepo repository.PlayerMessageRepository
+	playerRepo        repository.PlayerRepository
+	logger            *zap.Logger
+}
+
+// NewMessageUseCase 創建訊息用例
+func NewMessageUseCase(
+	campaignRepo repository.MessageCampaignRepository,
+	playerMessageRepo repository.PlayerMessageRepository,
+	playerRepo repository.PlayerRepository,
+	logger *zap.Logger,
+) *MessageUseCase {
+	return &MessageUseCase{
+		campaignRepo:      campaignRepo,
+		playerMessageRepo: playerMessageRepo,
+		playerRepo:        playerRepo,
+		logger:            logger,
+	}
+}
+
+// CreateMessageCampaign 創建會員訊息活動
+func (u *MessageUseCase) CreateMessageCampaign(ctx context.Context, campaign *model.MessageCampaign) error {
+	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.CreateMessageCampaign")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("campaign.title", campaign.Title),
+		attribute.Int("campaign.category", int(campaign.Category)),
+		attribute.Int("campaign.focus", int(campaign.Focus)),
+	)
+
+	tracing.TraceEvent(span, "Creating message campaign")
+
+	campaign.CreatedAt = time.Now()
+	campaign.UpdatedAt = time.Now()
+
+	if err := u.campaignRepo.Create(ctx, campaign); err != nil {
+		span.RecordError(err)
+		return fmt.Errorf("create campaign: %w", err)
+	}
+
+	span.SetAttributes(attribute.Int64("campaign.id", int64(campaign.ID)))
+	tracing.TraceEvent(span, "Message campaign created successfully")
+
+	u.logger.Info("Message campaign created",
+		zap.Uint64("campaign_id", campaign.ID),
+		zap.String("title", campaign.Title),
+		zap.String("created_by", campaign.CreatedBy))
+
+	return nil
+}
+
+// UpdateMessageCampaign 更新會員訊息活動
+func (u *MessageUseCase) UpdateMessageCampaign(ctx context.Context, campaign *model.MessageCampaign) error {
+	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.UpdateMessageCampaign")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.Int64("campaign.id", int64(campaign.ID)),
+		attribute.String("campaign.title", campaign.Title),
+	)
+
+	tracing.TraceEvent(span, "Updating message campaign")
+
+	// 檢查活動是否存在
+	existing, err := u.campaignRepo.FindByID(ctx, campaign.ID)
+	if err != nil {
+		span.RecordError(err)
+		return fmt.Errorf("find campaign: %w", err)
+	}
+
+	// 保持創建時間和創建者不變
+	campaign.CreatedAt = existing.CreatedAt
+	campaign.CreatedBy = existing.CreatedBy
+	campaign.UpdatedAt = time.Now()
+
+	if err := u.campaignRepo.Update(ctx, campaign); err != nil {
+		span.RecordError(err)
+		return fmt.Errorf("update campaign: %w", err)
+	}
+
+	tracing.TraceEvent(span, "Message campaign updated successfully")
+
+	u.logger.Info("Message campaign updated",
+		zap.Uint64("campaign_id", campaign.ID),
+		zap.String("title", campaign.Title),
+		zap.String("updated_by", *campaign.UpdatedBy))
+
+	return nil
+}
+
+// DeleteMessageCampaign 刪除會員訊息活動
+func (u *MessageUseCase) DeleteMessageCampaign(ctx context.Context, id uint64) error {
+	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.DeleteMessageCampaign")
+	defer span.End()
+
+	span.SetAttributes(attribute.Int64("campaign.id", int64(id)))
+
+	tracing.TraceEvent(span, "Deleting message campaign")
+
+	if err := u.campaignRepo.Delete(ctx, id); err != nil {
+		span.RecordError(err)
+		return fmt.Errorf("delete campaign: %w", err)
+	}
+
+	tracing.TraceEvent(span, "Message campaign deleted successfully")
+
+	u.logger.Info("Message campaign deleted", zap.Uint64("campaign_id", id))
+
+	return nil
+}
+
+// GetMessageCampaign 獲取會員訊息活動
+func (u *MessageUseCase) GetMessageCampaign(ctx context.Context, id uint64) (*model.MessageCampaign, error) {
+	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.GetMessageCampaign")
+	defer span.End()
+
+	span.SetAttributes(attribute.Int64("campaign.id", int64(id)))
+
+	campaign, err := u.campaignRepo.FindByID(ctx, id)
+	if err != nil {
+		span.RecordError(err)
+		return nil, fmt.Errorf("find campaign: %w", err)
+	}
+
+	span.SetAttributes(attribute.String("campaign.title", campaign.Title))
+
+	return campaign, nil
+}
+
+// ListMessageCampaigns 列出會員訊息活動
+func (u *MessageUseCase) ListMessageCampaigns(ctx context.Context, page, pageSize int) ([]*model.MessageCampaign, int, error) {
+	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.ListMessageCampaigns")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.Int("page", page),
+		attribute.Int("page_size", pageSize),
+	)
+
+	campaigns, total, err := u.campaignRepo.FindAll(ctx, page, pageSize)
+	if err != nil {
+		span.RecordError(err)
+		return nil, 0, fmt.Errorf("list campaigns: %w", err)
+	}
+
+	span.SetAttributes(
+		attribute.Int("total_campaigns", total),
+		attribute.Int("returned_campaigns", len(campaigns)),
+	)
+
+	return campaigns, total, nil
+}
+
+// GetPlayerMessages 獲取玩家訊息列表
+func (u *MessageUseCase) GetPlayerMessages(ctx context.Context, globalPlayerID string, page, pageSize int) (*model.MessageListResponse, error) {
+	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.GetPlayerMessages")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("global_player_id", globalPlayerID),
+		attribute.Int("page", page),
+		attribute.Int("page_size", pageSize),
+	)
+
+	// 檢查玩家是否需要新增訊息
+	if err := u.processPlayerMessages(ctx, globalPlayerID); err != nil {
+		u.logger.Warn("Failed to process player messages",
+			zap.String("global_player_id", globalPlayerID),
+			zap.Error(err))
+	}
+
+	// 獲取統計資訊
+	stats, err := u.playerMessageRepo.GetPlayerMessageStats(ctx, globalPlayerID)
+	if err != nil {
+		span.RecordError(err)
+		return nil, fmt.Errorf("get player message stats: %w", err)
+	}
+
+	// 獲取訊息列表
+	messages, total, err := u.playerMessageRepo.FindByPlayerID(ctx, globalPlayerID, page, pageSize)
+	if err != nil {
+		span.RecordError(err)
+		return nil, fmt.Errorf("find player messages: %w", err)
+	}
+
+	// 轉換為摘要格式
+	summaries := make([]model.MessageSummary, len(messages))
+	for i, message := range messages {
+		summaries[i] = model.MessageSummary{
+			ID:        message.ID,
+			Title:     message.Title,
+			Summary:   generateSummary(message.Content),
+			IsRead:    message.IsRead,
+			CreatedAt: message.CreatedAt,
+		}
+	}
+
+	span.SetAttributes(
+		attribute.Int("stats.total_count", stats.TotalCount),
+		attribute.Int("stats.read_count", stats.ReadCount),
+		attribute.Int("stats.unread_count", stats.UnreadCount),
+		attribute.Int("returned_messages", len(summaries)),
+	)
+
+	response := &model.MessageListResponse{
+		Stats:    *stats,
+		Messages: summaries,
+		Page:     page,
+		PageSize: pageSize,
+		Total:    total,
+	}
+
+	return response, nil
+}
+
+// MarkMessageAsRead 標記訊息為已讀
+func (u *MessageUseCase) MarkMessageAsRead(ctx context.Context, globalPlayerID string, messageID uint64) error {
+	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.MarkMessageAsRead")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("global_player_id", globalPlayerID),
+		attribute.Int64("message.id", int64(messageID)),
+	)
+
+	tracing.TraceEvent(span, "Marking message as read")
+
+	if err := u.playerMessageRepo.MarkAsRead(ctx, globalPlayerID, messageID); err != nil {
+		span.RecordError(err)
+		return fmt.Errorf("mark message as read: %w", err)
+	}
+
+	tracing.TraceEvent(span, "Message marked as read successfully")
+
+	u.logger.Info("Message marked as read",
+		zap.String("global_player_id", globalPlayerID),
+		zap.Uint64("message_id", messageID))
+
+	return nil
+}
+
+// processPlayerMessages 處理玩家訊息（檢查是否需要新增訊息）
+func (u *MessageUseCase) processPlayerMessages(ctx context.Context, globalPlayerID string) error {
+	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.processPlayerMessages")
+	defer span.End()
+
+	span.SetAttributes(attribute.String("global_player_id", globalPlayerID))
+
+	// 獲取玩家資訊
+	player, err := u.playerRepo.FindByGlobalID(ctx, globalPlayerID)
+	if err != nil {
+		span.RecordError(err)
+		return fmt.Errorf("find player: %w", err)
+	}
+
+	// 判斷玩家的活躍狀態
+	focusType := u.determinePlayerFocus(player)
+
+	span.SetAttributes(
+		attribute.Int("player.focus_type", int(focusType)),
+		attribute.String("player.account", player.Account),
+	)
+
+	// 獲取符合條件的活動
+	campaigns, err := u.campaignRepo.FindActiveByFocus(ctx, focusType)
+	if err != nil {
+		span.RecordError(err)
+		return fmt.Errorf("find active campaigns: %w", err)
+	}
+
+	span.SetAttributes(attribute.Int("matching_campaigns", len(campaigns)))
+
+	// 為每個活動創建訊息（如果尚未存在）
+	var newMessages []*model.PlayerMessage
+	for _, campaign := range campaigns {
+		// 檢查是否已經存在該活動的訊息
+		exists, err := u.playerMessageRepo.CheckMessageExists(ctx, globalPlayerID, campaign.ID)
+		if err != nil {
+			u.logger.Warn("Failed to check message existence",
+				zap.String("global_player_id", globalPlayerID),
+				zap.Uint64("campaign_id", campaign.ID),
+				zap.Error(err))
+			continue
+		}
+
+		if !exists {
+			message := &model.PlayerMessage{
+				GlobalPlayerID: globalPlayerID,
+				CampaignID:     campaign.ID,
+				Title:          campaign.Title,
+				Content:        campaign.Content,
+				IsRead:         false,
+				CreatedAt:      time.Now(),
+			}
+			newMessages = append(newMessages, message)
+		}
+	}
+
+	// 批量創建新訊息
+	if len(newMessages) > 0 {
+		if err := u.playerMessageRepo.CreateBatch(ctx, newMessages); err != nil {
+			span.RecordError(err)
+			return fmt.Errorf("create batch messages: %w", err)
+		}
+
+		tracing.TraceEvent(span, "New messages created",
+			attribute.Int("new_messages_count", len(newMessages)))
+
+		u.logger.Info("New messages created for player",
+			zap.String("global_player_id", globalPlayerID),
+			zap.Int("new_messages_count", len(newMessages)))
+	}
+
+	return nil
+}
+
+// determinePlayerFocus 根據玩家最後活躍時間判斷焦點類型
+func (u *MessageUseCase) determinePlayerFocus(player *model.Player) uint8 {
+	if player.LastActiveAt == nil {
+		return model.FocusNotActivity // 沒有活躍記錄視為不活躍
+	}
+
+	now := time.Now()
+	daysSinceActive := int(now.Sub(*player.LastActiveAt).Hours() / 24)
+
+	switch {
+	case daysSinceActive <= 30:
+		return model.FocusInThirty // 30天內
+	case daysSinceActive <= 100:
+		return model.FocusLowActivity // 31-100天
+	default:
+		return model.FocusNotActivity // 100天以上
+	}
+}
+
+// generateSummary 生成內容摘要
+func generateSummary(content string) string {
+	content = strings.ReplaceAll(content, "<", "&lt;")
+	content = strings.ReplaceAll(content, ">", "&gt;")
+
+	runes := []rune(content)
+	if len(runes) <= 100 {
+		return content
+	}
+	return string(runes[:100]) + "..."
+}
