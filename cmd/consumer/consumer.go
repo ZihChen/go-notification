@@ -3,6 +3,7 @@ package consumer
 import (
 	"context"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/database/mysql"
 	"math/rand"
@@ -16,7 +17,6 @@ import (
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	"go.uber.org/zap"
 
 	"github.com/jvdiamondtech/ms-notification-cat/cmd"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/di"
@@ -60,7 +60,7 @@ func runConsumer(cobraCmd *cobra.Command, args []string) {
 	// 初始化追踪器
 	tracer, err := tracing.NewTracer(cfg)
 	if err != nil {
-		logger.Fatal("Failed to initialize tracer", zap.Error(err))
+		logger.FatalLog("Failed to initialize tracer", logger.Error("err", err))
 	}
 	defer tracer.Shutdown(context.Background())
 	ctx, rootSpan := tracing.StartSpan(rootCtx, "ConsumerService")
@@ -69,35 +69,35 @@ func runConsumer(cobraCmd *cobra.Command, args []string) {
 	// 初始化DB連線
 	db, err := mysql.NewDatabase(cfg)
 	if err != nil {
-		logger.Fatal("Failed to initialize database", zap.Error(err))
+		logger.FatalLog("Failed to initialize database", logger.Error("err", err))
 	}
 	defer func() {
 		err = db.Close() // 主程序結束後關閉DB連線
 		if err != nil {
-			logger.Error("Failed to close database connection", zap.Error(err))
+			logger.ErrorLog("Failed to close database connection", logger.Error("err", err))
 		}
-		logger.Info("Database connection closed successfull")
+		logger.InfoLog("Database connection closed successfull")
 	}()
 
 	if err = db.Ping(); err != nil {
-		logger.Fatal("Failed to ping database", zap.Error(err))
+		logger.FatalLog("Failed to ping database", logger.Error("err", err))
 	}
 
 	redisManager := redis.NewRedisManager(cfg)
 	defer func() {
 		err = redisManager.Close() // 主程序結束後關閉Redis連線
 		if err != nil {
-			logger.Error("Failed to close Redis connection", zap.Error(err))
+			logger.ErrorLog("Failed to close Redis connection", logger.Error("err", err))
 		}
 	}()
 	if err = redisManager.Connect(rootCtx); err != nil {
-		logger.Fatal("Failed to connect to Redis", zap.Error(err))
+		logger.FatalLog("Failed to connect to Redis", logger.Error("err", err))
 	}
 
 	// 使用Wire初始化KDS服務
 	kdsService, err := di.InitializeConsumer(cfg, logger, redisManager, db.GetDBConnection())
 	if err != nil {
-		logger.Fatal("Failed to initialize KDS service", zap.Error(err))
+		logger.FatalLog("Failed to initialize KDS service", logger.Error("err", err))
 	}
 
 	// 創建上下文
@@ -133,7 +133,7 @@ func runConsumer(cobraCmd *cobra.Command, args []string) {
 	}
 
 	// 啟動所有Consumer
-	logger.Info("Starting KDS consumers", zap.Int("consumer_count", len(consumers)))
+	logger.InfoLog("Starting KDS consumers", logger.Int("consumer_count", len(consumers)))
 	for _, consumer := range consumers {
 		wg.Add(1)
 		go startConsumer(ctx, &wg, consumer, logger)
@@ -141,7 +141,7 @@ func runConsumer(cobraCmd *cobra.Command, args []string) {
 
 	// 等待中斷信號
 	<-quit
-	logger.Info("Shutting down consumer...")
+	logger.InfoLog("Shutting down consumer...")
 
 	// 記錄關閉事件
 	tracing.TraceEvent(rootSpan, "Shutting down consumer service")
@@ -157,19 +157,19 @@ func runConsumer(cobraCmd *cobra.Command, args []string) {
 	// 等待優雅關閉或超時
 	select {
 	case <-done:
-		logger.Info("All consumers exited gracefully")
+		logger.InfoLog("All consumers exited gracefully")
 	case <-time.After(10 * time.Second):
-		logger.Warn("Shutdown timeout - some consumers may still be running")
+		logger.WarnLog("Shutdown timeout - some consumers may still be running")
 	}
 
 	// 記錄成功退出
 	tracing.TraceEvent(rootSpan, "Consumer service exited gracefully")
 
-	logger.Info("Consumer exited")
+	logger.InfoLog("Consumer exited")
 }
 
 // startConsumer 啟動單個Consumer
-func startConsumer(ctx context.Context, wg *sync.WaitGroup, config consumerConfig, logger *zap.Logger) {
+func startConsumer(ctx context.Context, wg *sync.WaitGroup, config consumerConfig, logger infraport.Logger) {
 	defer wg.Done()
 	// 創建Consumer span
 	consumerCtx, consumerSpan := tracing.StartSpan(ctx, config.name+"Consumer")
@@ -177,15 +177,15 @@ func startConsumer(ctx context.Context, wg *sync.WaitGroup, config consumerConfi
 	consumerSpan.SetAttributes(
 		attribute.String("consumer.event_type", config.eventType),
 	)
-	logger.Info("Starting "+config.name+" event consumer",
-		zap.String("event_type", config.eventType))
+	logger.InfoLog("Starting "+config.name+" event consumer",
+		logger.String("event_type", config.eventType))
 	tracing.TraceEvent(consumerSpan, config.name+" consumer started")
 
 	for {
 		// 外層無限循環，確保Consumer持續運行
 		// 檢查上下文是否取消 (每次Consume前)
 		if ctx.Err() != nil {
-			logger.Info(config.name + " consumer stopping due to context cancellation")
+			logger.InfoLog(config.name + " consumer stopping due to context cancellation")
 			tracing.TraceEvent(consumerSpan, config.name+" consumer stopped due to cancellation")
 			return
 		}
@@ -199,7 +199,7 @@ func startConsumer(ctx context.Context, wg *sync.WaitGroup, config consumerConfi
 		for attempt := 0; attempt < maxRetries; attempt++ {
 			// 檢查上下文是否取消 (在每次重試嘗試前)
 			if ctx.Err() != nil {
-				logger.Info(config.name + " consumer stopping due to context cancellation during retry")
+				logger.InfoLog(config.name + " consumer stopping due to context cancellation during retry")
 				tracing.TraceEvent(consumerSpan, config.name+" consumer stopped due to cancellation during retry")
 				return
 			}
@@ -217,17 +217,17 @@ func startConsumer(ctx context.Context, wg *sync.WaitGroup, config consumerConfi
 						} else {
 							lastError = fmt.Errorf("panic recovered: %v\n%s", r, buf)
 						}
-						logger.Error(config.name+" consumer panicked", zap.Error(lastError))
+						logger.ErrorLog(config.name+" consumer panicked", logger.Error("err", lastError))
 						consumerSpan.RecordError(lastError)
 						consumerSpan.SetStatus(codes.Error, lastError.Error())
 					}
 				}()
 
 				if attempt > 0 {
-					logger.Info("Retrying "+config.name+" consumer",
-						zap.Int("attempt", attempt+1),
-						zap.Int("max_retries", maxRetries),
-						zap.Duration("retry_delay", retryDelay))
+					logger.InfoLog("Retrying "+config.name+" consumer",
+						logger.Int("attempt", attempt+1),
+						logger.Int("max_retries", maxRetries),
+						logger.String("retry_delay", retryDelay.String()))
 					tracing.TraceEvent(consumerSpan, "Retrying consumer",
 						attribute.Int("attempt", attempt+1),
 						attribute.Int("max_retries", maxRetries))
@@ -242,33 +242,33 @@ func startConsumer(ctx context.Context, wg *sync.WaitGroup, config consumerConfi
 				cancel()
 				// 上下文被取消，
 				if err == context.Canceled || consumeCtx.Err() == context.Canceled {
-					logger.Info(config.name + " consumer stopped due to context cancellation during consume")
+					logger.InfoLog(config.name + " consumer stopped due to context cancellation during consume")
 					tracing.TraceEvent(consumerSpan, config.name+" consumer stopped gracefully during consume")
 					return
 				}
 				// 超時錯誤，記錄並重試
 				if consumeCtx.Err() == context.DeadlineExceeded {
 					lastError = fmt.Errorf("consumer timed out: %w", consumeCtx.Err())
-					logger.Error(config.name+" event consumer timed out, will retry",
-						zap.Error(lastError),
-						zap.Int("attempt", attempt+1),
-						zap.Int("max_retries", maxRetries))
+					logger.ErrorLog(config.name+" event consumer timed out, will retry",
+						logger.Error("err", lastError),
+						logger.Int("attempt", attempt+1),
+						logger.Int("max_retries", maxRetries))
 					consumerSpan.RecordError(lastError)
 					return
 				}
 				// 其他錯誤重試
 				if err != nil {
 					lastError = err
-					logger.Error(config.name+" event consumer failed, will retry",
-						zap.Error(err),
-						zap.Int("attempt", attempt+1),
-						zap.Int("max_retries", maxRetries))
+					logger.ErrorLog(config.name+" event consumer failed, will retry",
+						logger.Error("err", err),
+						logger.Int("attempt", attempt+1),
+						logger.Int("max_retries", maxRetries))
 					consumerSpan.RecordError(err)
 					return
 				}
 
 				// 如果沒有錯誤，則成功
-				logger.Info(config.name + " event consumer completed successfully")
+				logger.InfoLog(config.name + " event consumer completed successfully")
 				tracing.TraceEvent(consumerSpan, config.name+" consumer completed")
 				success = true
 			}() // 立即執行 recover 的匿名函數
@@ -280,9 +280,9 @@ func startConsumer(ctx context.Context, wg *sync.WaitGroup, config consumerConfi
 
 		// 重試次數達到上限
 		if !success {
-			logger.Error(config.name+" event consumer failed after max retries",
-				zap.Error(lastError),
-				zap.Int("max_retries", maxRetries))
+			logger.ErrorLog(config.name+" event consumer failed after max retries",
+				logger.Error("err", lastError),
+				logger.Int("max_retries", maxRetries))
 			tracing.TraceEvent(consumerSpan, config.name+" consumer failed after max retries",
 				attribute.String("error", lastError.Error()))
 			consumerSpan.SetStatus(codes.Error, fmt.Sprintf("Consumer failed after %d retries: %v", maxRetries, lastError))

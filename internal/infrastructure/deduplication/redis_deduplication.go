@@ -3,12 +3,11 @@ package deduplication
 import (
 	"context"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"time"
 
-	"github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
-
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/service"
+	"github.com/redis/go-redis/v9"
 )
 
 const (
@@ -21,11 +20,11 @@ const (
 // RedisDeduplicationService 基於Redis的事件去重服務
 type RedisDeduplicationService struct {
 	client *redis.Client
-	logger *zap.Logger
+	logger infraport.Logger
 }
 
 // NewRedisDeduplicationService 創建新的Redis去重服務
-func NewRedisDeduplicationService(client *redis.Client, logger *zap.Logger) service.EventDeduplicationService {
+func NewRedisDeduplicationService(client *redis.Client, logger infraport.Logger) service.EventDeduplicationService {
 	return &RedisDeduplicationService{
 		client: client,
 		logger: logger,
@@ -41,9 +40,9 @@ func (s *RedisDeduplicationService) IsEventProcessed(ctx context.Context, eventI
 	key := processedEventKeyPrefix + eventID
 	exists, err := s.client.Exists(ctx, key).Result()
 	if err != nil {
-		s.logger.Warn("Error checking if event is processed",
-			zap.String("event_id", eventID),
-			zap.Error(err))
+		s.logger.WarnLog("Error checking if event is processed",
+			s.logger.String("event_id", eventID),
+			s.logger.Error("err", err))
 		return false, fmt.Errorf("check event processed status: %w", err)
 	}
 
@@ -63,15 +62,15 @@ func (s *RedisDeduplicationService) MarkEventProcessed(ctx context.Context, even
 	key := processedEventKeyPrefix + eventID
 	_, err := s.client.Set(ctx, key, time.Now().Unix(), ttl).Result()
 	if err != nil {
-		s.logger.Warn("Error marking event as processed",
-			zap.String("event_id", eventID),
-			zap.Error(err))
+		s.logger.WarnLog("Error marking event as processed",
+			s.logger.String("event_id", eventID),
+			s.logger.Error("err", err))
 		return fmt.Errorf("mark event as processed: %w", err)
 	}
 
-	s.logger.Debug("Marked event as processed",
-		zap.String("event_id", eventID),
-		zap.Duration("ttl", ttl))
+	s.logger.DebugLog("Marked event as processed",
+		s.logger.String("event_id", eventID),
+		s.logger.String("ttl", ttl.String()))
 
 	return nil
 }

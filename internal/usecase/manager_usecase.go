@@ -4,18 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"time"
 
 	"github.com/google/uuid"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
-	"go.uber.org/zap"
-
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // ManagerUseCase 管理員用例
@@ -23,7 +22,7 @@ type ManagerUseCase struct {
 	managerRepo   repository.ManagerRepository
 	merchantRepo  repository.MerchantRepository
 	eventProducer service.EventProducer
-	logger        *zap.Logger
+	logger        infraport.Logger
 }
 
 // NewManagerUseCase 創建管理員用例
@@ -31,7 +30,7 @@ func NewManagerUseCase(
 	managerRepo repository.ManagerRepository,
 	merchantRepo repository.MerchantRepository,
 	eventProducer service.EventProducer,
-	logger *zap.Logger,
+	logger infraport.Logger,
 ) *ManagerUseCase {
 	return &ManagerUseCase{
 		managerRepo:   managerRepo,
@@ -90,9 +89,9 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 		span.RecordError(err)
 		// 如果找不到商戶，將事件放回隊列延遲處理
 		if err.Error() == "record not found" {
-			u.logger.Warn("Merchant not found, re-queuing manager sync event",
-				zap.String("global_merchant_id", managerEvent.GlobalMerchantID),
-				zap.String("global_manager_id", managerEvent.Manager.GlobalManagerID))
+			u.logger.WarnLog("Merchant not found, re-queuing manager sync event",
+				u.logger.String("global_merchant_id", managerEvent.GlobalMerchantID),
+				u.logger.String("global_manager_id", managerEvent.Manager.GlobalManagerID))
 			return fmt.Errorf("find merchant (will retry): %w", err)
 		}
 		return fmt.Errorf("find merchant: %w", err)
@@ -132,9 +131,9 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 			span.RecordError(err)
 			return fmt.Errorf("create manager: %w", err)
 		}
-		u.logger.Info("Manager created",
-			zap.String("global_id", manager.GlobalManagerID),
-			zap.String("account", manager.Account))
+		u.logger.InfoLog("Manager created",
+			u.logger.String("global_id", manager.GlobalManagerID),
+			u.logger.String("account", manager.Account))
 	} else {
 		// 更新現有管理員
 		tracing.TraceEvent(span, "Updating existing manager")
@@ -150,17 +149,17 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 
 		// 如果現有記錄的更新時間較新，則跳過更新（確保幂等性）
 		if existing.UpdatedAt.After(eventTime) {
-			u.logger.Info("Skipping manager update as existing data is newer",
-				zap.String("global_id", existing.GlobalManagerID),
-				zap.Time("existing_updated_at", existing.UpdatedAt),
-				zap.Time("event_time", eventTime))
+			u.logger.InfoLog("Skipping manager update as existing data is newer",
+				u.logger.String("global_id", existing.GlobalManagerID),
+				u.logger.String("existing_updated_at", existing.UpdatedAt.String()),
+				u.logger.String("event_time", eventTime.String()))
 
 			// 發布管理員同步事件到KDS確認我們已處理
 			tracing.TraceEvent(span, "Publishing manager sync confirmation event to KDS")
 			if err := u.publishManagerSyncEvent(ctx, existing, managerEvent.GlobalMerchantID, cloudEvent.TraceParent); err != nil {
-				u.logger.Warn("Failed to publish manager sync confirmation event",
-					zap.String("global_id", existing.GlobalManagerID),
-					zap.Error(err))
+				u.logger.WarnLog("Failed to publish manager sync confirmation event",
+					u.logger.String("global_id", existing.GlobalManagerID),
+					u.logger.Error("err", err))
 			}
 
 			return nil
@@ -175,9 +174,9 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 			span.RecordError(err)
 			return fmt.Errorf("update manager: %w", err)
 		}
-		u.logger.Info("Manager updated",
-			zap.String("global_id", manager.GlobalManagerID),
-			zap.String("account", manager.Account))
+		u.logger.InfoLog("Manager updated",
+			u.logger.String("global_id", manager.GlobalManagerID),
+			u.logger.String("account", manager.Account))
 	}
 
 	// 記錄資料庫操作完成
@@ -252,9 +251,9 @@ func (u *ManagerUseCase) publishManagerSyncEvent(ctx context.Context, manager *m
 	// 記錄事件發布成功
 	tracing.TraceEvent(span, "Manager sync event published successfully")
 
-	u.logger.Info("Manager sync event published",
-		zap.String("global_id", manager.GlobalManagerID),
-		zap.String("event_id", cloudEvent.ID))
+	u.logger.InfoLog("Manager sync event published",
+		u.logger.String("global_id", manager.GlobalManagerID),
+		u.logger.String("event_id", cloudEvent.ID))
 
 	return nil
 }

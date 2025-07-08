@@ -5,16 +5,16 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/logger"
 )
 
 var (
 	cfgFile string
 	cfg     *config.Config
-	logger  *zap.Logger
+	serviceLogger infraport.Logger
 )
 
 // rootCmd 表示基礎命令，沒有調用其他命令時運行
@@ -52,29 +52,12 @@ func initConfig() {
 	}
 
 	// 初始化日誌
-	logger = initLogger(cfg.App.Debug)
+	serviceLogger = initLogger(cfg)
 }
 
-// initLogger 初始化zap日誌
-func initLogger(debug bool) *zap.Logger {
-	var config zap.Config
-
-	if debug {
-		config = zap.NewDevelopmentConfig()
-		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-	} else {
-		config = zap.NewProductionConfig()
-		config.EncoderConfig.TimeKey = "timestamp"
-		config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	}
-
-	logger, err := config.Build()
-	if err != nil {
-		fmt.Printf("Failed to initialize logger: %v\n", err)
-		os.Exit(1)
-	}
-
-	return logger
+// initLogger 初始化日誌
+func initLogger(cfg *config.Config) infraport.Logger {
+	return logger.NewServiceLogger(cfg)
 }
 
 // GetConfig 獲取配置
@@ -83,8 +66,8 @@ func GetConfig() *config.Config {
 }
 
 // GetLogger 獲取日誌
-func GetLogger() *zap.Logger {
-	return logger
+func GetLogger() infraport.Logger {
+	return serviceLogger
 }
 
 // AddCommand 添加命令到根命令

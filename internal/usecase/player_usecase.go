@@ -4,18 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"time"
 
 	"github.com/google/uuid"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
-	"go.uber.org/zap"
-
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // PlayerUseCase 玩家用例
@@ -23,7 +22,7 @@ type PlayerUseCase struct {
 	playerRepo    repository.PlayerRepository
 	merchantRepo  repository.MerchantRepository
 	eventProducer service.EventProducer
-	logger        *zap.Logger
+	logger        infraport.Logger
 }
 
 // NewPlayerUseCase 創建玩家用例
@@ -31,7 +30,7 @@ func NewPlayerUseCase(
 	playerRepo repository.PlayerRepository,
 	merchantRepo repository.MerchantRepository,
 	eventProducer service.EventProducer,
-	logger *zap.Logger,
+	logger infraport.Logger,
 ) *PlayerUseCase {
 	return &PlayerUseCase{
 		playerRepo:    playerRepo,
@@ -90,9 +89,9 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 		span.RecordError(err)
 		// 如果找不到商戶，將事件放回隊列延遲處理
 		if err.Error() == "record not found" {
-			u.logger.Warn("Merchant not found, re-queuing player sync event",
-				zap.String("global_merchant_id", playerEvent.GlobalMerchantID),
-				zap.String("global_player_id", playerEvent.Player.GlobalPlayerID))
+			u.logger.WarnLog("Merchant not found, re-queuing player sync event",
+				u.logger.String("global_merchant_id", playerEvent.GlobalMerchantID),
+				u.logger.String("global_player_id", playerEvent.Player.GlobalPlayerID))
 			return fmt.Errorf("find merchant (will retry): %w", err)
 		}
 		return fmt.Errorf("find merchant: %w", err)
@@ -134,9 +133,9 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 			span.RecordError(err)
 			return fmt.Errorf("create player: %w", err)
 		}
-		u.logger.Info("Player created",
-			zap.String("global_id", player.GlobalPlayerID),
-			zap.String("account", player.Account))
+		u.logger.InfoLog("Player created",
+			u.logger.String("global_id", player.GlobalPlayerID),
+			u.logger.String("account", player.Account))
 	} else {
 		// 更新現有玩家
 		tracing.TraceEvent(span, "Updating existing player")
@@ -152,17 +151,17 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 
 		// 如果現有記錄的更新時間較新，則跳過更新（確保幂等性）
 		if existing.UpdatedAt.After(eventTime) {
-			u.logger.Info("Skipping player update as existing data is newer",
-				zap.String("global_id", existing.GlobalPlayerID),
-				zap.Time("existing_updated_at", existing.UpdatedAt),
-				zap.Time("event_time", eventTime))
+			u.logger.InfoLog("Skipping player update as existing data is newer",
+				u.logger.String("global_id", existing.GlobalPlayerID),
+				u.logger.String("existing_updated_at", existing.UpdatedAt.String()),
+				u.logger.String("event_time", eventTime.String()))
 
 			// 發布玩家同步事件到KDS確認我們已處理
 			tracing.TraceEvent(span, "Publishing player sync confirmation event to KDS")
 			if err := u.publishPlayerSyncEvent(ctx, existing, playerEvent.GlobalMerchantID, cloudEvent.TraceParent); err != nil {
-				u.logger.Warn("Failed to publish player sync confirmation event",
-					zap.String("global_id", existing.GlobalPlayerID),
-					zap.Error(err))
+				u.logger.WarnLog("Failed to publish player sync confirmation event",
+					u.logger.String("global_id", existing.GlobalPlayerID),
+					u.logger.Error("err", err))
 			}
 
 			return nil
@@ -177,9 +176,9 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 			span.RecordError(err)
 			return fmt.Errorf("update player: %w", err)
 		}
-		u.logger.Info("Player updated",
-			zap.String("global_id", player.GlobalPlayerID),
-			zap.String("account", player.Account))
+		u.logger.InfoLog("Player updated",
+			u.logger.String("global_id", player.GlobalPlayerID),
+			u.logger.String("account", player.Account))
 	}
 
 	// 記錄資料庫操作完成
@@ -261,9 +260,9 @@ func (u *PlayerUseCase) publishPlayerSyncEvent(ctx context.Context, player *mode
 	// 記錄事件發布成功
 	tracing.TraceEvent(span, "Player sync event published successfully")
 
-	u.logger.Info("Player sync event published",
-		zap.String("global_id", player.GlobalPlayerID),
-		zap.String("event_id", cloudEvent.ID))
+	u.logger.InfoLog("Player sync event published",
+		u.logger.String("global_id", player.GlobalPlayerID),
+		u.logger.String("event_id", cloudEvent.ID))
 
 	return nil
 }

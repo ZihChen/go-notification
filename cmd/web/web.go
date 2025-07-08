@@ -12,12 +12,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/cobra"
-	"go.uber.org/zap"
-
 	"github.com/jvdiamondtech/ms-notification-cat/cmd"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/di"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -53,7 +51,7 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	// 初始化追踪器
 	tracer, err := tracing.NewTracer(cfg)
 	if err != nil {
-		logger.Fatal("Failed to initialize tracer", zap.Error(err))
+		logger.FatalLog("Failed to initialize tracer", logger.Error("err", err))
 	}
 	defer tracer.Shutdown(context.Background())
 
@@ -63,18 +61,18 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	// 初始化DB連線
 	db, err := mysql.NewDatabase(cfg)
 	if err != nil {
-		logger.Fatal("Failed to initialize database", zap.Error(err))
+		logger.FatalLog("Failed to initialize database", logger.Error("err", err))
 	}
 	defer func() {
 		err = db.Close() // 主程序結束後關閉DB連線
 		if err != nil {
-			logger.Error("Failed to close database connection", zap.Error(err))
+			logger.ErrorLog("Failed to close database connection", logger.Error("err", err))
 		}
-		logger.Info("Database connection closed successfull")
+		logger.InfoLog("Database connection closed successfull")
 	}()
 
 	if err = db.Ping(); err != nil {
-		logger.Fatal("Failed to ping database", zap.Error(err))
+		logger.FatalLog("Failed to ping database", logger.Error("err", err))
 	}
 
 	// 初始化Redis連線
@@ -82,17 +80,17 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	defer func() {
 		err = redisManager.Close() // 主程序結束後關閉Redis連線
 		if err != nil {
-			logger.Error("Failed to close Redis connection", zap.Error(err))
+			logger.ErrorLog("Failed to close Redis connection", logger.Error("err", err))
 		}
 	}()
 	if err = redisManager.Connect(rootCtx); err != nil {
-		logger.Fatal("Failed to connect to Redis", zap.Error(err))
+		logger.FatalLog("Failed to connect to Redis", logger.Error("err", err))
 	}
 
 	// 使用Wire初始化HTTP處理器
 	httpHandler, err := di.InitializeWebServer(cfg, logger, redisManager, db.GetDBConnection()) // 使用di包中的函數
 	if err != nil {
-		logger.Fatal("Failed to initialize web server", zap.Error(err))
+		logger.FatalLog("Failed to initialize web server", logger.Error("err", err))
 	}
 	// 使用命令行指定的端口或配置中的端口
 	if port == 0 {
@@ -119,9 +117,9 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	}
 	// 在後台運行服務器
 	go func() {
-		logger.Info("Starting web server", zap.Int("port", port))
+		logger.InfoLog("Starting web server", logger.Int("port", port))
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatal("Failed to start server", zap.Error(err))
+			logger.FatalLog("Failed to start server", logger.Error("err", err))
 		}
 	}()
 	// 等待中斷信號優雅地關閉服務器
@@ -129,7 +127,7 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	logger.Info("Shutting down server...")
+	logger.InfoLog("Shutting down server...")
 
 	// 記錄關閉事件
 	tracing.TraceEvent(rootSpan, "Shutting down web server")
@@ -139,12 +137,12 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		logger.Fatal("Server forced to shutdown", zap.Error(err))
+		logger.FatalLog("Server forced to shutdown", logger.Error("err", err))
 	}
 
 	// 記錄成功關閉
 	tracing.TraceEvent(rootSpan, "Web server exited gracefully")
 
-	logger.Info("Server exited")
+	logger.InfoLog("Server exited")
 
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/repository"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/service"
 	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
@@ -16,7 +17,6 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/usecase"
 	"github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -50,12 +50,12 @@ var baseSet = wire.NewSet(
 )
 
 // 事件生產者提供者
-func provideEventProducer(kdsService *kds.KDSService, logger *zap.Logger) service.EventProducer {
+func provideEventProducer(kdsService *kds.KDSService, logger infraport.Logger) service.EventProducer {
 	return kdsService
 }
 
 // InitializeWebServer 初始化 Web 服務的 HTTP 處理器
-func InitializeWebServer(cfg *config.Config, logger *zap.Logger, redisManager *redisCache.Manager, db *gorm.DB) (*handler.HTTPHandler, error) {
+func InitializeWebServer(cfg *config.Config, logger infraport.Logger, redisManager *redisCache.Manager, db *gorm.DB) (*handler.HTTPHandler, error) {
 	wire.Build(
 		baseSet,
 		kds.NewKDSService,
@@ -65,7 +65,7 @@ func InitializeWebServer(cfg *config.Config, logger *zap.Logger, redisManager *r
 }
 
 // InitializeWorkerServer 初始化 Worker 服務的處理器
-func InitializeWorkerServer(cfg *config.Config, logger *zap.Logger, redisManager *redisCache.Manager, db *gorm.DB) (*handler.WorkerHandler, error) {
+func InitializeWorkerServer(cfg *config.Config, logger infraport.Logger, redisManager *redisCache.Manager, db *gorm.DB) (*handler.WorkerHandler, error) {
 	wire.Build(
 		baseSet,
 		kds.NewKDSService,
@@ -75,7 +75,7 @@ func InitializeWorkerServer(cfg *config.Config, logger *zap.Logger, redisManager
 }
 
 // InitializeWorkerComponents 初始化 Worker 服務的所有組件
-func InitializeWorkerComponents(cfg *config.Config, logger *zap.Logger, redisManager *redisCache.Manager, db *gorm.DB) (*WorkerComponents, error) {
+func InitializeWorkerComponents(cfg *config.Config, logger infraport.Logger, redisManager *redisCache.Manager, db *gorm.DB) (*WorkerComponents, error) {
 	wire.Build(
 		wire.Struct(new(WorkerComponents), "*"),
 		baseSet,
@@ -87,12 +87,12 @@ func InitializeWorkerComponents(cfg *config.Config, logger *zap.Logger, redisMan
 }
 
 // 提供 worker 服務器
-func provideWorkerServer(cfg *config.Config, logger *zap.Logger) (*asynq.Server, error) {
+func provideWorkerServer(cfg *config.Config, logger infraport.Logger) (*asynq.Server, error) {
 	return queue.NewWorkerServer(cfg, logger)
 }
 
 // InitializeConsumer 初始化 Consumer 服務的 KDS 服務
-func InitializeConsumer(cfg *config.Config, logger *zap.Logger, redisManager *redisCache.Manager, db *gorm.DB) (*kds.KDSService, error) {
+func InitializeConsumer(cfg *config.Config, logger infraport.Logger, redisManager *redisCache.Manager, db *gorm.DB) (*kds.KDSService, error) {
 	wire.Build(
 		queue.NewQueueService,
 		provideRedisClient,
@@ -110,6 +110,6 @@ func provideRedisClient(manager *redisCache.Manager) (*redis.Client, error) {
 }
 
 // 提供事件去重服務
-func provideDeduplicationService(redisClient *redis.Client, logger *zap.Logger) service.EventDeduplicationService {
+func provideDeduplicationService(redisClient *redis.Client, logger infraport.Logger) service.EventDeduplicationService {
 	return deduplication.NewRedisDeduplicationService(redisClient, logger)
 }

@@ -3,15 +3,14 @@ package handler
 import (
 	"context"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
-	"go.opentelemetry.io/otel/attribute"
-	"go.uber.org/zap"
-
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/usecase"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 func getTaskID(task *asynq.Task) string {
@@ -30,7 +29,7 @@ type WorkerHandler struct {
 	merchantUseCase *usecase.MerchantUseCase
 	playerUseCase   *usecase.PlayerUseCase
 	managerUseCase  *usecase.ManagerUseCase
-	logger          *zap.Logger
+	logger          infraport.Logger
 }
 
 // NewWorkerHandler 創建Worker Handler
@@ -38,7 +37,7 @@ func NewWorkerHandler(
 	merchantUseCase *usecase.MerchantUseCase,
 	playerUseCase *usecase.PlayerUseCase,
 	managerUseCase *usecase.ManagerUseCase,
-	logger *zap.Logger,
+	logger infraport.Logger,
 ) *WorkerHandler {
 	return &WorkerHandler{
 		merchantUseCase: merchantUseCase,
@@ -54,10 +53,10 @@ func (h *WorkerHandler) RegisterHandlers(mux *asynq.ServeMux) {
 	mux.Handle(queue.TypePlayerSync, queue.WrapHandlerWithTracing(asynq.HandlerFunc(h.HandlePlayerSync)))
 	mux.Handle(queue.TypeManagerSync, queue.WrapHandlerWithTracing(asynq.HandlerFunc(h.HandleManagerSync)))
 
-	h.logger.Info("Registered worker handlers",
-		zap.String("handler.merchant_sync", queue.TypeMerchantSync),
-		zap.String("handler.player_sync", queue.TypePlayerSync),
-		zap.String("handler.manager_sync", queue.TypeManagerSync))
+	h.logger.InfoLog("Registered worker handlers",
+		h.logger.String("handler.merchant_sync", queue.TypeMerchantSync),
+		h.logger.String("handler.player_sync", queue.TypePlayerSync),
+		h.logger.String("handler.manager_sync", queue.TypeManagerSync))
 }
 
 // HandleMerchantSync 處理商戶同步任務
@@ -76,18 +75,18 @@ func (h *WorkerHandler) HandleMerchantSync(ctx context.Context, task *asynq.Task
 		attribute.Int("task.payload_size_bytes", len(task.Payload())),
 	)
 
-	h.logger.Info("Processing merchant sync task",
-		zap.String("task_id", taskID),
-		zap.Int("payload_size", len(task.Payload())))
+	h.logger.InfoLog("Processing merchant sync task",
+		h.logger.String("task_id", taskID),
+		h.logger.Int("payload_size", len(task.Payload())))
 
 	// 記錄開始處理
 	tracing.TraceEvent(span, "Starting merchant sync processing")
 
 	// 執行實際的同步邏輯
 	if err := h.merchantUseCase.SyncMerchant(ctx, task.Payload()); err != nil {
-		h.logger.Error("Failed to sync merchant",
-			zap.String("task_id", taskID),
-			zap.Error(err))
+		h.logger.ErrorLog("Failed to sync merchant",
+			h.logger.String("task_id", taskID),
+			h.logger.Error("err", err))
 
 		// 記錄錯誤
 		span.RecordError(err)
@@ -98,8 +97,8 @@ func (h *WorkerHandler) HandleMerchantSync(ctx context.Context, task *asynq.Task
 	// 記錄成功完成任務
 	tracing.TraceEvent(span, "Merchant sync completed successfully")
 
-	h.logger.Info("Merchant sync task completed successfully",
-		zap.String("task_id", taskID))
+	h.logger.InfoLog("Merchant sync task completed successfully",
+		h.logger.String("task_id", taskID))
 
 	return nil
 }
@@ -119,18 +118,18 @@ func (h *WorkerHandler) HandlePlayerSync(ctx context.Context, task *asynq.Task) 
 		attribute.Int("task.payload_size_bytes", len(task.Payload())),
 	)
 
-	h.logger.Info("Processing player sync task",
-		zap.String("task_id", taskID),
-		zap.Int("payload_size", len(task.Payload())))
+	h.logger.InfoLog("Processing player sync task",
+		h.logger.String("task_id", taskID),
+		h.logger.Int("payload_size", len(task.Payload())))
 
 	// 記錄開始處理
 	tracing.TraceEvent(span, "Starting player sync processing")
 
 	// 執行實際的同步邏輯
 	if err := h.playerUseCase.SyncPlayer(ctx, task.Payload()); err != nil {
-		h.logger.Error("Failed to sync player",
-			zap.String("task_id", taskID),
-			zap.Error(err))
+		h.logger.ErrorLog("Failed to sync player",
+			h.logger.String("task_id", taskID),
+			h.logger.Error("err", err))
 
 		// 記錄錯誤
 		span.RecordError(err)
@@ -141,8 +140,8 @@ func (h *WorkerHandler) HandlePlayerSync(ctx context.Context, task *asynq.Task) 
 	// 記錄成功完成任務
 	tracing.TraceEvent(span, "Player sync completed successfully")
 
-	h.logger.Info("Player sync task completed successfully",
-		zap.String("task_id", taskID))
+	h.logger.InfoLog("Player sync task completed successfully",
+		h.logger.String("task_id", taskID))
 
 	return nil
 }
@@ -162,18 +161,18 @@ func (h *WorkerHandler) HandleManagerSync(ctx context.Context, task *asynq.Task)
 		attribute.Int("task.payload_size_bytes", len(task.Payload())),
 	)
 
-	h.logger.Info("Processing manager sync task",
-		zap.String("task_id", taskID),
-		zap.Int("payload_size", len(task.Payload())))
+	h.logger.InfoLog("Processing manager sync task",
+		h.logger.String("task_id", taskID),
+		h.logger.Int("payload_size", len(task.Payload())))
 
 	// 記錄開始處理
 	tracing.TraceEvent(span, "Starting manager sync processing")
 
 	// 執行實際的同步邏輯
 	if err := h.managerUseCase.SyncManager(ctx, task.Payload()); err != nil {
-		h.logger.Error("Failed to sync manager",
-			zap.String("task_id", taskID),
-			zap.Error(err))
+		h.logger.ErrorLog("Failed to sync manager",
+			h.logger.String("task_id", taskID),
+			h.logger.Error("err", err))
 
 		// 記錄錯誤
 		span.RecordError(err)
@@ -184,8 +183,8 @@ func (h *WorkerHandler) HandleManagerSync(ctx context.Context, task *asynq.Task)
 	// 記錄成功完成任務
 	tracing.TraceEvent(span, "Manager sync completed successfully")
 
-	h.logger.Info("Manager sync task completed successfully",
-		zap.String("task_id", taskID))
+	h.logger.InfoLog("Manager sync task completed successfully",
+		h.logger.String("task_id", taskID))
 
 	return nil
 }

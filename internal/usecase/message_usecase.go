@@ -3,15 +3,14 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"strings"
 	"time"
-
-	"go.opentelemetry.io/otel/attribute"
-	"go.uber.org/zap"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // MessageUseCase 訊息用例
@@ -19,7 +18,7 @@ type MessageUseCase struct {
 	campaignRepo      repository.MessageCampaignRepository
 	playerMessageRepo repository.PlayerMessageRepository
 	playerRepo        repository.PlayerRepository
-	logger            *zap.Logger
+	logger            infraport.Logger
 }
 
 // NewMessageUseCase 創建訊息用例
@@ -27,7 +26,7 @@ func NewMessageUseCase(
 	campaignRepo repository.MessageCampaignRepository,
 	playerMessageRepo repository.PlayerMessageRepository,
 	playerRepo repository.PlayerRepository,
-	logger *zap.Logger,
+	logger infraport.Logger,
 ) *MessageUseCase {
 	return &MessageUseCase{
 		campaignRepo:      campaignRepo,
@@ -61,10 +60,10 @@ func (u *MessageUseCase) CreateMessageCampaign(ctx context.Context, campaign *mo
 	span.SetAttributes(attribute.Int64("campaign.id", int64(campaign.ID)))
 	tracing.TraceEvent(span, "Message campaign created successfully")
 
-	u.logger.Info("Message campaign created",
-		zap.Uint64("campaign_id", campaign.ID),
-		zap.String("title", campaign.Title),
-		zap.String("created_by", campaign.CreatedBy))
+	u.logger.InfoLog("Message campaign created",
+		u.logger.Int64("campaign_id", int64(campaign.ID)),
+		u.logger.String("title", campaign.Title),
+		u.logger.String("created_by", campaign.CreatedBy))
 
 	return nil
 }
@@ -100,10 +99,10 @@ func (u *MessageUseCase) UpdateMessageCampaign(ctx context.Context, campaign *mo
 
 	tracing.TraceEvent(span, "Message campaign updated successfully")
 
-	u.logger.Info("Message campaign updated",
-		zap.Uint64("campaign_id", campaign.ID),
-		zap.String("title", campaign.Title),
-		zap.String("updated_by", *campaign.UpdatedBy))
+	u.logger.InfoLog("Message campaign updated",
+		u.logger.Int64("campaign_id", int64(campaign.ID)),
+		u.logger.String("title", campaign.Title),
+		u.logger.String("updated_by", *campaign.UpdatedBy))
 
 	return nil
 }
@@ -124,7 +123,7 @@ func (u *MessageUseCase) DeleteMessageCampaign(ctx context.Context, id uint64) e
 
 	tracing.TraceEvent(span, "Message campaign deleted successfully")
 
-	u.logger.Info("Message campaign deleted", zap.Uint64("campaign_id", id))
+	u.logger.InfoLog("Message campaign deleted", u.logger.Int64("campaign_id", int64(id)))
 
 	return nil
 }
@@ -184,9 +183,9 @@ func (u *MessageUseCase) GetPlayerMessages(ctx context.Context, globalPlayerID s
 
 	// 檢查玩家是否需要新增訊息
 	if err := u.processPlayerMessages(ctx, globalPlayerID); err != nil {
-		u.logger.Warn("Failed to process player messages",
-			zap.String("global_player_id", globalPlayerID),
-			zap.Error(err))
+		u.logger.WarnLog("Failed to process player messages",
+			u.logger.String("global_player_id", globalPlayerID),
+			u.logger.Error("err", err))
 	}
 
 	// 獲取統計資訊
@@ -252,9 +251,9 @@ func (u *MessageUseCase) MarkMessageAsRead(ctx context.Context, globalPlayerID s
 
 	tracing.TraceEvent(span, "Message marked as read successfully")
 
-	u.logger.Info("Message marked as read",
-		zap.String("global_player_id", globalPlayerID),
-		zap.Uint64("message_id", messageID))
+	u.logger.InfoLog("Message marked as read",
+		u.logger.String("global_player_id", globalPlayerID),
+		u.logger.Int64("message_id", int64(messageID)))
 
 	return nil
 }
@@ -296,10 +295,10 @@ func (u *MessageUseCase) processPlayerMessages(ctx context.Context, globalPlayer
 		// 檢查是否已經存在該活動的訊息
 		exists, err := u.playerMessageRepo.CheckMessageExists(ctx, globalPlayerID, campaign.ID)
 		if err != nil {
-			u.logger.Warn("Failed to check message existence",
-				zap.String("global_player_id", globalPlayerID),
-				zap.Uint64("campaign_id", campaign.ID),
-				zap.Error(err))
+			u.logger.WarnLog("Failed to check message existence",
+				u.logger.String("global_player_id", globalPlayerID),
+				u.logger.Int64("campaign_id", int64(campaign.ID)),
+				u.logger.Error("err", err))
 			continue
 		}
 
@@ -326,9 +325,9 @@ func (u *MessageUseCase) processPlayerMessages(ctx context.Context, globalPlayer
 		tracing.TraceEvent(span, "New messages created",
 			attribute.Int("new_messages_count", len(newMessages)))
 
-		u.logger.Info("New messages created for player",
-			zap.String("global_player_id", globalPlayerID),
-			zap.Int("new_messages_count", len(newMessages)))
+		u.logger.InfoLog("New messages created for player",
+			u.logger.String("global_player_id", globalPlayerID),
+			u.logger.Int("new_messages_count", len(newMessages)))
 	}
 
 	return nil

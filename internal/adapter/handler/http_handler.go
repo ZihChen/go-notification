@@ -3,17 +3,16 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
-	"go.uber.org/zap"
-
 	domainModel "github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/usecase"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // 為 Swagger 提供的類型別名
@@ -39,7 +38,7 @@ type HTTPHandler struct {
 	playerUseCase   *usecase.PlayerUseCase
 	managerUseCase  *usecase.ManagerUseCase
 	messageUseCase  *usecase.MessageUseCase
-	logger          *zap.Logger
+	logger          infraport.Logger
 }
 
 // NewHTTPHandler 創建HTTP處理器
@@ -48,7 +47,7 @@ func NewHTTPHandler(
 	playerUseCase *usecase.PlayerUseCase,
 	managerUseCase *usecase.ManagerUseCase,
 	messageUseCase *usecase.MessageUseCase,
-	logger *zap.Logger,
+	logger infraport.Logger,
 ) *HTTPHandler {
 	return &HTTPHandler{
 		merchantUseCase: merchantUseCase,
@@ -182,9 +181,9 @@ func (h *HTTPHandler) GetMerchantByID(c *gin.Context) {
 			return
 		}
 
-		h.logger.Error("Failed to get merchant by ID",
-			zap.Uint64("id", id),
-			zap.Error(err))
+		h.logger.ErrorLog("Failed to get merchant by ID",
+			h.logger.UInt64("id", id),
+			h.logger.Error("err", err))
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to get merchant",
@@ -214,9 +213,9 @@ func (h *HTTPHandler) GetMerchantByGlobalID(c *gin.Context) {
 			return
 		}
 
-		h.logger.Error("Failed to get merchant by global ID",
-			zap.String("global_id", globalID),
-			zap.Error(err))
+		h.logger.ErrorLog("Failed to get merchant by global ID",
+			h.logger.String("global_id", globalID),
+			h.logger.Error("err", err))
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to get merchant",
@@ -257,9 +256,9 @@ func (h *HTTPHandler) GetPlayerByID(c *gin.Context) {
 			return
 		}
 
-		h.logger.Error("Failed to get player by ID",
-			zap.Uint64("id", id),
-			zap.Error(err))
+		h.logger.ErrorLog("Failed to get player by ID",
+			h.logger.UInt64("id", id),
+			h.logger.Error("err", err))
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to get player",
@@ -301,9 +300,9 @@ func (h *HTTPHandler) GetPlayerByGlobalID(c *gin.Context) {
 			return
 		}
 
-		h.logger.Error("Failed to get player by global ID",
-			zap.String("global_id", globalID),
-			zap.Error(err))
+		h.logger.ErrorLog("Failed to get player by global ID",
+			h.logger.String("global_id", globalID),
+			h.logger.Error("err", err))
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to get player",
@@ -344,9 +343,9 @@ func (h *HTTPHandler) UpdatePlayerLastActive(c *gin.Context) {
 			return
 		}
 
-		h.logger.Error("Failed to update player last active time",
-			zap.Uint64("id", id),
-			zap.Error(err))
+		h.logger.ErrorLog("Failed to update player last active time",
+			h.logger.UInt64("id", id),
+			h.logger.Error("err", err))
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to update player",
@@ -390,9 +389,9 @@ func (h *HTTPHandler) GetManagerByID(c *gin.Context) {
 			return
 		}
 
-		h.logger.Error("Failed to get manager by ID",
-			zap.Uint64("id", id),
-			zap.Error(err))
+		h.logger.ErrorLog("Failed to get manager by ID",
+			h.logger.UInt64("id", id),
+			h.logger.Error("err", err))
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to get manager",
@@ -434,9 +433,9 @@ func (h *HTTPHandler) GetManagerByGlobalID(c *gin.Context) {
 			return
 		}
 
-		h.logger.Error("Failed to get manager by global ID",
-			zap.String("global_id", globalID),
-			zap.Error(err))
+		h.logger.ErrorLog("Failed to get manager by global ID",
+			h.logger.String("global_id", globalID),
+			h.logger.Error("err", err))
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to get manager",
@@ -483,9 +482,9 @@ func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
 	}
 
 	if err := h.messageUseCase.CreateMessageCampaign(c.Request.Context(), campaign); err != nil {
-		h.logger.Error("Failed to create message campaign",
-			zap.String("title", req.Title),
-			zap.Error(err))
+		h.logger.ErrorLog("Failed to create message campaign",
+			h.logger.String("title", req.Title),
+			h.logger.Error("err", err))
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to create message campaign",
@@ -536,9 +535,9 @@ func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
 			return
 		}
 
-		h.logger.Error("Failed to update message campaign",
-			zap.Uint64("id", id),
-			zap.Error(err))
+		h.logger.ErrorLog("Failed to update message campaign",
+			h.logger.UInt64("id", id),
+			h.logger.Error("err", err))
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to update message campaign",
@@ -567,9 +566,9 @@ func (h *HTTPHandler) DeleteMessageCampaign(c *gin.Context) {
 			return
 		}
 
-		h.logger.Error("Failed to delete message campaign",
-			zap.Uint64("id", id),
-			zap.Error(err))
+		h.logger.ErrorLog("Failed to delete message campaign",
+			h.logger.UInt64("id", id),
+			h.logger.Error("err", err))
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to delete message campaign",
@@ -601,9 +600,9 @@ func (h *HTTPHandler) GetMessageCampaign(c *gin.Context) {
 			return
 		}
 
-		h.logger.Error("Failed to get message campaign",
-			zap.Uint64("id", id),
-			zap.Error(err))
+		h.logger.ErrorLog("Failed to get message campaign",
+			h.logger.UInt64("id", id),
+			h.logger.Error("err", err))
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to get message campaign",
@@ -628,7 +627,7 @@ func (h *HTTPHandler) ListMessageCampaigns(c *gin.Context) {
 
 	campaigns, total, err := h.messageUseCase.ListMessageCampaigns(c.Request.Context(), page, pageSize)
 	if err != nil {
-		h.logger.Error("Failed to list message campaigns", zap.Error(err))
+		h.logger.ErrorLog("Failed to list message campaigns", h.logger.Error("err", err))
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to list message campaigns",
@@ -666,9 +665,9 @@ func (h *HTTPHandler) GetPlayerMessages(c *gin.Context) {
 
 	response, err := h.messageUseCase.GetPlayerMessages(c.Request.Context(), globalPlayerID, page, pageSize)
 	if err != nil {
-		h.logger.Error("Failed to get player messages",
-			zap.String("global_player_id", globalPlayerID),
-			zap.Error(err))
+		h.logger.ErrorLog("Failed to get player messages",
+			h.logger.String("global_player_id", globalPlayerID),
+			h.logger.Error("err", err))
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to get player messages",
@@ -705,10 +704,10 @@ func (h *HTTPHandler) MarkMessageAsRead(c *gin.Context) {
 			return
 		}
 
-		h.logger.Error("Failed to mark message as read",
-			zap.String("global_player_id", globalPlayerID),
-			zap.Uint64("message_id", messageID),
-			zap.Error(err))
+		h.logger.ErrorLog("Failed to mark message as read",
+			h.logger.String("global_player_id", globalPlayerID),
+			h.logger.UInt64("message_id", messageID),
+			h.logger.Error("err", err))
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to mark message as read",
@@ -753,9 +752,9 @@ func (h *HTTPHandler) SSEHandler(c *gin.Context) {
 	// 獲取初始訊息統計
 	response, err := h.messageUseCase.GetPlayerMessages(c.Request.Context(), globalPlayerID, 1, 10)
 	if err != nil {
-		h.logger.Error("Failed to get initial player messages for SSE",
-			zap.String("global_player_id", globalPlayerID),
-			zap.Error(err))
+		h.logger.ErrorLog("Failed to get initial player messages for SSE",
+			h.logger.String("global_player_id", globalPlayerID),
+			h.logger.Error("err", err))
 	} else {
 		// 發送初始統計資訊
 		statsData, _ := json.Marshal(map[string]interface{}{
@@ -777,22 +776,22 @@ func (h *HTTPHandler) SSEHandler(c *gin.Context) {
 		lastUnreadCount = response.Stats.UnreadCount
 	}
 
-	h.logger.Info("SSE connection established",
-		zap.String("global_player_id", globalPlayerID))
+	h.logger.InfoLog("SSE connection established",
+		h.logger.String("global_player_id", globalPlayerID))
 
 	for {
 		select {
 		case <-clientGone:
-			h.logger.Info("SSE client disconnected",
-				zap.String("global_player_id", globalPlayerID))
+			h.logger.InfoLog("SSE client disconnected",
+				h.logger.String("global_player_id", globalPlayerID))
 			return
 		case <-ticker.C:
 			// 定期檢查新訊息
 			currentResponse, err := h.messageUseCase.GetPlayerMessages(c.Request.Context(), globalPlayerID, 1, 1)
 			if err != nil {
-				h.logger.Warn("Failed to check messages in SSE",
-					zap.String("global_player_id", globalPlayerID),
-					zap.Error(err))
+				h.logger.WarnLog("Failed to check messages in SSE",
+					h.logger.String("global_player_id", globalPlayerID),
+					h.logger.Error("err", err))
 				continue
 			}
 
@@ -806,9 +805,9 @@ func (h *HTTPHandler) SSEHandler(c *gin.Context) {
 				c.Writer.Flush()
 				lastUnreadCount = currentResponse.Stats.UnreadCount
 
-				h.logger.Debug("SSE stats update sent",
-					zap.String("global_player_id", globalPlayerID),
-					zap.Int("unread_count", lastUnreadCount))
+				h.logger.DebugLog("SSE stats update sent",
+					h.logger.String("global_player_id", globalPlayerID),
+					h.logger.Int("unread_count", lastUnreadCount))
 			}
 
 			// 發送心跳
