@@ -8,24 +8,24 @@ import (
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repository"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
 )
 
 // MessageUseCase 訊息用例
 type MessageUseCase struct {
-	campaignRepo      repository.MessageCampaignRepository
-	playerMessageRepo repository.PlayerMessageRepository
-	playerRepo        repository.PlayerRepository
+	campaignRepo      repositoryport.MessageCampaignRepository
+	playerMessageRepo repositoryport.PlayerMessageRepository
+	playerRepo        repositoryport.PlayerRepository
 	logger            infraport.Logger
 }
 
 // NewMessageUseCase 創建訊息用例
 func NewMessageUseCase(
-	campaignRepo repository.MessageCampaignRepository,
-	playerMessageRepo repository.PlayerMessageRepository,
-	playerRepo repository.PlayerRepository,
+	campaignRepo repositoryport.MessageCampaignRepository,
+	playerMessageRepo repositoryport.PlayerMessageRepository,
+	playerRepo repositoryport.PlayerRepository,
 	logger infraport.Logger,
 ) *MessageUseCase {
 	return &MessageUseCase{

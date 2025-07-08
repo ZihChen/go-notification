@@ -9,7 +9,7 @@ import (
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/model"
 	domainModel "github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repository"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
 )
 
 // PlayerMessageRepository GORM實現的會員訊息資料庫
@@ -18,7 +18,7 @@ type PlayerMessageRepository struct {
 }
 
 // NewPlayerMessageRepository 創建會員訊息資料庫
-func NewPlayerMessageRepository(db *gorm.DB) repository.PlayerMessageRepository {
+func NewPlayerMessageRepository(db *gorm.DB) repositoryport.PlayerMessageRepository {
 	return &PlayerMessageRepository{db: db}
 }
 

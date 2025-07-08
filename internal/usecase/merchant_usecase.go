@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repository"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
@@ -19,14 +19,14 @@ import (
 
 // MerchantUseCase 商戶用例
 type MerchantUseCase struct {
-	merchantRepo  repository.MerchantRepository
+	merchantRepo  repositoryport.MerchantRepository
 	eventProducer service.EventProducer
 	logger        infraport.Logger
 }
 
 // NewMerchantUseCase 創建商戶用例
 func NewMerchantUseCase(
-	merchantRepo repository.MerchantRepository,
+	merchantRepo repositoryport.MerchantRepository,
 	eventProducer service.EventProducer,
 	logger infraport.Logger,
 ) *MerchantUseCase {

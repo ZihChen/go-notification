@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repository"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
@@ -19,16 +19,16 @@ import (
 
 // ManagerUseCase 管理員用例
 type ManagerUseCase struct {
-	managerRepo   repository.ManagerRepository
-	merchantRepo  repository.MerchantRepository
+	managerRepo   repositoryport.ManagerRepository
+	merchantRepo  repositoryport.MerchantRepository
 	eventProducer service.EventProducer
 	logger        infraport.Logger
 }
 
 // NewManagerUseCase 創建管理員用例
 func NewManagerUseCase(
-	managerRepo repository.ManagerRepository,
-	merchantRepo repository.MerchantRepository,
+	managerRepo repositoryport.ManagerRepository,
+	merchantRepo repositoryport.MerchantRepository,
 	eventProducer service.EventProducer,
 	logger infraport.Logger,
 ) *ManagerUseCase {

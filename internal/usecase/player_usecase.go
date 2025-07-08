@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repository"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
@@ -19,16 +19,16 @@ import (
 
 // PlayerUseCase 玩家用例
 type PlayerUseCase struct {
-	playerRepo    repository.PlayerRepository
-	merchantRepo  repository.MerchantRepository
+	playerRepo    repositoryport.PlayerRepository
+	merchantRepo  repositoryport.MerchantRepository
 	eventProducer service.EventProducer
 	logger        infraport.Logger
 }
 
 // NewPlayerUseCase 創建玩家用例
 func NewPlayerUseCase(
-	playerRepo repository.PlayerRepository,
-	merchantRepo repository.MerchantRepository,
+	playerRepo repositoryport.PlayerRepository,
+	merchantRepo repositoryport.MerchantRepository,
 	eventProducer service.EventProducer,
 	logger infraport.Logger,
 ) *PlayerUseCase {
