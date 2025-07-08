@@ -12,14 +12,13 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/service"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/database"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/deduplication"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/kds"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
-	redis2 "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/usecase"
-	"github.com/redis/go-redis/v9"
+	redis2 "github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -27,17 +26,13 @@ import (
 // Injectors from wire.go:
 
 // InitializeWebServer 初始化 Web 服務的 HTTP 處理器
-func InitializeWebServer(cfg *config.Config, logger *zap.Logger) (*handler.HTTPHandler, error) {
-	db, err := provideDatabaseConnection(cfg)
-	if err != nil {
-		return nil, err
-	}
+func InitializeWebServer(cfg *config.Config, logger *zap.Logger, redisManager *redis.Manager, db *gorm.DB) (*handler.HTTPHandler, error) {
 	merchantRepository := repository.NewMerchantRepository(db)
 	queueService, err := queue.NewQueueService(cfg, logger)
 	if err != nil {
 		return nil, err
 	}
-	client, err := provideRedisClient(cfg)
+	client, err := provideRedisClient(redisManager)
 	if err != nil {
 		return nil, err
 	}
@@ -59,17 +54,13 @@ func InitializeWebServer(cfg *config.Config, logger *zap.Logger) (*handler.HTTPH
 }
 
 // InitializeWorkerServer 初始化 Worker 服務的處理器
-func InitializeWorkerServer(cfg *config.Config, logger *zap.Logger) (*handler.WorkerHandler, error) {
-	db, err := provideDatabaseConnection(cfg)
-	if err != nil {
-		return nil, err
-	}
+func InitializeWorkerServer(cfg *config.Config, logger *zap.Logger, redisManager *redis.Manager, db *gorm.DB) (*handler.WorkerHandler, error) {
 	merchantRepository := repository.NewMerchantRepository(db)
 	queueService, err := queue.NewQueueService(cfg, logger)
 	if err != nil {
 		return nil, err
 	}
-	client, err := provideRedisClient(cfg)
+	client, err := provideRedisClient(redisManager)
 	if err != nil {
 		return nil, err
 	}
@@ -88,17 +79,13 @@ func InitializeWorkerServer(cfg *config.Config, logger *zap.Logger) (*handler.Wo
 }
 
 // InitializeWorkerComponents 初始化 Worker 服務的所有組件
-func InitializeWorkerComponents(cfg *config.Config, logger *zap.Logger) (*WorkerComponents, error) {
-	db, err := provideDatabaseConnection(cfg)
-	if err != nil {
-		return nil, err
-	}
+func InitializeWorkerComponents(cfg *config.Config, logger *zap.Logger, redisManager *redis.Manager, db *gorm.DB) (*WorkerComponents, error) {
 	merchantRepository := repository.NewMerchantRepository(db)
 	queueService, err := queue.NewQueueService(cfg, logger)
 	if err != nil {
 		return nil, err
 	}
-	client, err := provideRedisClient(cfg)
+	client, err := provideRedisClient(redisManager)
 	if err != nil {
 		return nil, err
 	}
@@ -125,12 +112,12 @@ func InitializeWorkerComponents(cfg *config.Config, logger *zap.Logger) (*Worker
 }
 
 // InitializeConsumer 初始化 Consumer 服務的 KDS 服務
-func InitializeConsumer(cfg *config.Config, logger *zap.Logger) (*kds.KDSService, error) {
+func InitializeConsumer(cfg *config.Config, logger *zap.Logger, redisManager *redis.Manager, db *gorm.DB) (*kds.KDSService, error) {
 	queueService, err := queue.NewQueueService(cfg, logger)
 	if err != nil {
 		return nil, err
 	}
-	client, err := provideRedisClient(cfg)
+	client, err := provideRedisClient(redisManager)
 	if err != nil {
 		return nil, err
 	}
@@ -149,20 +136,9 @@ type WorkerComponents struct {
 	Server  *asynq.Server
 }
 
-var baseSet = wire.NewSet(
-
-	provideDatabaseConnection, queue.NewQueueService, provideRedisClient,
+var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient,
 	provideDeduplicationService, repository.NewMerchantRepository, repository.NewPlayerRepository, repository.NewManagerRepository, repository.NewMessageCampaignRepository, repository.NewPlayerMessageRepository, provideEventProducer, usecase.NewMerchantUseCase, usecase.NewPlayerUseCase, usecase.NewManagerUseCase, usecase.NewMessageUseCase,
 )
-
-// 資料庫連接提供者
-func provideDatabaseConnection(cfg *config.Config) (*gorm.DB, error) {
-	db, err := database.NewDatabase(cfg)
-	if err != nil {
-		return nil, err
-	}
-	return db.DB, nil
-}
 
 // 事件生產者提供者
 func provideEventProducer(kdsService *kds.KDSService, logger *zap.Logger) service.EventProducer {
@@ -174,12 +150,15 @@ func provideWorkerServer(cfg *config.Config, logger *zap.Logger) (*asynq.Server,
 	return queue.NewWorkerServer(cfg, logger)
 }
 
-// 提供 Redis 客戶端
-func provideRedisClient(cfg *config.Config) (*redis.Client, error) {
-	return redis2.NewRedis(cfg)
+func provideRedisClient(manager *redis.Manager) (*redis2.Client, error) {
+	redisInstance, err := manager.GetClient()
+	if err != nil {
+		return nil, err
+	}
+	return redisInstance, nil
 }
 
 // 提供事件去重服務
-func provideDeduplicationService(redisClient *redis.Client, logger *zap.Logger) service.EventDeduplicationService {
+func provideDeduplicationService(redisClient *redis2.Client, logger *zap.Logger) service.EventDeduplicationService {
 	return deduplication.NewRedisDeduplicationService(redisClient, logger)
 }

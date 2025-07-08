@@ -1,0 +1,48 @@
+services:
+  redis:
+    image: redis:7.2-alpine
+    container_name: fat-notification-redis
+    ports:
+      - "6378:6379"
+    volumes:
+      - notification_redis_data:/data
+    networks:
+      - fatcatnet
+    restart: always
+  fat-notification-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fat-notification-web
+    entrypoint: [
+      "dlv",
+      "--listen=:6383",
+      "--headless=true",
+      "--api-version=2",
+      "--accept-multiclient",
+      "exec",
+      "./fat_notification_cat",
+      "--",
+      "web"
+    ]
+    environment:
+      - TZ=Asia/Taipei
+    ports:
+      - "8081:8080"
+      - "6383:6383"   #debugger接口
+    security_opt:
+      - "seccomp=unconfined"
+    cap_add:
+      - SYS_PTRACE
+    depends_on:
+      - redis
+    networks:
+      - fatcatnet
+    restart: always
+
+volumes:
+  notification_redis_data:
+
+networks:
+  fatcatnet:
+    external: true

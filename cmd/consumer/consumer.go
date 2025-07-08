@@ -3,6 +3,8 @@ package consumer
 import (
 	"context"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/database/mysql"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -61,17 +63,39 @@ func runConsumer(cobraCmd *cobra.Command, args []string) {
 		logger.Fatal("Failed to initialize tracer", zap.Error(err))
 	}
 	defer tracer.Shutdown(context.Background())
-
-	rootCtx, rootSpan := tracing.StartSpan(rootCtx, "ConsumerService")
-	rootSpan.SetAttributes(
-		attribute.String("service.name", cfg.App.Name),
-		attribute.String("service.type", "consumer"),
-		attribute.String("service.environment", cfg.App.Env),
-	)
+	ctx, rootSpan := tracing.StartSpan(rootCtx, "ConsumerService")
 	defer rootSpan.End()
 
+	// 初始化DB連線
+	db, err := mysql.NewDatabase(cfg)
+	if err != nil {
+		logger.Fatal("Failed to initialize database", zap.Error(err))
+	}
+	defer func() {
+		err = db.Close() // 主程序結束後關閉DB連線
+		if err != nil {
+			logger.Error("Failed to close database connection", zap.Error(err))
+		}
+		logger.Info("Database connection closed successfull")
+	}()
+
+	if err = db.Ping(); err != nil {
+		logger.Fatal("Failed to ping database", zap.Error(err))
+	}
+
+	redisManager := redis.NewRedisManager(cfg)
+	defer func() {
+		err = redisManager.Close() // 主程序結束後關閉Redis連線
+		if err != nil {
+			logger.Error("Failed to close Redis connection", zap.Error(err))
+		}
+	}()
+	if err = redisManager.Connect(rootCtx); err != nil {
+		logger.Fatal("Failed to connect to Redis", zap.Error(err))
+	}
+
 	// 使用Wire初始化KDS服務
-	kdsService, err := di.InitializeConsumer(cfg, logger)
+	kdsService, err := di.InitializeConsumer(cfg, logger, redisManager, db.GetDBConnection())
 	if err != nil {
 		logger.Fatal("Failed to initialize KDS service", zap.Error(err))
 	}

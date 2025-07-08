@@ -3,6 +3,8 @@ package web
 import (
 	"context"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/database/mysql"
 	"net/http"
 	"os"
 	"os/signal"
@@ -45,6 +47,9 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	cfg := cmd.GetConfig()
 	logger := cmd.GetLogger()
 
+	rootCtx, rootCancel := context.WithCancel(context.Background())
+	defer rootCancel()
+
 	// 初始化追踪器
 	tracer, err := tracing.NewTracer(cfg)
 	if err != nil {
@@ -55,16 +60,44 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	ctx, rootSpan := tracing.StartSpan(context.Background(), "WebService")
 	defer rootSpan.End()
 
+	// 初始化DB連線
+	db, err := mysql.NewDatabase(cfg)
+	if err != nil {
+		logger.Fatal("Failed to initialize database", zap.Error(err))
+	}
+	defer func() {
+		err = db.Close() // 主程序結束後關閉DB連線
+		if err != nil {
+			logger.Error("Failed to close database connection", zap.Error(err))
+		}
+		logger.Info("Database connection closed successfull")
+	}()
+
+	if err = db.Ping(); err != nil {
+		logger.Fatal("Failed to ping database", zap.Error(err))
+	}
+
+	// 初始化Redis連線
+	redisManager := redis.NewRedisManager(cfg)
+	defer func() {
+		err = redisManager.Close() // 主程序結束後關閉Redis連線
+		if err != nil {
+			logger.Error("Failed to close Redis connection", zap.Error(err))
+		}
+	}()
+	if err = redisManager.Connect(rootCtx); err != nil {
+		logger.Fatal("Failed to connect to Redis", zap.Error(err))
+	}
+
 	// 使用Wire初始化HTTP處理器
-	httpHandler, err := di.InitializeWebServer(cfg, logger) // 使用di包中的函數
+	httpHandler, err := di.InitializeWebServer(cfg, logger, redisManager, db.GetDBConnection()) // 使用di包中的函數
 	if err != nil {
 		logger.Fatal("Failed to initialize web server", zap.Error(err))
 	}
 	// 使用命令行指定的端口或配置中的端口
 	if port == 0 {
 		port = cfg.App.Port
-	}
-	if port == 0 {
+	} else {
 		port = 8080 // 默認端口
 	}
 
