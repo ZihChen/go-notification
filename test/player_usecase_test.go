@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase"
 	"testing"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/usecase"
 )
 
 // 資料庫模擬
@@ -65,7 +65,7 @@ func TestPlayerUseCase_SyncPlayer_Create(t *testing.T) {
 	// 創建模擬資料庫
 	playerRepo := new(MockPlayerRepository)
 	playerRepo.On("FindByGlobalID", mock.Anything, globalPlayerID).Return(nil, fmt.Errorf("record not found"))
-	playerRepo.On("Create", mock.Anything, mock.AnythingOfType("*model.Player")).Return(nil)
+	playerRepo.On("Create", mock.Anything, mock.AnythingOfType("*models.Player")).Return(nil)
 
 	merchantRepo := new(MockMerchantRepository)
 	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(&model.Merchant{
@@ -150,7 +150,7 @@ func TestPlayerUseCase_SyncPlayer_Update(t *testing.T) {
 	// 創建模擬資料庫
 	playerRepo := new(MockPlayerRepository)
 	playerRepo.On("FindByGlobalID", mock.Anything, globalPlayerID).Return(existingPlayer, nil)
-	playerRepo.On("Update", mock.Anything, mock.AnythingOfType("*model.Player")).Return(nil)
+	playerRepo.On("Update", mock.Anything, mock.AnythingOfType("*models.Player")).Return(nil)
 
 	merchantRepo := new(MockMerchantRepository)
 	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(&model.Merchant{
@@ -350,7 +350,7 @@ func TestPlayerUseCase_UpdatePlayerLastActive(t *testing.T) {
 	// 創建模擬資料庫
 	playerRepo := new(MockPlayerRepository)
 	playerRepo.On("FindByID", mock.Anything, playerID).Return(existingPlayer, nil)
-	playerRepo.On("Update", mock.Anything, mock.AnythingOfType("*model.Player")).Return(nil)
+	playerRepo.On("Update", mock.Anything, mock.AnythingOfType("*models.Player")).Return(nil)
 
 	// 創建模擬商戶資料庫
 	merchantRepo := new(MockMerchantRepository)

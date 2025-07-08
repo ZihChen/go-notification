@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/usecase"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap/zaptest"
@@ -64,7 +64,7 @@ func TestManagerUseCase_SyncManager_Create(t *testing.T) {
 	// 創建模擬資料庫
 	managerRepo := new(MockManagerRepository)
 	managerRepo.On("FindByGlobalID", mock.Anything, globalManagerID).Return(nil, fmt.Errorf("record not found"))
-	managerRepo.On("Create", mock.Anything, mock.AnythingOfType("*model.Manager")).Return(nil)
+	managerRepo.On("Create", mock.Anything, mock.AnythingOfType("*models.Manager")).Return(nil)
 
 	merchantRepo := new(MockMerchantRepository)
 	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(&model.Merchant{
@@ -146,7 +146,7 @@ func TestManagerUseCase_SyncManager_Update(t *testing.T) {
 	// 創建模擬資料庫
 	managerRepo := new(MockManagerRepository)
 	managerRepo.On("FindByGlobalID", mock.Anything, globalManagerID).Return(existingManager, nil)
-	managerRepo.On("Update", mock.Anything, mock.AnythingOfType("*model.Manager")).Return(nil)
+	managerRepo.On("Update", mock.Anything, mock.AnythingOfType("*models.Manager")).Return(nil)
 
 	merchantRepo := new(MockMerchantRepository)
 	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(&model.Merchant{

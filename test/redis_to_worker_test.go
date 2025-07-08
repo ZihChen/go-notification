@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"testing"
 	"time"
 
@@ -17,7 +18,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/model"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/di"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
@@ -209,7 +209,7 @@ func TestMerchantRedisToWorker(t *testing.T) {
 	// 驗證資料庫中有商戶記錄
 	db, err := database.NewDatabase(cfg)
 	require.NoError(t, err, "Should connect to database without error")
-	var merchant model.Merchant
+	var merchant models.Merchant
 	result := db.DB.Where("global_merchant_id = ?", globalMerchantID).First(&merchant)
 	assert.NoError(t, result.Error, "Should find merchant in database")
 	assert.Equal(t, globalMerchantID, merchant.GlobalMerchantID, "Global merchant ID should match")
@@ -311,7 +311,7 @@ func TestPlayerRedisToWorker(t *testing.T) {
 	testID := time.Now().Format("20060102150405")
 	globalMerchantID := "TEST-MERCHANT-PLAYER-" + testID
 	merchantName := "Test Merchant " + testID
-	merchant := &model.Merchant{
+	merchant := &models.Merchant{
 		GlobalMerchantID: globalMerchantID,
 		Name:             merchantName,
 		DisplayName:      "Test Display",
@@ -372,7 +372,7 @@ func TestPlayerRedisToWorker(t *testing.T) {
 	t.Logf("Processed player sync task directly")
 
 	// 驗證資料庫中有玩家記錄
-	var player model.Player
+	var player models.Player
 	result = db.DB.Where("global_player_id = ?", globalPlayerID).First(&player)
 	assert.NoError(t, result.Error, "Should find player in database")
 	assert.Equal(t, globalPlayerID, player.GlobalPlayerID, "Global player ID should match")
@@ -476,7 +476,7 @@ func TestManagerRedisToWorker(t *testing.T) {
 	testID := time.Now().Format("20060102150405")
 	globalMerchantID := "TEST-MERCHANT-MANAGER-" + testID
 	merchantName := "Test Merchant " + testID
-	merchant := &model.Merchant{
+	merchant := &models.Merchant{
 		GlobalMerchantID: globalMerchantID,
 		Name:             merchantName,
 		DisplayName:      "Test Display",
@@ -537,7 +537,7 @@ func TestManagerRedisToWorker(t *testing.T) {
 	t.Logf("Processed manager sync task directly")
 
 	// 驗證資料庫中有管理員記錄
-	var manager model.Manager
+	var manager models.Manager
 	result = db.DB.Where("global_manager_id = ?", globalManagerID).First(&manager)
 	assert.NoError(t, result.Error, "Should find manager in database")
 	assert.Equal(t, globalManagerID, manager.GlobalManagerID, "Global manager ID should match")

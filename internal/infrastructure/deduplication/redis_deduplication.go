@@ -6,7 +6,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"time"
 
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/service"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/serviceport"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -24,7 +24,7 @@ type RedisDeduplicationService struct {
 }
 
 // NewRedisDeduplicationService 創建新的Redis去重服務
-func NewRedisDeduplicationService(client *redis.Client, logger infraport.Logger) service.EventDeduplicationService {
+func NewRedisDeduplicationService(client *redis.Client, logger infraport.Logger) serviceport.EventDeduplicationService {
 	return &RedisDeduplicationService{
 		client: client,
 		logger: logger,

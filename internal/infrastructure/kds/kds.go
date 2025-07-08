@@ -15,7 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/google/uuid"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/service"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/serviceport"
 	cfg "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"github.com/redis/go-redis/v9"
@@ -46,12 +46,12 @@ type KDSService struct {
 	partitionKey string
 	sortKey      string
 	config       *cfg.Config
-	queueService service.QueueService
+	queueService serviceport.QueueService
 	logger       infraport.Logger
 }
 
 // NewKDSService 創建KDS服務
-func NewKDSService(config *cfg.Config, queueService service.QueueService, redisClient *redis.Client, logger infraport.Logger) (*KDSService, error) {
+func NewKDSService(config *cfg.Config, queueService serviceport.QueueService, redisClient *redis.Client, logger infraport.Logger) (*KDSService, error) {
 	// 創建AWS配置
 	awsConfig, err := config.LoadAWSConfig(context.Background())
 	if err != nil {

@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/usecase"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -26,17 +26,17 @@ func getTaskID(task *asynq.Task) string {
 
 // WorkerHandler Worker Handler
 type WorkerHandler struct {
-	merchantUseCase *usecase.MerchantUseCase
-	playerUseCase   *usecase.PlayerUseCase
-	managerUseCase  *usecase.ManagerUseCase
+	merchantUseCase usecaseport.MerchantUseCase
+	playerUseCase   usecaseport.PlayerUseCase
+	managerUseCase  usecaseport.ManagerUseCase
 	logger          infraport.Logger
 }
 
 // NewWorkerHandler 創建Worker Handler
 func NewWorkerHandler(
-	merchantUseCase *usecase.MerchantUseCase,
-	playerUseCase *usecase.PlayerUseCase,
-	managerUseCase *usecase.ManagerUseCase,
+	merchantUseCase usecaseport.MerchantUseCase,
+	playerUseCase usecaseport.PlayerUseCase,
+	managerUseCase usecaseport.ManagerUseCase,
 	logger infraport.Logger,
 ) *WorkerHandler {
 	return &WorkerHandler{

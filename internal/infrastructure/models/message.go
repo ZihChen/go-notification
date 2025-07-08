@@ -1,4 +1,4 @@
-package model
+package models
 
 import (
 	"time"
@@ -34,20 +34,20 @@ type PlayerMessage struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
-// MessageSummary 訊息摘要模型（用於列表顯示）
+// MessageSummary 訊息摘要模型（列表顯示）
 type MessageSummary struct {
 	ID        uint64    `json:"id"`
 	Title     string    `json:"title"`
-	Summary   string    `json:"summary"` // 內容摘要
+	Summary   string    `json:"summary"`
 	IsRead    bool      `json:"is_read"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
 // PlayerMessageStats 玩家訊息統計
 type PlayerMessageStats struct {
-	ReadCount   int `json:"read_count"`
-	UnreadCount int `json:"unread_count"`
-	TotalCount  int `json:"total_count"`
+	ReadCount   int64 `json:"read_count"`
+	UnreadCount int64 `json:"unread_count"`
+	TotalCount  int64 `json:"total_count"`
 }
 
 // MessageListResponse 訊息列表回應

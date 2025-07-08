@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/hibiken/asynq"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/service"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/serviceport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
@@ -31,7 +31,7 @@ type QueueService struct {
 }
 
 // NewQueueService 創建佇列服務
-func NewQueueService(cfg *config.Config, logger infraport.Logger) (service.QueueService, error) {
+func NewQueueService(cfg *config.Config, logger infraport.Logger) (serviceport.QueueService, error) {
 	redisAddr := fmt.Sprintf("%s:%d", cfg.Redis.Domain, cfg.Redis.Port)
 
 	logger.InfoLog("Connecting to Redis",

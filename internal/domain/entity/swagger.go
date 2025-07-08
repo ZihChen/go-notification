@@ -1,4 +1,6 @@
-package model
+package entity
+
+import "github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
 
 // 這個文件包含 Swagger 文檔使用的模型定義和註解
 
@@ -27,7 +29,7 @@ type HealthResponse struct {
 // @Description 商戶示例
 func merchantExample() {
 	// 用於 Swagger 文檔顯示的商戶示例
-	_ = Merchant{
+	_ = model.Merchant{
 		ID:               1,
 		GlobalMerchantID: "FATCAT-MERCHANT-1",
 		Name:             "JV Diamond",
@@ -41,7 +43,7 @@ func merchantExample() {
 func playerExample() {
 	// 用於 Swagger 文檔顯示的玩家示例
 	email := "player@example.com"
-	_ = Player{
+	_ = model.Player{
 		ID:             1,
 		MerchantID:     1,
 		GlobalPlayerID: "FATCAT-PLAYER-7241",
@@ -56,7 +58,7 @@ func playerExample() {
 func managerExample() {
 	// 用於 Swagger 文檔顯示的管理員示例
 	email := "manager@example.com"
-	_ = Manager{
+	_ = model.Manager{
 		ID:              1,
 		MerchantID:      1,
 		GlobalManagerID: "FATCAT-MANAGER-231",

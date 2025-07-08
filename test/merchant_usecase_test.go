@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase"
 	"testing"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/usecase"
 )
 
 // 資料庫模擬
@@ -83,7 +83,7 @@ func TestMerchantUseCase_SyncMerchant_Create(t *testing.T) {
 	// 創建模擬資料庫
 	merchantRepo := new(MockMerchantRepository)
 	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(nil, fmt.Errorf("record not found"))
-	merchantRepo.On("Create", mock.Anything, mock.AnythingOfType("*model.Merchant")).Return(nil)
+	merchantRepo.On("Create", mock.Anything, mock.AnythingOfType("*models.Merchant")).Return(nil)
 
 	// 創建模擬事件生產者
 	eventProducer := new(MockEventProducer)
@@ -152,7 +152,7 @@ func TestMerchantUseCase_SyncMerchant_Update(t *testing.T) {
 	// 創建模擬資料庫
 	merchantRepo := new(MockMerchantRepository)
 	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(existingMerchant, nil)
-	merchantRepo.On("Update", mock.Anything, mock.AnythingOfType("*model.Merchant")).Return(nil)
+	merchantRepo.On("Update", mock.Anything, mock.AnythingOfType("*models.Merchant")).Return(nil)
 
 	// 創建模擬事件生產者
 	eventProducer := new(MockEventProducer)

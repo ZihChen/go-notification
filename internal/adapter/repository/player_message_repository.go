@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 
 	"gorm.io/gorm"
 
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/model"
-	domainModel "github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
 )
 
@@ -23,8 +23,8 @@ func NewPlayerMessageRepository(db *gorm.DB) repositoryport.PlayerMessageReposit
 }
 
 // FindByID 通過ID查找會員訊息
-func (r *PlayerMessageRepository) FindByID(ctx context.Context, id uint64) (*domainModel.PlayerMessage, error) {
-	var message model.PlayerMessage
+func (r *PlayerMessageRepository) FindByID(ctx context.Context, id uint64) (*entity.PlayerMessage, error) {
+	var message models.PlayerMessage
 	result := r.db.WithContext(ctx).First(&message, id)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -37,12 +37,12 @@ func (r *PlayerMessageRepository) FindByID(ctx context.Context, id uint64) (*dom
 }
 
 // FindByPlayerID 通過玩家ID查找訊息列表（支援分頁）
-func (r *PlayerMessageRepository) FindByPlayerID(ctx context.Context, globalPlayerID string, page, pageSize int) ([]*domainModel.PlayerMessage, int, error) {
-	var messages []model.PlayerMessage
+func (r *PlayerMessageRepository) FindByPlayerID(ctx context.Context, globalPlayerID string, page, pageSize int) ([]*entity.PlayerMessage, int, error) {
+	var messages []models.PlayerMessage
 	var total int64
 
 	// 計算總數
-	if err := r.db.WithContext(ctx).Model(&model.PlayerMessage{}).
+	if err := r.db.WithContext(ctx).Model(&models.PlayerMessage{}).
 		Where("global_player_id = ?", globalPlayerID).
 		Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -61,7 +61,7 @@ func (r *PlayerMessageRepository) FindByPlayerID(ctx context.Context, globalPlay
 		return nil, 0, result.Error
 	}
 
-	domainMessages := make([]*domainModel.PlayerMessage, len(messages))
+	domainMessages := make([]*entity.PlayerMessage, len(messages))
 	for i, message := range messages {
 		domainMessages[i] = mapToDomainPlayerMessage(&message)
 	}
@@ -70,19 +70,19 @@ func (r *PlayerMessageRepository) FindByPlayerID(ctx context.Context, globalPlay
 }
 
 // GetPlayerMessageStats 獲取玩家訊息統計
-func (r *PlayerMessageRepository) GetPlayerMessageStats(ctx context.Context, globalPlayerID string) (*domainModel.PlayerMessageStats, error) {
+func (r *PlayerMessageRepository) GetPlayerMessageStats(ctx context.Context, globalPlayerID string) (*entity.PlayerMessageStats, error) {
 	var totalCount int64
 	var readCount int64
 
 	// 查詢總數
-	if err := r.db.WithContext(ctx).Model(&model.PlayerMessage{}).
+	if err := r.db.WithContext(ctx).Model(&models.PlayerMessage{}).
 		Where("global_player_id = ?", globalPlayerID).
 		Count(&totalCount).Error; err != nil {
 		return nil, err
 	}
 
 	// 查詢已讀數量
-	if err := r.db.WithContext(ctx).Model(&model.PlayerMessage{}).
+	if err := r.db.WithContext(ctx).Model(&models.PlayerMessage{}).
 		Where("global_player_id = ? AND is_read = ?", globalPlayerID, true).
 		Count(&readCount).Error; err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func (r *PlayerMessageRepository) GetPlayerMessageStats(ctx context.Context, glo
 	// 計算未讀數量
 	unreadCount := totalCount - readCount
 
-	stats := &domainModel.PlayerMessageStats{
+	stats := &entity.PlayerMessageStats{
 		TotalCount:  int(totalCount),  // 轉換為 int
 		ReadCount:   int(readCount),   // 轉換為 int
 		UnreadCount: int(unreadCount), // 轉換為 int
@@ -101,7 +101,7 @@ func (r *PlayerMessageRepository) GetPlayerMessageStats(ctx context.Context, glo
 }
 
 // Create 創建會員訊息
-func (r *PlayerMessageRepository) Create(ctx context.Context, message *domainModel.PlayerMessage) error {
+func (r *PlayerMessageRepository) Create(ctx context.Context, message *entity.PlayerMessage) error {
 	messageModel := mapToDBPlayerMessage(message)
 	result := r.db.WithContext(ctx).Create(messageModel)
 	if result.Error != nil {
@@ -115,12 +115,12 @@ func (r *PlayerMessageRepository) Create(ctx context.Context, message *domainMod
 }
 
 // CreateBatch 批量創建會員訊息
-func (r *PlayerMessageRepository) CreateBatch(ctx context.Context, messages []*domainModel.PlayerMessage) error {
+func (r *PlayerMessageRepository) CreateBatch(ctx context.Context, messages []*entity.PlayerMessage) error {
 	if len(messages) == 0 {
 		return nil
 	}
 
-	messageModels := make([]*model.PlayerMessage, len(messages))
+	messageModels := make([]*models.PlayerMessage, len(messages))
 	for i, message := range messages {
 		messageModels[i] = mapToDBPlayerMessage(message)
 	}
@@ -144,7 +144,7 @@ func (r *PlayerMessageRepository) CreateBatch(ctx context.Context, messages []*d
 
 // MarkAsRead 標記訊息為已讀
 func (r *PlayerMessageRepository) MarkAsRead(ctx context.Context, globalPlayerID string, messageID uint64) error {
-	result := r.db.WithContext(ctx).Model(&model.PlayerMessage{}).
+	result := r.db.WithContext(ctx).Model(&models.PlayerMessage{}).
 		Where("id = ? AND global_player_id = ?", messageID, globalPlayerID).
 		Update("is_read", true)
 
@@ -162,7 +162,7 @@ func (r *PlayerMessageRepository) MarkAsRead(ctx context.Context, globalPlayerID
 // CheckMessageExists 檢查訊息是否已存在
 func (r *PlayerMessageRepository) CheckMessageExists(ctx context.Context, globalPlayerID string, campaignID uint64) (bool, error) {
 	var count int64
-	err := r.db.WithContext(ctx).Model(&model.PlayerMessage{}).
+	err := r.db.WithContext(ctx).Model(&models.PlayerMessage{}).
 		Where("global_player_id = ? AND campaign_id = ?", globalPlayerID, campaignID).
 		Count(&count).Error
 
@@ -174,8 +174,8 @@ func (r *PlayerMessageRepository) CheckMessageExists(ctx context.Context, global
 }
 
 // 將DB模型映射到領域模型
-func mapToDomainPlayerMessage(message *model.PlayerMessage) *domainModel.PlayerMessage {
-	return &domainModel.PlayerMessage{
+func mapToDomainPlayerMessage(message *models.PlayerMessage) *entity.PlayerMessage {
+	return &entity.PlayerMessage{
 		ID:             message.ID,
 		GlobalPlayerID: message.GlobalPlayerID,
 		CampaignID:     message.CampaignID,
@@ -187,8 +187,8 @@ func mapToDomainPlayerMessage(message *model.PlayerMessage) *domainModel.PlayerM
 }
 
 // 將領域模型映射到DB模型
-func mapToDBPlayerMessage(message *domainModel.PlayerMessage) *model.PlayerMessage {
-	return &model.PlayerMessage{
+func mapToDBPlayerMessage(message *entity.PlayerMessage) *models.PlayerMessage {
+	return &models.PlayerMessage{
 		ID:             message.ID,
 		GlobalPlayerID: message.GlobalPlayerID,
 		CampaignID:     message.CampaignID,

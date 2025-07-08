@@ -3,12 +3,13 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"strings"
 	"time"
 
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -27,7 +28,7 @@ func NewMessageUseCase(
 	playerMessageRepo repositoryport.PlayerMessageRepository,
 	playerRepo repositoryport.PlayerRepository,
 	logger infraport.Logger,
-) *MessageUseCase {
+) usecaseport.MessageUseCase {
 	return &MessageUseCase{
 		campaignRepo:      campaignRepo,
 		playerMessageRepo: playerMessageRepo,
@@ -37,7 +38,7 @@ func NewMessageUseCase(
 }
 
 // CreateMessageCampaign 創建會員訊息活動
-func (u *MessageUseCase) CreateMessageCampaign(ctx context.Context, campaign *model.MessageCampaign) error {
+func (u *MessageUseCase) CreateMessageCampaign(ctx context.Context, campaign *entity.MessageCampaign) error {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.CreateMessageCampaign")
 	defer span.End()
 
@@ -69,7 +70,7 @@ func (u *MessageUseCase) CreateMessageCampaign(ctx context.Context, campaign *mo
 }
 
 // UpdateMessageCampaign 更新會員訊息活動
-func (u *MessageUseCase) UpdateMessageCampaign(ctx context.Context, campaign *model.MessageCampaign) error {
+func (u *MessageUseCase) UpdateMessageCampaign(ctx context.Context, campaign *entity.MessageCampaign) error {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.UpdateMessageCampaign")
 	defer span.End()
 
@@ -129,7 +130,7 @@ func (u *MessageUseCase) DeleteMessageCampaign(ctx context.Context, id uint64) e
 }
 
 // GetMessageCampaign 獲取會員訊息活動
-func (u *MessageUseCase) GetMessageCampaign(ctx context.Context, id uint64) (*model.MessageCampaign, error) {
+func (u *MessageUseCase) GetMessageCampaign(ctx context.Context, id uint64) (*entity.MessageCampaign, error) {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.GetMessageCampaign")
 	defer span.End()
 
@@ -147,7 +148,7 @@ func (u *MessageUseCase) GetMessageCampaign(ctx context.Context, id uint64) (*mo
 }
 
 // ListMessageCampaigns 列出會員訊息活動
-func (u *MessageUseCase) ListMessageCampaigns(ctx context.Context, page, pageSize int) ([]*model.MessageCampaign, int, error) {
+func (u *MessageUseCase) ListMessageCampaigns(ctx context.Context, page, pageSize int) ([]*entity.MessageCampaign, int, error) {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.ListMessageCampaigns")
 	defer span.End()
 
@@ -171,7 +172,7 @@ func (u *MessageUseCase) ListMessageCampaigns(ctx context.Context, page, pageSiz
 }
 
 // GetPlayerMessages 獲取玩家訊息列表
-func (u *MessageUseCase) GetPlayerMessages(ctx context.Context, globalPlayerID string, page, pageSize int) (*model.MessageListResponse, error) {
+func (u *MessageUseCase) GetPlayerMessages(ctx context.Context, globalPlayerID string, page, pageSize int) (*entity.MessageListResponse, error) {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.GetPlayerMessages")
 	defer span.End()
 
@@ -203,9 +204,9 @@ func (u *MessageUseCase) GetPlayerMessages(ctx context.Context, globalPlayerID s
 	}
 
 	// 轉換為摘要格式
-	summaries := make([]model.MessageSummary, len(messages))
+	summaries := make([]entity.MessageSummary, len(messages))
 	for i, message := range messages {
-		summaries[i] = model.MessageSummary{
+		summaries[i] = entity.MessageSummary{
 			ID:        message.ID,
 			Title:     message.Title,
 			Summary:   generateSummary(message.Content),
@@ -221,7 +222,7 @@ func (u *MessageUseCase) GetPlayerMessages(ctx context.Context, globalPlayerID s
 		attribute.Int("returned_messages", len(summaries)),
 	)
 
-	response := &model.MessageListResponse{
+	response := &entity.MessageListResponse{
 		Stats:    *stats,
 		Messages: summaries,
 		Page:     page,
@@ -290,7 +291,7 @@ func (u *MessageUseCase) processPlayerMessages(ctx context.Context, globalPlayer
 	span.SetAttributes(attribute.Int("matching_campaigns", len(campaigns)))
 
 	// 為每個活動創建訊息（如果尚未存在）
-	var newMessages []*model.PlayerMessage
+	var newMessages []*entity.PlayerMessage
 	for _, campaign := range campaigns {
 		// 檢查是否已經存在該活動的訊息
 		exists, err := u.playerMessageRepo.CheckMessageExists(ctx, globalPlayerID, campaign.ID)
@@ -303,7 +304,7 @@ func (u *MessageUseCase) processPlayerMessages(ctx context.Context, globalPlayer
 		}
 
 		if !exists {
-			message := &model.PlayerMessage{
+			message := &entity.PlayerMessage{
 				GlobalPlayerID: globalPlayerID,
 				CampaignID:     campaign.ID,
 				Title:          campaign.Title,
@@ -334,9 +335,9 @@ func (u *MessageUseCase) processPlayerMessages(ctx context.Context, globalPlayer
 }
 
 // determinePlayerFocus 根據玩家最後活躍時間判斷焦點類型
-func (u *MessageUseCase) determinePlayerFocus(player *model.Player) uint8 {
+func (u *MessageUseCase) determinePlayerFocus(player *entity.Player) uint8 {
 	if player.LastActiveAt == nil {
-		return model.FocusNotActivity // 沒有活躍記錄視為不活躍
+		return entity.FocusNotActivity // 沒有活躍記錄視為不活躍
 	}
 
 	now := time.Now()
@@ -344,11 +345,11 @@ func (u *MessageUseCase) determinePlayerFocus(player *model.Player) uint8 {
 
 	switch {
 	case daysSinceActive <= 30:
-		return model.FocusInThirty // 30天內
+		return entity.FocusInThirty // 30天內
 	case daysSinceActive <= 100:
-		return model.FocusLowActivity // 31-100天
+		return entity.FocusLowActivity // 31-100天
 	default:
-		return model.FocusNotActivity // 100天以上
+		return entity.FocusNotActivity // 100天以上
 	}
 }
 

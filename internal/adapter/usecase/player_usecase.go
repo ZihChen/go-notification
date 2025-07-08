@@ -4,14 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/service"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/serviceport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -21,7 +22,7 @@ import (
 type PlayerUseCase struct {
 	playerRepo    repositoryport.PlayerRepository
 	merchantRepo  repositoryport.MerchantRepository
-	eventProducer service.EventProducer
+	eventProducer serviceport.EventProducer
 	logger        infraport.Logger
 }
 
@@ -29,9 +30,9 @@ type PlayerUseCase struct {
 func NewPlayerUseCase(
 	playerRepo repositoryport.PlayerRepository,
 	merchantRepo repositoryport.MerchantRepository,
-	eventProducer service.EventProducer,
+	eventProducer serviceport.EventProducer,
 	logger infraport.Logger,
-) *PlayerUseCase {
+) usecaseport.PlayerUseCase {
 	return &PlayerUseCase{
 		playerRepo:    playerRepo,
 		merchantRepo:  merchantRepo,
@@ -114,11 +115,11 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 	}
 
 	// 創建或更新玩家
-	var player model.Player
+	var player entity.Player
 	if existing == nil {
 		// 創建新玩家
 		tracing.TraceEvent(span, "Creating new player")
-		player = model.Player{
+		player = entity.Player{
 			MerchantID:     merchant.ID,
 			GlobalPlayerID: playerEvent.Player.GlobalPlayerID,
 			APIKey:         uuid.New().String(), // 生成新的API密鑰
@@ -199,7 +200,7 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 }
 
 // 發布玩家同步事件
-func (u *PlayerUseCase) publishPlayerSyncEvent(ctx context.Context, player *model.Player, globalMerchantID, traceParent string) error {
+func (u *PlayerUseCase) publishPlayerSyncEvent(ctx context.Context, player *entity.Player, globalMerchantID, traceParent string) error {
 	// 獲取當前 span
 	span := trace.SpanFromContext(ctx)
 
@@ -268,7 +269,7 @@ func (u *PlayerUseCase) publishPlayerSyncEvent(ctx context.Context, player *mode
 }
 
 // GetPlayerByID 通過ID獲取玩家
-func (u *PlayerUseCase) GetPlayerByID(ctx context.Context, id uint64) (*model.Player, error) {
+func (u *PlayerUseCase) GetPlayerByID(ctx context.Context, id uint64) (*entity.Player, error) {
 	// 創建 span 並跟踪此操作
 	ctx, span := tracing.StartSpan(ctx, "PlayerUseCase.GetPlayerByID")
 	defer span.End()
@@ -292,7 +293,7 @@ func (u *PlayerUseCase) GetPlayerByID(ctx context.Context, id uint64) (*model.Pl
 }
 
 // GetPlayerByGlobalID 通過全局ID獲取玩家
-func (u *PlayerUseCase) GetPlayerByGlobalID(ctx context.Context, globalID string) (*model.Player, error) {
+func (u *PlayerUseCase) GetPlayerByGlobalID(ctx context.Context, globalID string) (*entity.Player, error) {
 	// 創建 span 並跟踪此操作
 	ctx, span := tracing.StartSpan(ctx, "PlayerUseCase.GetPlayerByGlobalID")
 	defer span.End()

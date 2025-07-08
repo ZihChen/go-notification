@@ -3,24 +3,23 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	domainModel "github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/usecase"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-// 為 Swagger 提供的類型別名
-type Merchant = domainModel.Merchant
-type Player = domainModel.Player
-type Manager = domainModel.Manager
-type MessageCampaign = domainModel.MessageCampaign
-type MessageListResponse = domainModel.MessageListResponse
+type Merchant = entity.Merchant
+type Player = entity.Player
+type Manager = entity.Manager
+type MessageCampaign = entity.MessageCampaign
+type MessageListResponse = entity.MessageListResponse
 
 // 錯誤響應模型
 type ErrorResponse struct {
@@ -34,19 +33,19 @@ type SuccessResponse struct {
 
 // HTTPHandler HTTP接口處理器
 type HTTPHandler struct {
-	merchantUseCase *usecase.MerchantUseCase
-	playerUseCase   *usecase.PlayerUseCase
-	managerUseCase  *usecase.ManagerUseCase
-	messageUseCase  *usecase.MessageUseCase
+	merchantUseCase usecaseport.MerchantUseCase
+	playerUseCase   usecaseport.PlayerUseCase
+	managerUseCase  usecaseport.ManagerUseCase
+	messageUseCase  usecaseport.MessageUseCase
 	logger          infraport.Logger
 }
 
 // NewHTTPHandler 創建HTTP處理器
 func NewHTTPHandler(
-	merchantUseCase *usecase.MerchantUseCase,
-	playerUseCase *usecase.PlayerUseCase,
-	managerUseCase *usecase.ManagerUseCase,
-	messageUseCase *usecase.MessageUseCase,
+	merchantUseCase usecaseport.MerchantUseCase,
+	playerUseCase usecaseport.PlayerUseCase,
+	managerUseCase usecaseport.ManagerUseCase,
+	messageUseCase usecaseport.MessageUseCase,
 	logger infraport.Logger,
 ) *HTTPHandler {
 	return &HTTPHandler{
@@ -468,7 +467,7 @@ func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
 		return
 	}
 
-	campaign := &domainModel.MessageCampaign{
+	campaign := &entity.MessageCampaign{
 		Category:         req.Category,
 		Item:             req.Item,
 		Title:            req.Title,
@@ -513,7 +512,7 @@ func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
 		return
 	}
 
-	campaign := &domainModel.MessageCampaign{
+	campaign := &entity.MessageCampaign{
 		ID:               id,
 		Category:         req.Category,
 		Item:             req.Item,

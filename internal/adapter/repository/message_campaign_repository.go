@@ -4,13 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"time"
 
-	"gorm.io/gorm"
-
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/model"
-	domainModel "github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
+	"gorm.io/gorm"
 )
 
 // MessageCampaignRepository GORM實現的會員訊息活動資料庫
@@ -24,8 +23,8 @@ func NewMessageCampaignRepository(db *gorm.DB) repositoryport.MessageCampaignRep
 }
 
 // FindByID 通過ID查找會員訊息活動
-func (r *MessageCampaignRepository) FindByID(ctx context.Context, id uint64) (*domainModel.MessageCampaign, error) {
-	var campaign model.MessageCampaign
+func (r *MessageCampaignRepository) FindByID(ctx context.Context, id uint64) (*entity.MessageCampaign, error) {
+	var campaign models.MessageCampaign
 	result := r.db.WithContext(ctx).First(&campaign, id)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -38,12 +37,12 @@ func (r *MessageCampaignRepository) FindByID(ctx context.Context, id uint64) (*d
 }
 
 // FindAll 查找所有會員訊息活動（支援分頁）
-func (r *MessageCampaignRepository) FindAll(ctx context.Context, page, pageSize int) ([]*domainModel.MessageCampaign, int, error) {
-	var campaigns []model.MessageCampaign
+func (r *MessageCampaignRepository) FindAll(ctx context.Context, page, pageSize int) ([]*entity.MessageCampaign, int, error) {
+	var campaigns []models.MessageCampaign
 	var total int64
 
 	// 計算總數
-	if err := r.db.WithContext(ctx).Model(&model.MessageCampaign{}).Count(&total).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&models.MessageCampaign{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -59,7 +58,7 @@ func (r *MessageCampaignRepository) FindAll(ctx context.Context, page, pageSize 
 		return nil, 0, result.Error
 	}
 
-	domainCampaigns := make([]*domainModel.MessageCampaign, len(campaigns))
+	domainCampaigns := make([]*entity.MessageCampaign, len(campaigns))
 	for i, campaign := range campaigns {
 		domainCampaigns[i] = mapToDomainMessageCampaign(&campaign)
 	}
@@ -68,12 +67,12 @@ func (r *MessageCampaignRepository) FindAll(ctx context.Context, page, pageSize 
 }
 
 // FindActiveByFocus 根據焦點類型查找活躍的會員訊息活動
-func (r *MessageCampaignRepository) FindActiveByFocus(ctx context.Context, focus uint8) ([]*domainModel.MessageCampaign, error) {
-	var campaigns []model.MessageCampaign
+func (r *MessageCampaignRepository) FindActiveByFocus(ctx context.Context, focus uint8) ([]*entity.MessageCampaign, error) {
+	var campaigns []models.MessageCampaign
 
 	now := time.Now()
 	result := r.db.WithContext(ctx).
-		Where("focus = ? OR focus = ?", focus, domainModel.FocusAll).
+		Where("focus = ? OR focus = ?", focus, entity.FocusAll).
 		Where("(send_start_time IS NULL OR send_start_time <= ?) AND (send_end_time IS NULL OR send_end_time >= ?)", now, now).
 		Find(&campaigns)
 
@@ -81,7 +80,7 @@ func (r *MessageCampaignRepository) FindActiveByFocus(ctx context.Context, focus
 		return nil, result.Error
 	}
 
-	domainCampaigns := make([]*domainModel.MessageCampaign, len(campaigns))
+	domainCampaigns := make([]*entity.MessageCampaign, len(campaigns))
 	for i, campaign := range campaigns {
 		domainCampaigns[i] = mapToDomainMessageCampaign(&campaign)
 	}
@@ -90,7 +89,7 @@ func (r *MessageCampaignRepository) FindActiveByFocus(ctx context.Context, focus
 }
 
 // Create 創建會員訊息活動
-func (r *MessageCampaignRepository) Create(ctx context.Context, campaign *domainModel.MessageCampaign) error {
+func (r *MessageCampaignRepository) Create(ctx context.Context, campaign *entity.MessageCampaign) error {
 	campaignModel := mapToDBMessageCampaign(campaign)
 	result := r.db.WithContext(ctx).Create(campaignModel)
 	if result.Error != nil {
@@ -104,7 +103,7 @@ func (r *MessageCampaignRepository) Create(ctx context.Context, campaign *domain
 }
 
 // Update 更新會員訊息活動
-func (r *MessageCampaignRepository) Update(ctx context.Context, campaign *domainModel.MessageCampaign) error {
+func (r *MessageCampaignRepository) Update(ctx context.Context, campaign *entity.MessageCampaign) error {
 	campaignModel := mapToDBMessageCampaign(campaign)
 	result := r.db.WithContext(ctx).Save(campaignModel)
 	if result.Error != nil {
@@ -116,7 +115,7 @@ func (r *MessageCampaignRepository) Update(ctx context.Context, campaign *domain
 
 // Delete 刪除會員訊息活動
 func (r *MessageCampaignRepository) Delete(ctx context.Context, id uint64) error {
-	result := r.db.WithContext(ctx).Delete(&model.MessageCampaign{}, id)
+	result := r.db.WithContext(ctx).Delete(&models.MessageCampaign{}, id)
 	if result.Error != nil {
 		return result.Error
 	}
@@ -129,8 +128,8 @@ func (r *MessageCampaignRepository) Delete(ctx context.Context, id uint64) error
 }
 
 // 將DB模型映射到領域模型
-func mapToDomainMessageCampaign(campaign *model.MessageCampaign) *domainModel.MessageCampaign {
-	return &domainModel.MessageCampaign{
+func mapToDomainMessageCampaign(campaign *models.MessageCampaign) *entity.MessageCampaign {
+	return &entity.MessageCampaign{
 		ID:               campaign.ID,
 		Category:         campaign.Category,
 		Item:             campaign.Item,
@@ -150,8 +149,8 @@ func mapToDomainMessageCampaign(campaign *model.MessageCampaign) *domainModel.Me
 }
 
 // 將領域模型映射到DB模型
-func mapToDBMessageCampaign(campaign *domainModel.MessageCampaign) *model.MessageCampaign {
-	return &model.MessageCampaign{
+func mapToDBMessageCampaign(campaign *entity.MessageCampaign) *models.MessageCampaign {
+	return &models.MessageCampaign{
 		ID:               campaign.ID,
 		Category:         campaign.Category,
 		Item:             campaign.Item,

@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"time"
 
 	"gorm.io/gorm"
 
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/model"
-	domainModel "github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
 )
 
@@ -24,8 +24,8 @@ func NewPlayerRepository(db *gorm.DB) repositoryport.PlayerRepository {
 }
 
 // FindByID 通過ID查找玩家
-func (r *PlayerRepository) FindByID(ctx context.Context, id uint64) (*domainModel.Player, error) {
-	var player model.Player
+func (r *PlayerRepository) FindByID(ctx context.Context, id uint64) (*entity.Player, error) {
+	var player models.Player
 	result := r.db.WithContext(ctx).First(&player, id)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -38,8 +38,8 @@ func (r *PlayerRepository) FindByID(ctx context.Context, id uint64) (*domainMode
 }
 
 // FindByGlobalID 通過全局ID查找玩家
-func (r *PlayerRepository) FindByGlobalID(ctx context.Context, globalID string) (*domainModel.Player, error) {
-	var player model.Player
+func (r *PlayerRepository) FindByGlobalID(ctx context.Context, globalID string) (*entity.Player, error) {
+	var player models.Player
 	result := r.db.WithContext(ctx).Where("global_player_id = ?", globalID).First(&player)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -52,7 +52,7 @@ func (r *PlayerRepository) FindByGlobalID(ctx context.Context, globalID string) 
 }
 
 // Create 創建玩家
-func (r *PlayerRepository) Create(ctx context.Context, player *domainModel.Player) error {
+func (r *PlayerRepository) Create(ctx context.Context, player *entity.Player) error {
 	playerModel := mapToDBPlayer(player)
 	result := r.db.WithContext(ctx).Create(playerModel)
 	if result.Error != nil {
@@ -66,7 +66,7 @@ func (r *PlayerRepository) Create(ctx context.Context, player *domainModel.Playe
 }
 
 // Update 更新玩家
-func (r *PlayerRepository) Update(ctx context.Context, player *domainModel.Player) error {
+func (r *PlayerRepository) Update(ctx context.Context, player *entity.Player) error {
 	playerModel := mapToDBPlayer(player)
 	result := r.db.WithContext(ctx).Save(playerModel)
 	if result.Error != nil {
@@ -78,7 +78,7 @@ func (r *PlayerRepository) Update(ctx context.Context, player *domainModel.Playe
 
 // Delete 刪除玩家
 func (r *PlayerRepository) Delete(ctx context.Context, id uint64) error {
-	result := r.db.WithContext(ctx).Delete(&model.Player{}, id)
+	result := r.db.WithContext(ctx).Delete(&models.Player{}, id)
 	if result.Error != nil {
 		return result.Error
 	}
@@ -91,14 +91,14 @@ func (r *PlayerRepository) Delete(ctx context.Context, id uint64) error {
 }
 
 // 將DB模型映射到領域模型
-func mapToDomainPlayer(player *model.Player) *domainModel.Player {
+func mapToDomainPlayer(player *models.Player) *entity.Player {
 	var deletedAt *time.Time
 	if player.DeletedAt.Valid {
 		deletedTime := player.DeletedAt.Time
 		deletedAt = &deletedTime
 	}
 
-	return &domainModel.Player{
+	return &entity.Player{
 		ID:             player.ID,
 		MerchantID:     player.MerchantID,
 		GlobalPlayerID: player.GlobalPlayerID,
@@ -113,8 +113,8 @@ func mapToDomainPlayer(player *model.Player) *domainModel.Player {
 }
 
 // 將領域模型映射到DB模型
-func mapToDBPlayer(player *domainModel.Player) *model.Player {
-	dbPlayer := &model.Player{
+func mapToDBPlayer(player *entity.Player) *models.Player {
+	dbPlayer := &models.Player{
 		ID:             player.ID,
 		MerchantID:     player.MerchantID,
 		GlobalPlayerID: player.GlobalPlayerID,

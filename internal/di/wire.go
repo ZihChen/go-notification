@@ -8,14 +8,14 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/repository"
+	usecase2 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/service"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/serviceport"
 	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/deduplication"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/kds"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/usecase"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
@@ -43,14 +43,14 @@ var baseSet = wire.NewSet(
 	provideEventProducer,
 
 	// 用例層
-	usecase.NewMerchantUseCase,
-	usecase.NewPlayerUseCase,
-	usecase.NewManagerUseCase,
-	usecase.NewMessageUseCase,
+	usecase2.NewMerchantUseCase,
+	usecase2.NewPlayerUseCase,
+	usecase2.NewManagerUseCase,
+	usecase2.NewMessageUseCase,
 )
 
 // 事件生產者提供者
-func provideEventProducer(kdsService *kds.KDSService, logger infraport.Logger) service.EventProducer {
+func provideEventProducer(kdsService *kds.KDSService, logger infraport.Logger) serviceport.EventProducer {
 	return kdsService
 }
 
@@ -110,6 +110,6 @@ func provideRedisClient(manager *redisCache.Manager) (*redis.Client, error) {
 }
 
 // 提供事件去重服務
-func provideDeduplicationService(redisClient *redis.Client, logger infraport.Logger) service.EventDeduplicationService {
+func provideDeduplicationService(redisClient *redis.Client, logger infraport.Logger) serviceport.EventDeduplicationService {
 	return deduplication.NewRedisDeduplicationService(redisClient, logger)
 }
