@@ -92,7 +92,7 @@ func provideWorkerServer(cfg *config.Config, logger infraport.Logger) (*asynq.Se
 }
 
 // InitializeConsumer 初始化 Consumer 服務的 KDS 服務
-func InitializeConsumer(cfg *config.Config, logger infraport.Logger, redisManager *redisCache.Manager, db *gorm.DB) (*kds.KDSService, error) {
+func InitializeConsumer(cfg *config.Config, logger infraport.Logger, redisManager *redisCache.Manager) (*kds.KDSService, error) {
 	wire.Build(
 		queue.NewQueueService,
 		provideRedisClient,

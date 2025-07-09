@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -379,7 +381,7 @@ func (k *KDSService) consumeEvents(ctx context.Context, eventType string, enqueu
 						// 更新檢查點（每處理checkpointBatchSize條記錄更新一次）
 						recordCount++
 						if recordCount >= checkpointBatchSize {
-							if err := k.updateCheckpoint(msgCtx, shardId, *record.SequenceNumber, globalMerchantID); err != nil {
+							if err := k.updateCheckpoint(msgCtx, shardId, *record.SequenceNumber); err != nil {
 								k.logger.WarnLog("Failed to update checkpoint",
 									k.logger.String("shard_id", shardId),
 									k.logger.String("sequence_number", *record.SequenceNumber),
@@ -427,6 +429,325 @@ func (k *KDSService) consumeEvents(ctx context.Context, eventType string, enqueu
 	}
 }
 
+// ConsumeAllEvents 消費所有事件類型
+func (k *KDSService) ConsumeAllEvents(ctx context.Context) error {
+	k.logger.InfoWithContext(
+		ctx,
+		"Starting to consume all events from KDS",
+		k.logger.String("stream_name", k.streamName),
+	)
+
+	// 獲取分片信息
+	shards, err := k.getShardIterators(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get shard iterators: %w", err)
+	}
+
+	// 為每個分片創建一個goroutine處理
+	var shardWaiters sync.WaitGroup
+	shardErrs := make(chan error, len(shards))
+
+	// 處理每個分片
+	for shardId, iterator := range shards {
+		shardWaiters.Add(1)
+		k.logger.InfoWithContext(
+			ctx,
+			"Starting shard consumer",
+			k.logger.String("shard_id", shardId),
+		)
+
+		// 為每個分片創建一個協程
+		go func(shardId, initialIterator string) {
+			shardCtx, shardCancel := context.WithCancel(ctx)
+			defer shardCancel()
+
+			k.logger.InfoWithContext(
+				shardCtx,
+				fmt.Sprintf("ShardsLoop ShardId:%s", shardId),
+			)
+
+			defer shardWaiters.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					k.logger.ErrorWithContext(
+						shardCtx,
+						"Recovered from panic in shard consumer",
+						k.logger.String("shard_id", shardId),
+						k.logger.Any("recover", r),
+						k.logger.String("stacktrace", string(debug.Stack())),
+					)
+				}
+			}()
+
+			currentIterator := initialIterator
+
+			// 自適應退避策略參數設置
+			backoffDuration, minBackoff, maxBackoff := 500*time.Millisecond, 500*time.Millisecond, 5*time.Second
+
+			for {
+				select {
+				case <-shardCtx.Done():
+					return
+				default:
+					// 獲取記錄
+					recordsOutput, err := k.client.GetRecords(shardCtx, &kinesis.GetRecordsInput{
+						ShardIterator: aws.String(currentIterator),
+						Limit:         aws.Int32(1000),
+					})
+					if err != nil {
+						k.logger.ErrorWithContext(
+							shardCtx,
+							"Failed to get records from shard",
+							k.logger.String("shard_id", shardId),
+							k.logger.Error("error", err),
+						)
+
+						// 遇到錯誤時增加退避時間
+						backoffDuration = time.Duration(float64(backoffDuration) * 1.5)
+						if backoffDuration > maxBackoff {
+							backoffDuration = maxBackoff
+						}
+						time.Sleep(backoffDuration)
+
+						// 重新獲取迭代器
+						iterators, err := k.getShardIterators(shardCtx)
+						if err != nil {
+							k.logger.ErrorWithContext(
+								shardCtx,
+								"Failed to refresh shard iterator",
+								k.logger.String("shard_id", shardId),
+								k.logger.Error("err", err),
+							)
+
+							// 只有在上下文被取消時才報告錯誤
+							if shardCtx.Err() == nil {
+								shardErrs <- fmt.Errorf("failed to refresh shard iterator for shard %s: %w", shardId, err)
+							}
+							return
+						}
+
+						if newIterator, ok := iterators[shardId]; ok {
+							currentIterator = newIterator
+						} else {
+							k.logger.ErrorWithContext(shardCtx, "Shard no longer available", k.logger.String("shard_id", shardId))
+							return
+						}
+
+						continue
+					}
+
+					// 處理記錄
+					recordsCount := len(recordsOutput.Records)
+
+					// 根據獲取的記錄數調整退避時間
+					if recordsCount == 0 {
+						// 沒有記錄，增加退避時間
+						backoffDuration = time.Duration(float64(backoffDuration) * 1.2)
+						if backoffDuration > maxBackoff {
+							backoffDuration = maxBackoff
+						}
+					} else {
+						// 有記錄，減少退避時間
+						backoffDuration = time.Duration(float64(backoffDuration) * 0.8)
+						if backoffDuration < minBackoff {
+							backoffDuration = minBackoff
+						}
+					}
+
+					// 批量處理記錄，減少重複解析JSON
+					for _, record := range recordsOutput.Records {
+						// 從資料中取得上層traceparent作為事件追蹤用
+						ctxWithTrace := tracing.ExtractTraceContext(ctx, record.Data)
+						// 根據事件類型創建追踪
+						eventCtx, eventSpan := tracing.StartSpan(
+							ctxWithTrace,
+							"KDS.EventRecord.StartProcessing",
+						)
+
+						sequenceNumber := *record.SequenceNumber
+						// 只解析一次JSON數據
+						var jsonData map[string]interface{}
+						if err := json.Unmarshal(record.Data, &jsonData); err != nil {
+							k.logger.WarnWithContext(
+								eventCtx,
+								"Failed to unmarshal record data, skipping",
+								k.logger.String("sequence_number", sequenceNumber),
+								k.logger.Error("err", err),
+							)
+							continue
+						}
+
+						// 提取事件ID和事件類型
+						eventID, _ := jsonData["id"].(string)
+						eventType, _ := jsonData["type"].(string)
+
+						// 提取全局商戶ID
+						var globalMerchantID string
+						if data, ok := jsonData["data"].(map[string]interface{}); ok {
+							globalMerchantID, _ = data["global_merchant_id"].(string)
+						}
+
+						// 如果無法確定事件類型，則跳過
+						if eventType == "" {
+							k.logger.WarnWithContext(
+								eventCtx,
+								"Skipping event with unknown type",
+								k.logger.String("sequence_number", sequenceNumber),
+								k.logger.String("event_id", eventID),
+							)
+							continue
+						}
+
+						// 記錄消息數據
+						eventSpan.SetAttributes(
+							attribute.String("messaging.shard_id", shardId),
+							attribute.String("messaging.sequence_number", sequenceNumber),
+							attribute.String("messaging.event_id", eventID),
+							attribute.String("messaging.event_type", eventType),
+						)
+
+						// 檢查該事件是否已處理過（去重)
+						processed, err := k.isEventProcessed(eventCtx, eventID)
+						if err != nil {
+							k.logger.WarnWithContext(
+								eventCtx,
+								"Failed to check if event is processed, will process anyway",
+								k.logger.String("sequence_number", sequenceNumber),
+								k.logger.String("event_id", eventID),
+								k.logger.Error("err", err),
+							)
+						}
+
+						// 事件已被處理則跳過
+						if processed {
+							k.logger.WarnWithContext(
+								eventCtx,
+								"Skipping already processed event",
+								k.logger.String("sequence_number", sequenceNumber),
+								k.logger.String("event_id", eventID),
+								k.logger.String("event_type", eventType),
+							)
+							eventSpan.End()
+							continue
+						}
+
+						// 將事件ID添加到上下文中，避免隊列服務重複解析JSON
+						msgCtxWithID := context.WithValue(eventCtx, consts.EventIDKey, eventID)
+
+						// 根據事件類型選擇合適的處理函數
+						var enqueueErr error
+						switch eventType {
+						case k.config.Events.IdentityMerchantSync:
+							enqueueErr = k.queueService.EnqueueMerchantSync(
+								msgCtxWithID,
+								record.Data,
+							)
+						case k.config.Events.IdentityPlayerSync:
+							enqueueErr = k.queueService.EnqueuePlayerSync(msgCtxWithID, record.Data)
+						case k.config.Events.IdentityManagerSync:
+							enqueueErr = k.queueService.EnqueueManagerSync(
+								msgCtxWithID,
+								record.Data,
+							)
+						default:
+							// TODO 新增checkpoint marked
+							k.logger.WarnWithContext(
+								eventCtx,
+								"Unknown event type, skipping",
+								k.logger.String("event_id", eventID),
+								k.logger.String("event_type", eventType),
+							)
+							eventSpan.End()
+							continue
+						}
+
+						// 檢查入隊錯誤
+						if enqueueErr != nil {
+							k.logger.ErrorWithContext(
+								eventCtx,
+								"Failed to enqueue message",
+								k.logger.String("event_type", eventType),
+								k.logger.String("event_id", eventID),
+								k.logger.String("sequence_number", sequenceNumber),
+								k.logger.Error("error", enqueueErr),
+							)
+							eventSpan.RecordError(enqueueErr)
+							eventSpan.End()
+							continue
+						}
+
+						// 標記事件為已處理
+						if err := k.markEventProcessed(eventCtx, eventID); err != nil {
+							k.logger.WarnWithContext(
+								eventCtx,
+								"Failed to mark event as processed",
+								k.logger.String("event_id", eventID),
+								k.logger.String("sequence_number", sequenceNumber),
+								k.logger.Error("err", err),
+							)
+						}
+
+						// 記錄成功事件
+						tracing.TraceEvent(eventSpan, "Message enqueued to Redis successfully")
+
+						k.logger.InfoWithContext(
+							eventCtx,
+							"Consumed event from KDS and enqueued to Redis",
+							k.logger.String("event_type", eventType),
+							k.logger.String("event_id", eventID),
+							k.logger.String("sequence_number", sequenceNumber),
+						)
+
+						// 更新檢查點
+						if err := k.updateCheckpoint(eventCtx, shardId, sequenceNumber); err != nil {
+							k.logger.WarnWithContext(
+								eventCtx,
+								"Failed to update checkpoint",
+								k.logger.String("shard_id", shardId),
+								k.logger.String("sequence_number", sequenceNumber),
+								k.logger.Error("error", err),
+							)
+						} else {
+							k.logger.InfoWithContext(eventCtx, "Updated checkpoint",
+								k.logger.String("shard_id", shardId),
+								k.logger.String("sequence_number", sequenceNumber),
+								k.logger.String("global_merchant_id", globalMerchantID))
+						}
+						eventSpan.End()
+					}
+
+					// 獲取下一個迭代器
+					if recordsOutput.NextShardIterator != nil {
+						currentIterator = *recordsOutput.NextShardIterator
+					} else {
+						// 分片已關閉
+						k.logger.InfoLog("Shard has been closed", k.logger.String("shard_id", shardId))
+						return
+					}
+					// 使用自適應退避策略：避免過度頻繁請求造成資源消耗
+					time.Sleep(backoffDuration)
+				}
+			}
+		}(shardId, iterator)
+	}
+
+	// 等待所有分片處理完成或出錯
+	go func() {
+		shardWaiters.Wait()
+		close(shardErrs)
+		k.logger.InfoLog("KDS consumer has been stopped")
+	}()
+
+	// 檢查是否有錯誤
+	for err := range shardErrs {
+		if err != nil {
+			k.logger.ErrorLog("Error in shard processing", k.logger.Error("err", err))
+			return err
+		}
+	}
+	return nil
+}
+
 // getShardIterators 獲取所有分片的迭代器
 func (k *KDSService) getShardIterators(ctx context.Context) (map[string]string, error) {
 	// 獲取所有分片
@@ -444,6 +765,9 @@ func (k *KDSService) getShardIterators(ctx context.Context) (map[string]string, 
 		if shard.ShardId != nil && *shard.ShardId != "" {
 			// 檢查DynamoDB中是否有這個分片的checkpoint
 			checkpoint, err := k.getCheckpoint(ctx, *shard.ShardId)
+			k.logger.InfoLog("Current checkpoint",
+				k.logger.String("shard_id", *shard.ShardId),
+				k.logger.String("checkpoint", checkpoint))
 
 			iteratorType := types.ShardIteratorTypeLatest
 			var sequenceNumber *string = nil
@@ -456,8 +780,9 @@ func (k *KDSService) getShardIterators(ctx context.Context) (map[string]string, 
 					k.logger.String("shard_id", *shard.ShardId),
 					k.logger.String("sequence_number", checkpoint))
 			} else {
-				k.logger.InfoLog("No checkpoint found, starting from latest position",
-					k.logger.String("shard_id", *shard.ShardId))
+				k.logger.ErrorLog("No checkpoint found, starting from latest position",
+					k.logger.String("shard_id", *shard.ShardId),
+					k.logger.Error("err", err))
 			}
 
 			iterOutput, err := k.client.GetShardIterator(ctx, &kinesis.GetShardIteratorInput{
@@ -488,33 +813,22 @@ func (k *KDSService) getShardIterators(ctx context.Context) (map[string]string, 
 
 // getCheckpoint 從DynamoDB獲取指定分片的checkpoint
 func (k *KDSService) getCheckpoint(ctx context.Context, shardId string) (string, error) {
-	// 如果使用Redis存儲checkpoint
-	if k.redisClient != nil {
-		checkpointKey := checkpointKeyPrefix + shardId
-		sequenceNumber, err := k.redisClient.Get(ctx, checkpointKey).Result()
-		if err == redis.Nil {
-			return "", fmt.Errorf("checkpoint not found")
-		} else if err != nil {
-			return "", err
-		}
-		return sequenceNumber, nil
-	}
-
-	// 使用DynamoDB存儲checkpoint
+	checkPointKey := k.composeDynamoDBKey(shardId)
 	result, err := k.dynamoClient.GetItem(ctx, &dynamodb.GetItemInput{
 		TableName: aws.String(k.tableName),
 		Key: map[string]dynamodbtypes.AttributeValue{
-			k.partitionKey: &dynamodbtypes.AttributeValueMemberS{Value: shardId},
+			k.partitionKey: &dynamodbtypes.AttributeValueMemberS{Value: checkPointKey},
 		},
 	})
 	if err != nil {
+		k.logger.ErrorLog("Failed to get checkpoint from DynamoDB",
+			k.logger.String("table_name", k.tableName),
+			k.logger.String("partition_key", k.partitionKey),
+			k.logger.String("check_point_key", checkPointKey),
+			k.logger.String("shard_id", shardId),
+			k.logger.Error("err", err))
 		return "", fmt.Errorf("failed to get checkpoint from DynamoDB: %w", err)
 	}
-
-	if result.Item == nil {
-		return "", fmt.Errorf("checkpoint not found")
-	}
-
 	// 從DynamoDB項目中提取序列號
 	sequenceAttr, ok := result.Item["sequence_number"]
 	if !ok {
@@ -530,29 +844,22 @@ func (k *KDSService) getCheckpoint(ctx context.Context, shardId string) (string,
 }
 
 // updateCheckpoint 更新指定分片的checkpoint到DynamoDB
-func (k *KDSService) updateCheckpoint(ctx context.Context, shardId string, sequenceNumber string, globalMerchantId string) error {
-	// 如果使用Redis存儲checkpoint
-	if k.redisClient != nil {
-		checkpointKey := checkpointKeyPrefix + shardId
-		// 使用 Redis 存儲 checkpoint，設置 7 天過期
-		_, err := k.redisClient.Set(ctx, checkpointKey, sequenceNumber, 7*24*time.Hour).Result()
-		return err
-	}
-
-	// 使用DynamoDB存儲checkpoint
+func (k *KDSService) updateCheckpoint(ctx context.Context, shardId string, sequenceNumber string) error {
+	checkPointKey := k.composeDynamoDBKey(shardId)
 	_, err := k.dynamoClient.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName: aws.String(k.tableName),
 		Item: map[string]dynamodbtypes.AttributeValue{
-			k.partitionKey:    &dynamodbtypes.AttributeValueMemberS{Value: shardId},
-			k.sortKey:         &dynamodbtypes.AttributeValueMemberS{Value: globalMerchantId},
+			k.partitionKey:    &dynamodbtypes.AttributeValueMemberS{Value: checkPointKey},
 			"sequence_number": &dynamodbtypes.AttributeValueMemberS{Value: sequenceNumber},
-			"updated_at":      &dynamodbtypes.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
+			"updated_at": &dynamodbtypes.AttributeValueMemberS{
+				Value: time.Now().Format(time.RFC3339),
+			},
 		},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update checkpoint in DynamoDB: %w", err)
 	}
-
+	k.logger.InfoLog("Update checkpoint successfully", k.logger.String("table_name", k.tableName), k.logger.String("check_point_key", checkPointKey))
 	return nil
 }
 
@@ -604,4 +911,9 @@ func extractMerchantID(event *event.CloudEvent) string {
 	}
 
 	return ""
+}
+
+// composeDynamoDBKey
+func (k *KDSService) composeDynamoDBKey(shardId string) string {
+	return fmt.Sprintf("%s_%s_%s", k.streamName, shardId, k.config.App.Name)
 }

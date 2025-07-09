@@ -112,7 +112,7 @@ func InitializeWorkerComponents(cfg *config.Config, logger infraport.Logger, red
 }
 
 // InitializeConsumer 初始化 Consumer 服務的 KDS 服務
-func InitializeConsumer(cfg *config.Config, logger infraport.Logger, redisManager *redis.Manager, db *gorm.DB) (*kds.KDSService, error) {
+func InitializeConsumer(cfg *config.Config, logger infraport.Logger, redisManager *redis.Manager) (*kds.KDSService, error) {
 	queueService, err := queue.NewQueueService(cfg, logger)
 	if err != nil {
 		return nil, err
