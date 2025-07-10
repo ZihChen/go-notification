@@ -68,6 +68,31 @@ services:
     networks:
       - fatcatnet
     restart: always
+  fat-notification-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fat-notification-worker
+    entrypoint: [
+      "dlv",
+      "--listen=:6385",
+      "--headless=true",
+      "--api-version=2",
+      "--accept-multiclient",
+      "exec",
+      "./fat_notification_cat",
+      "--",
+      "worker"
+    ]
+    environment:
+      - TZ=Asia/Taipei
+    ports:
+      - "6385:6385"   #debugger接口
+    depends_on:
+      - redis
+    networks:
+      - fatcatnet
+    restart: always
 volumes:
   notification_redis_data:
 

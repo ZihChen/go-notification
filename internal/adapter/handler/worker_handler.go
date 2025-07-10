@@ -61,7 +61,6 @@ func (h *WorkerHandler) RegisterHandlers(mux *asynq.ServeMux) {
 
 // HandleMerchantSync 處理商戶同步任務
 func (h *WorkerHandler) HandleMerchantSync(ctx context.Context, task *asynq.Task) error {
-
 	taskID := getTaskID(task)
 
 	// 創建處理任務的追蹤

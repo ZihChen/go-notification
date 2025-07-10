@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"strings"
 	"time"
@@ -153,6 +154,10 @@ func (q *QueueService) enqueueTask(ctx context.Context, taskType string, data []
 // WrapHandlerWithTracing 包裝處理器以添加追蹤功能
 func WrapHandlerWithTracing(h asynq.Handler) asynq.Handler {
 	return asynq.HandlerFunc(func(ctx context.Context, task *asynq.Task) error {
+		if task == nil || len(task.Payload()) == 0 || task.Type() == "" {
+			return asynq.SkipRetry
+		}
+
 		// 從任務中提取 traceparent
 		data := task.Payload()
 		ctxWithTrace := tracing.ExtractTraceContext(ctx, data)
@@ -241,14 +246,40 @@ func NewWorkerServer(cfg *config.Config, logger infraport.Logger) (*asynq.Server
 			Concurrency: concurrency,
 			Queues:      queues,
 			RetryDelayFunc: func(n int, err error, task *asynq.Task) time.Duration {
-				// 增加指標記錄重試
-				logger.InfoLog("Task retry scheduled",
-					logger.String("task_id", task.ResultWriter().TaskID()),
-					logger.String("task_type", task.Type()),
+				defer func() {
+					if r := recover(); r != nil {
+						logger.ErrorLog("Panic in RetryDelayFunc",
+							logger.Any("recover", r),
+							logger.Int("retry_count", n))
+					}
+				}()
+
+				logFields := []*entity.LoggerFiled{
 					logger.Int("retry_count", n),
-					logger.Error("err", err))
-				return time.Duration(n*n) * time.Second // 指數退避策略
+					logger.Error("err", err),
+				}
+
+				if task != nil {
+					logFields = append(logFields,
+						logger.String("task_type", task.Type()),
+						logger.String("payload", string(task.Payload())))
+				}
+
+				logger.InfoLog("Task retry scheduled", logFields...)
+
+				// 使用指數退避策略，但設置上限
+				delay := time.Duration(n*n) * time.Second
+				maxDelay := 5 * time.Minute
+				if delay > maxDelay {
+					delay = maxDelay
+				}
+				return delay
 			},
+			ErrorHandler: asynq.ErrorHandlerFunc(func(ctx context.Context, task *asynq.Task, err error) {
+				logger.ErrorLog("Task processing error",
+					logger.String("type", task.Type()),
+					logger.Error("err", err))
+			}),
 		},
 	)
 
