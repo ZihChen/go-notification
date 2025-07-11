@@ -51,7 +51,7 @@ func runWorker(cobraCmd *cobra.Command, args []string) {
 	defer rootSpan.End()
 
 	// 初始化DB連線
-	db, err := mysql.NewDatabase(cfg)
+	db, err := mysql.NewDatabase(cfg, logger)
 	if err != nil {
 		logger.FatalLog("Failed to initialize database", logger.Error("err", err))
 	}
