@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "ariga.io/atlas-provider-gorm/gormschema"
 	"github.com/jvdiamondtech/ms-notification-cat/cmd"
 	_ "github.com/jvdiamondtech/ms-notification-cat/cmd/consumer"
 	_ "github.com/jvdiamondtech/ms-notification-cat/cmd/web"

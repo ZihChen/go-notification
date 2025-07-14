@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"testing"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/model"
 )
 
 // 資料庫模擬
@@ -22,29 +22,29 @@ type MockMerchantRepository struct {
 	mock.Mock
 }
 
-func (m *MockMerchantRepository) FindByID(ctx context.Context, id uint64) (*model.Merchant, error) {
+func (m *MockMerchantRepository) FindByID(ctx context.Context, id uint64) (*entity.Merchant, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*model.Merchant), args.Error(1)
+	return args.Get(0).(*entity.Merchant), args.Error(1)
 }
 
-func (m *MockMerchantRepository) FindByGlobalID(ctx context.Context, globalID string) (*model.Merchant, error) {
+func (m *MockMerchantRepository) FindByGlobalID(ctx context.Context, globalID string) (*entity.Merchant, error) {
 	args := m.Called(ctx, globalID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*model.Merchant), args.Error(1)
+	return args.Get(0).(*entity.Merchant), args.Error(1)
 }
 
-func (m *MockMerchantRepository) Create(ctx context.Context, merchant *model.Merchant) error {
+func (m *MockMerchantRepository) Create(ctx context.Context, merchant *entity.Merchant) error {
 	args := m.Called(ctx, merchant)
 	merchant.ID = 1 // 為新創建的商戶設置 ID
 	return args.Error(0)
 }
 
-func (m *MockMerchantRepository) Update(ctx context.Context, merchant *model.Merchant) error {
+func (m *MockMerchantRepository) Update(ctx context.Context, merchant *entity.Merchant) error {
 	args := m.Called(ctx, merchant)
 	return args.Error(0)
 }
@@ -83,7 +83,7 @@ func TestMerchantUseCase_SyncMerchant_Create(t *testing.T) {
 	// 創建模擬資料庫
 	merchantRepo := new(MockMerchantRepository)
 	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(nil, fmt.Errorf("record not found"))
-	merchantRepo.On("Create", mock.Anything, mock.AnythingOfType("*models.Merchant")).Return(nil)
+	merchantRepo.On("Create", mock.Anything, mock.AnythingOfType("*entitys.Merchant")).Return(nil)
 
 	// 創建模擬事件生產者
 	eventProducer := new(MockEventProducer)
@@ -139,7 +139,7 @@ func TestMerchantUseCase_SyncMerchant_Update(t *testing.T) {
 	apiKey := "test-api-key"
 
 	// 準備現有商戶
-	existingMerchant := &model.Merchant{
+	existingMerchant := &entity.Merchant{
 		ID:               1,
 		GlobalMerchantID: globalMerchantID,
 		Name:             "OldName",
@@ -152,7 +152,7 @@ func TestMerchantUseCase_SyncMerchant_Update(t *testing.T) {
 	// 創建模擬資料庫
 	merchantRepo := new(MockMerchantRepository)
 	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(existingMerchant, nil)
-	merchantRepo.On("Update", mock.Anything, mock.AnythingOfType("*models.Merchant")).Return(nil)
+	merchantRepo.On("Update", mock.Anything, mock.AnythingOfType("*entitys.Merchant")).Return(nil)
 
 	// 創建模擬事件生產者
 	eventProducer := new(MockEventProducer)
@@ -200,7 +200,7 @@ func TestMerchantUseCase_SyncMerchant_Update(t *testing.T) {
 	eventProducer.AssertExpectations(t)
 
 	// 驗證更新時保留了原始的 API 密鑰
-	updated := merchantRepo.Calls[1].Arguments.Get(1).(*model.Merchant)
+	updated := merchantRepo.Calls[1].Arguments.Get(1).(*entity.Merchant)
 	assert.Equal(t, apiKey, updated.APIKey)
 	assert.Equal(t, merchantName, updated.Name)
 	assert.Equal(t, displayName, updated.DisplayName)
@@ -215,7 +215,7 @@ func TestMerchantUseCase_GetMerchantByID(t *testing.T) {
 	apiKey := "test-api-key"
 
 	// 準備現有商戶
-	existingMerchant := &model.Merchant{
+	existingMerchant := &entity.Merchant{
 		ID:               merchantID,
 		GlobalMerchantID: globalMerchantID,
 		Name:             merchantName,
@@ -262,7 +262,7 @@ func TestMerchantUseCase_GetMerchantByGlobalID(t *testing.T) {
 	apiKey := "test-api-key"
 
 	// 準備現有商戶
-	existingMerchant := &model.Merchant{
+	existingMerchant := &entity.Merchant{
 		ID:               merchantID,
 		GlobalMerchantID: globalMerchantID,
 		Name:             merchantName,
