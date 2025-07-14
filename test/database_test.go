@@ -2,12 +2,12 @@
 package tests
 
 import (
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"testing"
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/database"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"github.com/stretchr/testify/assert"
 )
 

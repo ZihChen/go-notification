@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
-
-	"gorm.io/gorm"
-
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
+	"gorm.io/gorm"
 )
 
 // PlayerMessageRepository GORM實現的會員訊息資料庫
@@ -23,7 +22,10 @@ func NewPlayerMessageRepository(db *gorm.DB) repositoryport.PlayerMessageReposit
 }
 
 // FindByID 通過ID查找會員訊息
-func (r *PlayerMessageRepository) FindByID(ctx context.Context, id uint64) (*entity.PlayerMessage, error) {
+func (r *PlayerMessageRepository) FindByID(
+	ctx context.Context,
+	id uint64,
+) (*entity.PlayerMessage, error) {
 	var message models.PlayerMessage
 	result := r.db.WithContext(ctx).First(&message, id)
 	if result.Error != nil {
@@ -37,7 +39,11 @@ func (r *PlayerMessageRepository) FindByID(ctx context.Context, id uint64) (*ent
 }
 
 // FindByPlayerID 通過玩家ID查找訊息列表（支援分頁）
-func (r *PlayerMessageRepository) FindByPlayerID(ctx context.Context, globalPlayerID string, page, pageSize int) ([]*entity.PlayerMessage, int, error) {
+func (r *PlayerMessageRepository) FindByPlayerID(
+	ctx context.Context,
+	globalPlayerID string,
+	page, pageSize int,
+) ([]*entity.PlayerMessage, int, error) {
 	var messages []models.PlayerMessage
 	var total int64
 
@@ -70,7 +76,10 @@ func (r *PlayerMessageRepository) FindByPlayerID(ctx context.Context, globalPlay
 }
 
 // GetPlayerMessageStats 獲取玩家訊息統計
-func (r *PlayerMessageRepository) GetPlayerMessageStats(ctx context.Context, globalPlayerID string) (*entity.PlayerMessageStats, error) {
+func (r *PlayerMessageRepository) GetPlayerMessageStats(
+	ctx context.Context,
+	globalPlayerID string,
+) (*entity.PlayerMessageStats, error) {
 	var totalCount int64
 	var readCount int64
 
@@ -115,7 +124,10 @@ func (r *PlayerMessageRepository) Create(ctx context.Context, message *entity.Pl
 }
 
 // CreateBatch 批量創建會員訊息
-func (r *PlayerMessageRepository) CreateBatch(ctx context.Context, messages []*entity.PlayerMessage) error {
+func (r *PlayerMessageRepository) CreateBatch(
+	ctx context.Context,
+	messages []*entity.PlayerMessage,
+) error {
 	if len(messages) == 0 {
 		return nil
 	}
@@ -143,7 +155,11 @@ func (r *PlayerMessageRepository) CreateBatch(ctx context.Context, messages []*e
 }
 
 // MarkAsRead 標記訊息為已讀
-func (r *PlayerMessageRepository) MarkAsRead(ctx context.Context, globalPlayerID string, messageID uint64) error {
+func (r *PlayerMessageRepository) MarkAsRead(
+	ctx context.Context,
+	globalPlayerID string,
+	messageID uint64,
+) error {
 	result := r.db.WithContext(ctx).Model(&models.PlayerMessage{}).
 		Where("id = ? AND global_player_id = ?", messageID, globalPlayerID).
 		Update("is_read", true)
@@ -160,7 +176,11 @@ func (r *PlayerMessageRepository) MarkAsRead(ctx context.Context, globalPlayerID
 }
 
 // CheckMessageExists 檢查訊息是否已存在
-func (r *PlayerMessageRepository) CheckMessageExists(ctx context.Context, globalPlayerID string, campaignID uint64) (bool, error) {
+func (r *PlayerMessageRepository) CheckMessageExists(
+	ctx context.Context,
+	globalPlayerID string,
+	campaignID uint64,
+) (bool, error) {
 	var count int64
 	err := r.db.WithContext(ctx).Model(&models.PlayerMessage{}).
 		Where("global_player_id = ? AND campaign_id = ?", globalPlayerID, campaignID).

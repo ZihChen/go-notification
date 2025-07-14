@@ -3,8 +3,6 @@ package web
 import (
 	"context"
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/database/mysql"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,6 +12,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jvdiamondtech/ms-notification-cat/cmd"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/di"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/database/mysql"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"github.com/spf13/cobra"
 )
@@ -53,7 +53,13 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	if err != nil {
 		logger.FatalLog("Failed to initialize tracer", logger.Error("err", err))
 	}
-	defer tracer.Shutdown(context.Background())
+	defer func() {
+		err = tracer.Shutdown(context.Background())
+		if err != nil {
+			logger.ErrorLog("Failed to shutdown web tracer", logger.Error("err", err))
+		}
+	}()
+	logger.InfoLog("Successfully initialized web tracer!")
 
 	ctx, rootSpan := tracing.StartSpan(context.Background(), "WebService")
 	defer rootSpan.End()
@@ -88,7 +94,12 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	}
 
 	// 使用Wire初始化HTTP處理器
-	httpHandler, err := di.InitializeWebServer(cfg, logger, redisManager, db.GetDBConnection()) // 使用di包中的函數
+	httpHandler, err := di.InitializeWebServer(
+		cfg,
+		logger,
+		redisManager,
+		db.GetDBConnection(),
+	) // 使用di包中的函數
 	if err != nil {
 		logger.FatalLog("Failed to initialize web server", logger.Error("err", err))
 	}
@@ -133,7 +144,7 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	tracing.TraceEvent(rootSpan, "Shutting down web server")
 
 	// 創建上下文用於通知服務器關閉
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {

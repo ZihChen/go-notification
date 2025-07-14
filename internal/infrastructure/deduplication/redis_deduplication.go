@@ -3,9 +3,9 @@ package deduplication
 import (
 	"context"
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"time"
 
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/serviceport"
 	"github.com/redis/go-redis/v9"
 )
@@ -24,7 +24,10 @@ type RedisDeduplicationService struct {
 }
 
 // NewRedisDeduplicationService 創建新的Redis去重服務
-func NewRedisDeduplicationService(client *redis.Client, logger infraport.Logger) serviceport.EventDeduplicationService {
+func NewRedisDeduplicationService(
+	client *redis.Client,
+	logger infraport.Logger,
+) serviceport.EventDeduplicationService {
 	return &RedisDeduplicationService{
 		client: client,
 		logger: logger,
@@ -32,7 +35,10 @@ func NewRedisDeduplicationService(client *redis.Client, logger infraport.Logger)
 }
 
 // IsEventProcessed 檢查事件是否已被處理
-func (s *RedisDeduplicationService) IsEventProcessed(ctx context.Context, eventID string) (bool, error) {
+func (s *RedisDeduplicationService) IsEventProcessed(
+	ctx context.Context,
+	eventID string,
+) (bool, error) {
 	if eventID == "" {
 		return false, nil // 無法檢查沒有ID的事件
 	}
@@ -50,7 +56,11 @@ func (s *RedisDeduplicationService) IsEventProcessed(ctx context.Context, eventI
 }
 
 // MarkEventProcessed 標記事件為已處理
-func (s *RedisDeduplicationService) MarkEventProcessed(ctx context.Context, eventID string, ttl time.Duration) error {
+func (s *RedisDeduplicationService) MarkEventProcessed(
+	ctx context.Context,
+	eventID string,
+	ttl time.Duration,
+) error {
 	if eventID == "" {
 		return nil // 無法標記沒有ID的事件
 	}

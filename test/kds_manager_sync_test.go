@@ -9,11 +9,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestKDSManagerSyncEvent(t *testing.T) {
@@ -49,8 +48,10 @@ func TestKDSManagerSyncEvent(t *testing.T) {
 	t.Logf("Sending manager sync event to KDS: %s", managerEvent.ID)
 	t.Logf("Global merchant ID: %s",
 		managerEvent.Data.(map[string]interface{})["global_merchant_id"])
-	t.Logf("Global manager ID: %s",
-		managerEvent.Data.(map[string]interface{})["manager"].(map[string]interface{})["global_manager_id"])
+	t.Logf(
+		"Global manager ID: %s",
+		managerEvent.Data.(map[string]interface{})["manager"].(map[string]interface{})["global_manager_id"],
+	)
 
 	// 發送事件到KDS
 	partitionKey := uuid.New().String()

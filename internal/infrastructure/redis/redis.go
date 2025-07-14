@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/redis/go-redis/v9"
-
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
+	"github.com/redis/go-redis/v9"
 )
 
 type Redis struct {

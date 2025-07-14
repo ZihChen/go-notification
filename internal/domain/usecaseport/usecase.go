@@ -30,7 +30,14 @@ type MessageUseCase interface {
 	UpdateMessageCampaign(ctx context.Context, campaign *entity.MessageCampaign) error
 	DeleteMessageCampaign(ctx context.Context, id uint64) error
 	GetMessageCampaign(ctx context.Context, id uint64) (*entity.MessageCampaign, error)
-	ListMessageCampaigns(ctx context.Context, page, pageSize int) ([]*entity.MessageCampaign, int, error)
-	GetPlayerMessages(ctx context.Context, globalPlayerID string, page, pageSize int) (*entity.MessageListResponse, error)
+	ListMessageCampaigns(
+		ctx context.Context,
+		page, pageSize int,
+	) ([]*entity.MessageCampaign, int, error)
+	GetPlayerMessages(
+		ctx context.Context,
+		globalPlayerID string,
+		page, pageSize int,
+	) (*entity.MessageListResponse, error)
 	MarkMessageAsRead(ctx context.Context, globalPlayerID string, messageID uint64) error
 }

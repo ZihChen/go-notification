@@ -9,8 +9,8 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/cmd"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
+	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
 	"go.opentelemetry.io/otel/attribute"
-	"go.uber.org/zap"
 )
 
 func TestOpenObserveLogging(t *testing.T) {
@@ -29,15 +29,15 @@ func TestOpenObserveLogging(t *testing.T) {
 	logger := cmd.GetLogger()
 	if logger == nil {
 		// 如果 cmd.GetLogger() 返回 nil，則手動初始化
-		logger, _ = zap.NewProduction()
+		logger = helper.SetupLoggerMock(t)
 	}
 
 	// 測試日誌輸出
 	testID := time.Now().Format("20060102150405")
-	logger.Info("Test log to OpenObserve",
-		zap.String("test_id", testID),
-		zap.String("component", "test"),
-		zap.String("message", "This is a test log entry for OpenObserve"),
+	logger.InfoLog("Test log to OpenObserve",
+		logger.String("test_id", testID),
+		logger.String("component", "test"),
+		logger.String("message", "This is a test log entry for OpenObserve"),
 	)
 
 	// 給日誌一些時間發送到 OpenObserve
@@ -46,7 +46,10 @@ func TestOpenObserveLogging(t *testing.T) {
 	// 注意: 我們無法在測試代碼中自動驗證日誌是否真的到達 OpenObserve
 	// 這需要手動在 OpenObserve UI 中檢查
 	// 以下僅輸出測試日誌的標識符，以便在 UI 中搜尋
-	t.Logf("Sent test log with test_id: %s to OpenObserve. Please check the OpenObserve UI.", testID)
+	t.Logf(
+		"Sent test log with test_id: %s to OpenObserve. Please check the OpenObserve UI.",
+		testID,
+	)
 }
 
 func TestOpenObserveTracing(t *testing.T) {
@@ -66,7 +69,9 @@ func TestOpenObserveTracing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %v", err)
 	}
-	defer tracer.Shutdown(context.Background())
+	defer func() {
+		_ = tracer.Shutdown(context.Background())
+	}()
 
 	// 創建測試跟蹤
 	ctx, rootSpan := tracing.StartSpan(context.Background(), "TestOpenObserveTracing")
@@ -98,5 +103,8 @@ func TestOpenObserveTracing(t *testing.T) {
 	// 注意: 我們無法在測試代碼中自動驗證追蹤是否真的到達 OpenObserve
 	// 這需要手動在 OpenObserve UI 中檢查
 	// 以下僅輸出測試追蹤的標識符，以便在 UI 中搜尋
-	t.Logf("Sent test trace with test_id: %s to OpenObserve. Please check the OpenObserve UI.", testID)
+	t.Logf(
+		"Sent test trace with test_id: %s to OpenObserve. Please check the OpenObserve UI.",
+		testID,
+	)
 }

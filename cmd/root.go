@@ -4,16 +4,15 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
-
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/logger"
+	"github.com/spf13/cobra"
 )
 
 var (
-	cfgFile string
-	cfg     *config.Config
+	cfgFile       string
+	cfg           *config.Config
 	serviceLogger infraport.Logger
 )
 

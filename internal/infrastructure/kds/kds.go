@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"runtime/debug"
 	"sync"
 	"time"
@@ -16,7 +14,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/google/uuid"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/serviceport"
 	cfg "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
@@ -53,7 +53,12 @@ type KDSService struct {
 }
 
 // NewKDSService 創建KDS服務
-func NewKDSService(config *cfg.Config, queueService serviceport.QueueService, redisClient *redis.Client, logger infraport.Logger) (*KDSService, error) {
+func NewKDSService(
+	config *cfg.Config,
+	queueService serviceport.QueueService,
+	redisClient *redis.Client,
+	logger infraport.Logger,
+) (*KDSService, error) {
 	// 創建AWS配置
 	awsConfig, err := config.LoadAWSConfig(context.Background())
 	if err != nil {
@@ -210,7 +215,11 @@ func (k *KDSService) ConsumeManagerSync(ctx context.Context) error {
 }
 
 // 內部方法：从KDS消費事件並轉發到Redis隊列
-func (k *KDSService) consumeEvents(ctx context.Context, eventType string, enqueueFunc func(ctx context.Context, data []byte) error) error {
+func (k *KDSService) consumeEvents(
+	ctx context.Context,
+	eventType string,
+	enqueueFunc func(ctx context.Context, data []byte) error,
+) error {
 	rootCtx, rootSpan := tracing.StartSpan(ctx, "KDS.ConsumeEvents."+eventType)
 	defer rootSpan.End()
 
@@ -333,9 +342,11 @@ func (k *KDSService) consumeEvents(ctx context.Context, eventType string, enqueu
 						// 檢查該事件是否已處理過（去重）
 						processed, err := k.isEventProcessed(msgCtx, eventID)
 						if err != nil {
-							k.logger.WarnLog("Failed to check if event is processed, will process anyway",
+							k.logger.WarnLog(
+								"Failed to check if event is processed, will process anyway",
 								k.logger.String("event_id", eventID),
-								k.logger.Error("err", err))
+								k.logger.Error("err", err),
+							)
 						}
 
 						if processed {
@@ -844,7 +855,11 @@ func (k *KDSService) getCheckpoint(ctx context.Context, shardId string) (string,
 }
 
 // updateCheckpoint 更新指定分片的checkpoint到DynamoDB
-func (k *KDSService) updateCheckpoint(ctx context.Context, shardId string, sequenceNumber string) error {
+func (k *KDSService) updateCheckpoint(
+	ctx context.Context,
+	shardId string,
+	sequenceNumber string,
+) error {
 	checkPointKey := k.composeDynamoDBKey(shardId)
 	_, err := k.dynamoClient.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName: aws.String(k.tableName),
@@ -859,7 +874,11 @@ func (k *KDSService) updateCheckpoint(ctx context.Context, shardId string, seque
 	if err != nil {
 		return fmt.Errorf("failed to update checkpoint in DynamoDB: %w", err)
 	}
-	k.logger.InfoLog("Update checkpoint successfully", k.logger.String("table_name", k.tableName), k.logger.String("check_point_key", checkPointKey))
+	k.logger.InfoLog(
+		"Update checkpoint successfully",
+		k.logger.String("table_name", k.tableName),
+		k.logger.String("check_point_key", checkPointKey),
+	)
 	return nil
 }
 

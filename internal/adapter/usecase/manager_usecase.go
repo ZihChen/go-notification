@@ -4,15 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/serviceport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -198,7 +198,11 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 }
 
 // 發布管理員同步事件
-func (u *ManagerUseCase) publishManagerSyncEvent(ctx context.Context, manager *entity.Manager, globalMerchantID, traceParent string) error {
+func (u *ManagerUseCase) publishManagerSyncEvent(
+	ctx context.Context,
+	manager *entity.Manager,
+	globalMerchantID, traceParent string,
+) error {
 	// 獲取當前 span
 	span := trace.SpanFromContext(ctx)
 
@@ -284,7 +288,10 @@ func (u *ManagerUseCase) GetManagerByID(ctx context.Context, id uint64) (*entity
 }
 
 // GetManagerByGlobalID 通過全局ID獲取管理員
-func (u *ManagerUseCase) GetManagerByGlobalID(ctx context.Context, globalID string) (*entity.Manager, error) {
+func (u *ManagerUseCase) GetManagerByGlobalID(
+	ctx context.Context,
+	globalID string,
+) (*entity.Manager, error) {
 	// 創建 span 並跟踪此操作
 	ctx, span := tracing.StartSpan(ctx, "ManagerUseCase.GetManagerByGlobalID")
 	defer span.End()

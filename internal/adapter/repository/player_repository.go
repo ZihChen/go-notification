@@ -4,13 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"time"
 
-	"gorm.io/gorm"
-
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
+	"gorm.io/gorm"
 )
 
 // PlayerRepository GORM 實現的玩家資料庫
@@ -38,7 +37,10 @@ func (r *PlayerRepository) FindByID(ctx context.Context, id uint64) (*entity.Pla
 }
 
 // FindByGlobalID 通過全局ID查找玩家
-func (r *PlayerRepository) FindByGlobalID(ctx context.Context, globalID string) (*entity.Player, error) {
+func (r *PlayerRepository) FindByGlobalID(
+	ctx context.Context,
+	globalID string,
+) (*entity.Player, error) {
 	var player models.Player
 	result := r.db.WithContext(ctx).Where("global_player_id = ?", globalID).First(&player)
 	if result.Error != nil {

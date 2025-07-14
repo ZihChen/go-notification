@@ -3,14 +3,14 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -110,30 +110,30 @@ func (h *HTTPHandler) RegisterRoutes(router *gin.Engine) {
 
 // CreateMessageCampaignRequest 創建訊息活動請求
 type CreateMessageCampaignRequest struct {
-	Category         uint8      `json:"category" binding:"required,min=1,max=3"`
-	Item             uint8      `json:"item" binding:"required,min=1,max=6"`
-	Title            string     `json:"title" binding:"required,max=255"`
-	Content          string     `json:"content" binding:"required"`
-	Focus            uint8      `json:"focus" binding:"required"`
+	Category         uint8      `json:"category"           binding:"required,min=1,max=3"`
+	Item             uint8      `json:"item"               binding:"required,min=1,max=6"`
+	Title            string     `json:"title"              binding:"required,max=255"`
+	Content          string     `json:"content"            binding:"required"`
+	Focus            uint8      `json:"focus"              binding:"required"`
 	AutoSend         bool       `json:"auto_send"`
 	TotalTargetCount int        `json:"total_target_count"`
 	SendStartTime    *time.Time `json:"send_start_time"`
 	SendEndTime      *time.Time `json:"send_end_time"`
-	CreatedBy        string     `json:"created_by" binding:"required,max=100"`
+	CreatedBy        string     `json:"created_by"         binding:"required,max=100"`
 }
 
 // UpdateMessageCampaignRequest 更新訊息活動請求
 type UpdateMessageCampaignRequest struct {
-	Category         uint8      `json:"category" binding:"required,min=1,max=3"`
-	Item             uint8      `json:"item" binding:"required,min=1,max=6"`
-	Title            string     `json:"title" binding:"required,max=255"`
-	Content          string     `json:"content" binding:"required"`
-	Focus            uint8      `json:"focus" binding:"required"`
+	Category         uint8      `json:"category"           binding:"required,min=1,max=3"`
+	Item             uint8      `json:"item"               binding:"required,min=1,max=6"`
+	Title            string     `json:"title"              binding:"required,max=255"`
+	Content          string     `json:"content"            binding:"required"`
+	Focus            uint8      `json:"focus"              binding:"required"`
 	AutoSend         bool       `json:"auto_send"`
 	TotalTargetCount int        `json:"total_target_count"`
 	SendStartTime    *time.Time `json:"send_start_time"`
 	SendEndTime      *time.Time `json:"send_end_time"`
-	UpdatedBy        string     `json:"updated_by" binding:"required,max=100"`
+	UpdatedBy        string     `json:"updated_by"         binding:"required,max=100"`
 }
 
 // 以下是現有的方法（商戶、玩家、管理員）...
@@ -624,7 +624,11 @@ func (h *HTTPHandler) ListMessageCampaigns(c *gin.Context) {
 		pageSize = 10
 	}
 
-	campaigns, total, err := h.messageUseCase.ListMessageCampaigns(c.Request.Context(), page, pageSize)
+	campaigns, total, err := h.messageUseCase.ListMessageCampaigns(
+		c.Request.Context(),
+		page,
+		pageSize,
+	)
 	if err != nil {
 		h.logger.ErrorLog("Failed to list message campaigns", h.logger.Error("err", err))
 
@@ -662,7 +666,12 @@ func (h *HTTPHandler) GetPlayerMessages(c *gin.Context) {
 		pageSize = 10
 	}
 
-	response, err := h.messageUseCase.GetPlayerMessages(c.Request.Context(), globalPlayerID, page, pageSize)
+	response, err := h.messageUseCase.GetPlayerMessages(
+		c.Request.Context(),
+		globalPlayerID,
+		page,
+		pageSize,
+	)
 	if err != nil {
 		h.logger.ErrorLog("Failed to get player messages",
 			h.logger.String("global_player_id", globalPlayerID),
@@ -745,7 +754,10 @@ func (h *HTTPHandler) SSEHandler(c *gin.Context) {
 	c.Header("Access-Control-Allow-Origin", "*")
 
 	// 發送初始連接成功訊息
-	fmt.Fprintf(c.Writer, "data: {\"type\": \"connected\", \"message\": \"SSE connection established\"}\n\n")
+	_, _ = fmt.Fprintf(
+		c.Writer,
+		"data: {\"type\": \"connected\", \"message\": \"SSE connection established\"}\n\n",
+	)
 	c.Writer.Flush()
 
 	// 獲取初始訊息統計
@@ -760,7 +772,7 @@ func (h *HTTPHandler) SSEHandler(c *gin.Context) {
 			"type":  "stats",
 			"stats": response.Stats,
 		})
-		fmt.Fprintf(c.Writer, "data: %s\n\n", statsData)
+		_, _ = fmt.Fprintf(c.Writer, "data: %s\n\n", statsData)
 		c.Writer.Flush()
 	}
 
@@ -770,7 +782,7 @@ func (h *HTTPHandler) SSEHandler(c *gin.Context) {
 
 	// 用於檢測客戶端斷線
 	clientGone := c.Writer.CloseNotify()
-	var lastUnreadCount int = 0
+	var lastUnreadCount = 0
 	if response != nil {
 		lastUnreadCount = response.Stats.UnreadCount
 	}
@@ -786,7 +798,12 @@ func (h *HTTPHandler) SSEHandler(c *gin.Context) {
 			return
 		case <-ticker.C:
 			// 定期檢查新訊息
-			currentResponse, err := h.messageUseCase.GetPlayerMessages(c.Request.Context(), globalPlayerID, 1, 1)
+			currentResponse, err := h.messageUseCase.GetPlayerMessages(
+				c.Request.Context(),
+				globalPlayerID,
+				1,
+				1,
+			)
 			if err != nil {
 				h.logger.WarnLog("Failed to check messages in SSE",
 					h.logger.String("global_player_id", globalPlayerID),
@@ -800,7 +817,7 @@ func (h *HTTPHandler) SSEHandler(c *gin.Context) {
 					"type":  "stats_update",
 					"stats": currentResponse.Stats,
 				})
-				fmt.Fprintf(c.Writer, "data: %s\n\n", updateData)
+				_, _ = fmt.Fprintf(c.Writer, "data: %s\n\n", updateData)
 				c.Writer.Flush()
 				lastUnreadCount = currentResponse.Stats.UnreadCount
 
@@ -810,7 +827,11 @@ func (h *HTTPHandler) SSEHandler(c *gin.Context) {
 			}
 
 			// 發送心跳
-			fmt.Fprintf(c.Writer, "data: {\"type\": \"heartbeat\", \"timestamp\": \"%s\"}\n\n", time.Now().Format(time.RFC3339))
+			_, _ = fmt.Fprintf(
+				c.Writer,
+				"data: {\"type\": \"heartbeat\", \"timestamp\": \"%s\"}\n\n",
+				time.Now().Format(time.RFC3339),
+			)
 			c.Writer.Flush()
 		}
 	}

@@ -4,17 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase"
 	"testing"
 	"time"
 
+	"github.com/go-redis/redismock/v9"
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"go.uber.org/zap/zaptest"
-
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
+	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
+	"github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 // 資料庫模擬
@@ -30,7 +31,10 @@ func (m *MockPlayerRepository) FindByID(ctx context.Context, id uint64) (*entity
 	return args.Get(0).(*entity.Player), args.Error(1)
 }
 
-func (m *MockPlayerRepository) FindByGlobalID(ctx context.Context, globalID string) (*entity.Player, error) {
+func (m *MockPlayerRepository) FindByGlobalID(
+	ctx context.Context,
+	globalID string,
+) (*entity.Player, error) {
 	args := m.Called(ctx, globalID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -54,6 +58,17 @@ func (m *MockPlayerRepository) Delete(ctx context.Context, id uint64) error {
 	return args.Error(0)
 }
 
+func createMockDependencies(
+	t *testing.T,
+) (*MockPlayerRepository, *MockMerchantRepository, *MockEventProducer, *helper.MockLogger, *redis.Client) {
+	playerRepo := new(MockPlayerRepository)
+	merchantRepo := new(MockMerchantRepository)
+	eventProducer := new(MockEventProducer)
+	logger := helper.SetupLoggerMock(t)
+	redisClient, _ := redismock.NewClientMock()
+	return playerRepo, merchantRepo, eventProducer, logger, redisClient
+}
+
 // 測試 SyncPlayer 方法 - 創建新玩家
 func TestPlayerUseCase_SyncPlayer_Create(t *testing.T) {
 	// 準備測試數據
@@ -62,12 +77,12 @@ func TestPlayerUseCase_SyncPlayer_Create(t *testing.T) {
 	playerAccount := "testplayer"
 	playerEmail := "test@example.com"
 
-	// 創建模擬資料庫
-	playerRepo := new(MockPlayerRepository)
-	playerRepo.On("FindByGlobalID", mock.Anything, globalPlayerID).Return(nil, fmt.Errorf("record not found"))
+	playerRepo, merchantRepo, eventProducer, logger, _ := createMockDependencies(t)
+
+	playerRepo.On("FindByGlobalID", mock.Anything, globalPlayerID).
+		Return(nil, fmt.Errorf("record not found"))
 	playerRepo.On("Create", mock.Anything, mock.AnythingOfType("*entitys.Player")).Return(nil)
 
-	merchantRepo := new(MockMerchantRepository)
 	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(&entity.Merchant{
 		ID:               1,
 		GlobalMerchantID: globalMerchantID,
@@ -78,12 +93,8 @@ func TestPlayerUseCase_SyncPlayer_Create(t *testing.T) {
 		UpdatedAt:        time.Now(),
 	}, nil)
 
-	// 創建模擬事件生產者
-	eventProducer := new(MockEventProducer)
-	eventProducer.On("PublishPlayerSync", mock.Anything, mock.AnythingOfType("*event.CloudEvent")).Return(nil)
-
-	// 創建記錄器
-	logger := zaptest.NewLogger(t)
+	eventProducer.On("PublishPlayerSync", mock.Anything, mock.AnythingOfType("*event.CloudEvent")).
+		Return(nil)
 
 	// 創建用例
 	useCase := usecase.NewPlayerUseCase(playerRepo, merchantRepo, eventProducer, logger)
@@ -147,12 +158,11 @@ func TestPlayerUseCase_SyncPlayer_Update(t *testing.T) {
 		UpdatedAt:      time.Now().Add(-24 * time.Hour),
 	}
 
-	// 創建模擬資料庫
-	playerRepo := new(MockPlayerRepository)
+	playerRepo, merchantRepo, eventProducer, logger, _ := createMockDependencies(t)
+
 	playerRepo.On("FindByGlobalID", mock.Anything, globalPlayerID).Return(existingPlayer, nil)
 	playerRepo.On("Update", mock.Anything, mock.AnythingOfType("*entitys.Player")).Return(nil)
 
-	merchantRepo := new(MockMerchantRepository)
 	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(&entity.Merchant{
 		ID:               1,
 		GlobalMerchantID: globalMerchantID,
@@ -163,12 +173,8 @@ func TestPlayerUseCase_SyncPlayer_Update(t *testing.T) {
 		UpdatedAt:        time.Now(),
 	}, nil)
 
-	// 創建模擬事件生產者
-	eventProducer := new(MockEventProducer)
-	eventProducer.On("PublishPlayerSync", mock.Anything, mock.AnythingOfType("*event.CloudEvent")).Return(nil)
-
-	// 創建記錄器
-	logger := zaptest.NewLogger(t)
+	eventProducer.On("PublishPlayerSync", mock.Anything, mock.AnythingOfType("*event.CloudEvent")).
+		Return(nil)
 
 	// 創建用例
 	useCase := usecase.NewPlayerUseCase(playerRepo, merchantRepo, eventProducer, logger)
@@ -238,18 +244,9 @@ func TestPlayerUseCase_GetPlayerByID(t *testing.T) {
 		UpdatedAt:      time.Now().Add(-24 * time.Hour),
 	}
 
-	// 創建模擬資料庫
-	playerRepo := new(MockPlayerRepository)
+	playerRepo, merchantRepo, eventProducer, logger, _ := createMockDependencies(t)
+
 	playerRepo.On("FindByID", mock.Anything, playerID).Return(existingPlayer, nil)
-
-	// 創建模擬商戶資料庫
-	merchantRepo := new(MockMerchantRepository)
-
-	// 創建模擬事件生產者
-	eventProducer := new(MockEventProducer)
-
-	// 創建記錄器
-	logger := zaptest.NewLogger(t)
 
 	// 創建用例
 	useCase := usecase.NewPlayerUseCase(playerRepo, merchantRepo, eventProducer, logger)
@@ -292,18 +289,9 @@ func TestPlayerUseCase_GetPlayerByGlobalID(t *testing.T) {
 		UpdatedAt:      time.Now().Add(-24 * time.Hour),
 	}
 
-	// 創建模擬資料庫
-	playerRepo := new(MockPlayerRepository)
+	playerRepo, merchantRepo, eventProducer, logger, _ := createMockDependencies(t)
+
 	playerRepo.On("FindByGlobalID", mock.Anything, globalPlayerID).Return(existingPlayer, nil)
-
-	// 創建模擬商戶資料庫
-	merchantRepo := new(MockMerchantRepository)
-
-	// 創建模擬事件生產者
-	eventProducer := new(MockEventProducer)
-
-	// 創建記錄器
-	logger := zaptest.NewLogger(t)
 
 	// 創建用例
 	useCase := usecase.NewPlayerUseCase(playerRepo, merchantRepo, eventProducer, logger)
@@ -347,19 +335,10 @@ func TestPlayerUseCase_UpdatePlayerLastActive(t *testing.T) {
 		UpdatedAt:      time.Now().Add(-24 * time.Hour),
 	}
 
-	// 創建模擬資料庫
-	playerRepo := new(MockPlayerRepository)
+	playerRepo, merchantRepo, eventProducer, logger, _ := createMockDependencies(t)
+
 	playerRepo.On("FindByID", mock.Anything, playerID).Return(existingPlayer, nil)
 	playerRepo.On("Update", mock.Anything, mock.AnythingOfType("*entitys.Player")).Return(nil)
-
-	// 創建模擬商戶資料庫
-	merchantRepo := new(MockMerchantRepository)
-
-	// 創建模擬事件生產者
-	eventProducer := new(MockEventProducer)
-
-	// 創建記錄器
-	logger := zaptest.NewLogger(t)
 
 	// 創建用例
 	useCase := usecase.NewPlayerUseCase(playerRepo, merchantRepo, eventProducer, logger)

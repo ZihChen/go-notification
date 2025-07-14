@@ -4,17 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
+	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"go.uber.org/zap/zaptest"
-
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 )
 
 // 資料庫模擬
@@ -22,7 +21,10 @@ type MockMerchantRepository struct {
 	mock.Mock
 }
 
-func (m *MockMerchantRepository) FindByID(ctx context.Context, id uint64) (*entity.Merchant, error) {
+func (m *MockMerchantRepository) FindByID(
+	ctx context.Context,
+	id uint64,
+) (*entity.Merchant, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -30,7 +32,10 @@ func (m *MockMerchantRepository) FindByID(ctx context.Context, id uint64) (*enti
 	return args.Get(0).(*entity.Merchant), args.Error(1)
 }
 
-func (m *MockMerchantRepository) FindByGlobalID(ctx context.Context, globalID string) (*entity.Merchant, error) {
+func (m *MockMerchantRepository) FindByGlobalID(
+	ctx context.Context,
+	globalID string,
+) (*entity.Merchant, error) {
 	args := m.Called(ctx, globalID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -59,7 +64,10 @@ type MockEventProducer struct {
 	mock.Mock
 }
 
-func (m *MockEventProducer) PublishMerchantSync(ctx context.Context, event *event.CloudEvent) error {
+func (m *MockEventProducer) PublishMerchantSync(
+	ctx context.Context,
+	event *event.CloudEvent,
+) error {
 	args := m.Called(ctx, event)
 	return args.Error(0)
 }
@@ -82,15 +90,17 @@ func TestMerchantUseCase_SyncMerchant_Create(t *testing.T) {
 
 	// 創建模擬資料庫
 	merchantRepo := new(MockMerchantRepository)
-	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(nil, fmt.Errorf("record not found"))
+	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).
+		Return(nil, fmt.Errorf("record not found"))
 	merchantRepo.On("Create", mock.Anything, mock.AnythingOfType("*entitys.Merchant")).Return(nil)
 
 	// 創建模擬事件生產者
 	eventProducer := new(MockEventProducer)
-	eventProducer.On("PublishMerchantSync", mock.Anything, mock.AnythingOfType("*event.CloudEvent")).Return(nil)
+	eventProducer.On("PublishMerchantSync", mock.Anything, mock.AnythingOfType("*event.CloudEvent")).
+		Return(nil)
 
 	// 創建記錄器
-	logger := zaptest.NewLogger(t)
+	logger := helper.SetupLoggerMock(t)
 
 	// 創建用例
 	useCase := usecase.NewMerchantUseCase(merchantRepo, eventProducer, logger)
@@ -156,10 +166,11 @@ func TestMerchantUseCase_SyncMerchant_Update(t *testing.T) {
 
 	// 創建模擬事件生產者
 	eventProducer := new(MockEventProducer)
-	eventProducer.On("PublishMerchantSync", mock.Anything, mock.AnythingOfType("*event.CloudEvent")).Return(nil)
+	eventProducer.On("PublishMerchantSync", mock.Anything, mock.AnythingOfType("*event.CloudEvent")).
+		Return(nil)
 
 	// 創建記錄器
-	logger := zaptest.NewLogger(t)
+	logger := helper.SetupLoggerMock(t)
 
 	// 創建用例
 	useCase := usecase.NewMerchantUseCase(merchantRepo, eventProducer, logger)
@@ -233,7 +244,7 @@ func TestMerchantUseCase_GetMerchantByID(t *testing.T) {
 	eventProducer := new(MockEventProducer)
 
 	// 創建記錄器
-	logger := zaptest.NewLogger(t)
+	logger := helper.SetupLoggerMock(t)
 
 	// 創建用例
 	useCase := usecase.NewMerchantUseCase(merchantRepo, eventProducer, logger)
@@ -280,7 +291,7 @@ func TestMerchantUseCase_GetMerchantByGlobalID(t *testing.T) {
 	eventProducer := new(MockEventProducer)
 
 	// 創建記錄器
-	logger := zaptest.NewLogger(t)
+	logger := helper.SetupLoggerMock(t)
 
 	// 創建用例
 	useCase := usecase.NewMerchantUseCase(merchantRepo, eventProducer, logger)

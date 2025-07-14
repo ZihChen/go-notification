@@ -4,16 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
+	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"go.uber.org/zap/zaptest"
 )
 
 // 資料庫模擬
@@ -29,7 +30,10 @@ func (m *MockManagerRepository) FindByID(ctx context.Context, id uint64) (*entit
 	return args.Get(0).(*entity.Manager), args.Error(1)
 }
 
-func (m *MockManagerRepository) FindByGlobalID(ctx context.Context, globalID string) (*entity.Manager, error) {
+func (m *MockManagerRepository) FindByGlobalID(
+	ctx context.Context,
+	globalID string,
+) (*entity.Manager, error) {
 	args := m.Called(ctx, globalID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -53,6 +57,21 @@ func (m *MockManagerRepository) Delete(ctx context.Context, id uint64) error {
 	return args.Error(0)
 }
 
+func createManagerMockDependencies(
+	t *testing.T,
+) (*MockManagerRepository, *MockMerchantRepository, *MockEventProducer, *helper.MockLogger) {
+	// Explicitly use imports to avoid "unused import" errors
+	var _ context.Context
+	var _ entity.Manager
+	var _ repositoryport.ManagerRepository
+
+	managerRepo := new(MockManagerRepository)
+	merchantRepo := new(MockMerchantRepository)
+	eventProducer := new(MockEventProducer)
+	logger := helper.SetupLoggerMock(t)
+	return managerRepo, merchantRepo, eventProducer, logger
+}
+
 // 測試 SyncManager 方法 - 創建新管理員
 func TestManagerUseCase_SyncManager_Create(t *testing.T) {
 	// 準備測試數據
@@ -60,13 +79,12 @@ func TestManagerUseCase_SyncManager_Create(t *testing.T) {
 	globalManagerID := "FATCAT-MANAGER-231"
 	managerAccount := "testmanager"
 	managerEmail := "manager@example.com"
+	managerRepo, merchantRepo, eventProducer, logger := createManagerMockDependencies(t)
 
-	// 創建模擬資料庫
-	managerRepo := new(MockManagerRepository)
-	managerRepo.On("FindByGlobalID", mock.Anything, globalManagerID).Return(nil, fmt.Errorf("record not found"))
+	managerRepo.On("FindByGlobalID", mock.Anything, globalManagerID).
+		Return(nil, fmt.Errorf("record not found"))
 	managerRepo.On("Create", mock.Anything, mock.AnythingOfType("*entitys.Manager")).Return(nil)
 
-	merchantRepo := new(MockMerchantRepository)
 	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(&entity.Merchant{
 		ID:               1,
 		GlobalMerchantID: globalMerchantID,
@@ -78,11 +96,8 @@ func TestManagerUseCase_SyncManager_Create(t *testing.T) {
 	}, nil)
 
 	// 創建模擬事件生產者
-	eventProducer := new(MockEventProducer)
-	eventProducer.On("PublishManagerSync", mock.Anything, mock.AnythingOfType("*event.CloudEvent")).Return(nil)
-
-	// 創建記錄器
-	logger := zaptest.NewLogger(t)
+	eventProducer.On("PublishManagerSync", mock.Anything, mock.AnythingOfType("*event.CloudEvent")).
+		Return(nil)
 
 	// 創建用例
 	useCase := usecase.NewManagerUseCase(managerRepo, merchantRepo, eventProducer, logger)
@@ -142,13 +157,11 @@ func TestManagerUseCase_SyncManager_Update(t *testing.T) {
 		CreatedAt:       time.Now().Add(-24 * time.Hour),
 		UpdatedAt:       time.Now().Add(-24 * time.Hour),
 	}
-
+	managerRepo, merchantRepo, eventProducer, logger := createManagerMockDependencies(t)
 	// 創建模擬資料庫
-	managerRepo := new(MockManagerRepository)
 	managerRepo.On("FindByGlobalID", mock.Anything, globalManagerID).Return(existingManager, nil)
 	managerRepo.On("Update", mock.Anything, mock.AnythingOfType("*entitys.Manager")).Return(nil)
 
-	merchantRepo := new(MockMerchantRepository)
 	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(&entity.Merchant{
 		ID:               1,
 		GlobalMerchantID: globalMerchantID,
@@ -160,11 +173,8 @@ func TestManagerUseCase_SyncManager_Update(t *testing.T) {
 	}, nil)
 
 	// 創建模擬事件生產者
-	eventProducer := new(MockEventProducer)
-	eventProducer.On("PublishManagerSync", mock.Anything, mock.AnythingOfType("*event.CloudEvent")).Return(nil)
-
-	// 創建記錄器
-	logger := zaptest.NewLogger(t)
+	eventProducer.On("PublishManagerSync", mock.Anything, mock.AnythingOfType("*event.CloudEvent")).
+		Return(nil)
 
 	// 創建用例
 	useCase := usecase.NewManagerUseCase(managerRepo, merchantRepo, eventProducer, logger)
@@ -230,19 +240,9 @@ func TestManagerUseCase_GetManagerByID(t *testing.T) {
 		CreatedAt:       time.Now().Add(-24 * time.Hour),
 		UpdatedAt:       time.Now().Add(-24 * time.Hour),
 	}
+	managerRepo, merchantRepo, eventProducer, logger := createManagerMockDependencies(t)
 
-	// 創建模擬資料庫
-	managerRepo := new(MockManagerRepository)
 	managerRepo.On("FindByID", mock.Anything, managerID).Return(existingManager, nil)
-
-	// 創建模擬商戶資料庫
-	merchantRepo := new(MockMerchantRepository)
-
-	// 創建模擬事件生產者
-	eventProducer := new(MockEventProducer)
-
-	// 創建記錄器
-	logger := zaptest.NewLogger(t)
 
 	// 創建用例
 	useCase := usecase.NewManagerUseCase(managerRepo, merchantRepo, eventProducer, logger)
@@ -281,19 +281,9 @@ func TestManagerUseCase_GetManagerByGlobalID(t *testing.T) {
 		CreatedAt:       time.Now().Add(-24 * time.Hour),
 		UpdatedAt:       time.Now().Add(-24 * time.Hour),
 	}
+	managerRepo, merchantRepo, eventProducer, logger := createManagerMockDependencies(t)
 
-	// 創建模擬資料庫
-	managerRepo := new(MockManagerRepository)
 	managerRepo.On("FindByGlobalID", mock.Anything, globalManagerID).Return(existingManager, nil)
-
-	// 創建模擬商戶資料庫
-	merchantRepo := new(MockMerchantRepository)
-
-	// 創建模擬事件生產者
-	eventProducer := new(MockEventProducer)
-
-	// 創建記錄器
-	logger := zaptest.NewLogger(t)
 
 	// 創建用例
 	useCase := usecase.NewManagerUseCase(managerRepo, merchantRepo, eventProducer, logger)

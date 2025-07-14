@@ -2,19 +2,18 @@ package worker
 
 import (
 	"context"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/database/mysql"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/hibiken/asynq"
-	"github.com/spf13/cobra"
-
 	"github.com/jvdiamondtech/ms-notification-cat/cmd"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/di"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/database/mysql"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
+	"github.com/spf13/cobra"
 )
 
 // Command 創建並返回worker
@@ -45,7 +44,17 @@ func runWorker(cobraCmd *cobra.Command, args []string) {
 	if err != nil {
 		logger.FatalLog("Failed to initialize tracer", logger.Error("err", err))
 	}
-	defer tracer.Shutdown(context.Background())
+	defer func() {
+		err = tracer.Shutdown(context.Background())
+		if err != nil {
+			logger.ErrorWithContext(
+				rootCtx,
+				"Failed to shutdown tracer",
+				logger.Error("err", err),
+			)
+		}
+	}()
+	logger.InfoWithContext(rootCtx, "Successfully initialized tracer!")
 
 	ctx, rootSpan := tracing.StartSpan(context.Background(), "WorkerService")
 	defer rootSpan.End()
@@ -80,7 +89,12 @@ func runWorker(cobraCmd *cobra.Command, args []string) {
 	}
 
 	// 使用Wire初始化Worker組件
-	components, err := di.InitializeWorkerComponents(cfg, logger, redisManager, db.GetDBConnection())
+	components, err := di.InitializeWorkerComponents(
+		cfg,
+		logger,
+		redisManager,
+		db.GetDBConnection(),
+	)
 	if err != nil {
 		logger.FatalLog("Failed to initialize worker components", logger.Error("err", err))
 		rootSpan.RecordError(err)

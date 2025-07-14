@@ -4,13 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"time"
 
-	"gorm.io/gorm"
-
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
+	"gorm.io/gorm"
 )
 
 // MerchantRepository GORM 實現的商戶資料庫
@@ -38,7 +37,10 @@ func (r *MerchantRepository) FindByID(ctx context.Context, id uint64) (*entity.M
 }
 
 // FindByGlobalID 通過全局ID查找商戶
-func (r *MerchantRepository) FindByGlobalID(ctx context.Context, globalID string) (*entity.Merchant, error) {
+func (r *MerchantRepository) FindByGlobalID(
+	ctx context.Context,
+	globalID string,
+) (*entity.Merchant, error) {
 	var merchant models.Merchant
 	result := r.db.WithContext(ctx).Where("global_merchant_id = ?", globalID).First(&merchant)
 	if result.Error != nil {

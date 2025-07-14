@@ -3,11 +3,11 @@ package handler
 import (
 	"context"
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
@@ -49,9 +49,18 @@ func NewWorkerHandler(
 
 func (h *WorkerHandler) RegisterHandlers(mux *asynq.ServeMux) {
 	// 使用追蹤包裝器
-	mux.Handle(queue.TypeMerchantSync, queue.WrapHandlerWithTracing(asynq.HandlerFunc(h.HandleMerchantSync)))
-	mux.Handle(queue.TypePlayerSync, queue.WrapHandlerWithTracing(asynq.HandlerFunc(h.HandlePlayerSync)))
-	mux.Handle(queue.TypeManagerSync, queue.WrapHandlerWithTracing(asynq.HandlerFunc(h.HandleManagerSync)))
+	mux.Handle(
+		queue.TypeMerchantSync,
+		queue.WrapHandlerWithTracing(asynq.HandlerFunc(h.HandleMerchantSync)),
+	)
+	mux.Handle(
+		queue.TypePlayerSync,
+		queue.WrapHandlerWithTracing(asynq.HandlerFunc(h.HandlePlayerSync)),
+	)
+	mux.Handle(
+		queue.TypeManagerSync,
+		queue.WrapHandlerWithTracing(asynq.HandlerFunc(h.HandleManagerSync)),
+	)
 
 	h.logger.InfoLog("Registered worker handlers",
 		h.logger.String("handler.merchant_sync", queue.TypeMerchantSync),

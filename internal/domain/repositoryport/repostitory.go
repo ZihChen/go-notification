@@ -2,6 +2,7 @@ package repositoryport
 
 import (
 	"context"
+
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 )
 
@@ -45,8 +46,15 @@ type MessageCampaignRepository interface {
 // PlayerMessageRepository 會員訊息資料庫接口
 type PlayerMessageRepository interface {
 	FindByID(ctx context.Context, id uint64) (*entity.PlayerMessage, error)
-	FindByPlayerID(ctx context.Context, globalPlayerID string, page, pageSize int) ([]*entity.PlayerMessage, int, error)
-	GetPlayerMessageStats(ctx context.Context, globalPlayerID string) (*entity.PlayerMessageStats, error)
+	FindByPlayerID(
+		ctx context.Context,
+		globalPlayerID string,
+		page, pageSize int,
+	) ([]*entity.PlayerMessage, int, error)
+	GetPlayerMessageStats(
+		ctx context.Context,
+		globalPlayerID string,
+	) (*entity.PlayerMessageStats, error)
 	Create(ctx context.Context, message *entity.PlayerMessage) error
 	CreateBatch(ctx context.Context, messages []*entity.PlayerMessage) error
 	MarkAsRead(ctx context.Context, globalPlayerID string, messageID uint64) error

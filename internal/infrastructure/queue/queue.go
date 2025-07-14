@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"strings"
 	"time"
 
 	"github.com/hibiken/asynq"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/serviceport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
@@ -32,7 +32,10 @@ type QueueService struct {
 }
 
 // NewQueueService 創建佇列服務
-func NewQueueService(cfg *config.Config, logger infraport.Logger) (serviceport.QueueService, error) {
+func NewQueueService(
+	cfg *config.Config,
+	logger infraport.Logger,
+) (serviceport.QueueService, error) {
 	redisAddr := fmt.Sprintf("%s:%d", cfg.Redis.Domain, cfg.Redis.Port)
 
 	logger.InfoLog("Connecting to Redis",
@@ -163,7 +166,11 @@ func WrapHandlerWithTracing(h asynq.Handler) asynq.Handler {
 		ctxWithTrace := tracing.ExtractTraceContext(ctx, data)
 
 		// 創建處理任務的 span
-		ctxWithTrace, span := tracing.TraceRedisToWorker(ctxWithTrace, task.Type(), task.ResultWriter().TaskID())
+		ctxWithTrace, span := tracing.TraceRedisToWorker(
+			ctxWithTrace,
+			task.Type(),
+			task.ResultWriter().TaskID(),
+		)
 		defer span.End()
 
 		// 記錄任務開始處理
@@ -275,11 +282,13 @@ func NewWorkerServer(cfg *config.Config, logger infraport.Logger) (*asynq.Server
 				}
 				return delay
 			},
-			ErrorHandler: asynq.ErrorHandlerFunc(func(ctx context.Context, task *asynq.Task, err error) {
-				logger.ErrorLog("Task processing error",
-					logger.String("type", task.Type()),
-					logger.Error("err", err))
-			}),
+			ErrorHandler: asynq.ErrorHandlerFunc(
+				func(ctx context.Context, task *asynq.Task, err error) {
+					logger.ErrorLog("Task processing error",
+						logger.String("type", task.Type()),
+						logger.Error("err", err))
+				},
+			),
 		},
 	)
 

@@ -143,13 +143,16 @@ func LoadConfig() (*Config, error) {
 
 // LoadAWSConfig 加載AWS配置
 func (c *Config) LoadAWSConfig(ctx context.Context) (aws.Config, error) {
-	return awsconfig.LoadDefaultConfig(ctx,
+	return awsconfig.LoadDefaultConfig(
+		ctx,
 		awsconfig.WithRegion(c.AWS.Region),
-		awsconfig.WithCredentialsProvider(aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
-			return aws.Credentials{
-				AccessKeyID:     c.AWS.AccessKeyID,
-				SecretAccessKey: c.AWS.SecretAccessKey,
-			}, nil
-		})),
+		awsconfig.WithCredentialsProvider(
+			aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
+				return aws.Credentials{
+					AccessKeyID:     c.AWS.AccessKeyID,
+					SecretAccessKey: c.AWS.SecretAccessKey,
+				}, nil
+			}),
+		),
 	)
 }

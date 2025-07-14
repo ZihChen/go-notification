@@ -3,11 +3,11 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"strings"
 	"time"
 
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
@@ -38,7 +38,10 @@ func NewMessageUseCase(
 }
 
 // CreateMessageCampaign 創建會員訊息活動
-func (u *MessageUseCase) CreateMessageCampaign(ctx context.Context, campaign *entity.MessageCampaign) error {
+func (u *MessageUseCase) CreateMessageCampaign(
+	ctx context.Context,
+	campaign *entity.MessageCampaign,
+) error {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.CreateMessageCampaign")
 	defer span.End()
 
@@ -70,7 +73,10 @@ func (u *MessageUseCase) CreateMessageCampaign(ctx context.Context, campaign *en
 }
 
 // UpdateMessageCampaign 更新會員訊息活動
-func (u *MessageUseCase) UpdateMessageCampaign(ctx context.Context, campaign *entity.MessageCampaign) error {
+func (u *MessageUseCase) UpdateMessageCampaign(
+	ctx context.Context,
+	campaign *entity.MessageCampaign,
+) error {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.UpdateMessageCampaign")
 	defer span.End()
 
@@ -130,7 +136,10 @@ func (u *MessageUseCase) DeleteMessageCampaign(ctx context.Context, id uint64) e
 }
 
 // GetMessageCampaign 獲取會員訊息活動
-func (u *MessageUseCase) GetMessageCampaign(ctx context.Context, id uint64) (*entity.MessageCampaign, error) {
+func (u *MessageUseCase) GetMessageCampaign(
+	ctx context.Context,
+	id uint64,
+) (*entity.MessageCampaign, error) {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.GetMessageCampaign")
 	defer span.End()
 
@@ -148,7 +157,10 @@ func (u *MessageUseCase) GetMessageCampaign(ctx context.Context, id uint64) (*en
 }
 
 // ListMessageCampaigns 列出會員訊息活動
-func (u *MessageUseCase) ListMessageCampaigns(ctx context.Context, page, pageSize int) ([]*entity.MessageCampaign, int, error) {
+func (u *MessageUseCase) ListMessageCampaigns(
+	ctx context.Context,
+	page, pageSize int,
+) ([]*entity.MessageCampaign, int, error) {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.ListMessageCampaigns")
 	defer span.End()
 
@@ -172,7 +184,11 @@ func (u *MessageUseCase) ListMessageCampaigns(ctx context.Context, page, pageSiz
 }
 
 // GetPlayerMessages 獲取玩家訊息列表
-func (u *MessageUseCase) GetPlayerMessages(ctx context.Context, globalPlayerID string, page, pageSize int) (*entity.MessageListResponse, error) {
+func (u *MessageUseCase) GetPlayerMessages(
+	ctx context.Context,
+	globalPlayerID string,
+	page, pageSize int,
+) (*entity.MessageListResponse, error) {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.GetPlayerMessages")
 	defer span.End()
 
@@ -234,7 +250,11 @@ func (u *MessageUseCase) GetPlayerMessages(ctx context.Context, globalPlayerID s
 }
 
 // MarkMessageAsRead 標記訊息為已讀
-func (u *MessageUseCase) MarkMessageAsRead(ctx context.Context, globalPlayerID string, messageID uint64) error {
+func (u *MessageUseCase) MarkMessageAsRead(
+	ctx context.Context,
+	globalPlayerID string,
+	messageID uint64,
+) error {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.MarkMessageAsRead")
 	defer span.End()
 

@@ -4,13 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"time"
 
-	"gorm.io/gorm"
-
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
+	"gorm.io/gorm"
 )
 
 // ManagerRepository GORM 實現的管理員資料庫
@@ -38,7 +37,10 @@ func (r *ManagerRepository) FindByID(ctx context.Context, id uint64) (*entity.Ma
 }
 
 // FindByGlobalID 通過全局ID查找管理員
-func (r *ManagerRepository) FindByGlobalID(ctx context.Context, globalID string) (*entity.Manager, error) {
+func (r *ManagerRepository) FindByGlobalID(
+	ctx context.Context,
+	globalID string,
+) (*entity.Manager, error) {
 	var manager models.Manager
 	result := r.db.WithContext(ctx).Where("global_manager_id = ?", globalID).First(&manager)
 	if result.Error != nil {
