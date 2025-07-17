@@ -32,11 +32,7 @@ func InitializeWebServer(cfg *config.Config, logger infraport.Logger, redisManag
 	if err != nil {
 		return nil, err
 	}
-	client, err := provideRedisClient(redisManager)
-	if err != nil {
-		return nil, err
-	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, client, logger)
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -60,11 +56,7 @@ func InitializeWorkerServer(cfg *config.Config, logger infraport.Logger, redisMa
 	if err != nil {
 		return nil, err
 	}
-	client, err := provideRedisClient(redisManager)
-	if err != nil {
-		return nil, err
-	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, client, logger)
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -85,11 +77,7 @@ func InitializeWorkerComponents(cfg *config.Config, logger infraport.Logger, red
 	if err != nil {
 		return nil, err
 	}
-	client, err := provideRedisClient(redisManager)
-	if err != nil {
-		return nil, err
-	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, client, logger)
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -117,11 +105,7 @@ func InitializeConsumer(cfg *config.Config, logger infraport.Logger, redisManage
 	if err != nil {
 		return nil, err
 	}
-	client, err := provideRedisClient(redisManager)
-	if err != nil {
-		return nil, err
-	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, client, logger)
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger)
 	if err != nil {
 		return nil, err
 	}

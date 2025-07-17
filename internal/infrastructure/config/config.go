@@ -53,6 +53,7 @@ type RedisConfig struct {
 type AWSConfig struct {
 	AccessKeyID     string
 	SecretAccessKey string
+	SessionToken    string
 	Region          string
 	KinesisStream   string
 	DynamoDBTable   string
@@ -117,6 +118,7 @@ func LoadConfig() (*Config, error) {
 		AWS: AWSConfig{
 			AccessKeyID:     viper.GetString("AWS_ACCESS_KEY_ID"),
 			SecretAccessKey: viper.GetString("AWS_SECRET_ACCESS_KEY"),
+			SessionToken:    viper.GetString("AWS_SESSION_TOKEN"),
 			Region:          viper.GetString("AWS_REGION"),
 			KinesisStream:   viper.GetString("KINESIS_STREAM_ARN"),
 			DynamoDBTable:   viper.GetString("DYNAMODB_TABLE"),
@@ -151,6 +153,7 @@ func (c *Config) LoadAWSConfig(ctx context.Context) (aws.Config, error) {
 				return aws.Credentials{
 					AccessKeyID:     c.AWS.AccessKeyID,
 					SecretAccessKey: c.AWS.SecretAccessKey,
+					SessionToken:    c.AWS.SessionToken,
 				}, nil
 			}),
 		),

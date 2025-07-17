@@ -18,9 +18,9 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/serviceport"
+	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	cfg "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
-	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 )
@@ -42,7 +42,7 @@ const (
 type KDSService struct {
 	client       *kinesis.Client
 	dynamoClient *dynamodb.Client
-	redisClient  *redis.Client
+	redisManager *redisCache.Manager
 	streamName   string
 	tableName    string
 	partitionKey string
@@ -56,7 +56,7 @@ type KDSService struct {
 func NewKDSService(
 	config *cfg.Config,
 	queueService serviceport.QueueService,
-	redisClient *redis.Client,
+	redisManager *redisCache.Manager,
 	logger infraport.Logger,
 ) (*KDSService, error) {
 	// 創建AWS配置
@@ -93,7 +93,7 @@ func NewKDSService(
 	return &KDSService{
 		client:       kinesisClient,
 		dynamoClient: dynamoClient,
-		redisClient:  redisClient,
+		redisManager: redisManager,
 		streamName:   streamName,
 		tableName:    config.AWS.DynamoDBTable,
 		partitionKey: config.AWS.PartitionKey,
@@ -890,7 +890,7 @@ func (k *KDSService) isEventProcessed(ctx context.Context, eventId string) (bool
 
 	key := processedEventKeyPrefix + eventId
 	// 嘗試設置，如果已存在則返回false，表示之前已處理過
-	success, err := k.redisClient.SetNX(ctx, key, "1", eventProcessedTTL).Result()
+	success, err := k.redisManager.SetNX(ctx, key, "1", eventProcessedTTL)
 	if err != nil {
 		return false, err
 	}
@@ -906,8 +906,7 @@ func (k *KDSService) markEventProcessed(ctx context.Context, eventId string) err
 	}
 
 	key := processedEventKeyPrefix + eventId
-	// 設置key，帶過期時間
-	_, err := k.redisClient.Set(ctx, key, "1", eventProcessedTTL).Result()
+	_, err := k.redisManager.Set(ctx, key, "1", eventProcessedTTL)
 	return err
 }
 
