@@ -57,7 +57,7 @@ func runWorker(cobraCmd *cobra.Command, args []string) {
 	logger.InfoWithContext(rootCtx, "Successfully initialized tracer!")
 
 	ctx, rootSpan := tracing.StartSpan(context.Background(), "WorkerService")
-	defer rootSpan.End()
+	defer tracing.SpanEnd(rootSpan)
 
 	// 初始化DB連線
 	db, err := mysql.NewDatabase(cfg, logger)
@@ -97,7 +97,7 @@ func runWorker(cobraCmd *cobra.Command, args []string) {
 	)
 	if err != nil {
 		logger.FatalLog("Failed to initialize worker components", logger.Error("err", err))
-		rootSpan.RecordError(err)
+		tracing.RecordSpanError(rootSpan, err)
 		return
 	}
 
@@ -116,7 +116,7 @@ func runWorker(cobraCmd *cobra.Command, args []string) {
 		if err := components.Server.Start(mux); err != nil {
 			if err != asynq.ErrServerClosed {
 				logger.FatalLog("Failed to start worker server", logger.Error("err", err))
-				rootSpan.RecordError(err)
+				tracing.RecordSpanError(rootSpan, err)
 			}
 		}
 	}()

@@ -43,9 +43,9 @@ func (u *MessageUseCase) CreateMessageCampaign(
 	campaign *entity.MessageCampaign,
 ) error {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.CreateMessageCampaign")
-	defer span.End()
+	defer tracing.SpanEnd(span)
 
-	span.SetAttributes(
+	tracing.RecordSpanAttributes(span,
 		attribute.String("campaign.title", campaign.Title),
 		attribute.Int("campaign.category", int(campaign.Category)),
 		attribute.Int("campaign.focus", int(campaign.Focus)),
@@ -57,11 +57,11 @@ func (u *MessageUseCase) CreateMessageCampaign(
 	campaign.UpdatedAt = time.Now()
 
 	if err := u.campaignRepo.Create(ctx, campaign); err != nil {
-		span.RecordError(err)
+		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("create campaign: %w", err)
 	}
 
-	span.SetAttributes(attribute.Int64("campaign.id", int64(campaign.ID)))
+	tracing.RecordSpanAttributes(span, attribute.Int64("campaign.id", int64(campaign.ID)))
 	tracing.TraceEvent(span, "Message campaign created successfully")
 
 	u.logger.InfoLog("Message campaign created",
@@ -78,9 +78,9 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 	campaign *entity.MessageCampaign,
 ) error {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.UpdateMessageCampaign")
-	defer span.End()
+	defer tracing.SpanEnd(span)
 
-	span.SetAttributes(
+	tracing.RecordSpanAttributes(span,
 		attribute.Int64("campaign.id", int64(campaign.ID)),
 		attribute.String("campaign.title", campaign.Title),
 	)
@@ -90,7 +90,7 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 	// 檢查活動是否存在
 	existing, err := u.campaignRepo.FindByID(ctx, campaign.ID)
 	if err != nil {
-		span.RecordError(err)
+		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("find campaign: %w", err)
 	}
 
@@ -99,8 +99,8 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 	campaign.CreatedBy = existing.CreatedBy
 	campaign.UpdatedAt = time.Now()
 
-	if err := u.campaignRepo.Update(ctx, campaign); err != nil {
-		span.RecordError(err)
+	if err = u.campaignRepo.Update(ctx, campaign); err != nil {
+		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("update campaign: %w", err)
 	}
 
@@ -117,14 +117,14 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 // DeleteMessageCampaign 刪除會員訊息活動
 func (u *MessageUseCase) DeleteMessageCampaign(ctx context.Context, id uint64) error {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.DeleteMessageCampaign")
-	defer span.End()
+	defer tracing.SpanEnd(span)
 
-	span.SetAttributes(attribute.Int64("campaign.id", int64(id)))
+	tracing.RecordSpanAttributes(span, attribute.Int64("campaign.id", int64(id)))
 
 	tracing.TraceEvent(span, "Deleting message campaign")
 
 	if err := u.campaignRepo.Delete(ctx, id); err != nil {
-		span.RecordError(err)
+		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("delete campaign: %w", err)
 	}
 
@@ -141,17 +141,17 @@ func (u *MessageUseCase) GetMessageCampaign(
 	id uint64,
 ) (*entity.MessageCampaign, error) {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.GetMessageCampaign")
-	defer span.End()
+	defer tracing.SpanEnd(span)
 
-	span.SetAttributes(attribute.Int64("campaign.id", int64(id)))
+	tracing.RecordSpanAttributes(span, attribute.Int64("campaign.id", int64(id)))
 
 	campaign, err := u.campaignRepo.FindByID(ctx, id)
 	if err != nil {
-		span.RecordError(err)
+		tracing.RecordSpanError(span, err)
 		return nil, fmt.Errorf("find campaign: %w", err)
 	}
 
-	span.SetAttributes(attribute.String("campaign.title", campaign.Title))
+	tracing.RecordSpanAttributes(span, attribute.String("campaign.title", campaign.Title))
 
 	return campaign, nil
 }
@@ -162,20 +162,20 @@ func (u *MessageUseCase) ListMessageCampaigns(
 	page, pageSize int,
 ) ([]*entity.MessageCampaign, int, error) {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.ListMessageCampaigns")
-	defer span.End()
+	defer tracing.SpanEnd(span)
 
-	span.SetAttributes(
+	tracing.RecordSpanAttributes(span,
 		attribute.Int("page", page),
 		attribute.Int("page_size", pageSize),
 	)
 
 	campaigns, total, err := u.campaignRepo.FindAll(ctx, page, pageSize)
 	if err != nil {
-		span.RecordError(err)
+		tracing.RecordSpanError(span, err)
 		return nil, 0, fmt.Errorf("list campaigns: %w", err)
 	}
 
-	span.SetAttributes(
+	tracing.RecordSpanAttributes(span,
 		attribute.Int("total_campaigns", total),
 		attribute.Int("returned_campaigns", len(campaigns)),
 	)
@@ -190,9 +190,9 @@ func (u *MessageUseCase) GetPlayerMessages(
 	page, pageSize int,
 ) (*entity.MessageListResponse, error) {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.GetPlayerMessages")
-	defer span.End()
+	defer tracing.SpanEnd(span)
 
-	span.SetAttributes(
+	tracing.RecordSpanAttributes(span,
 		attribute.String("global_player_id", globalPlayerID),
 		attribute.Int("page", page),
 		attribute.Int("page_size", pageSize),
@@ -208,14 +208,14 @@ func (u *MessageUseCase) GetPlayerMessages(
 	// 獲取統計資訊
 	stats, err := u.playerMessageRepo.GetPlayerMessageStats(ctx, globalPlayerID)
 	if err != nil {
-		span.RecordError(err)
+		tracing.RecordSpanError(span, err)
 		return nil, fmt.Errorf("get player message stats: %w", err)
 	}
 
 	// 獲取訊息列表
 	messages, total, err := u.playerMessageRepo.FindByPlayerID(ctx, globalPlayerID, page, pageSize)
 	if err != nil {
-		span.RecordError(err)
+		tracing.RecordSpanError(span, err)
 		return nil, fmt.Errorf("find player messages: %w", err)
 	}
 
@@ -231,7 +231,7 @@ func (u *MessageUseCase) GetPlayerMessages(
 		}
 	}
 
-	span.SetAttributes(
+	tracing.RecordSpanAttributes(span,
 		attribute.Int("stats.total_count", stats.TotalCount),
 		attribute.Int("stats.read_count", stats.ReadCount),
 		attribute.Int("stats.unread_count", stats.UnreadCount),
@@ -256,9 +256,9 @@ func (u *MessageUseCase) MarkMessageAsRead(
 	messageID uint64,
 ) error {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.MarkMessageAsRead")
-	defer span.End()
+	defer tracing.SpanEnd(span)
 
-	span.SetAttributes(
+	tracing.RecordSpanAttributes(span,
 		attribute.String("global_player_id", globalPlayerID),
 		attribute.Int64("message.id", int64(messageID)),
 	)
@@ -266,7 +266,7 @@ func (u *MessageUseCase) MarkMessageAsRead(
 	tracing.TraceEvent(span, "Marking message as read")
 
 	if err := u.playerMessageRepo.MarkAsRead(ctx, globalPlayerID, messageID); err != nil {
-		span.RecordError(err)
+		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("mark message as read: %w", err)
 	}
 
@@ -282,21 +282,21 @@ func (u *MessageUseCase) MarkMessageAsRead(
 // processPlayerMessages 處理玩家訊息（檢查是否需要新增訊息）
 func (u *MessageUseCase) processPlayerMessages(ctx context.Context, globalPlayerID string) error {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.processPlayerMessages")
-	defer span.End()
+	defer tracing.SpanEnd(span)
 
-	span.SetAttributes(attribute.String("global_player_id", globalPlayerID))
+	tracing.RecordSpanAttributes(span, attribute.String("global_player_id", globalPlayerID))
 
 	// 獲取玩家資訊
 	player, err := u.playerRepo.FindByGlobalID(ctx, globalPlayerID)
 	if err != nil {
-		span.RecordError(err)
+		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("find player: %w", err)
 	}
 
 	// 判斷玩家的活躍狀態
 	focusType := u.determinePlayerFocus(player)
 
-	span.SetAttributes(
+	tracing.RecordSpanAttributes(span,
 		attribute.Int("player.focus_type", int(focusType)),
 		attribute.String("player.account", player.Account),
 	)
@@ -304,11 +304,11 @@ func (u *MessageUseCase) processPlayerMessages(ctx context.Context, globalPlayer
 	// 獲取符合條件的活動
 	campaigns, err := u.campaignRepo.FindActiveByFocus(ctx, focusType)
 	if err != nil {
-		span.RecordError(err)
+		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("find active campaigns: %w", err)
 	}
 
-	span.SetAttributes(attribute.Int("matching_campaigns", len(campaigns)))
+	tracing.RecordSpanAttributes(span, attribute.Int("matching_campaigns", len(campaigns)))
 
 	// 為每個活動創建訊息（如果尚未存在）
 	var newMessages []*entity.PlayerMessage
@@ -338,8 +338,8 @@ func (u *MessageUseCase) processPlayerMessages(ctx context.Context, globalPlayer
 
 	// 批量創建新訊息
 	if len(newMessages) > 0 {
-		if err := u.playerMessageRepo.CreateBatch(ctx, newMessages); err != nil {
-			span.RecordError(err)
+		if err = u.playerMessageRepo.CreateBatch(ctx, newMessages); err != nil {
+			tracing.RecordSpanError(span, err)
 			return fmt.Errorf("create batch messages: %w", err)
 		}
 

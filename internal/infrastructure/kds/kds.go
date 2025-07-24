@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/go-redsync/redsync/v4"
 	"runtime/debug"
 	"sync"
 	"time"
@@ -14,6 +13,7 @@ import (
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
+	"github.com/go-redsync/redsync/v4"
 	"github.com/google/uuid"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
@@ -104,10 +104,10 @@ func NewKDSService(
 // Send 發送事件到KDS
 func (k *KDSService) Send(ctx context.Context, data []byte, eventType string) error {
 	ctx, span := tracing.StartSpan(ctx, "KDS.Send")
-	defer span.End()
+	defer tracing.SpanEnd(span)
 
 	// 添加屬性到 span
-	span.SetAttributes(
+	tracing.RecordSpanAttributes(span,
 		attribute.String("messaging.system", "kds"),
 		attribute.String("messaging.operation", "send"),
 		attribute.String("messaging.event_type", eventType),
@@ -122,7 +122,10 @@ func (k *KDSService) Send(ctx context.Context, data []byte, eventType string) er
 			jsonData["traceparent"] = traceparent
 			if newData, err := json.Marshal(jsonData); err == nil {
 				data = newData
-				span.SetAttributes(attribute.Bool("messaging.trace_propagated", true))
+				tracing.RecordSpanAttributes(
+					span,
+					attribute.Bool("messaging.trace_propagated", true),
+				)
 			}
 		}
 	}
@@ -144,8 +147,8 @@ func (k *KDSService) Send(ctx context.Context, data []byte, eventType string) er
 		k.logger.ErrorLog("Failed to put record to kinesis",
 			k.logger.String("event_type", eventType),
 			k.logger.Error("err", err))
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		tracing.RecordSpanError(span, err)
+		tracing.RecordSpanStatus(span, codes.Error, err.Error())
 		return fmt.Errorf("put record to kinesis: %w", err)
 	}
 
@@ -162,7 +165,7 @@ func (k *KDSService) Send(ctx context.Context, data []byte, eventType string) er
 // PublishMerchantSync 發布商戶同步事件
 func (k *KDSService) PublishMerchantSync(ctx context.Context, event *event.CloudEvent) error {
 	ctx, span := tracing.TraceWorkerToKDS(ctx, event.Type, event.ID)
-	defer span.End()
+	defer tracing.SpanEnd(span)
 
 	return k.publishEvent(ctx, event)
 }
@@ -170,7 +173,7 @@ func (k *KDSService) PublishMerchantSync(ctx context.Context, event *event.Cloud
 // PublishPlayerSync 發布玩家同步事件
 func (k *KDSService) PublishPlayerSync(ctx context.Context, event *event.CloudEvent) error {
 	ctx, span := tracing.TraceWorkerToKDS(ctx, event.Type, event.ID)
-	defer span.End()
+	defer tracing.SpanEnd(span)
 
 	return k.publishEvent(ctx, event)
 }
@@ -178,7 +181,7 @@ func (k *KDSService) PublishPlayerSync(ctx context.Context, event *event.CloudEv
 // PublishManagerSync 發布管理員同步事件
 func (k *KDSService) PublishManagerSync(ctx context.Context, event *event.CloudEvent) error {
 	ctx, span := tracing.TraceWorkerToKDS(ctx, event.Type, event.ID)
-	defer span.End()
+	defer tracing.SpanEnd(span)
 
 	return k.publishEvent(ctx, event)
 }
@@ -390,7 +393,7 @@ func (k *KDSService) ConsumeAllEvents(ctx context.Context) error {
 						}
 
 						// 記錄消息數據
-						eventSpan.SetAttributes(
+						tracing.RecordSpanAttributes(eventSpan,
 							attribute.String("messaging.shard_id", shardId),
 							attribute.String("messaging.sequence_number", sequenceNumber),
 							attribute.String("messaging.event_id", eventID),
@@ -418,7 +421,7 @@ func (k *KDSService) ConsumeAllEvents(ctx context.Context) error {
 								k.logger.String("event_id", eventID),
 								k.logger.String("event_type", eventType),
 							)
-							eventSpan.End()
+							tracing.SpanEnd(eventSpan)
 							continue
 						}
 
@@ -449,7 +452,7 @@ func (k *KDSService) ConsumeAllEvents(ctx context.Context) error {
 									k.logger.String("sequence_number", sequenceNumber),
 									k.logger.Error("error", err),
 								)
-								eventSpan.RecordError(err)
+								tracing.RecordSpanError(eventSpan, err)
 							} else {
 								k.logger.WarnWithContext(
 									eventCtx,
@@ -458,7 +461,7 @@ func (k *KDSService) ConsumeAllEvents(ctx context.Context) error {
 									k.logger.String("event_type", eventType),
 								)
 							}
-							eventSpan.End()
+							tracing.SpanEnd(eventSpan)
 							continue
 						}
 
@@ -472,8 +475,8 @@ func (k *KDSService) ConsumeAllEvents(ctx context.Context) error {
 								k.logger.String("sequence_number", sequenceNumber),
 								k.logger.Error("error", enqueueErr),
 							)
-							eventSpan.RecordError(enqueueErr)
-							eventSpan.End()
+							tracing.RecordSpanError(eventSpan, enqueueErr)
+							tracing.SpanEnd(eventSpan)
 							continue
 						}
 
@@ -514,7 +517,7 @@ func (k *KDSService) ConsumeAllEvents(ctx context.Context) error {
 								k.logger.String("sequence_number", sequenceNumber),
 								k.logger.String("global_merchant_id", globalMerchantID))
 						}
-						eventSpan.End()
+						tracing.SpanEnd(eventSpan)
 					}
 
 					// 獲取下一個迭代器

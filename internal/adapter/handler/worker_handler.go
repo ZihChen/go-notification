@@ -74,10 +74,10 @@ func (h *WorkerHandler) HandleMerchantSync(ctx context.Context, task *asynq.Task
 
 	// 創建處理任務的追蹤
 	ctx, span := tracing.TraceWorkerProcessing(ctx, queue.TypeMerchantSync, taskID)
-	defer span.End()
+	defer tracing.SpanEnd(span)
 
 	// 添加任務屬性
-	span.SetAttributes(
+	tracing.RecordSpanAttributes(span,
 		attribute.String("task.id", taskID),
 		attribute.String("task.type", queue.TypeMerchantSync),
 		attribute.Int("task.payload_size_bytes", len(task.Payload())),
@@ -97,7 +97,7 @@ func (h *WorkerHandler) HandleMerchantSync(ctx context.Context, task *asynq.Task
 			h.logger.Error("err", err))
 
 		// 記錄錯誤
-		span.RecordError(err)
+		tracing.RecordSpanError(span, err)
 
 		return fmt.Errorf("failed to sync merchant: %w", err)
 	}
@@ -117,10 +117,10 @@ func (h *WorkerHandler) HandlePlayerSync(ctx context.Context, task *asynq.Task) 
 
 	// 創建處理任務的追蹤
 	ctx, span := tracing.TraceWorkerProcessing(ctx, queue.TypePlayerSync, taskID)
-	defer span.End()
+	defer tracing.SpanEnd(span)
 
 	// 添加任務屬性
-	span.SetAttributes(
+	tracing.RecordSpanAttributes(span,
 		attribute.String("task.id", taskID),
 		attribute.String("task.type", queue.TypePlayerSync),
 		attribute.Int("task.payload_size_bytes", len(task.Payload())),
@@ -140,7 +140,7 @@ func (h *WorkerHandler) HandlePlayerSync(ctx context.Context, task *asynq.Task) 
 			h.logger.Error("err", err))
 
 		// 記錄錯誤
-		span.RecordError(err)
+		tracing.RecordSpanError(span, err)
 
 		return fmt.Errorf("failed to sync player: %w", err)
 	}
@@ -160,10 +160,10 @@ func (h *WorkerHandler) HandleManagerSync(ctx context.Context, task *asynq.Task)
 
 	// 創建處理任務的追蹤
 	ctx, span := tracing.TraceWorkerProcessing(ctx, queue.TypeManagerSync, taskID)
-	defer span.End()
+	defer tracing.SpanEnd(span)
 
 	// 添加任務屬性
-	span.SetAttributes(
+	tracing.RecordSpanAttributes(span,
 		attribute.String("task.id", taskID),
 		attribute.String("task.type", queue.TypeManagerSync),
 		attribute.Int("task.payload_size_bytes", len(task.Payload())),
@@ -183,7 +183,7 @@ func (h *WorkerHandler) HandleManagerSync(ctx context.Context, task *asynq.Task)
 			h.logger.Error("err", err))
 
 		// 記錄錯誤
-		span.RecordError(err)
+		tracing.RecordSpanError(span, err)
 
 		return fmt.Errorf("failed to sync manager: %w", err)
 	}

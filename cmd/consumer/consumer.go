@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/kds"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -16,8 +14,10 @@ import (
 
 	"github.com/jvdiamondtech/ms-notification-cat/cmd"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/di"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/kds"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"github.com/spf13/cobra"
 )

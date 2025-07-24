@@ -84,7 +84,7 @@ func (q *QueueService) EnqueueManagerSync(ctx context.Context, data []byte) erro
 func (q *QueueService) enqueueTask(ctx context.Context, taskType string, data []byte) error {
 	// 從當前上下文中獲取 span
 	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(
+	tracing.RecordSpanAttributes(span,
 		attribute.String("messaging.destination", "redis_queue"),
 		attribute.String("messaging.task_type", taskType),
 	)
@@ -95,7 +95,7 @@ func (q *QueueService) enqueueTask(ctx context.Context, taskType string, data []
 	if err := json.Unmarshal(data, &jsonData); err == nil {
 		if id, ok := jsonData["id"].(string); ok {
 			eventID = id
-			span.SetAttributes(attribute.String("messaging.event_id", id))
+			tracing.RecordSpanAttributes(span, attribute.String("messaging.event_id", id))
 		}
 	}
 
@@ -124,8 +124,8 @@ func (q *QueueService) enqueueTask(ctx context.Context, taskType string, data []
 	// 將任務加入佇列
 	info, err := q.client.EnqueueContext(ctx, task, opts...)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, fmt.Sprintf("failed to enqueue task: %v", err))
+		tracing.RecordSpanError(span, err)
+		tracing.RecordSpanStatus(span, codes.Error, fmt.Sprintf("failed to enqueue task: %v", err))
 		q.logger.ErrorLog("Failed to enqueue task",
 			q.logger.String("task_type", taskType),
 			q.logger.String("event_id", eventID),
@@ -139,7 +139,7 @@ func (q *QueueService) enqueueTask(ctx context.Context, taskType string, data []
 		attribute.String("task.queue", info.Queue))
 
 	// 為任務添加更多屬性
-	span.SetAttributes(
+	tracing.RecordSpanAttributes(span,
 		attribute.String("task.id", info.ID),
 		attribute.String("task.queue", info.Queue),
 	)
@@ -171,11 +171,11 @@ func WrapHandlerWithTracing(h asynq.Handler) asynq.Handler {
 			task.Type(),
 			task.ResultWriter().TaskID(),
 		)
-		defer span.End()
+		defer tracing.SpanEnd(span)
 
 		// 記錄任務開始處理
 		tracing.TraceEvent(span, "Starting worker task processing")
-		span.SetAttributes(
+		tracing.RecordSpanAttributes(span,
 			attribute.Int("task.payload_size_bytes", len(data)),
 			// 修復：移除 Retried 方法的調用，因為它不存在
 		)
@@ -184,7 +184,7 @@ func WrapHandlerWithTracing(h asynq.Handler) asynq.Handler {
 		var jsonData map[string]interface{}
 		if err := json.Unmarshal(data, &jsonData); err == nil {
 			if id, ok := jsonData["id"].(string); ok {
-				span.SetAttributes(attribute.String("messaging.event_id", id))
+				tracing.RecordSpanAttributes(span, attribute.String("messaging.event_id", id))
 			}
 		}
 
@@ -194,9 +194,12 @@ func WrapHandlerWithTracing(h asynq.Handler) asynq.Handler {
 		// 處理錯誤情況
 		if err != nil {
 			// 記錄錯誤
-			span.RecordError(err)
-			span.SetStatus(codes.Error, fmt.Sprintf("task processing failed: %v", err))
-
+			tracing.RecordSpanError(span, err)
+			tracing.RecordSpanStatus(
+				span,
+				codes.Error,
+				fmt.Sprintf("task processing failed: %v", err),
+			)
 			// 檢查錯誤類型，決定是否需要重試
 			if strings.Contains(err.Error(), "(will retry)") {
 				// 可重試錯誤，例如暫時性的資源不可用
