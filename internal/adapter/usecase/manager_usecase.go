@@ -176,13 +176,6 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 	tracing.TraceEvent(span, "Database operation completed")
 	tracing.RecordSpanAttributes(span, attribute.Int64("manager.id", int64(manager.ID)))
 
-	// 發布管理員同步事件到KDS
-	tracing.TraceEvent(span, "Publishing manager sync event to KDS")
-	if err := u.publishManagerSyncEvent(ctx, &manager, managerEvent.GlobalMerchantID, cloudEvent.TraceParent); err != nil {
-		tracing.RecordSpanError(span, err)
-		return fmt.Errorf("publish manager sync event: %w", err)
-	}
-
 	// 記錄處理完成
 	tracing.TraceEvent(span, "Manager sync completed successfully")
 

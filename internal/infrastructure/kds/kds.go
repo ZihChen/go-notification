@@ -68,30 +68,15 @@ func NewKDSService(
 	// 創建DynamoDB客戶端
 	dynamoClient := dynamodb.NewFromConfig(awsConfig)
 
-	// 從ARN中提取流名稱
-	streamARN := config.AWS.KinesisStream
-	// 簡單提取流名稱 - 通常是ARN的最後一部分
-	streamName := streamARN
-	if len(streamARN) > 0 {
-		// 處理可能的ARN格式
-		for i := len(streamARN) - 1; i >= 0; i-- {
-			if streamARN[i] == '/' || streamARN[i] == ':' {
-				streamName = streamARN[i+1:]
-				break
-			}
-		}
-	}
-
 	logger.InfoLog("Initialized KDS service",
-		logger.String("stream_name", streamName),
-		logger.String("stream_arn", streamARN),
+		logger.String("stream_name", config.AWS.KinesisStream),
 		logger.String("dynamodb_table", config.AWS.DynamoDBTable))
 
 	return &KDSService{
 		client:       kinesisClient,
 		dynamoClient: dynamoClient,
 		redisManager: redisManager,
-		streamName:   streamName,
+		streamName:   config.AWS.KinesisStream,
 		tableName:    config.AWS.DynamoDBTable,
 		partitionKey: config.AWS.PartitionKey,
 		sortKey:      config.AWS.SortKey,

@@ -68,7 +68,7 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 		return fmt.Errorf("marshal event data: %w", err)
 	}
 
-	var playerEvent event.PlayerSyncEvent
+	var playerEvent event.PlayerEvent
 	if err := json.Unmarshal(dataBytes, &playerEvent); err != nil {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("unmarshal player event: %w", err)
@@ -77,8 +77,8 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 	// 添加玩家信息到 span
 	tracing.RecordSpanAttributes(span,
 		attribute.String("merchant.global_id", playerEvent.GlobalMerchantID),
-		attribute.String("player.global_id", playerEvent.Player.GlobalPlayerID),
-		attribute.String("player.account", playerEvent.Player.Account))
+		attribute.String("player.global_id", playerEvent.GlobalPlayerID),
+		attribute.String("player.account", playerEvent.Account))
 
 	// 查找對應的商戶
 	tracing.TraceEvent(span, "Finding merchant")
@@ -95,7 +95,7 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 
 	// 查找玩家是否存在
 	tracing.TraceEvent(span, "Checking if player exists")
-	existing, err := u.playerRepo.FindByGlobalID(ctx, playerEvent.Player.GlobalPlayerID)
+	existing, err := u.playerRepo.FindByGlobalID(ctx, playerEvent.GlobalPlayerID)
 	if err != nil && err.Error() != "record not found" {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("find player: %w", err)
@@ -103,8 +103,8 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 
 	// 設置電子郵件
 	var email *string
-	if playerEvent.Player.Email != "" {
-		email = &playerEvent.Player.Email
+	if playerEvent.Email != "" {
+		email = &playerEvent.Email
 	}
 
 	// 創建或更新玩家
@@ -114,9 +114,9 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 		tracing.TraceEvent(span, "Creating new player")
 		player = entity.Player{
 			MerchantID:     merchant.ID,
-			GlobalPlayerID: playerEvent.Player.GlobalPlayerID,
+			GlobalPlayerID: playerEvent.GlobalPlayerID,
 			APIKey:         uuid.New().String(), // 生成新的API密鑰
-			Account:        playerEvent.Player.Account,
+			Account:        playerEvent.Account,
 			Email:          email,
 			LastActiveAt:   nil,
 			CreatedAt:      time.Now(),
@@ -162,7 +162,7 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 		}
 
 		player = *existing
-		player.Account = playerEvent.Player.Account
+		player.Account = playerEvent.Account
 		player.Email = email
 		player.UpdatedAt = time.Now()
 
@@ -178,13 +178,6 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 	// 記錄資料庫操作完成
 	tracing.TraceEvent(span, "Database operation completed")
 	tracing.RecordSpanAttributes(span, attribute.Int64("player.id", int64(player.ID)))
-
-	// 發布玩家同步事件到KDS
-	tracing.TraceEvent(span, "Publishing player sync event to KDS")
-	if err := u.publishPlayerSyncEvent(ctx, &player, playerEvent.GlobalMerchantID, cloudEvent.TraceParent); err != nil {
-		tracing.RecordSpanError(span, err)
-		return fmt.Errorf("publish player sync event: %w", err)
-	}
 
 	// 記錄處理完成
 	tracing.TraceEvent(span, "Player sync completed successfully")

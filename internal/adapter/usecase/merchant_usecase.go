@@ -153,13 +153,6 @@ func (u *MerchantUseCase) SyncMerchant(ctx context.Context, eventData []byte) er
 	// 記錄資料庫操作完成
 	tracing.TraceEvent(span, "Database operation completed")
 
-	// 發布商戶同步事件到KDS
-	tracing.TraceEvent(span, "Publishing merchant sync event to KDS")
-	if err = u.publishMerchantSyncEvent(ctx, &merchant, cloudEvent.TraceParent); err != nil {
-		tracing.RecordSpanError(span, err)
-		return fmt.Errorf("publish merchant sync event: %w", err)
-	}
-
 	// 記錄處理完成
 	tracing.TraceEvent(span, "Merchant sync completed successfully")
 

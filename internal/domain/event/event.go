@@ -40,6 +40,18 @@ type PlayerSyncEvent struct {
 	PlayerTags       []TagData  `json:"player_tags,omitempty"`
 }
 
+type PlayerEvent struct {
+	Account          string    `json:"account"`
+	Email            string    `json:"email"`
+	ApiKey           string    `json:"api_key"`
+	GlobalMerchantID string    `json:"global_merchant_id"`
+	GlobalPlayerID   string    `json:"global_player_id"`
+	ID               uint64    `json:"id"`
+	MerchantID       uint64    `json:"merchant_id"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}
+
 // PlayerData 從 KDS 接收的玩家數據
 type PlayerData struct {
 	GlobalPlayerID string `json:"global_player_id"`

@@ -120,7 +120,7 @@ func LoadConfig() (*Config, error) {
 			SecretAccessKey: viper.GetString("AWS_SECRET_ACCESS_KEY"),
 			SessionToken:    viper.GetString("AWS_SESSION_TOKEN"),
 			Region:          viper.GetString("AWS_REGION"),
-			KinesisStream:   viper.GetString("KINESIS_STREAM_ARN"),
+			KinesisStream:   viper.GetString("KINESIS_STREAM_NAME"),
 			DynamoDBTable:   viper.GetString("DYNAMODB_TABLE"),
 			PartitionKey:    viper.GetString("DYNAMODB_PARTITION_KEY"),
 			SortKey:         viper.GetString("DYNAMODB_SORT_KEY"),
