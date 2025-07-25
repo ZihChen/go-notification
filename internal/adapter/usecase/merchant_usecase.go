@@ -3,7 +3,9 @@ package usecase
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"time"
 
 	"github.com/google/uuid"
@@ -65,7 +67,7 @@ func (u *MerchantUseCase) SyncMerchant(ctx context.Context, eventData []byte) er
 		return fmt.Errorf("marshal event data: %w", err)
 	}
 
-	var merchantEvent event.MerchantSyncEvent
+	var merchantEvent event.MerchantEvent
 	if err = json.Unmarshal(dataBytes, &merchantEvent); err != nil {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("unmarshal merchant event: %w", err)
@@ -74,26 +76,26 @@ func (u *MerchantUseCase) SyncMerchant(ctx context.Context, eventData []byte) er
 	// 添加商戶信息到 span
 	tracing.RecordSpanAttributes(span,
 		attribute.String("merchant.global_id", merchantEvent.GlobalMerchantID),
-		attribute.String("merchant.name", merchantEvent.Merchant.Name),
+		attribute.String("merchant.name", merchantEvent.Name),
 	)
 
 	// 查找商戶是否存在
 	tracing.TraceEvent(span, "Checking if merchant exists")
 	existing, err := u.merchantRepo.FindByGlobalID(ctx, merchantEvent.GlobalMerchantID)
-	if err != nil && err.Error() != "record not found" {
+	if err != nil && !errors.Is(err, errmsg.ErrMerchantNotFound) {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("find merchant: %w", err)
 	}
 
 	// 創建或更新商戶
 	var merchant entity.Merchant
-	if existing == nil {
+	if errors.Is(err, errmsg.ErrMerchantNotFound) {
 		// 創建新商戶
 		tracing.TraceEvent(span, "Creating new merchant")
 		merchant = entity.Merchant{
 			GlobalMerchantID: merchantEvent.GlobalMerchantID,
-			Name:             merchantEvent.Merchant.Name,
-			DisplayName:      merchantEvent.Merchant.DisplayName,
+			Name:             merchantEvent.Name,
+			DisplayName:      merchantEvent.DisplayName,
 			APIKey:           uuid.New().String(), // 生成新的API密鑰
 			CreatedAt:        time.Now(),
 			UpdatedAt:        time.Now(),
@@ -137,8 +139,8 @@ func (u *MerchantUseCase) SyncMerchant(ctx context.Context, eventData []byte) er
 		}
 
 		merchant = *existing
-		merchant.Name = merchantEvent.Merchant.Name
-		merchant.DisplayName = merchantEvent.Merchant.DisplayName
+		merchant.Name = merchantEvent.Name
+		merchant.DisplayName = merchantEvent.DisplayName
 		merchant.UpdatedAt = time.Now()
 
 		if err = u.merchantRepo.Update(ctx, &merchant); err != nil {

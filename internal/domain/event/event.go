@@ -23,6 +23,16 @@ type MerchantSyncEvent struct {
 	Merchant         MerchantData `json:"merchant"`
 }
 
+type MerchantEvent struct {
+	GlobalMerchantID string    `json:"global_merchant_id"`
+	ID               uint64    `json:"id"`
+	Name             string    `json:"name"`
+	DisplayName      string    `json:"display_name"`
+	APIKey           string    `json:"api_key"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}
+
 // MerchantData 從 KDS 接收的商戶數據
 type MerchantData struct {
 	ID               int    `json:"id"`

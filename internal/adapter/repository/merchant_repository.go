@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
@@ -45,7 +46,7 @@ func (r *MerchantRepository) FindByGlobalID(
 	result := r.db.WithContext(ctx).Where("global_merchant_id = ?", globalID).First(&merchant)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return &entity.Merchant{}, fmt.Errorf("record not found")
+			return &entity.Merchant{}, errmsg.ErrMerchantNotFound
 		}
 		return &entity.Merchant{}, result.Error
 	}
