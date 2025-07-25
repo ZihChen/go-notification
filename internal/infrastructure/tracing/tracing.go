@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -69,19 +70,27 @@ func (t *Tracer) Shutdown(ctx context.Context) error {
 
 // 創建OTLP導出器
 func createExporter(ctx context.Context, cfg *config.Config) (*otlptrace.Exporter, error) {
-	opts := []otlptracegrpc.Option{
-		otlptracegrpc.WithEndpoint(cfg.Tracing.Endpoint),
-		otlptracegrpc.WithHeaders(map[string]string{
+	otlptracehttp.WithEndpointURL(cfg.Tracing.Endpoint)
+	opts := []otlptracehttp.Option{
+		otlptracehttp.WithEndpointURL(cfg.Tracing.Endpoint),
+		otlptracehttp.WithHeaders(map[string]string{
 			"Authorization": cfg.Tracing.APIKey,
+			"stream-name":   cfg.Tracing.StreamName,
+		}),
+		otlptracehttp.WithTimeout(30 * time.Second), // 增加超時時間
+		otlptracehttp.WithRetry(otlptracehttp.RetryConfig{
+			Enabled:         true,
+			InitialInterval: 1 * time.Second,
+			MaxInterval:     5 * time.Second,
+			MaxElapsedTime:  30 * time.Second,
 		}),
 	}
 
-	client := otlptracegrpc.NewClient(opts...)
+	client := otlptracehttp.NewClient(opts...)
 	exporter, err := otlptrace.New(ctx, client)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OTLP trace exporter: %w", err)
 	}
-
 	return exporter, nil
 }
 
