@@ -33,7 +33,7 @@ func (r *MessageCampaignRepository) FindByID(
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("record not found")
 		}
-		return nil, result.Error
+		return &entity.MessageCampaign{}, result.Error
 	}
 
 	return mapToDomainMessageCampaign(&campaign), nil
@@ -46,10 +46,11 @@ func (r *MessageCampaignRepository) FindAll(
 ) ([]*entity.MessageCampaign, int, error) {
 	var campaigns []models.MessageCampaign
 	var total int64
+	domainCampaigns := make([]*entity.MessageCampaign, len(campaigns))
 
 	// 計算總數
 	if err := r.db.WithContext(ctx).Model(&models.MessageCampaign{}).Count(&total).Error; err != nil {
-		return nil, 0, err
+		return domainCampaigns, 0, err
 	}
 
 	// 查詢分頁數據
@@ -61,10 +62,9 @@ func (r *MessageCampaignRepository) FindAll(
 		Find(&campaigns)
 
 	if result.Error != nil {
-		return nil, 0, result.Error
+		return domainCampaigns, 0, result.Error
 	}
 
-	domainCampaigns := make([]*entity.MessageCampaign, len(campaigns))
 	for i, campaign := range campaigns {
 		domainCampaigns[i] = mapToDomainMessageCampaign(&campaign)
 	}

@@ -32,7 +32,7 @@ func (r *PlayerMessageRepository) FindByID(
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("record not found")
 		}
-		return nil, result.Error
+		return &entity.PlayerMessage{}, result.Error
 	}
 
 	return mapToDomainPlayerMessage(&message), nil
@@ -46,12 +46,13 @@ func (r *PlayerMessageRepository) FindByPlayerID(
 ) ([]*entity.PlayerMessage, int, error) {
 	var messages []models.PlayerMessage
 	var total int64
+	domainMessages := make([]*entity.PlayerMessage, len(messages))
 
 	// 計算總數
 	if err := r.db.WithContext(ctx).Model(&models.PlayerMessage{}).
 		Where("global_player_id = ?", globalPlayerID).
 		Count(&total).Error; err != nil {
-		return nil, 0, err
+		return domainMessages, 0, err
 	}
 
 	// 查詢分頁數據
@@ -64,10 +65,9 @@ func (r *PlayerMessageRepository) FindByPlayerID(
 		Find(&messages)
 
 	if result.Error != nil {
-		return nil, 0, result.Error
+		return domainMessages, 0, result.Error
 	}
 
-	domainMessages := make([]*entity.PlayerMessage, len(messages))
 	for i, message := range messages {
 		domainMessages[i] = mapToDomainPlayerMessage(&message)
 	}

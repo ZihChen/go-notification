@@ -45,9 +45,9 @@ func (r *MerchantRepository) FindByGlobalID(
 	result := r.db.WithContext(ctx).Where("global_merchant_id = ?", globalID).First(&merchant)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("record not found")
+			return &entity.Merchant{}, fmt.Errorf("record not found")
 		}
-		return nil, result.Error
+		return &entity.Merchant{}, result.Error
 	}
 
 	return mapToDomainMerchant(&merchant), nil

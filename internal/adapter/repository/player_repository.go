@@ -30,7 +30,7 @@ func (r *PlayerRepository) FindByID(ctx context.Context, id uint64) (*entity.Pla
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("record not found")
 		}
-		return nil, result.Error
+		return &entity.Player{}, result.Error
 	}
 
 	return mapToDomainPlayer(&player), nil
@@ -47,7 +47,7 @@ func (r *PlayerRepository) FindByGlobalID(
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("record not found")
 		}
-		return nil, result.Error
+		return &entity.Player{}, result.Error
 	}
 
 	return mapToDomainPlayer(&player), nil
