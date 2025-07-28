@@ -70,7 +70,7 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 		return fmt.Errorf("marshal event data: %w", err)
 	}
 
-	var managerEvent event.ManagerSyncEvent
+	var managerEvent event.ManagerEvent
 	if err := json.Unmarshal(dataBytes, &managerEvent); err != nil {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("unmarshal manager event: %w", err)
@@ -79,8 +79,8 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 	// 添加管理員信息到 span
 	tracing.RecordSpanAttributes(span,
 		attribute.String("merchant.global_id", managerEvent.GlobalMerchantID),
-		attribute.String("manager.global_id", managerEvent.Manager.GlobalManagerID),
-		attribute.String("manager.account", managerEvent.Manager.Account))
+		attribute.String("manager.global_id", managerEvent.GlobalManagerID),
+		attribute.String("manager.account", managerEvent.Account))
 
 	// 查找對應的商戶
 	tracing.TraceEvent(span, "Finding merchant")
@@ -92,7 +92,7 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 
 	// 查找管理員是否存在
 	tracing.TraceEvent(span, "Checking if manager exists")
-	existing, err := u.managerRepo.FindByGlobalID(ctx, managerEvent.Manager.GlobalManagerID)
+	existing, err := u.managerRepo.FindByGlobalID(ctx, managerEvent.GlobalManagerID)
 	if err != nil && !errors.Is(err, errmsg.ErrManagerNotFound) {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("find manager: %w", err)
@@ -100,8 +100,8 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 
 	// 設置email
 	var email *string
-	if managerEvent.Manager.Email != "" {
-		email = &managerEvent.Manager.Email
+	if managerEvent.Email != "" {
+		email = &managerEvent.Email
 	}
 
 	// 創建或更新管理員
@@ -111,8 +111,8 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 		tracing.TraceEvent(span, "Creating new manager")
 		manager = entity.Manager{
 			MerchantID:      merchant.ID,
-			GlobalManagerID: managerEvent.Manager.GlobalManagerID,
-			Account:         managerEvent.Manager.Account,
+			GlobalManagerID: managerEvent.GlobalManagerID,
+			Account:         managerEvent.Account,
 			Email:           email,
 			CreatedAt:       time.Now(),
 			UpdatedAt:       time.Now(),
@@ -155,11 +155,18 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 
 			return nil
 		}
+		nowTime := time.Now()
 
 		manager = *existing
-		manager.Account = managerEvent.Manager.Account
+		manager.Account = managerEvent.Account
 		manager.Email = email
-		manager.UpdatedAt = time.Now()
+		manager.UpdatedAt = nowTime
+		manager.DeletedAt = func() *time.Time {
+			if managerEvent.DeletedAt == "" {
+				return nil
+			}
+			return &nowTime
+		}()
 
 		if err := u.managerRepo.Update(ctx, &manager); err != nil {
 			tracing.RecordSpanError(span, err)

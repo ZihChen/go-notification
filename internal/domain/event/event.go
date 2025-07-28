@@ -90,12 +90,25 @@ type ManagerSyncEvent struct {
 	Manager          ManagerData `json:"manager"`
 }
 
+type ManagerEvent struct {
+	GlobalMerchantID string `json:"global_merchant_id"`
+	GlobalManagerID  string `json:"global_manager_id"`
+	ID               uint64 `json:"id"`
+	MerchantID       uint64 `json:"merchant_id"`
+	Account          string `json:"account"`
+	Email            string `json:"email"`
+	CreatedAt        string `json:"created_at"`
+	UpdatedAt        string `json:"updated_at"`
+	DeletedAt        string `json:"deleted_at,omitempty"`
+}
+
 // ManagerData 從 KDS 接收的管理員數據
 type ManagerData struct {
 	ID              int    `json:"id"`
 	GlobalManagerID string `json:"global_manager_id"`
 	Account         string `json:"account"`
 	Email           string `json:"email"`
+	DeletedAt       string `json:"deleted_at,omitempty"`
 }
 
 // IdentityMerchantSyncEvent 發送到 KDS 的商戶同步事件
