@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
-	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
@@ -28,7 +28,7 @@ func (r *PlayerRepository) FindByID(ctx context.Context, id uint64) (*entity.Pla
 	result := r.db.WithContext(ctx).First(&player, id)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("record not found")
+			return nil, errmsg.ErrPlayerNotFound
 		}
 		return &entity.Player{}, result.Error
 	}
@@ -45,7 +45,7 @@ func (r *PlayerRepository) FindByGlobalID(
 	result := r.db.WithContext(ctx).Where("global_player_id = ?", globalID).First(&player)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("record not found")
+			return nil, errmsg.ErrPlayerNotFound
 		}
 		return &entity.Player{}, result.Error
 	}
@@ -86,7 +86,7 @@ func (r *PlayerRepository) Delete(ctx context.Context, id uint64) error {
 	}
 
 	if result.RowsAffected == 0 {
-		return fmt.Errorf("record not found")
+		return errmsg.ErrDeletePlayerNotFound
 	}
 
 	return nil

@@ -3,7 +3,9 @@ package usecase
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"time"
 
 	"github.com/google/uuid"
@@ -83,14 +85,9 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 	// 查找對應的商戶
 	tracing.TraceEvent(span, "Finding merchant")
 	merchant, err := u.merchantRepo.FindByGlobalID(ctx, playerEvent.GlobalMerchantID)
-	if err != nil {
+	if err != nil && !errors.Is(err, errmsg.ErrMerchantNotFound) {
 		tracing.RecordSpanError(span, err)
-		if err.Error() == "record not found" {
-			merchant.ID = 0
-		} else {
-			tracing.RecordSpanError(span, err)
-			return fmt.Errorf("find merchant: %w", err)
-		}
+		return fmt.Errorf("find merchant: %w", err)
 	}
 
 	// 查找玩家是否存在

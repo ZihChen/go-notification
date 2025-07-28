@@ -3,7 +3,9 @@ package usecase
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"time"
 
 	"github.com/google/uuid"
@@ -83,19 +85,15 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 	// 查找對應的商戶
 	tracing.TraceEvent(span, "Finding merchant")
 	merchant, err := u.merchantRepo.FindByGlobalID(ctx, managerEvent.GlobalMerchantID)
-	if err != nil {
-		if err.Error() == "record not found" {
-			merchant.ID = 0
-		} else {
-			tracing.RecordSpanError(span, err)
-			return fmt.Errorf("find merchant: %w", err)
-		}
+	if err != nil && !errors.Is(err, errmsg.ErrMerchantNotFound) {
+		tracing.RecordSpanError(span, err)
+		return fmt.Errorf("find merchant: %w", err)
 	}
 
 	// 查找管理員是否存在
 	tracing.TraceEvent(span, "Checking if manager exists")
 	existing, err := u.managerRepo.FindByGlobalID(ctx, managerEvent.Manager.GlobalManagerID)
-	if err != nil && err.Error() != "record not found" {
+	if err != nil && !errors.Is(err, errmsg.ErrManagerNotFound) {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("find manager: %w", err)
 	}

@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"time"
 
@@ -29,7 +28,7 @@ func (r *MerchantRepository) FindByID(ctx context.Context, id uint64) (*entity.M
 	result := r.db.WithContext(ctx).First(&merchant, id)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("record not found")
+			return nil, errmsg.ErrMerchantNotFound
 		}
 		return nil, result.Error
 	}
@@ -87,7 +86,7 @@ func (r *MerchantRepository) Delete(ctx context.Context, id uint64) error {
 	}
 
 	if result.RowsAffected == 0 {
-		return fmt.Errorf("record not found")
+		return errmsg.ErrDeleteMerchantNotFound
 	}
 
 	return nil
