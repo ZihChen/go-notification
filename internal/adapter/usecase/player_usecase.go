@@ -85,7 +85,7 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 	// 查找對應的商戶
 	tracing.TraceEvent(span, "Finding merchant")
 	merchant, err := u.merchantRepo.FindByGlobalID(ctx, playerEvent.GlobalMerchantID)
-	if err != nil && !errors.Is(err, errmsg.ErrMerchantNotFound) {
+	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("find merchant: %w", err)
 	}
@@ -93,7 +93,7 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 	// 查找玩家是否存在
 	tracing.TraceEvent(span, "Checking if player exists")
 	existing, err := u.playerRepo.FindByGlobalID(ctx, playerEvent.GlobalPlayerID)
-	if err != nil && err.Error() != "record not found" {
+	if err != nil && !errors.Is(err, errmsg.ErrRepoPlayerNotFound) {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("find player: %w", err)
 	}
@@ -106,7 +106,7 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 
 	// 創建或更新玩家
 	var player entity.Player
-	if existing == nil {
+	if errors.Is(err, errmsg.ErrRepoPlayerNotFound) {
 		// 創建新玩家
 		tracing.TraceEvent(span, "Creating new player")
 		player = entity.Player{

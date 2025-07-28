@@ -28,7 +28,7 @@ func (r *PlayerRepository) FindByID(ctx context.Context, id uint64) (*entity.Pla
 	result := r.db.WithContext(ctx).First(&player, id)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, errmsg.ErrPlayerNotFound
+			return nil, errmsg.ErrRepoPlayerNotFound
 		}
 		return &entity.Player{}, result.Error
 	}
@@ -45,7 +45,7 @@ func (r *PlayerRepository) FindByGlobalID(
 	result := r.db.WithContext(ctx).Where("global_player_id = ?", globalID).First(&player)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, errmsg.ErrPlayerNotFound
+			return nil, errmsg.ErrRepoPlayerNotFound
 		}
 		return &entity.Player{}, result.Error
 	}
@@ -86,7 +86,7 @@ func (r *PlayerRepository) Delete(ctx context.Context, id uint64) error {
 	}
 
 	if result.RowsAffected == 0 {
-		return errmsg.ErrDeletePlayerNotFound
+		return errmsg.ErrRepoDeletePlayerNotFound
 	}
 
 	return nil

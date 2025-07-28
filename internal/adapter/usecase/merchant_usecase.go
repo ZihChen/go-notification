@@ -82,14 +82,14 @@ func (u *MerchantUseCase) SyncMerchant(ctx context.Context, eventData []byte) er
 	// 查找商戶是否存在
 	tracing.TraceEvent(span, "Checking if merchant exists")
 	existing, err := u.merchantRepo.FindByGlobalID(ctx, merchantEvent.GlobalMerchantID)
-	if err != nil && !errors.Is(err, errmsg.ErrMerchantNotFound) {
+	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("find merchant: %w", err)
 	}
 
 	// 創建或更新商戶
 	var merchant entity.Merchant
-	if errors.Is(err, errmsg.ErrMerchantNotFound) {
+	if errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
 		// 創建新商戶
 		tracing.TraceEvent(span, "Creating new merchant")
 		merchant = entity.Merchant{

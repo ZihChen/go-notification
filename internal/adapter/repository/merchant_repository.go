@@ -28,7 +28,7 @@ func (r *MerchantRepository) FindByID(ctx context.Context, id uint64) (*entity.M
 	result := r.db.WithContext(ctx).First(&merchant, id)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, errmsg.ErrMerchantNotFound
+			return nil, errmsg.ErrRepoMerchantNotFound
 		}
 		return nil, result.Error
 	}
@@ -45,7 +45,7 @@ func (r *MerchantRepository) FindByGlobalID(
 	result := r.db.WithContext(ctx).Where("global_merchant_id = ?", globalID).First(&merchant)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return &entity.Merchant{}, errmsg.ErrMerchantNotFound
+			return &entity.Merchant{}, errmsg.ErrRepoMerchantNotFound
 		}
 		return &entity.Merchant{}, result.Error
 	}
@@ -86,7 +86,7 @@ func (r *MerchantRepository) Delete(ctx context.Context, id uint64) error {
 	}
 
 	if result.RowsAffected == 0 {
-		return errmsg.ErrDeleteMerchantNotFound
+		return errmsg.ErrRepoDeleteMerchantNotFound
 	}
 
 	return nil

@@ -28,7 +28,7 @@ func (r *ManagerRepository) FindByID(ctx context.Context, id uint64) (*entity.Ma
 	result := r.db.WithContext(ctx).First(&manager, id)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, errmsg.ErrManagerNotFound
+			return nil, errmsg.ErrRepoManagerNotFound
 		}
 		return &entity.Manager{}, result.Error
 	}
@@ -45,7 +45,7 @@ func (r *ManagerRepository) FindByGlobalID(
 	result := r.db.WithContext(ctx).Where("global_manager_id = ?", globalID).First(&manager)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, errmsg.ErrManagerNotFound
+			return nil, errmsg.ErrRepoManagerNotFound
 		}
 		return &entity.Manager{}, result.Error
 	}
@@ -86,7 +86,7 @@ func (r *ManagerRepository) Delete(ctx context.Context, id uint64) error {
 	}
 
 	if result.RowsAffected == 0 {
-		return errmsg.ErrDeleteManagerNotFound
+		return errmsg.ErrRepoDeleteManagerNotFound
 	}
 
 	return nil

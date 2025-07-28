@@ -85,7 +85,7 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 	// 查找對應的商戶
 	tracing.TraceEvent(span, "Finding merchant")
 	merchant, err := u.merchantRepo.FindByGlobalID(ctx, managerEvent.GlobalMerchantID)
-	if err != nil && !errors.Is(err, errmsg.ErrMerchantNotFound) {
+	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("find merchant: %w", err)
 	}
@@ -93,7 +93,7 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 	// 查找管理員是否存在
 	tracing.TraceEvent(span, "Checking if manager exists")
 	existing, err := u.managerRepo.FindByGlobalID(ctx, managerEvent.GlobalManagerID)
-	if err != nil && !errors.Is(err, errmsg.ErrManagerNotFound) {
+	if err != nil && !errors.Is(err, errmsg.ErrRepoManagerNotFound) {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("find manager: %w", err)
 	}
@@ -106,7 +106,7 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 
 	// 創建或更新管理員
 	var manager entity.Manager
-	if existing == nil {
+	if errors.Is(err, errmsg.ErrRepoManagerNotFound) {
 		// 創建新管理員
 		tracing.TraceEvent(span, "Creating new manager")
 		manager = entity.Manager{
