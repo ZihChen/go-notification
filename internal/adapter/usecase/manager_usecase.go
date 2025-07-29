@@ -118,7 +118,7 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 			UpdatedAt:       time.Now(),
 		}
 
-		if err := u.managerRepo.Create(ctx, &manager); err != nil {
+		if err = u.managerRepo.FirstOrCreate(ctx, &manager); err != nil {
 			tracing.RecordSpanError(span, err)
 			return fmt.Errorf("create manager: %w", err)
 		}

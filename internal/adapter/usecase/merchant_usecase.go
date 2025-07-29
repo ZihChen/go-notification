@@ -100,7 +100,7 @@ func (u *MerchantUseCase) SyncMerchant(ctx context.Context, eventData []byte) er
 			CreatedAt:        time.Now(),
 			UpdatedAt:        time.Now(),
 		}
-		if err := u.merchantRepo.Create(ctx, &merchant); err != nil {
+		if err = u.merchantRepo.FirstOrCreate(ctx, &merchant); err != nil {
 			tracing.RecordSpanError(span, err)
 			return fmt.Errorf("create merchant: %w", err)
 		}

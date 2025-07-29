@@ -120,7 +120,7 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 			UpdatedAt:      time.Now(),
 		}
 
-		if err := u.playerRepo.Create(ctx, &player); err != nil {
+		if err = u.playerRepo.FirstOrCreate(ctx, &player); err != nil {
 			tracing.RecordSpanError(span, err)
 			return fmt.Errorf("create player: %w", err)
 		}
