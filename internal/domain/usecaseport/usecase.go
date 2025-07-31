@@ -2,6 +2,7 @@ package usecaseport
 
 import (
 	"context"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 )
@@ -40,4 +41,11 @@ type MessageUseCase interface {
 		page, pageSize int,
 	) (*entity.MessageListResponse, error)
 	MarkMessageAsRead(ctx context.Context, globalPlayerID string, messageID uint64) error
+}
+
+type PlayerLevelUseCase interface {
+	SyncPlayerLevel(
+		ctx context.Context,
+		data *event.IdentityPlayerLevelSyncEvent,
+	) error
 }

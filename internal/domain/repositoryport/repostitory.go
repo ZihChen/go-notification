@@ -63,3 +63,7 @@ type PlayerMessageRepository interface {
 	MarkAsRead(ctx context.Context, globalPlayerID string, messageID uint64) error
 	CheckMessageExists(ctx context.Context, globalPlayerID string, campaignID uint64) (bool, error)
 }
+
+type LevelRepository interface {
+	Upsert(ctx context.Context, level *entity.Level) (uint64, error)
+}

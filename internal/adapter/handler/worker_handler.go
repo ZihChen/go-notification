@@ -3,6 +3,9 @@ package handler
 import (
 	"context"
 	"fmt"
+	jsoniter "github.com/json-iterator/go"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
@@ -29,6 +32,7 @@ type WorkerHandler struct {
 	merchantUseCase usecaseport.MerchantUseCase
 	playerUseCase   usecaseport.PlayerUseCase
 	managerUseCase  usecaseport.ManagerUseCase
+	levelUseCase    usecaseport.PlayerLevelUseCase
 	logger          infraport.Logger
 }
 
@@ -37,12 +41,14 @@ func NewWorkerHandler(
 	merchantUseCase usecaseport.MerchantUseCase,
 	playerUseCase usecaseport.PlayerUseCase,
 	managerUseCase usecaseport.ManagerUseCase,
+	levelUseCase usecaseport.PlayerLevelUseCase,
 	logger infraport.Logger,
 ) *WorkerHandler {
 	return &WorkerHandler{
 		merchantUseCase: merchantUseCase,
 		playerUseCase:   playerUseCase,
 		managerUseCase:  managerUseCase,
+		levelUseCase:    levelUseCase,
 		logger:          logger,
 	}
 }
@@ -58,14 +64,20 @@ func (h *WorkerHandler) RegisterHandlers(mux *asynq.ServeMux) {
 		queue.WrapHandlerWithTracing(asynq.HandlerFunc(h.HandlePlayerSync)),
 	)
 	mux.Handle(
-		queue.TypeManagerSync,
-		queue.WrapHandlerWithTracing(asynq.HandlerFunc(h.HandleManagerSync)),
+		queue.TypePlayerLevelSync,
+		queue.WrapHandlerWithTracing(asynq.HandlerFunc(h.HandlePlayerLevelSync)),
+	)
+	mux.Handle(
+		queue.TypePlayerTagsSync,
+		queue.WrapHandlerWithTracing(asynq.HandlerFunc(h.HandlePlayerTagsSync)),
 	)
 
 	h.logger.InfoLog("Registered worker handlers",
 		h.logger.String("handler.merchant_sync", queue.TypeMerchantSync),
 		h.logger.String("handler.player_sync", queue.TypePlayerSync),
-		h.logger.String("handler.manager_sync", queue.TypeManagerSync))
+		h.logger.String("handler.manager_sync", queue.TypeManagerSync),
+		h.logger.String("handler.player_level_sync", queue.TypePlayerLevelSync),
+		h.logger.String("handler.player_tags_sync", queue.TypePlayerTagsSync))
 }
 
 // HandleMerchantSync 處理商戶同步任務
@@ -195,4 +207,81 @@ func (h *WorkerHandler) HandleManagerSync(ctx context.Context, task *asynq.Task)
 		h.logger.String("task_id", taskID))
 
 	return nil
+}
+
+// HandlePlayerLevelSync 處理玩家等級同步任務
+func (h *WorkerHandler) HandlePlayerLevelSync(ctx context.Context, task *asynq.Task) error {
+	taskID := getTaskID(task)
+
+	ctx, span := tracing.TraceWorkerProcessing(ctx, queue.TypePlayerLevelSync, taskID)
+	defer tracing.SpanEnd(span)
+
+	h.logger.InfoWithContext(ctx, "Processing player level sync task",
+		h.logger.String("task_id", taskID),
+		h.logger.Int("payload_size", len(task.Payload())))
+
+	cloudEvent, err := parseCloudEvent(task.Payload(), span)
+	if err != nil {
+		tracing.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to parse cloud event",
+			h.logger.Error("err", err),
+			h.logger.String("task_id", taskID),
+			h.logger.String("data", string(task.Payload())))
+		return err
+	}
+
+	dataBytes, err := jsoniter.Marshal(cloudEvent.Data)
+	if err != nil {
+		tracing.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to marshal event data",
+			h.logger.Error("err", err),
+			h.logger.String("task_id", taskID),
+			h.logger.Any("data", cloudEvent.Data))
+		return fmt.Errorf("marshal event data: %w", err)
+	}
+
+	var playerLevel event.IdentityPlayerLevelSyncEvent
+	if err = jsoniter.Unmarshal(dataBytes, &playerLevel); err != nil {
+		tracing.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to unmarshal player level event",
+			h.logger.Error("err", err),
+			h.logger.String("task_id", taskID),
+			h.logger.String("data", string(dataBytes)))
+		return fmt.Errorf("unmarshal manager event: %w", err)
+	}
+
+	if err = h.levelUseCase.SyncPlayerLevel(ctx, &playerLevel); err != nil {
+		tracing.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to sync player level",
+			h.logger.Error("err", err),
+		)
+	}
+
+	tracing.TraceEvent(span, "Starting player level sync processing")
+	return nil
+}
+
+// HandlePlayerTagsSync 處理玩家標籤同步任務
+func (h *WorkerHandler) HandlePlayerTagsSync(ctx context.Context, task *asynq.Task) error {
+	taskID := getTaskID(task)
+
+	ctx, span := tracing.TraceWorkerProcessing(ctx, queue.TypePlayerTagsSync, taskID)
+	defer tracing.SpanEnd(span)
+
+	h.logger.InfoWithContext(ctx, "Processing player tags sync task",
+		h.logger.String("task_id", taskID),
+		h.logger.Int("payload_size", len(task.Payload())))
+
+	tracing.TraceEvent(span, "Starting player tags sync processing")
+
+	return nil
+}
+
+func parseCloudEvent(eventData []byte, span trace.Span) (*event.CloudEvent, error) {
+	var cloudEvent event.CloudEvent
+	if err := jsoniter.Unmarshal(eventData, &cloudEvent); err != nil {
+		tracing.RecordSpanError(span, err)
+		return nil, fmt.Errorf("unmarshal cloud event: %w", err)
+	}
+	return &cloudEvent, nil
 }

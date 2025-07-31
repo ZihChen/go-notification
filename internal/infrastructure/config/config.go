@@ -70,12 +70,14 @@ type TracingConfig struct {
 
 // EventsConfig 事件配置
 type EventsConfig struct {
-	MerchantSync         string
-	PlayerSync           string
-	ManagerSync          string
-	IdentityMerchantSync string
-	IdentityPlayerSync   string
-	IdentityManagerSync  string
+	MerchantSync            string
+	PlayerSync              string
+	ManagerSync             string
+	IdentityMerchantSync    string
+	IdentityPlayerSync      string
+	IdentityManagerSync     string
+	IdentityPlayerLevelSync string
+	IdentityPlayerTagsSync  string
 }
 
 // LoadConfig 加載配置
@@ -131,12 +133,14 @@ func LoadConfig() (*Config, error) {
 			StreamName: viper.GetString("OPENOBSERVE_TRACE_STREAM_NAME"),
 		},
 		Events: EventsConfig{
-			MerchantSync:         viper.GetString("EVENT_MERCHANT_SYNC"),
-			PlayerSync:           viper.GetString("EVENT_PLAYER_SYNC"),
-			ManagerSync:          viper.GetString("EVENT_MANAGER_SYNC"),
-			IdentityMerchantSync: viper.GetString("EVENT_IDENTITY_MERCHANT_SYNC"),
-			IdentityPlayerSync:   viper.GetString("EVENT_IDENTITY_PLAYER_SYNC"),
-			IdentityManagerSync:  viper.GetString("EVENT_IDENTITY_MANAGER_SYNC"),
+			MerchantSync:            viper.GetString("EVENT_MERCHANT_SYNC"),
+			PlayerSync:              viper.GetString("EVENT_PLAYER_SYNC"),
+			ManagerSync:             viper.GetString("EVENT_MANAGER_SYNC"),
+			IdentityMerchantSync:    viper.GetString("EVENT_IDENTITY_MERCHANT_SYNC"),
+			IdentityPlayerSync:      viper.GetString("EVENT_IDENTITY_PLAYER_SYNC"),
+			IdentityManagerSync:     viper.GetString("EVENT_IDENTITY_MANAGER_SYNC"),
+			IdentityPlayerLevelSync: viper.GetString("EVENT_IDENTITY_PLAYER_LEVEL_SYNC"),
+			IdentityPlayerTagsSync:  viper.GetString("EVENT_IDENTITY_PLAYER_TAGS_SYNC"),
 		},
 	}
 
