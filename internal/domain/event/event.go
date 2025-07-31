@@ -160,3 +160,17 @@ type IdentityPlayerLevelSyncEvent struct {
 	UpdatedAt           string `json:"updated_at"`
 	DeletedAt           string `json:"deleted_at,omitempty"`
 }
+
+type IdentityPlayerTagSyncEvent struct {
+	GlobalMerchantID string                      `json:"global_merchant_id"`
+	GlobalPlayerID   string                      `json:"global_player_id"`
+	Tags             []*IdentityTagDataSyncEvent `json:"tags"`
+}
+
+type IdentityTagDataSyncEvent struct {
+	GlobalTagID string `json:"global_tag_id"`
+	Name        string `json:"name"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+	DeletedAt   string `json:"deleted_at,omitempty"`
+}

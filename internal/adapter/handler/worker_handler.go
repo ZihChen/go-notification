@@ -29,11 +29,12 @@ func getTaskID(task *asynq.Task) string {
 
 // WorkerHandler Worker Handler
 type WorkerHandler struct {
-	merchantUseCase usecaseport.MerchantUseCase
-	playerUseCase   usecaseport.PlayerUseCase
-	managerUseCase  usecaseport.ManagerUseCase
-	levelUseCase    usecaseport.PlayerLevelUseCase
-	logger          infraport.Logger
+	merchantUseCase  usecaseport.MerchantUseCase
+	playerUseCase    usecaseport.PlayerUseCase
+	managerUseCase   usecaseport.ManagerUseCase
+	levelUseCase     usecaseport.PlayerLevelUseCase
+	playerTagUseCase usecaseport.PlayerTagUseCase
+	logger           infraport.Logger
 }
 
 // NewWorkerHandler 創建Worker Handler
@@ -42,14 +43,16 @@ func NewWorkerHandler(
 	playerUseCase usecaseport.PlayerUseCase,
 	managerUseCase usecaseport.ManagerUseCase,
 	levelUseCase usecaseport.PlayerLevelUseCase,
+	playerTagUseCase usecaseport.PlayerTagUseCase,
 	logger infraport.Logger,
 ) *WorkerHandler {
 	return &WorkerHandler{
-		merchantUseCase: merchantUseCase,
-		playerUseCase:   playerUseCase,
-		managerUseCase:  managerUseCase,
-		levelUseCase:    levelUseCase,
-		logger:          logger,
+		merchantUseCase:  merchantUseCase,
+		playerUseCase:    playerUseCase,
+		managerUseCase:   managerUseCase,
+		levelUseCase:     levelUseCase,
+		playerTagUseCase: playerTagUseCase,
+		logger:           logger,
 	}
 }
 
@@ -255,9 +258,13 @@ func (h *WorkerHandler) HandlePlayerLevelSync(ctx context.Context, task *asynq.T
 		h.logger.ErrorWithContext(ctx, "Failed to sync player level",
 			h.logger.Error("err", err),
 		)
+		return fmt.Errorf("failed to sync player level: %w", err)
 	}
 
-	tracing.TraceEvent(span, "Starting player level sync processing")
+	tracing.TraceEvent(span, "Player level sync completed successfully")
+
+	h.logger.InfoWithContext(ctx, "Player level sync task completed successfully",
+		h.logger.String("task_id", taskID))
 	return nil
 }
 
@@ -274,6 +281,48 @@ func (h *WorkerHandler) HandlePlayerTagsSync(ctx context.Context, task *asynq.Ta
 
 	tracing.TraceEvent(span, "Starting player tags sync processing")
 
+	cloudEvent, err := parseCloudEvent(task.Payload(), span)
+	if err != nil {
+		tracing.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to parse cloud event",
+			h.logger.Error("err", err),
+			h.logger.String("task_id", taskID),
+			h.logger.String("data", string(task.Payload())))
+		return err
+	}
+
+	dataBytes, err := jsoniter.Marshal(cloudEvent.Data)
+	if err != nil {
+		tracing.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to marshal event data",
+			h.logger.Error("err", err),
+			h.logger.String("task_id", taskID),
+			h.logger.Any("data", cloudEvent.Data))
+		return fmt.Errorf("marshal event data: %w", err)
+	}
+
+	var playerTag event.IdentityPlayerTagSyncEvent
+	if err = jsoniter.Unmarshal(dataBytes, &playerTag); err != nil {
+		tracing.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to unmarshal player tags event",
+			h.logger.Error("err", err),
+			h.logger.String("task_id", taskID),
+			h.logger.String("data", string(dataBytes)))
+		return fmt.Errorf("unmarshal manager event: %w", err)
+	}
+
+	if err = h.playerTagUseCase.SyncPlayerTags(ctx, &playerTag); err != nil {
+		tracing.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to sync player tags",
+			h.logger.Error("err", err),
+		)
+		return fmt.Errorf("failed to sync player tags: %w", err)
+	}
+
+	tracing.TraceEvent(span, "Player tags sync completed successfully")
+
+	h.logger.InfoWithContext(ctx, "Player tags sync task completed successfully",
+		h.logger.String("task_id", taskID))
 	return nil
 }
 

@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jvdiamondtech/ms-identity-cat/internal/domain/entity"
-	"github.com/jvdiamondtech/ms-identity-cat/internal/domain/repositoryport"
-	"github.com/jvdiamondtech/ms-identity-cat/internal/infrastructure/models"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -48,7 +48,7 @@ func (r *TagRepository) FindByGlobalIDs(
 
 	result := r.db.WithContext(ctx).
 		Where("global_tag_id IN ?", globalIDs).
-		Where("deleted_at IS NULL"). // 如果使用了软删除，确保只查询未删除的记录
+		Where("deleted_at IS NULL").
 		Find(&tags)
 	if result.Error != nil {
 		return tags, fmt.Errorf("find tags by global ids failed: %w", result.Error)

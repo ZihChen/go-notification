@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jvdiamondtech/ms-identity-cat/internal/domain/repositoryport"
-	"github.com/jvdiamondtech/ms-identity-cat/internal/infrastructure/models"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"gorm.io/gorm"
 )
 
@@ -43,14 +43,4 @@ func (r *PlayerTagRepository) BatchUpdate(
 		}
 		return nil
 	})
-}
-
-func (r *PlayerTagRepository) BatchDeleteByPlayerID(ctx context.Context, playerID uint64) error {
-	result := r.db.WithContext(ctx).
-		Where("player_id = ?", playerID).
-		Delete(&models.PlayerTag{})
-	if result.Error != nil {
-		return fmt.Errorf("delete player tags failed: %w", result.Error)
-	}
-	return nil
 }

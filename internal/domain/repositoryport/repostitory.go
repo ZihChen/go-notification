@@ -67,3 +67,12 @@ type PlayerMessageRepository interface {
 type LevelRepository interface {
 	Upsert(ctx context.Context, level *entity.Level) (uint64, error)
 }
+
+type TagRepository interface {
+	BatchUpsert(ctx context.Context, tags []*entity.Tag) error
+	FindByGlobalIDs(ctx context.Context, globalIDs []string) ([]*entity.Tag, error)
+}
+
+type PlayerTagRepository interface {
+	BatchUpdate(ctx context.Context, playerID uint64, tagIDs []uint64) error
+}

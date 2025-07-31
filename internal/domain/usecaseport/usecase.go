@@ -49,3 +49,10 @@ type PlayerLevelUseCase interface {
 		data *event.IdentityPlayerLevelSyncEvent,
 	) error
 }
+
+type PlayerTagUseCase interface {
+	SyncPlayerTags(
+		ctx context.Context,
+		data *event.IdentityPlayerTagSyncEvent,
+	) error
+}
