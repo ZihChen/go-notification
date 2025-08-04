@@ -123,6 +123,46 @@ func (u *PlayerTagUseCase) SyncPlayerTags(ctx context.Context, data *event.Ident
 	return nil
 }
 
+func (u *PlayerTagUseCase) SyncTag(ctx context.Context, data *event.IdentityTagSyncEvent) error {
+	ctx, span := tracing.StartSpan(ctx, "PlayerTagUseCase.SyncTag")
+	defer tracing.SpanEnd(span)
+
+	tracing.TraceEvent(span, "Checking if merchant exists")
+	merchant, err := u.merchantRepo.FindByGlobalID(ctx, data.GlobalMerchantID)
+	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
+		tracing.RecordSpanError(span, err)
+		return fmt.Errorf("find merchant: %w", err)
+	}
+
+	nowTime := time.Now()
+	tagToInsert := &entity.Tag{
+		GlobalTagID: data.Tag.GlobalTagID,
+		Name:        data.Tag.Name,
+		MerchantID:  merchant.ID,
+		CreatedAt:   nowTime,
+		UpdatedAt:   nowTime,
+		DeletedAt: func() *time.Time {
+			if data.Tag.DeletedAt == "" {
+				return nil
+			}
+			return &nowTime
+		}(),
+	}
+
+	if err = u.tagRepo.Upsert(ctx, tagToInsert); err != nil {
+		tracing.RecordSpanError(span, err)
+		return fmt.Errorf("upsert tag failed: %w", err)
+	}
+	u.logger.InfoWithContext(
+		ctx,
+		"Upsert tag completed",
+		u.logger.Any("tag", tagToInsert),
+	)
+
+	tracing.TraceEvent(span, "Tag sync completed successfully")
+	return nil
+}
+
 func (u *PlayerTagUseCase) executeLocked(ctx context.Context, playerID uint64, fn func() error) error {
 	mutexKey := fmt.Sprintf(consts.SyncPlayerTagRedisKey, playerID)
 

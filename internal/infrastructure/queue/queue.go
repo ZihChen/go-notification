@@ -25,6 +25,7 @@ const (
 	TypeManagerSync     = "manager:sync"
 	TypePlayerLevelSync = "player:level:sync"
 	TypePlayerTagsSync  = "player:tags:sync"
+	TypeTagSync         = "tag:sync"
 )
 
 // QueueService 佇列服務實現
@@ -90,6 +91,11 @@ func (q *QueueService) EnqueuePlayerLevelSync(ctx context.Context, data []byte) 
 // EnqueuePlayerTagsSync 將玩家標籤同步任務加入佇列
 func (q *QueueService) EnqueuePlayerTagsSync(ctx context.Context, data []byte) error {
 	return q.enqueueTask(ctx, TypePlayerTagsSync, data)
+}
+
+// EnqueueTagSync 將標籤同步任務加入佇列
+func (q *QueueService) EnqueueTagSync(ctx context.Context, data []byte) error {
+	return q.enqueueTask(ctx, TypeTagSync, data)
 }
 
 // enqueueTask 通用方法，將任務加入佇列並添加追蹤
@@ -301,6 +307,7 @@ func NewWorkerServer(cfg *config.Config, logger infraport.Logger) (*asynq.Server
 				func(ctx context.Context, task *asynq.Task, err error) {
 					logger.ErrorLog("Task processing error",
 						logger.String("type", task.Type()),
+						logger.String("payload", string(task.Payload())),
 						logger.Error("err", err))
 				},
 			),

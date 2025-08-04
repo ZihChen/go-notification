@@ -55,4 +55,8 @@ type PlayerTagUseCase interface {
 		ctx context.Context,
 		data *event.IdentityPlayerTagSyncEvent,
 	) error
+	SyncTag(
+		ctx context.Context,
+		data *event.IdentityTagSyncEvent,
+	) error
 }

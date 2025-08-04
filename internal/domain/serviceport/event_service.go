@@ -46,4 +46,7 @@ type QueueService interface {
 
 	// EnqueuePlayerTagsSync 將玩家標籤同步任務加入佇列
 	EnqueuePlayerTagsSync(ctx context.Context, data []byte) error
+
+	// EnqueueTagSync 將標籤同步任務加入佇列
+	EnqueueTagSync(ctx context.Context, data []byte) error
 }

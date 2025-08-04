@@ -67,6 +67,10 @@ func (h *WorkerHandler) RegisterHandlers(mux *asynq.ServeMux) {
 		queue.WrapHandlerWithTracing(asynq.HandlerFunc(h.HandlePlayerSync)),
 	)
 	mux.Handle(
+		queue.TypeManagerSync,
+		queue.WrapHandlerWithTracing(asynq.HandlerFunc(h.HandleManagerSync)),
+	)
+	mux.Handle(
 		queue.TypePlayerLevelSync,
 		queue.WrapHandlerWithTracing(asynq.HandlerFunc(h.HandlePlayerLevelSync)),
 	)
@@ -74,13 +78,18 @@ func (h *WorkerHandler) RegisterHandlers(mux *asynq.ServeMux) {
 		queue.TypePlayerTagsSync,
 		queue.WrapHandlerWithTracing(asynq.HandlerFunc(h.HandlePlayerTagsSync)),
 	)
+	mux.Handle(
+		queue.TypeTagSync,
+		queue.WrapHandlerWithTracing(asynq.HandlerFunc(h.HandleTagSync)),
+	)
 
 	h.logger.InfoLog("Registered worker handlers",
 		h.logger.String("handler.merchant_sync", queue.TypeMerchantSync),
 		h.logger.String("handler.player_sync", queue.TypePlayerSync),
 		h.logger.String("handler.manager_sync", queue.TypeManagerSync),
 		h.logger.String("handler.player_level_sync", queue.TypePlayerLevelSync),
-		h.logger.String("handler.player_tags_sync", queue.TypePlayerTagsSync))
+		h.logger.String("handler.player_tags_sync", queue.TypePlayerTagsSync),
+		h.logger.String("handler.tag_sync", queue.TypeTagSync))
 }
 
 // HandleMerchantSync 處理商戶同步任務
@@ -357,7 +366,7 @@ func (h *WorkerHandler) HandlePlayerTagsSync(ctx context.Context, task *asynq.Ta
 			h.logger.Error("err", err),
 			h.logger.String("task_id", taskID),
 			h.logger.String("data", string(dataBytes)))
-		return fmt.Errorf("unmarshal manager event: %w", err)
+		return fmt.Errorf("unmarshal  player tags event: %w", err)
 	}
 
 	if err = h.playerTagUseCase.SyncPlayerTags(ctx, &playerTag); err != nil {
@@ -371,6 +380,64 @@ func (h *WorkerHandler) HandlePlayerTagsSync(ctx context.Context, task *asynq.Ta
 	tracing.TraceEvent(span, "Player tags sync completed successfully")
 
 	h.logger.InfoWithContext(ctx, "Player tags sync task completed successfully",
+		h.logger.String("task_id", taskID))
+	return nil
+}
+
+// HandleTagSync 處理標籤同步任務
+func (h *WorkerHandler) HandleTagSync(ctx context.Context, task *asynq.Task) error {
+	taskID := getTaskID(task)
+
+	ctx, span := tracing.TraceWorkerProcessing(ctx, queue.TypeTagSync, taskID)
+	defer tracing.SpanEnd(span)
+
+	h.logger.InfoWithContext(ctx, "Processing tag sync task",
+		h.logger.String("task_id", taskID),
+		h.logger.Int("payload_size", len(task.Payload())))
+
+	tracing.TraceEvent(span, "Starting tag sync processing")
+
+	cloudEvent, err := parseCloudEvent(task.Payload(), span)
+	if err != nil {
+		tracing.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to parse cloud event",
+			h.logger.Error("err", err),
+			h.logger.String("task_id", taskID),
+			h.logger.String("data", string(task.Payload())))
+		return err
+	}
+
+	dataBytes, err := jsoniter.Marshal(cloudEvent.Data)
+	if err != nil {
+		tracing.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to marshal event data",
+			h.logger.Error("err", err),
+			h.logger.String("task_id", taskID),
+			h.logger.Any("data", cloudEvent.Data))
+		return fmt.Errorf("marshal event data: %w", err)
+	}
+
+	var tagEvent event.IdentityTagSyncEvent
+	if err = jsoniter.Unmarshal(dataBytes, &tagEvent); err != nil {
+		tracing.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to unmarshal tag event",
+			h.logger.Error("err", err),
+			h.logger.String("task_id", taskID),
+			h.logger.String("data", string(dataBytes)))
+		return fmt.Errorf("unmarshal tag event: %w", err)
+	}
+
+	if err = h.playerTagUseCase.SyncTag(ctx, &tagEvent); err != nil {
+		tracing.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to sync tag",
+			h.logger.String("task_id", taskID),
+			h.logger.Error("err", err),
+		)
+		return fmt.Errorf("failed to sync tag: %w", err)
+	}
+
+	tracing.TraceEvent(span, "Tag sync completed successfully")
+	h.logger.InfoWithContext(ctx, "Tag sync task completed successfully",
 		h.logger.String("task_id", taskID))
 	return nil
 }
