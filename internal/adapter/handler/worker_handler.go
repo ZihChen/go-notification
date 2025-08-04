@@ -87,33 +87,47 @@ func (h *WorkerHandler) RegisterHandlers(mux *asynq.ServeMux) {
 func (h *WorkerHandler) HandleMerchantSync(ctx context.Context, task *asynq.Task) error {
 	taskID := getTaskID(task)
 
-	// 創建處理任務的追蹤
 	ctx, span := tracing.TraceWorkerProcessing(ctx, queue.TypeMerchantSync, taskID)
 	defer tracing.SpanEnd(span)
-
-	// 添加任務屬性
-	tracing.RecordSpanAttributes(span,
-		attribute.String("task.id", taskID),
-		attribute.String("task.type", queue.TypeMerchantSync),
-		attribute.Int("task.payload_size_bytes", len(task.Payload())),
-	)
 
 	h.logger.InfoLog("Processing merchant sync task",
 		h.logger.String("task_id", taskID),
 		h.logger.Int("payload_size", len(task.Payload())))
 
-	// 記錄開始處理
+	cloudEvent, err := parseCloudEvent(task.Payload(), span)
+	if err != nil {
+		tracing.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to parse cloud event",
+			h.logger.Error("err", err),
+			h.logger.String("task_id", taskID),
+			h.logger.String("data", string(task.Payload())))
+		return err
+	}
+
+	dataBytes, err := jsoniter.Marshal(cloudEvent.Data)
+	if err != nil {
+		tracing.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to marshal event data",
+			h.logger.Error("err", err),
+			h.logger.String("task_id", taskID),
+			h.logger.Any("data", cloudEvent.Data))
+		return fmt.Errorf("marshal event data: %w", err)
+	}
+
+	var merchantEvent event.MerchantEvent
+	if err = jsoniter.Unmarshal(dataBytes, &merchantEvent); err != nil {
+		tracing.RecordSpanError(span, err)
+		return fmt.Errorf("unmarshal merchant event: %w", err)
+	}
+
 	tracing.TraceEvent(span, "Starting merchant sync processing")
 
 	// 執行實際的同步邏輯
-	if err := h.merchantUseCase.SyncMerchant(ctx, task.Payload()); err != nil {
+	if err := h.merchantUseCase.SyncMerchant(ctx, &merchantEvent); err != nil {
 		h.logger.ErrorLog("Failed to sync merchant",
 			h.logger.String("task_id", taskID),
 			h.logger.Error("err", err))
-
-		// 記錄錯誤
 		tracing.RecordSpanError(span, err)
-
 		return fmt.Errorf("failed to sync merchant: %w", err)
 	}
 
@@ -130,26 +144,44 @@ func (h *WorkerHandler) HandleMerchantSync(ctx context.Context, task *asynq.Task
 func (h *WorkerHandler) HandlePlayerSync(ctx context.Context, task *asynq.Task) error {
 	taskID := getTaskID(task)
 
-	// 創建處理任務的追蹤
 	ctx, span := tracing.TraceWorkerProcessing(ctx, queue.TypePlayerSync, taskID)
 	defer tracing.SpanEnd(span)
 
-	// 添加任務屬性
-	tracing.RecordSpanAttributes(span,
-		attribute.String("task.id", taskID),
-		attribute.String("task.type", queue.TypePlayerSync),
-		attribute.Int("task.payload_size_bytes", len(task.Payload())),
-	)
-
-	h.logger.InfoLog("Processing player sync task",
+	h.logger.InfoLog("Processing merchant sync task",
 		h.logger.String("task_id", taskID),
 		h.logger.Int("payload_size", len(task.Payload())))
+
+	cloudEvent, err := parseCloudEvent(task.Payload(), span)
+	if err != nil {
+		tracing.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to parse cloud event",
+			h.logger.Error("err", err),
+			h.logger.String("task_id", taskID),
+			h.logger.String("data", string(task.Payload())))
+		return err
+	}
+
+	dataBytes, err := jsoniter.Marshal(cloudEvent.Data)
+	if err != nil {
+		tracing.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to marshal event data",
+			h.logger.Error("err", err),
+			h.logger.String("task_id", taskID),
+			h.logger.Any("data", cloudEvent.Data))
+		return fmt.Errorf("marshal event data: %w", err)
+	}
+
+	var playerEvent event.PlayerEvent
+	if err = jsoniter.Unmarshal(dataBytes, &playerEvent); err != nil {
+		tracing.RecordSpanError(span, err)
+		return fmt.Errorf("unmarshal player event: %w", err)
+	}
 
 	// 記錄開始處理
 	tracing.TraceEvent(span, "Starting player sync processing")
 
 	// 執行實際的同步邏輯
-	if err := h.playerUseCase.SyncPlayer(ctx, task.Payload()); err != nil {
+	if err := h.playerUseCase.SyncPlayer(ctx, &playerEvent); err != nil {
 		h.logger.ErrorLog("Failed to sync player",
 			h.logger.String("task_id", taskID),
 			h.logger.Error("err", err))
@@ -173,26 +205,43 @@ func (h *WorkerHandler) HandlePlayerSync(ctx context.Context, task *asynq.Task) 
 func (h *WorkerHandler) HandleManagerSync(ctx context.Context, task *asynq.Task) error {
 	taskID := getTaskID(task)
 
-	// 創建處理任務的追蹤
 	ctx, span := tracing.TraceWorkerProcessing(ctx, queue.TypeManagerSync, taskID)
 	defer tracing.SpanEnd(span)
-
-	// 添加任務屬性
-	tracing.RecordSpanAttributes(span,
-		attribute.String("task.id", taskID),
-		attribute.String("task.type", queue.TypeManagerSync),
-		attribute.Int("task.payload_size_bytes", len(task.Payload())),
-	)
 
 	h.logger.InfoLog("Processing manager sync task",
 		h.logger.String("task_id", taskID),
 		h.logger.Int("payload_size", len(task.Payload())))
 
-	// 記錄開始處理
+	cloudEvent, err := parseCloudEvent(task.Payload(), span)
+	if err != nil {
+		tracing.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to parse cloud event",
+			h.logger.Error("err", err),
+			h.logger.String("task_id", taskID),
+			h.logger.String("data", string(task.Payload())))
+		return err
+	}
+
+	dataBytes, err := jsoniter.Marshal(cloudEvent.Data)
+	if err != nil {
+		tracing.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to marshal event data",
+			h.logger.Error("err", err),
+			h.logger.String("task_id", taskID),
+			h.logger.Any("data", cloudEvent.Data))
+		return fmt.Errorf("marshal event data: %w", err)
+	}
+
+	var managerEvent event.ManagerEvent
+	if err = jsoniter.Unmarshal(dataBytes, &managerEvent); err != nil {
+		tracing.RecordSpanError(span, err)
+		return fmt.Errorf("unmarshal manager event: %w", err)
+	}
+
 	tracing.TraceEvent(span, "Starting manager sync processing")
 
 	// 執行實際的同步邏輯
-	if err := h.managerUseCase.SyncManager(ctx, task.Payload()); err != nil {
+	if err := h.managerUseCase.SyncManager(ctx, &managerEvent); err != nil {
 		h.logger.ErrorLog("Failed to sync manager",
 			h.logger.String("task_id", taskID),
 			h.logger.Error("err", err))
@@ -332,5 +381,9 @@ func parseCloudEvent(eventData []byte, span trace.Span) (*event.CloudEvent, erro
 		tracing.RecordSpanError(span, err)
 		return nil, fmt.Errorf("unmarshal cloud event: %w", err)
 	}
+	tracing.RecordSpanAttributes(span,
+		attribute.String("event.id", cloudEvent.ID),
+		attribute.String("event.type", cloudEvent.Type),
+		attribute.String("event.source", cloudEvent.Source))
 	return &cloudEvent, nil
 }

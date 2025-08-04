@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
@@ -44,47 +43,19 @@ func NewManagerUseCase(
 }
 
 // SyncManager 同步管理員信息
-func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) error {
+func (u *ManagerUseCase) SyncManager(ctx context.Context, data *event.ManagerEvent) error {
 	ctx, span := tracing.StartSpan(ctx, "ManagerUseCase.SyncManager")
-
-	// 將事件解析為 CloudEvent
-	var cloudEvent event.CloudEvent
-	if err := json.Unmarshal(eventData, &cloudEvent); err != nil {
-		tracing.RecordSpanError(span, err)
-		return fmt.Errorf("unmarshal cloud event: %w", err)
-	}
-
-	// 添加事件信息到 span
-	tracing.RecordSpanAttributes(span,
-		attribute.String("event.id", cloudEvent.ID),
-		attribute.String("event.type", cloudEvent.Type),
-		attribute.String("event.source", cloudEvent.Source))
-
-	// 記錄事件開始處理
-	tracing.TraceEvent(span, "Starting manager sync processing")
-
-	// 將 data 部分解析為 ManagerSyncEvent
-	dataBytes, err := json.Marshal(cloudEvent.Data)
-	if err != nil {
-		tracing.RecordSpanError(span, err)
-		return fmt.Errorf("marshal event data: %w", err)
-	}
-
-	var managerEvent event.ManagerEvent
-	if err := json.Unmarshal(dataBytes, &managerEvent); err != nil {
-		tracing.RecordSpanError(span, err)
-		return fmt.Errorf("unmarshal manager event: %w", err)
-	}
+	defer tracing.SpanEnd(span)
 
 	// 添加管理員信息到 span
 	tracing.RecordSpanAttributes(span,
-		attribute.String("merchant.global_id", managerEvent.GlobalMerchantID),
-		attribute.String("manager.global_id", managerEvent.GlobalManagerID),
-		attribute.String("manager.account", managerEvent.Account))
+		attribute.String("merchant.global_id", data.GlobalMerchantID),
+		attribute.String("manager.global_id", data.GlobalManagerID),
+		attribute.String("manager.account", data.Account))
 
 	// 查找對應的商戶
 	tracing.TraceEvent(span, "Finding merchant")
-	merchant, err := u.merchantRepo.FindByGlobalID(ctx, managerEvent.GlobalMerchantID)
+	merchant, err := u.merchantRepo.FindByGlobalID(ctx, data.GlobalMerchantID)
 	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("find merchant: %w", err)
@@ -92,7 +63,7 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 
 	// 查找管理員是否存在
 	tracing.TraceEvent(span, "Checking if manager exists")
-	existing, err := u.managerRepo.FindByGlobalID(ctx, managerEvent.GlobalManagerID)
+	existing, err := u.managerRepo.FindByGlobalID(ctx, data.GlobalManagerID)
 	if err != nil && !errors.Is(err, errmsg.ErrRepoManagerNotFound) {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("find manager: %w", err)
@@ -100,8 +71,8 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 
 	// 設置email
 	var email *string
-	if managerEvent.Email != "" {
-		email = &managerEvent.Email
+	if data.Email != "" {
+		email = &data.Email
 	}
 
 	// 創建或更新管理員
@@ -111,8 +82,8 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 		tracing.TraceEvent(span, "Creating new manager")
 		manager = entity.Manager{
 			MerchantID:      merchant.ID,
-			GlobalManagerID: managerEvent.GlobalManagerID,
-			Account:         managerEvent.Account,
+			GlobalManagerID: data.GlobalManagerID,
+			Account:         data.Account,
 			Email:           email,
 			CreatedAt:       time.Now(),
 			UpdatedAt:       time.Now(),
@@ -129,46 +100,20 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, eventData []byte) erro
 		// 更新現有管理員
 		tracing.TraceEvent(span, "Updating existing manager")
 
-		// 確保幂等性：檢查更新時間，只有更新的數據才會覆蓋現有數據
-		// 從事件中獲取最後更新時間
-		var eventTime time.Time
-		if cloudEvent.Time.After(time.Time{}) {
-			eventTime = cloudEvent.Time
-		} else {
-			eventTime = time.Now()
-		}
-
-		// 如果現有記錄的更新時間較新，則跳過更新（確保幂等性）
-		if existing.UpdatedAt.After(eventTime) {
-			u.logger.InfoLog("Skipping manager update as existing data is newer",
-				u.logger.String("global_id", existing.GlobalManagerID),
-				u.logger.String("existing_updated_at", existing.UpdatedAt.String()),
-				u.logger.String("event_time", eventTime.String()))
-
-			// 發布管理員同步事件到KDS確認我們已處理
-			tracing.TraceEvent(span, "Publishing manager sync confirmation event to KDS")
-			if err := u.publishManagerSyncEvent(ctx, existing, managerEvent.GlobalMerchantID, cloudEvent.TraceParent); err != nil {
-				u.logger.WarnLog("Failed to publish manager sync confirmation event",
-					u.logger.String("global_id", existing.GlobalManagerID),
-					u.logger.Error("err", err))
-			}
-
-			return nil
-		}
 		nowTime := time.Now()
 
 		manager = *existing
-		manager.Account = managerEvent.Account
+		manager.Account = data.Account
 		manager.Email = email
 		manager.UpdatedAt = nowTime
 		manager.DeletedAt = func() *time.Time {
-			if managerEvent.DeletedAt == "" {
+			if data.DeletedAt == "" {
 				return nil
 			}
 			return &nowTime
 		}()
 
-		if err := u.managerRepo.Update(ctx, &manager); err != nil {
+		if err = u.managerRepo.Update(ctx, &manager); err != nil {
 			tracing.RecordSpanError(span, err)
 			return fmt.Errorf("update manager: %w", err)
 		}

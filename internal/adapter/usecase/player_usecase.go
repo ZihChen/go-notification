@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
@@ -44,47 +43,19 @@ func NewPlayerUseCase(
 }
 
 // SyncPlayer 同步玩家信息
-func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error {
+func (u *PlayerUseCase) SyncPlayer(ctx context.Context, data *event.PlayerEvent) error {
 	ctx, span := tracing.StartSpan(ctx, "PlayerUseCase.SyncPlayer")
-
-	// 將事件解析為 CloudEvent
-	var cloudEvent event.CloudEvent
-	if err := json.Unmarshal(eventData, &cloudEvent); err != nil {
-		tracing.RecordSpanError(span, err)
-		return fmt.Errorf("unmarshal cloud event: %w", err)
-	}
-
-	// 添加事件信息到 span
-	tracing.RecordSpanAttributes(span,
-		attribute.String("event.id", cloudEvent.ID),
-		attribute.String("event.type", cloudEvent.Type),
-		attribute.String("event.source", cloudEvent.Source))
-
-	// 記錄事件開始處理
-	tracing.TraceEvent(span, "Starting player sync processing")
-
-	// 將 data 部分解析為 PlayerSyncEvent
-	dataBytes, err := json.Marshal(cloudEvent.Data)
-	if err != nil {
-		tracing.RecordSpanError(span, err)
-		return fmt.Errorf("marshal event data: %w", err)
-	}
-
-	var playerEvent event.PlayerEvent
-	if err := json.Unmarshal(dataBytes, &playerEvent); err != nil {
-		tracing.RecordSpanError(span, err)
-		return fmt.Errorf("unmarshal player event: %w", err)
-	}
+	defer tracing.SpanEnd(span)
 
 	// 添加玩家信息到 span
 	tracing.RecordSpanAttributes(span,
-		attribute.String("merchant.global_id", playerEvent.GlobalMerchantID),
-		attribute.String("player.global_id", playerEvent.GlobalPlayerID),
-		attribute.String("player.account", playerEvent.Account))
+		attribute.String("merchant.global_id", data.GlobalMerchantID),
+		attribute.String("player.global_id", data.GlobalPlayerID),
+		attribute.String("player.account", data.Account))
 
 	// 查找對應的商戶
 	tracing.TraceEvent(span, "Finding merchant")
-	merchant, err := u.merchantRepo.FindByGlobalID(ctx, playerEvent.GlobalMerchantID)
+	merchant, err := u.merchantRepo.FindByGlobalID(ctx, data.GlobalMerchantID)
 	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("find merchant: %w", err)
@@ -92,7 +63,7 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 
 	// 查找玩家是否存在
 	tracing.TraceEvent(span, "Checking if player exists")
-	existing, err := u.playerRepo.FindByGlobalID(ctx, playerEvent.GlobalPlayerID)
+	existing, err := u.playerRepo.FindByGlobalID(ctx, data.GlobalPlayerID)
 	if err != nil && !errors.Is(err, errmsg.ErrRepoPlayerNotFound) {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("find player: %w", err)
@@ -100,8 +71,8 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 
 	// 設置電子郵件
 	var email *string
-	if playerEvent.Email != "" {
-		email = &playerEvent.Email
+	if data.Email != "" {
+		email = &data.Email
 	}
 
 	// 創建或更新玩家
@@ -111,9 +82,9 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 		tracing.TraceEvent(span, "Creating new player")
 		player = entity.Player{
 			MerchantID:     merchant.ID,
-			GlobalPlayerID: playerEvent.GlobalPlayerID,
+			GlobalPlayerID: data.GlobalPlayerID,
 			APIKey:         uuid.New().String(), // 生成新的API密鑰
-			Account:        playerEvent.Account,
+			Account:        data.Account,
 			Email:          email,
 			LastActiveAt:   nil,
 			CreatedAt:      time.Now(),
@@ -131,39 +102,12 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, eventData []byte) error 
 		// 更新現有玩家
 		tracing.TraceEvent(span, "Updating existing player")
 
-		// 確保幂等性：檢查更新時間，只有更新的數據才會覆蓋現有數據
-		// 從事件中獲取最後更新時間
-		var eventTime time.Time
-		if cloudEvent.Time.After(time.Time{}) {
-			eventTime = cloudEvent.Time
-		} else {
-			eventTime = time.Now()
-		}
-
-		// 如果現有記錄的更新時間較新，則跳過更新（確保幂等性）
-		if existing.UpdatedAt.After(eventTime) {
-			u.logger.InfoLog("Skipping player update as existing data is newer",
-				u.logger.String("global_id", existing.GlobalPlayerID),
-				u.logger.String("existing_updated_at", existing.UpdatedAt.String()),
-				u.logger.String("event_time", eventTime.String()))
-
-			// 發布玩家同步事件到KDS確認我們已處理
-			tracing.TraceEvent(span, "Publishing player sync confirmation event to KDS")
-			if err := u.publishPlayerSyncEvent(ctx, existing, playerEvent.GlobalMerchantID, cloudEvent.TraceParent); err != nil {
-				u.logger.WarnLog("Failed to publish player sync confirmation event",
-					u.logger.String("global_id", existing.GlobalPlayerID),
-					u.logger.Error("err", err))
-			}
-
-			return nil
-		}
-
 		player = *existing
-		player.Account = playerEvent.Account
+		player.Account = data.Account
 		player.Email = email
 		player.UpdatedAt = time.Now()
 
-		if err := u.playerRepo.Update(ctx, &player); err != nil {
+		if err = u.playerRepo.Update(ctx, &player); err != nil {
 			tracing.RecordSpanError(span, err)
 			return fmt.Errorf("update player: %w", err)
 		}
