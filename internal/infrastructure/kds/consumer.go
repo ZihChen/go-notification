@@ -3,7 +3,9 @@ package kds
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"runtime/debug"
 	"sync"
 	"time"
@@ -91,8 +93,6 @@ func (k *KDSService) ConsumeAllEvents(ctx context.Context) error {
 		// 為每個分片創建一個協程
 		go func(shardId, initialIterator string, shardMutex *redsync.Mutex) {
 			shardCtx, shardCancel := context.WithCancel(ctx)
-			defer shardCancel()
-			defer shardWaiters.Done()
 			defer func() {
 				// 解鎖 shard mutex
 				if ok, unlockErr := shardMutex.Unlock(); !ok || unlockErr != nil {
@@ -111,6 +111,8 @@ func (k *KDSService) ConsumeAllEvents(ctx context.Context) error {
 						k.logger.String("stacktrace", string(debug.Stack())),
 					)
 				}
+				shardCancel()
+				shardWaiters.Done()
 			}()
 
 			currentIterator := initialIterator
@@ -261,27 +263,8 @@ func (k *KDSService) ConsumeAllEvents(ctx context.Context) error {
 						msgCtxWithID := context.WithValue(eventCtx, consts.EventIDKey, eventID)
 
 						// 根據事件類型選擇合適的處理函數
-						var enqueueErr error
-						switch eventType {
-						case k.config.Events.IdentityMerchantSync:
-							enqueueErr = k.queueService.EnqueueMerchantSync(
-								msgCtxWithID,
-								record.Data,
-							)
-						case k.config.Events.IdentityPlayerSync:
-							enqueueErr = k.queueService.EnqueuePlayerSync(msgCtxWithID, record.Data)
-						case k.config.Events.IdentityManagerSync:
-							enqueueErr = k.queueService.EnqueueManagerSync(
-								msgCtxWithID,
-								record.Data,
-							)
-						case k.config.Events.IdentityPlayerLevelSync:
-							enqueueErr = k.queueService.EnqueuePlayerLevelSync(msgCtxWithID, record.Data)
-						case k.config.Events.IdentityPlayerTagsSync:
-							enqueueErr = k.queueService.EnqueuePlayerTagsSync(msgCtxWithID, record.Data)
-						case k.config.Events.IdentityTagSync:
-							enqueueErr = k.queueService.EnqueueTagSync(msgCtxWithID, record.Data)
-						default:
+						enqueueErr := k.eventEnqueueProcess(msgCtxWithID, eventType, record.Data)
+						if errors.Is(enqueueErr, errmsg.ErrUnknownEventType) {
 							if updateErr := k.updateCheckpoint(eventCtx, shardId, sequenceNumber); updateErr != nil {
 								k.logger.WarnWithContext(
 									eventCtx,
