@@ -3,7 +3,9 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
+	"gorm.io/gorm/clause"
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
@@ -100,6 +102,40 @@ func (r *PlayerRepository) Delete(ctx context.Context, id uint64) error {
 		return errmsg.ErrRepoDeletePlayerNotFound
 	}
 
+	return nil
+}
+
+// Upsert 資料冪等性設計：只有當新資料的UpdatedAt要大於當前資料，並且內容要不同時才更新
+func (r *PlayerRepository) Upsert(ctx context.Context, player *entity.Player) error {
+	playerModel := mapToDBPlayer(player)
+
+	result := r.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "global_player_id"}},
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"account": gorm.Expr(
+				"CASE WHEN ? > updated_at AND account != ? THEN ? ELSE account END",
+				playerModel.UpdatedAt, playerModel.Account, playerModel.Account),
+			"api_key": gorm.Expr(
+				"CASE WHEN ? > updated_at AND api_key != ? THEN ? ELSE api_key END",
+				playerModel.UpdatedAt, playerModel.APIKey, playerModel.APIKey),
+			"email": gorm.Expr(
+				"CASE WHEN ? > updated_at AND email != ? THEN ? ELSE email END",
+				playerModel.UpdatedAt, playerModel.Email, playerModel.Email),
+			"last_active_at": gorm.Expr(
+				"CASE WHEN ? > updated_at AND last_active_at != ? THEN ? ELSE last_active_at END",
+				playerModel.UpdatedAt, playerModel.LastActiveAt, playerModel.LastActiveAt),
+			"updated_at": gorm.Expr(
+				"CASE WHEN ? > updated_at THEN ? ELSE updated_at END",
+				playerModel.UpdatedAt, playerModel.UpdatedAt),
+			"deleted_at": gorm.Expr(
+				"CASE WHEN ? > updated_at AND deleted_at IS NULL THEN ? ELSE deleted_at END",
+				playerModel.UpdatedAt, playerModel.DeletedAt),
+		}),
+	}).Create(playerModel)
+
+	if result.Error != nil {
+		return fmt.Errorf("timestamp-based upsert failed: %w", result.Error)
+	}
 	return nil
 }
 

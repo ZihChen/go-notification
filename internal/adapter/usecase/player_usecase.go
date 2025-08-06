@@ -61,68 +61,27 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, data *event.PlayerEvent)
 		return fmt.Errorf("find merchant: %w", err)
 	}
 
-	// 查找玩家是否存在
-	tracing.TraceEvent(span, "Checking if player exists")
-	existing, err := u.playerRepo.FindByGlobalID(ctx, data.GlobalPlayerID)
-	if err != nil && !errors.Is(err, errmsg.ErrRepoPlayerNotFound) {
+	player := entity.Player{
+		MerchantID:     merchant.ID,
+		GlobalPlayerID: data.GlobalPlayerID,
+		APIKey:         uuid.New().String(), // 生成新的API密鑰
+		Account:        data.Account,
+		Email:          &data.Email,
+		CreatedAt:      data.UpdatedAt,
+		UpdatedAt:      data.UpdatedAt,
+	}
+
+	tracing.TraceEvent(span, "Upsert player")
+	if err = u.playerRepo.Upsert(ctx, &player); err != nil {
 		tracing.RecordSpanError(span, err)
-		return fmt.Errorf("find player: %w", err)
+		return fmt.Errorf("upsert player: %w", err)
 	}
-
-	// 設置電子郵件
-	var email *string
-	if data.Email != "" {
-		email = &data.Email
-	}
-
-	// 創建或更新玩家
-	var player entity.Player
-	if errors.Is(err, errmsg.ErrRepoPlayerNotFound) {
-		// 創建新玩家
-		tracing.TraceEvent(span, "Creating new player")
-		player = entity.Player{
-			MerchantID:     merchant.ID,
-			GlobalPlayerID: data.GlobalPlayerID,
-			APIKey:         uuid.New().String(), // 生成新的API密鑰
-			Account:        data.Account,
-			Email:          email,
-			LastActiveAt:   nil,
-			CreatedAt:      time.Now(),
-			UpdatedAt:      time.Now(),
-		}
-
-		if err = u.playerRepo.FirstOrCreate(ctx, &player); err != nil {
-			tracing.RecordSpanError(span, err)
-			return fmt.Errorf("create player: %w", err)
-		}
-		u.logger.InfoLog("Player created",
-			u.logger.String("global_id", player.GlobalPlayerID),
-			u.logger.String("account", player.Account))
-	} else {
-		// 更新現有玩家
-		tracing.TraceEvent(span, "Updating existing player")
-
-		player = *existing
-		player.Account = data.Account
-		player.Email = email
-		player.UpdatedAt = time.Now()
-
-		if err = u.playerRepo.Update(ctx, &player); err != nil {
-			tracing.RecordSpanError(span, err)
-			return fmt.Errorf("update player: %w", err)
-		}
-		u.logger.InfoLog("Player updated",
-			u.logger.String("global_id", player.GlobalPlayerID),
-			u.logger.String("account", player.Account))
-	}
-
-	// 記錄資料庫操作完成
-	tracing.TraceEvent(span, "Database operation completed")
-	tracing.RecordSpanAttributes(span, attribute.Int64("player.id", int64(player.ID)))
-
 	// 記錄處理完成
 	tracing.TraceEvent(span, "Player sync completed successfully")
-
+	u.logger.InfoLog("Player upserted successfully",
+		u.logger.String("global_id", player.GlobalPlayerID),
+		u.logger.String("account", player.Account),
+		u.logger.Any("event_data", data))
 	return nil
 }
 
@@ -130,7 +89,7 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, data *event.PlayerEvent)
 func (u *PlayerUseCase) publishPlayerSyncEvent(
 	ctx context.Context,
 	player *entity.Player,
-	globalMerchantID, traceParent string,
+	globalMerchantID string,
 ) error {
 	// 獲取當前 span
 	span := trace.SpanFromContext(ctx)

@@ -124,20 +124,20 @@ func (h *WorkerHandler) HandleMerchantSync(ctx context.Context, task *asynq.Task
 	}
 
 	var merchantEvent event.MerchantEvent
-	if err = jsoniter.Unmarshal(dataBytes, &merchantEvent); err != nil {
-		tracing.RecordSpanError(span, err)
-		return fmt.Errorf("unmarshal merchant event: %w", err)
+	if unmarshalErr := jsoniter.Unmarshal(dataBytes, &merchantEvent); unmarshalErr != nil {
+		tracing.RecordSpanError(span, unmarshalErr)
+		return fmt.Errorf("unmarshal merchant event: %w", unmarshalErr)
 	}
 
 	tracing.TraceEvent(span, "Starting merchant sync processing")
 
 	// 執行實際的同步邏輯
-	if err := h.merchantUseCase.SyncMerchant(ctx, &merchantEvent); err != nil {
+	if syncErr := h.merchantUseCase.SyncMerchant(ctx, &merchantEvent); syncErr != nil {
 		h.logger.ErrorLog("Failed to sync merchant",
 			h.logger.String("task_id", taskID),
-			h.logger.Error("err", err))
-		tracing.RecordSpanError(span, err)
-		return fmt.Errorf("failed to sync merchant: %w", err)
+			h.logger.Error("err", syncErr))
+		tracing.RecordSpanError(span, syncErr)
+		return fmt.Errorf("failed to sync merchant: %w", syncErr)
 	}
 
 	// 記錄成功完成任務

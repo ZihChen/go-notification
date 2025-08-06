@@ -2,9 +2,7 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"time"
 
 	"github.com/google/uuid"
@@ -50,58 +48,27 @@ func (u *MerchantUseCase) SyncMerchant(ctx context.Context, data *event.Merchant
 		attribute.String("merchant.name", data.Name),
 	)
 
-	// 查找商戶是否存在
-	tracing.TraceEvent(span, "Checking if merchant exists")
-	existing, err := u.merchantRepo.FindByGlobalID(ctx, data.GlobalMerchantID)
-	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
+	merchant := &entity.Merchant{
+		GlobalMerchantID: data.GlobalMerchantID,
+		Name:             data.Name,
+		DisplayName:      data.DisplayName,
+		APIKey:           uuid.New().String(),
+		CreatedAt:        data.UpdatedAt,
+		UpdatedAt:        data.UpdatedAt,
+	}
+
+	tracing.TraceEvent(span, "Upsert merchant")
+	if err := u.merchantRepo.Upsert(ctx, merchant); err != nil {
 		tracing.RecordSpanError(span, err)
-		return fmt.Errorf("find merchant: %w", err)
+		return fmt.Errorf("upsert merchant: %w", err)
 	}
-
-	// 創建或更新商戶
-	var merchant entity.Merchant
-	if errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
-		// 創建新商戶
-		tracing.TraceEvent(span, "Creating new merchant")
-		merchant = entity.Merchant{
-			GlobalMerchantID: data.GlobalMerchantID,
-			Name:             data.Name,
-			DisplayName:      data.DisplayName,
-			APIKey:           uuid.New().String(), // 生成新的API密鑰
-			CreatedAt:        time.Now(),
-			UpdatedAt:        time.Now(),
-		}
-		if err = u.merchantRepo.FirstOrCreate(ctx, &merchant); err != nil {
-			tracing.RecordSpanError(span, err)
-			return fmt.Errorf("create merchant: %w", err)
-		}
-		u.logger.InfoLog("Merchant created",
-			u.logger.String("global_id", merchant.GlobalMerchantID),
-			u.logger.String("name", merchant.Name))
-	} else {
-		// 更新現有商戶
-		tracing.TraceEvent(span, "Updating existing merchant")
-
-		merchant = *existing
-		merchant.Name = data.Name
-		merchant.DisplayName = data.DisplayName
-		merchant.UpdatedAt = time.Now()
-
-		if err = u.merchantRepo.Update(ctx, &merchant); err != nil {
-			tracing.RecordSpanError(span, err)
-			return fmt.Errorf("update merchant: %w", err)
-		}
-		u.logger.InfoLog("Merchant updated",
-			u.logger.String("global_id", merchant.GlobalMerchantID),
-			u.logger.String("name", merchant.Name))
-	}
-
-	// 記錄資料庫操作完成
-	tracing.TraceEvent(span, "Database operation completed")
 
 	// 記錄處理完成
 	tracing.TraceEvent(span, "Merchant sync completed successfully")
-
+	u.logger.InfoWithContext(ctx, "Merchant upserted successfully",
+		u.logger.String("global_id", merchant.GlobalMerchantID),
+		u.logger.String("name", merchant.Name),
+		u.logger.Any("event_data", data))
 	return nil
 }
 
