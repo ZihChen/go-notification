@@ -68,6 +68,7 @@ type PlayerMessageRepository interface {
 
 type LevelRepository interface {
 	Upsert(ctx context.Context, level *entity.Level) (uint64, error)
+	FindByGlobalID(ctx context.Context, globalID string) (*entity.Level, error)
 }
 
 type TagRepository interface {

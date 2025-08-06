@@ -190,7 +190,7 @@ func (h *WorkerHandler) HandlePlayerSync(ctx context.Context, task *asynq.Task) 
 	tracing.TraceEvent(span, "Starting player sync processing")
 
 	// 執行實際的同步邏輯
-	if err := h.playerUseCase.SyncPlayer(ctx, &playerEvent); err != nil {
+	if err = h.playerUseCase.SyncPlayer(ctx, &playerEvent); err != nil {
 		h.logger.ErrorLog("Failed to sync player",
 			h.logger.String("task_id", taskID),
 			h.logger.Error("err", err))

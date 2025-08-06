@@ -23,6 +23,7 @@ import (
 type PlayerUseCase struct {
 	playerRepo    repositoryport.PlayerRepository
 	merchantRepo  repositoryport.MerchantRepository
+	levelRepo     repositoryport.LevelRepository
 	eventProducer serviceport.EventProducer
 	logger        infraport.Logger
 }
@@ -31,12 +32,14 @@ type PlayerUseCase struct {
 func NewPlayerUseCase(
 	playerRepo repositoryport.PlayerRepository,
 	merchantRepo repositoryport.MerchantRepository,
+	levelRepo repositoryport.LevelRepository,
 	eventProducer serviceport.EventProducer,
 	logger infraport.Logger,
 ) usecaseport.PlayerUseCase {
 	return &PlayerUseCase{
 		playerRepo:    playerRepo,
 		merchantRepo:  merchantRepo,
+		levelRepo:     levelRepo,
 		eventProducer: eventProducer,
 		logger:        logger,
 	}
@@ -61,8 +64,15 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, data *event.PlayerEvent)
 		return fmt.Errorf("find merchant: %w", err)
 	}
 
+	level, err := u.levelRepo.FindByGlobalID(ctx, data.GlobalPlayerLevelID)
+	if err != nil && !errors.Is(err, errmsg.ErrRepoLevelNotFound) {
+		tracing.RecordSpanError(span, err)
+		return fmt.Errorf("find level: %w", err)
+	}
+
 	player := entity.Player{
 		MerchantID:     merchant.ID,
+		LevelID:        level.ID,
 		GlobalPlayerID: data.GlobalPlayerID,
 		APIKey:         uuid.New().String(), // 生成新的API密鑰
 		Account:        data.Account,

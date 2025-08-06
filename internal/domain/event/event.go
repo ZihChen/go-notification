@@ -51,15 +51,16 @@ type PlayerSyncEvent struct {
 }
 
 type PlayerEvent struct {
-	Account          string    `json:"account"`
-	Email            string    `json:"email"`
-	ApiKey           string    `json:"api_key"`
-	GlobalMerchantID string    `json:"global_merchant_id"`
-	GlobalPlayerID   string    `json:"global_player_id"`
-	ID               uint64    `json:"id"`
-	MerchantID       uint64    `json:"merchant_id"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
+	Account             string    `json:"account"`
+	Email               string    `json:"email"`
+	ApiKey              string    `json:"api_key"`
+	GlobalMerchantID    string    `json:"global_merchant_id"`
+	GlobalPlayerID      string    `json:"global_player_id"`
+	GlobalPlayerLevelID string    `json:"global_player_level_id"`
+	ID                  uint64    `json:"id"`
+	MerchantID          uint64    `json:"merchant_id"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
 }
 
 // PlayerData 從 KDS 接收的玩家數據

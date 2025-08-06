@@ -62,6 +62,12 @@ migrate_status() {
   eval $CMD
 }
 
+migrate_hash() {
+  CMD="$ATLASGO migrate hash --env \"$ATLAS_ENV\""
+  echo -e "👉 \033[1;33mExecuting:\033[0m $CMD"
+  eval $CMD
+}
+
 compare_diff() {
   echo -e "💻 \033[1;36mCompare migration files changes between local and remote...\033[0m"
 
@@ -139,8 +145,11 @@ case "$1" in
   rollback)
     migrate_down "$2"
     ;;
+  hash)
+    migrate_hash
+    ;;
   *)
-    echo "❗ Usage: bash $0 [init|apply|dry-run|gen|inspect|status|diff|rollback]"
+    echo "❗ Usage: bash $0 [init|apply|dry-run|gen|inspect|status|diff|rollback|hash]"
     exit 1
     ;;
 esac

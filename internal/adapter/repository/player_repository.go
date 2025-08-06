@@ -118,6 +118,9 @@ func (r *PlayerRepository) Upsert(ctx context.Context, player *entity.Player) er
 			"api_key": gorm.Expr(
 				"CASE WHEN ? > updated_at AND api_key != ? THEN ? ELSE api_key END",
 				playerModel.UpdatedAt, playerModel.APIKey, playerModel.APIKey),
+			"level_id": gorm.Expr(
+				"CASE WHEN ? > updated_at AND level_id != ? THEN ? ELSE level_id END",
+				playerModel.UpdatedAt, playerModel.LevelID, playerModel.LevelID),
 			"email": gorm.Expr(
 				"CASE WHEN ? > updated_at AND email != ? THEN ? ELSE email END",
 				playerModel.UpdatedAt, playerModel.Email, playerModel.Email),
@@ -166,6 +169,7 @@ func mapToDBPlayer(player *entity.Player) *models.Player {
 	dbPlayer := &models.Player{
 		ID:             player.ID,
 		MerchantID:     player.MerchantID,
+		LevelID:        player.LevelID,
 		GlobalPlayerID: player.GlobalPlayerID,
 		APIKey:         player.APIKey,
 		Account:        player.Account,

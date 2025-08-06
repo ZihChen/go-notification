@@ -1,4 +1,5 @@
-h1:bx09oJbqAY60dnoGkfERSengp/lF2eNVGUVzUSLt6FE=
+h1:FqEtznqVtkmiblsxp1A0UMGQBGrindfKBhgvBD95ueo=
 20250714052909_init.sql h1:VLYnlk762Xa/xC+kB3ZAuSl8cJ8sUuYSx4I4kP2K0tQ=
 20250731063541_create_level_table.sql h1:9TAZCgjx6HWhMg3bo3IK3XskS/ksCx+usnp/UXJ3cio=
 20250731073029_create_player_tags_table.sql h1:p2kmgsa2hL7S6qL3Q9dg4fXBbEFik1X7jtH6Fn7wwqM=
+20250806100328_add_player_level_id.sql h1:K/4828xOGoK6ysjo+/35ZGN0RhP0e1sHsCIYoQVIUiY=

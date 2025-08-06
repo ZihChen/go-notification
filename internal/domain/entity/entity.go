@@ -18,6 +18,7 @@ type Merchant struct {
 type Player struct {
 	ID             uint64     `json:"id"`
 	MerchantID     uint64     `json:"merchant_id"`
+	LevelID        uint64     `json:"level_id"`
 	GlobalPlayerID string     `json:"global_player_id"`
 	APIKey         string     `json:"api_key"`
 	Account        string     `json:"account"`
