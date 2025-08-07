@@ -64,10 +64,14 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, data *event.PlayerEvent)
 		return fmt.Errorf("find merchant: %w", err)
 	}
 
-	level, err := u.levelRepo.FindByGlobalID(ctx, data.GlobalPlayerLevelID)
-	if err != nil && !errors.Is(err, errmsg.ErrRepoLevelNotFound) {
-		tracing.RecordSpanError(span, err)
-		return fmt.Errorf("find level: %w", err)
+	level := &entity.Level{}
+	if data.PlayerLevel.GlobalPlayerLevelID != "" {
+		// 檢查有無Level，沒有則建立
+		level, err = u.findOrCreateLevel(ctx, span, data, merchant.ID)
+		if err != nil {
+			tracing.RecordSpanError(span, err)
+			return fmt.Errorf("find or create level: %w", err)
+		}
 	}
 
 	player := entity.Player{
@@ -93,6 +97,56 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, data *event.PlayerEvent)
 		u.logger.String("account", player.Account),
 		u.logger.Any("event_data", data))
 	return nil
+}
+
+func (u *PlayerUseCase) findOrCreateLevel(
+	ctx context.Context,
+	span trace.Span,
+	data *event.PlayerEvent,
+	merchantID uint64,
+) (*entity.Level, error) {
+	level, err := u.findByGlobalID(ctx, span, data.PlayerLevel.GlobalPlayerLevelID)
+	if err == nil {
+		return level, nil
+	}
+
+	if !errors.Is(err, errmsg.ErrRepoLevelNotFound) {
+		return nil, fmt.Errorf("find level: %w", err)
+	}
+
+	tracing.TraceEvent(span, "Upsert player")
+	newLevel := &entity.Level{
+		GlobalPlayerLevelID: data.PlayerLevel.GlobalPlayerLevelID,
+		MerchantID:          merchantID,
+		Name:                data.PlayerLevel.Name,
+		CreatedAt:           data.UpdatedAt,
+		UpdatedAt:           data.UpdatedAt,
+	}
+
+	if err = u.levelRepo.Upsert(ctx, newLevel); err != nil {
+		tracing.RecordSpanError(span, err)
+		return nil, fmt.Errorf("upsert level: %w", err)
+	}
+
+	// 取得新的level
+	level, err = u.findByGlobalID(ctx, span, data.PlayerLevel.GlobalPlayerLevelID)
+	if err != nil {
+		return level, nil
+	}
+	return level, nil
+}
+
+func (u *PlayerUseCase) findByGlobalID(ctx context.Context, span trace.Span, globalPlayerLevelID string) (*entity.Level, error) {
+	level, err := u.levelRepo.FindByGlobalID(ctx, globalPlayerLevelID)
+	if err == nil {
+		return level, nil
+	}
+
+	if !errors.Is(err, errmsg.ErrRepoLevelNotFound) {
+		tracing.RecordSpanError(span, err)
+		return nil, fmt.Errorf("find level: %w", err)
+	}
+	return nil, errmsg.ErrRepoLevelNotFound
 }
 
 // 發布玩家同步事件
