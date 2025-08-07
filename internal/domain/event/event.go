@@ -92,15 +92,15 @@ type ManagerSyncEvent struct {
 }
 
 type ManagerEvent struct {
-	GlobalMerchantID string `json:"global_merchant_id"`
-	GlobalManagerID  string `json:"global_manager_id"`
-	ID               uint64 `json:"id"`
-	MerchantID       uint64 `json:"merchant_id"`
-	Account          string `json:"account"`
-	Email            string `json:"email"`
-	CreatedAt        string `json:"created_at"`
-	UpdatedAt        string `json:"updated_at"`
-	DeletedAt        string `json:"deleted_at,omitempty"`
+	GlobalMerchantID string    `json:"global_merchant_id"`
+	GlobalManagerID  string    `json:"global_manager_id"`
+	ID               uint64    `json:"id"`
+	MerchantID       uint64    `json:"merchant_id"`
+	Account          string    `json:"account"`
+	Email            string    `json:"email"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	DeletedAt        string    `json:"deleted_at,omitempty"`
 }
 
 // ManagerData 從 KDS 接收的管理員數據
@@ -154,12 +154,12 @@ type IdentityManagerSyncEvent struct {
 
 // IdentityPlayerLevelSyncEvent 發送到 KDS 的玩家等級同步事件
 type IdentityPlayerLevelSyncEvent struct {
-	GlobalMerchantID    string `json:"global_merchant_id"`
-	GlobalPlayerLevelID string `json:"global_player_level_id"`
-	Name                string `json:"name"`
-	CreatedAt           string `json:"created_at"`
-	UpdatedAt           string `json:"updated_at"`
-	DeletedAt           string `json:"deleted_at,omitempty"`
+	GlobalMerchantID    string    `json:"global_merchant_id"`
+	GlobalPlayerLevelID string    `json:"global_player_level_id"`
+	Name                string    `json:"name"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
+	DeletedAt           string    `json:"deleted_at,omitempty"`
 }
 
 type IdentityPlayerTagSyncEvent struct {
@@ -174,9 +174,9 @@ type IdentityTagSyncEvent struct {
 }
 
 type IdentityTagDataSyncEvent struct {
-	GlobalTagID string `json:"global_tag_id"`
-	Name        string `json:"name"`
-	CreatedAt   string `json:"created_at"`
-	UpdatedAt   string `json:"updated_at"`
-	DeletedAt   string `json:"deleted_at,omitempty"`
+	GlobalTagID string    `json:"global_tag_id"`
+	Name        string    `json:"name"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	DeletedAt   string    `json:"deleted_at,omitempty"`
 }

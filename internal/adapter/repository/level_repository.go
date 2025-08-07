@@ -22,21 +22,19 @@ func NewLevelRepository(db *gorm.DB) repositoryport.LevelRepository {
 	return &LevelRepository{db: db}
 }
 
-func (r *LevelRepository) Upsert(ctx context.Context, level *entity.Level) (uint64, error) {
-	dbLevel := mapToDBLevel(level)
+func (r *LevelRepository) Upsert(ctx context.Context, level *entity.Level) error {
+	levelModel := mapToDBLevel(level)
 	if result := r.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "global_player_level_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"name", "updated_at"}),
-	}).Create(dbLevel); result.Error != nil {
-		return 0, fmt.Errorf("upsert level failed: %w", result.Error)
+		Columns: []clause.Column{{Name: "global_player_level_id"}},
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"name": gorm.Expr(
+				"CASE WHEN VALUES(updated_at) > updated_at AND name != VALUES(name) THEN VALUES(name) ELSE name END"),
+			"updated_at": gorm.Expr(
+				"CASE WHEN VALUES(updated_at) > updated_at THEN VALUES(updated_at) ELSE updated_at END")}),
+	}).Create(levelModel); result.Error != nil {
+		return fmt.Errorf("upsert level failed: %w", result.Error)
 	}
-
-	if err := r.db.WithContext(ctx).
-		Where("global_player_level_id = ?", level.GlobalPlayerLevelID).
-		First(dbLevel).Error; err != nil {
-		return 0, fmt.Errorf("fetch level after upsert failed: %w", err)
-	}
-	return dbLevel.ID, nil
+	return nil
 }
 
 func mapToDBLevel(level *entity.Level) *models.Level {

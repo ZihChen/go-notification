@@ -36,6 +36,7 @@ type ManagerRepository interface {
 	Create(ctx context.Context, manager *entity.Manager) error
 	Update(ctx context.Context, manager *entity.Manager) error
 	Delete(ctx context.Context, id uint64) error
+	Upsert(ctx context.Context, manager *entity.Manager) error
 }
 
 // MessageCampaignRepository 會員訊息活動資料庫接口
@@ -67,7 +68,7 @@ type PlayerMessageRepository interface {
 }
 
 type LevelRepository interface {
-	Upsert(ctx context.Context, level *entity.Level) (uint64, error)
+	Upsert(ctx context.Context, level *entity.Level) error
 	FindByGlobalID(ctx context.Context, globalID string) (*entity.Level, error)
 }
 

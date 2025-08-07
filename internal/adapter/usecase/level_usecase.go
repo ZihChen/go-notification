@@ -4,14 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/serviceport"
-	"time"
-
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/serviceport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 )
@@ -52,10 +50,10 @@ func (u *LevelUseCase) SyncPlayerLevel(
 		GlobalPlayerLevelID: data.GlobalPlayerLevelID,
 		Name:                data.Name,
 		MerchantID:          merchant.ID,
-		CreatedAt:           time.Now(),
-		UpdatedAt:           time.Now(),
+		CreatedAt:           data.UpdatedAt,
+		UpdatedAt:           data.UpdatedAt,
 	}
-	_, err = u.levelRepo.Upsert(ctx, level)
+	err = u.levelRepo.Upsert(ctx, level)
 	if err != nil {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("upsert player level: %w", err)

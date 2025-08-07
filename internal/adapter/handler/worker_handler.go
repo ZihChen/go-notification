@@ -250,7 +250,7 @@ func (h *WorkerHandler) HandleManagerSync(ctx context.Context, task *asynq.Task)
 	tracing.TraceEvent(span, "Starting manager sync processing")
 
 	// 執行實際的同步邏輯
-	if err := h.managerUseCase.SyncManager(ctx, &managerEvent); err != nil {
+	if err = h.managerUseCase.SyncManager(ctx, &managerEvent); err != nil {
 		h.logger.ErrorLog("Failed to sync manager",
 			h.logger.String("task_id", taskID),
 			h.logger.Error("err", err))
