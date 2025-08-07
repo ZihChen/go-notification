@@ -16,7 +16,6 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/serviceport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/deduplication"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/kds"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
 	redis2 "github.com/redis/go-redis/v9"
@@ -131,9 +130,7 @@ type WorkerComponents struct {
 	Server  *asynq.Server
 }
 
-var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient,
-	provideDeduplicationService, repository.NewMerchantRepository, repository.NewPlayerRepository, repository.NewManagerRepository, repository.NewMessageCampaignRepository, repository.NewPlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerLevelRepository, provideEventProducer, usecase.NewMerchantUseCase, usecase.NewPlayerUseCase, usecase.NewManagerUseCase, usecase.NewMessageUseCase, usecase.NewLevelUseCase, usecase.NewTagUseCase,
-)
+var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient, repository.NewMerchantRepository, repository.NewPlayerRepository, repository.NewManagerRepository, repository.NewMessageCampaignRepository, repository.NewPlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerLevelRepository, provideEventProducer, usecase.NewMerchantUseCase, usecase.NewPlayerUseCase, usecase.NewManagerUseCase, usecase.NewMessageUseCase, usecase.NewLevelUseCase, usecase.NewTagUseCase)
 
 // 事件生產者提供者
 func provideEventProducer(kdsService *kds.KDSService, logger infraport.Logger) serviceport.EventProducer {
@@ -151,9 +148,4 @@ func provideRedisClient(manager *redis.Manager) (*redis2.Client, error) {
 		return nil, err
 	}
 	return redisInstance, nil
-}
-
-// 提供事件去重服務
-func provideDeduplicationService(redisClient *redis2.Client, logger infraport.Logger) serviceport.EventDeduplicationService {
-	return deduplication.NewRedisDeduplicationService(redisClient, logger)
 }
