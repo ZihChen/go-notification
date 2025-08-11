@@ -1,14 +1,11 @@
-package tests
+package usecase
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
@@ -41,6 +38,12 @@ func (m *MockManagerRepository) FindByGlobalID(
 	return args.Get(0).(*entity.Manager), args.Error(1)
 }
 
+func (m *MockManagerRepository) FirstOrCreate(ctx context.Context, manager *entity.Manager) error {
+	args := m.Called(ctx, manager)
+	manager.ID = 1 // 為新創建的管理員設置 ID
+	return args.Error(0)
+}
+
 func (m *MockManagerRepository) Create(ctx context.Context, manager *entity.Manager) error {
 	args := m.Called(ctx, manager)
 	manager.ID = 1 // 為新創建的管理員設置 ID
@@ -54,6 +57,12 @@ func (m *MockManagerRepository) Update(ctx context.Context, manager *entity.Mana
 
 func (m *MockManagerRepository) Delete(ctx context.Context, id uint64) error {
 	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+func (m *MockManagerRepository) Upsert(ctx context.Context, manager *entity.Manager) error {
+	args := m.Called(ctx, manager)
+	manager.ID = 1 // 為新創建的管理員設置 ID
 	return args.Error(0)
 }
 
@@ -72,13 +81,22 @@ func createManagerMockDependencies(
 	return managerRepo, merchantRepo, eventProducer, logger
 }
 
+func createManagerEvent() *event.ManagerEvent {
+	return &event.ManagerEvent{
+		ID:               231,
+		GlobalMerchantID: "FATCAT-MERCHANT-1",
+		GlobalManagerID:  "FATCAT-MANAGER-231",
+		Account:          "testmanager",
+		Email:            "manager@example.com",
+	}
+}
+
 // 測試 SyncManager 方法 - 創建新管理員
 func TestManagerUseCase_SyncManager_Create(t *testing.T) {
 	// 準備測試數據
 	globalMerchantID := "FATCAT-MERCHANT-1"
 	globalManagerID := "FATCAT-MANAGER-231"
-	managerAccount := "testmanager"
-	managerEmail := "manager@example.com"
+
 	managerRepo, merchantRepo, eventProducer, logger := createManagerMockDependencies(t)
 
 	managerRepo.On("FindByGlobalID", mock.Anything, globalManagerID).
@@ -100,37 +118,13 @@ func TestManagerUseCase_SyncManager_Create(t *testing.T) {
 		Return(nil)
 
 	// 創建用例
-	useCase := usecase.NewManagerUseCase(managerRepo, merchantRepo, eventProducer, logger)
+	useCase := NewManagerUseCase(managerRepo, merchantRepo, eventProducer, logger)
 
 	// 創建測試事件
-	managerEvent := event.ManagerSyncEvent{
-		GlobalMerchantID: globalMerchantID,
-		Manager: event.ManagerData{
-			ID:              231,
-			GlobalManagerID: globalManagerID,
-			Account:         managerAccount,
-			Email:           managerEmail,
-		},
-	}
-
-	cloudEvent := event.CloudEvent{
-		SpecVersion:     "1.0",
-		Type:            "tw.jvd.fatcat.manager.sync.v1",
-		Source:          "/fatcat/FATCAT",
-		Subject:         "manager_sync",
-		ID:              uuid.New().String(),
-		Time:            time.Now(),
-		DataContentType: "application/json",
-		TraceParent:     "00-3119f4c8eac427ec128029e5b6d056a4-ddfb98d07cce2587-01",
-		Data:            managerEvent,
-	}
-
-	// 序列化事件
-	eventData, err := json.Marshal(cloudEvent)
-	assert.NoError(t, err)
+	managerEvent := createManagerEvent()
 
 	// 執行測試
-	err = useCase.SyncManager(context.Background(), eventData)
+	err := useCase.SyncManager(context.Background(), managerEvent)
 
 	// 驗證結果
 	assert.NoError(t, err)
@@ -177,37 +171,13 @@ func TestManagerUseCase_SyncManager_Update(t *testing.T) {
 		Return(nil)
 
 	// 創建用例
-	useCase := usecase.NewManagerUseCase(managerRepo, merchantRepo, eventProducer, logger)
+	useCase := NewManagerUseCase(managerRepo, merchantRepo, eventProducer, logger)
 
 	// 創建測試事件
-	managerEvent := event.ManagerSyncEvent{
-		GlobalMerchantID: globalMerchantID,
-		Manager: event.ManagerData{
-			ID:              231,
-			GlobalManagerID: globalManagerID,
-			Account:         managerAccount,
-			Email:           managerEmail,
-		},
-	}
-
-	cloudEvent := event.CloudEvent{
-		SpecVersion:     "1.0",
-		Type:            "tw.jvd.fatcat.manager.sync.v1",
-		Source:          "/fatcat/FATCAT",
-		Subject:         "manager_sync",
-		ID:              uuid.New().String(),
-		Time:            time.Now(),
-		DataContentType: "application/json",
-		TraceParent:     "00-3119f4c8eac427ec128029e5b6d056a4-ddfb98d07cce2587-01",
-		Data:            managerEvent,
-	}
-
-	// 序列化事件
-	eventData, err := json.Marshal(cloudEvent)
-	assert.NoError(t, err)
+	managerEvent := createManagerEvent()
 
 	// 執行測試
-	err = useCase.SyncManager(context.Background(), eventData)
+	err := useCase.SyncManager(context.Background(), managerEvent)
 
 	// 驗證結果
 	assert.NoError(t, err)
@@ -245,7 +215,7 @@ func TestManagerUseCase_GetManagerByID(t *testing.T) {
 	managerRepo.On("FindByID", mock.Anything, managerID).Return(existingManager, nil)
 
 	// 創建用例
-	useCase := usecase.NewManagerUseCase(managerRepo, merchantRepo, eventProducer, logger)
+	useCase := NewManagerUseCase(managerRepo, merchantRepo, eventProducer, logger)
 
 	// 執行測試
 	manager, err := useCase.GetManagerByID(context.Background(), managerID)
@@ -286,7 +256,7 @@ func TestManagerUseCase_GetManagerByGlobalID(t *testing.T) {
 	managerRepo.On("FindByGlobalID", mock.Anything, globalManagerID).Return(existingManager, nil)
 
 	// 創建用例
-	useCase := usecase.NewManagerUseCase(managerRepo, merchantRepo, eventProducer, logger)
+	useCase := NewManagerUseCase(managerRepo, merchantRepo, eventProducer, logger)
 
 	// 執行測試
 	manager, err := useCase.GetManagerByGlobalID(context.Background(), globalManagerID)

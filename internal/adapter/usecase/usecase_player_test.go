@@ -1,15 +1,12 @@
-package tests
+package usecase
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/go-redis/redismock/v9"
-	"github.com/google/uuid"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
@@ -42,6 +39,11 @@ func (m *MockPlayerRepository) FindByGlobalID(
 	return args.Get(0).(*entity.Player), args.Error(1)
 }
 
+func (m *MockPlayerRepository) FirstOrCreate(ctx context.Context, player *entity.Player) error {
+	args := m.Called(ctx, player)
+	return args.Error(0)
+}
+
 func (m *MockPlayerRepository) Create(ctx context.Context, player *entity.Player) error {
 	args := m.Called(ctx, player)
 	player.ID = 1 // 為新創建的玩家設置 ID
@@ -58,15 +60,50 @@ func (m *MockPlayerRepository) Delete(ctx context.Context, id uint64) error {
 	return args.Error(0)
 }
 
+func (m *MockPlayerRepository) Upsert(ctx context.Context, player *entity.Player) error {
+	args := m.Called(ctx, player)
+	return args.Error(0)
+}
+
+type MockLevelRepository struct {
+	mock.Mock
+}
+
+func (m *MockLevelRepository) Upsert(ctx context.Context, level *entity.Level) error {
+	args := m.Called(ctx, level)
+	return args.Error(0)
+}
+
+func (m *MockLevelRepository) FindByGlobalID(
+	ctx context.Context,
+	globalID string,
+) (*entity.Level, error) {
+	args := m.Called(ctx, globalID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.Level), args.Error(1)
+}
+
+func createPlayerEvent() *event.PlayerEvent {
+	return &event.PlayerEvent{
+		GlobalMerchantID:    "FATCAT-MERCHANT-1",
+		GlobalPlayerLevelID: "FATCAT-PLAYER-7241",
+		Account:             "testplayer",
+		Email:               "test@example.com",
+	}
+}
+
 func createMockDependencies(
 	t *testing.T,
-) (*MockPlayerRepository, *MockMerchantRepository, *MockEventProducer, *helper.MockLogger, *redis.Client) {
+) (*MockPlayerRepository, *MockMerchantRepository, *MockLevelRepository, *MockEventProducer, *helper.MockLogger, *redis.Client) {
 	playerRepo := new(MockPlayerRepository)
 	merchantRepo := new(MockMerchantRepository)
+	levelRepo := new(MockLevelRepository)
 	eventProducer := new(MockEventProducer)
 	logger := helper.SetupLoggerMock(t)
 	redisClient, _ := redismock.NewClientMock()
-	return playerRepo, merchantRepo, eventProducer, logger, redisClient
+	return playerRepo, merchantRepo, levelRepo, eventProducer, logger, redisClient
 }
 
 // 測試 SyncPlayer 方法 - 創建新玩家
@@ -74,10 +111,8 @@ func TestPlayerUseCase_SyncPlayer_Create(t *testing.T) {
 	// 準備測試數據
 	globalMerchantID := "FATCAT-MERCHANT-1"
 	globalPlayerID := "FATCAT-PLAYER-7241"
-	playerAccount := "testplayer"
-	playerEmail := "test@example.com"
 
-	playerRepo, merchantRepo, eventProducer, logger, _ := createMockDependencies(t)
+	playerRepo, merchantRepo, levelRepo, eventProducer, logger, _ := createMockDependencies(t)
 
 	playerRepo.On("FindByGlobalID", mock.Anything, globalPlayerID).
 		Return(nil, fmt.Errorf("record not found"))
@@ -97,37 +132,13 @@ func TestPlayerUseCase_SyncPlayer_Create(t *testing.T) {
 		Return(nil)
 
 	// 創建用例
-	useCase := usecase.NewPlayerUseCase(playerRepo, merchantRepo, eventProducer, logger)
+	useCase := NewPlayerUseCase(playerRepo, merchantRepo, levelRepo, eventProducer, logger)
 
 	// 創建測試事件
-	playerEvent := event.PlayerSyncEvent{
-		GlobalMerchantID: globalMerchantID,
-		Player: event.PlayerData{
-			GlobalPlayerID: globalPlayerID,
-			Account:        playerAccount,
-			Email:          playerEmail,
-			Status:         "active",
-		},
-	}
-
-	cloudEvent := event.CloudEvent{
-		SpecVersion:     "1.0",
-		Type:            "tw.jvd.fatcat.player.sync.v1",
-		Source:          "/fatcat/FATCAT",
-		Subject:         "player_sync",
-		ID:              uuid.New().String(),
-		Time:            time.Now(),
-		DataContentType: "application/json",
-		TraceParent:     "00-3119f4c8eac427ec128029e5b6d056a4-ddfb98d07cce2587-01",
-		Data:            playerEvent,
-	}
-
-	// 序列化事件
-	eventData, err := json.Marshal(cloudEvent)
-	assert.NoError(t, err)
+	playerEvent := createPlayerEvent()
 
 	// 執行測試
-	err = useCase.SyncPlayer(context.Background(), eventData)
+	err := useCase.SyncPlayer(context.Background(), playerEvent)
 
 	// 驗證結果
 	assert.NoError(t, err)
@@ -158,7 +169,7 @@ func TestPlayerUseCase_SyncPlayer_Update(t *testing.T) {
 		UpdatedAt:      time.Now().Add(-24 * time.Hour),
 	}
 
-	playerRepo, merchantRepo, eventProducer, logger, _ := createMockDependencies(t)
+	playerRepo, merchantRepo, levelRepo, eventProducer, logger, _ := createMockDependencies(t)
 
 	playerRepo.On("FindByGlobalID", mock.Anything, globalPlayerID).Return(existingPlayer, nil)
 	playerRepo.On("Update", mock.Anything, mock.AnythingOfType("*entitys.Player")).Return(nil)
@@ -177,37 +188,18 @@ func TestPlayerUseCase_SyncPlayer_Update(t *testing.T) {
 		Return(nil)
 
 	// 創建用例
-	useCase := usecase.NewPlayerUseCase(playerRepo, merchantRepo, eventProducer, logger)
+	useCase := NewPlayerUseCase(playerRepo, merchantRepo, levelRepo, eventProducer, logger)
 
 	// 創建測試事件
-	playerEvent := event.PlayerSyncEvent{
-		GlobalMerchantID: globalMerchantID,
-		Player: event.PlayerData{
-			GlobalPlayerID: globalPlayerID,
-			Account:        playerAccount,
-			Email:          playerEmail,
-			Status:         "active",
-		},
+	playerEvent := &event.PlayerEvent{
+		GlobalMerchantID:    globalMerchantID,
+		GlobalPlayerLevelID: globalPlayerID,
+		Account:             playerAccount,
+		Email:               playerEmail,
 	}
-
-	cloudEvent := event.CloudEvent{
-		SpecVersion:     "1.0",
-		Type:            "tw.jvd.fatcat.player.sync.v1",
-		Source:          "/fatcat/FATCAT",
-		Subject:         "player_sync",
-		ID:              uuid.New().String(),
-		Time:            time.Now(),
-		DataContentType: "application/json",
-		TraceParent:     "00-3119f4c8eac427ec128029e5b6d056a4-ddfb98d07cce2587-01",
-		Data:            playerEvent,
-	}
-
-	// 序列化事件
-	eventData, err := json.Marshal(cloudEvent)
-	assert.NoError(t, err)
 
 	// 執行測試
-	err = useCase.SyncPlayer(context.Background(), eventData)
+	err := useCase.SyncPlayer(context.Background(), playerEvent)
 
 	// 驗證結果
 	assert.NoError(t, err)
@@ -244,12 +236,12 @@ func TestPlayerUseCase_GetPlayerByID(t *testing.T) {
 		UpdatedAt:      time.Now().Add(-24 * time.Hour),
 	}
 
-	playerRepo, merchantRepo, eventProducer, logger, _ := createMockDependencies(t)
+	playerRepo, merchantRepo, levelRepo, eventProducer, logger, _ := createMockDependencies(t)
 
 	playerRepo.On("FindByID", mock.Anything, playerID).Return(existingPlayer, nil)
 
 	// 創建用例
-	useCase := usecase.NewPlayerUseCase(playerRepo, merchantRepo, eventProducer, logger)
+	useCase := NewPlayerUseCase(playerRepo, merchantRepo, levelRepo, eventProducer, logger)
 
 	// 執行測試
 	player, err := useCase.GetPlayerByID(context.Background(), playerID)
@@ -289,12 +281,12 @@ func TestPlayerUseCase_GetPlayerByGlobalID(t *testing.T) {
 		UpdatedAt:      time.Now().Add(-24 * time.Hour),
 	}
 
-	playerRepo, merchantRepo, eventProducer, logger, _ := createMockDependencies(t)
+	playerRepo, merchantRepo, levelRepo, eventProducer, logger, _ := createMockDependencies(t)
 
 	playerRepo.On("FindByGlobalID", mock.Anything, globalPlayerID).Return(existingPlayer, nil)
 
 	// 創建用例
-	useCase := usecase.NewPlayerUseCase(playerRepo, merchantRepo, eventProducer, logger)
+	useCase := NewPlayerUseCase(playerRepo, merchantRepo, levelRepo, eventProducer, logger)
 
 	// 執行測試
 	player, err := useCase.GetPlayerByGlobalID(context.Background(), globalPlayerID)
@@ -335,13 +327,13 @@ func TestPlayerUseCase_UpdatePlayerLastActive(t *testing.T) {
 		UpdatedAt:      time.Now().Add(-24 * time.Hour),
 	}
 
-	playerRepo, merchantRepo, eventProducer, logger, _ := createMockDependencies(t)
+	playerRepo, merchantRepo, levelRepo, eventProducer, logger, _ := createMockDependencies(t)
 
 	playerRepo.On("FindByID", mock.Anything, playerID).Return(existingPlayer, nil)
 	playerRepo.On("Update", mock.Anything, mock.AnythingOfType("*entitys.Player")).Return(nil)
 
 	// 創建用例
-	useCase := usecase.NewPlayerUseCase(playerRepo, merchantRepo, eventProducer, logger)
+	useCase := NewPlayerUseCase(playerRepo, merchantRepo, levelRepo, eventProducer, logger)
 
 	// 執行測試
 	err := useCase.UpdatePlayerLastActive(context.Background(), playerID)

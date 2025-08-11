@@ -3,17 +3,17 @@ package handler
 import (
 	"context"
 	"fmt"
-	jsoniter "github.com/json-iterator/go"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
+	jsoniter "github.com/json-iterator/go"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func getTaskID(task *asynq.Task) string {

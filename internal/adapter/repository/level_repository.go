@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"gorm.io/gorm"
@@ -55,7 +55,10 @@ func mapToDBLevel(level *entity.Level) *models.Level {
 	return dbLevel
 }
 
-func (r *LevelRepository) FindByGlobalID(ctx context.Context, globalID string) (*entity.Level, error) {
+func (r *LevelRepository) FindByGlobalID(
+	ctx context.Context,
+	globalID string,
+) (*entity.Level, error) {
 	var dbLevel models.Level
 	err := r.db.WithContext(ctx).
 		Where("global_player_level_id = ?", globalID).

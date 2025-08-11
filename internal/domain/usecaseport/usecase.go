@@ -2,9 +2,9 @@ package usecaseport
 
 import (
 	"context"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 )
 
 type MerchantUseCase interface {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/go-redsync/redsync/v4"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
@@ -14,7 +16,6 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
 	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
-	"time"
 )
 
 type PlayerTagUseCase struct {
@@ -44,7 +45,10 @@ func NewTagUseCase(
 	}
 }
 
-func (u *PlayerTagUseCase) SyncPlayerTags(ctx context.Context, data *event.IdentityPlayerTagSyncEvent) error {
+func (u *PlayerTagUseCase) SyncPlayerTags(
+	ctx context.Context,
+	data *event.IdentityPlayerTagSyncEvent,
+) error {
 	ctx, span := tracing.StartSpan(ctx, "PlayerTagUseCase.SyncPlayerTags")
 	defer tracing.SpanEnd(span)
 
@@ -162,7 +166,11 @@ func (u *PlayerTagUseCase) SyncTag(ctx context.Context, data *event.IdentityTagS
 	return nil
 }
 
-func (u *PlayerTagUseCase) executeLocked(ctx context.Context, playerID uint64, fn func() error) error {
+func (u *PlayerTagUseCase) executeLocked(
+	ctx context.Context,
+	playerID uint64,
+	fn func() error,
+) error {
 	mutexKey := fmt.Sprintf(consts.SyncPlayerTagRedisKey, playerID)
 
 	mutex, err := u.redisManager.GetMutexWithOption(mutexKey,

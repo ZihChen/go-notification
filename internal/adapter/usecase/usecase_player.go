@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
@@ -136,7 +136,11 @@ func (u *PlayerUseCase) findOrCreateLevel(
 	return level, nil
 }
 
-func (u *PlayerUseCase) findByGlobalID(ctx context.Context, span trace.Span, globalPlayerLevelID string) (*entity.Level, error) {
+func (u *PlayerUseCase) findByGlobalID(
+	ctx context.Context,
+	span trace.Span,
+	globalPlayerLevelID string,
+) (*entity.Level, error) {
 	level, err := u.levelRepo.FindByGlobalID(ctx, globalPlayerLevelID)
 	if err == nil {
 		return level, nil

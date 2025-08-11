@@ -1,14 +1,11 @@
-package tests
+package usecase
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
@@ -43,6 +40,15 @@ func (m *MockMerchantRepository) FindByGlobalID(
 	return args.Get(0).(*entity.Merchant), args.Error(1)
 }
 
+func (m *MockMerchantRepository) FirstOrCreate(
+	ctx context.Context,
+	merchant *entity.Merchant,
+) error {
+	args := m.Called(ctx, merchant)
+	merchant.ID = 1 // 為新創建的商戶設置 ID
+	return args.Error(0)
+}
+
 func (m *MockMerchantRepository) Create(ctx context.Context, merchant *entity.Merchant) error {
 	args := m.Called(ctx, merchant)
 	merchant.ID = 1 // 為新創建的商戶設置 ID
@@ -56,6 +62,11 @@ func (m *MockMerchantRepository) Update(ctx context.Context, merchant *entity.Me
 
 func (m *MockMerchantRepository) Delete(ctx context.Context, id uint64) error {
 	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+func (m *MockMerchantRepository) Upsert(ctx context.Context, merchant *entity.Merchant) error {
+	args := m.Called(ctx, merchant)
 	return args.Error(0)
 }
 
@@ -82,11 +93,18 @@ func (m *MockEventProducer) PublishManagerSync(ctx context.Context, event *event
 	return args.Error(0)
 }
 
+func createMerchantEvent() *event.MerchantEvent {
+	return &event.MerchantEvent{
+		ID:               1,
+		GlobalMerchantID: "FATCAT-MERCHANT-1",
+		Name:             "TestMerchant",
+		DisplayName:      "Test Merchant",
+	}
+}
+
 func TestMerchantUseCase_SyncMerchant_Create(t *testing.T) {
 	// 準備測試數據
 	globalMerchantID := "FATCAT-MERCHANT-1"
-	merchantName := "TestMerchant"
-	displayName := "Test Merchant"
 
 	// 創建模擬資料庫
 	merchantRepo := new(MockMerchantRepository)
@@ -103,37 +121,13 @@ func TestMerchantUseCase_SyncMerchant_Create(t *testing.T) {
 	logger := helper.SetupLoggerMock(t)
 
 	// 創建用例
-	useCase := usecase.NewMerchantUseCase(merchantRepo, eventProducer, logger)
+	useCase := NewMerchantUseCase(merchantRepo, eventProducer, logger)
 
 	// 創建測試事件
-	merchantEvent := event.MerchantSyncEvent{
-		GlobalMerchantID: globalMerchantID,
-		Merchant: event.MerchantData{
-			ID:               1,
-			Name:             merchantName,
-			DisplayName:      displayName,
-			GlobalMerchantID: globalMerchantID,
-		},
-	}
-
-	cloudEvent := event.CloudEvent{
-		SpecVersion:     "1.0",
-		Type:            "tw.jvd.fatcat.merchant.sync.v1",
-		Source:          "/fatcat/FATCAT",
-		Subject:         "merchant_sync",
-		ID:              uuid.New().String(),
-		Time:            time.Now(),
-		DataContentType: "application/json",
-		TraceParent:     "00-3119f4c8eac427ec128029e5b6d056a4-ddfb98d07cce2587-01",
-		Data:            merchantEvent,
-	}
-
-	// 序列化事件
-	eventData, err := json.Marshal(cloudEvent)
-	assert.NoError(t, err)
+	merchantEvent := createMerchantEvent()
 
 	// 執行測試
-	err = useCase.SyncMerchant(context.Background(), eventData)
+	err := useCase.SyncMerchant(context.Background(), merchantEvent)
 
 	// 驗證結果
 	assert.NoError(t, err)
@@ -173,37 +167,13 @@ func TestMerchantUseCase_SyncMerchant_Update(t *testing.T) {
 	logger := helper.SetupLoggerMock(t)
 
 	// 創建用例
-	useCase := usecase.NewMerchantUseCase(merchantRepo, eventProducer, logger)
+	useCase := NewMerchantUseCase(merchantRepo, eventProducer, logger)
 
 	// 創建測試事件
-	merchantEvent := event.MerchantSyncEvent{
-		GlobalMerchantID: globalMerchantID,
-		Merchant: event.MerchantData{
-			ID:               1,
-			Name:             merchantName,
-			DisplayName:      displayName,
-			GlobalMerchantID: globalMerchantID,
-		},
-	}
-
-	cloudEvent := event.CloudEvent{
-		SpecVersion:     "1.0",
-		Type:            "tw.jvd.fatcat.merchant.sync.v1",
-		Source:          "/fatcat/FATCAT",
-		Subject:         "merchant_sync",
-		ID:              uuid.New().String(),
-		Time:            time.Now(),
-		DataContentType: "application/json",
-		TraceParent:     "00-3119f4c8eac427ec128029e5b6d056a4-ddfb98d07cce2587-01",
-		Data:            merchantEvent,
-	}
-
-	// 序列化事件
-	eventData, err := json.Marshal(cloudEvent)
-	assert.NoError(t, err)
+	merchantEvent := createMerchantEvent()
 
 	// 執行測試
-	err = useCase.SyncMerchant(context.Background(), eventData)
+	err := useCase.SyncMerchant(context.Background(), merchantEvent)
 
 	// 驗證結果
 	assert.NoError(t, err)
@@ -247,7 +217,7 @@ func TestMerchantUseCase_GetMerchantByID(t *testing.T) {
 	logger := helper.SetupLoggerMock(t)
 
 	// 創建用例
-	useCase := usecase.NewMerchantUseCase(merchantRepo, eventProducer, logger)
+	useCase := NewMerchantUseCase(merchantRepo, eventProducer, logger)
 
 	// 執行測試
 	merchant, err := useCase.GetMerchantByID(context.Background(), merchantID)
@@ -294,7 +264,7 @@ func TestMerchantUseCase_GetMerchantByGlobalID(t *testing.T) {
 	logger := helper.SetupLoggerMock(t)
 
 	// 創建用例
-	useCase := usecase.NewMerchantUseCase(merchantRepo, eventProducer, logger)
+	useCase := NewMerchantUseCase(merchantRepo, eventProducer, logger)
 
 	// 執行測試
 	merchant, err := useCase.GetMerchantByGlobalID(context.Background(), globalMerchantID)
