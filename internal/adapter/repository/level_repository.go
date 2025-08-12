@@ -80,6 +80,7 @@ func mapToDomainLevel(level *models.Level) *entity.Level {
 	}
 	return &entity.Level{
 		ID:                  level.ID,
+		MerchantID:          level.MerchantID,
 		GlobalPlayerLevelID: level.GlobalPlayerLevelID,
 		Name:                level.Name,
 		CreatedAt:           level.CreatedAt,
