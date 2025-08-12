@@ -106,7 +106,9 @@ func TestLevelRepository_Upsert(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup mock DB
 			db, mock, sqlDB := setupMockDB(t)
-			defer sqlDB.Close()
+			defer func() {
+				_ = sqlDB.Close()
+			}()
 
 			// Setup mock expectations
 			tc.setupMock(mock)
@@ -191,7 +193,9 @@ func TestLevelRepository_FindByGlobalID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup mock DB
 			db, mock, sqlDB := setupMockDB(t)
-			defer sqlDB.Close()
+			defer func() {
+				_ = sqlDB.Close()
+			}()
 
 			// Setup mock expectations
 			tc.setupMock(mock)

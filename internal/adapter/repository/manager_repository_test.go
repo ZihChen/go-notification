@@ -98,7 +98,9 @@ func TestManagerRepository_FindByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup mock DB
 			db, mock, sqlDB := setupManagerMockDB(t)
-			defer sqlDB.Close()
+			defer func() {
+				_ = sqlDB.Close()
+			}()
 
 			// Setup mock expectations
 			tc.setupMock(mock)
@@ -112,7 +114,7 @@ func TestManagerRepository_FindByID(t *testing.T) {
 			// Assert the result
 			if tc.expectedError != nil {
 				assert.Error(t, err)
-				if tc.expectedError == errmsg.ErrRepoManagerNotFound {
+				if errors.Is(tc.expectedError, errmsg.ErrRepoManagerNotFound) {
 					assert.ErrorIs(t, err, errmsg.ErrRepoManagerNotFound)
 				}
 			} else {
@@ -133,7 +135,9 @@ func TestManagerRepository_FindByID(t *testing.T) {
 // TestManagerRepository_FirstOrCreate tests the FirstOrCreate method
 func TestManagerRepository_FirstOrCreate(t *testing.T) {
 	// Skip this test as it's difficult to mock GORM's FirstOrCreate behavior with go-sqlmock
-	t.Skip("Skipping TestManagerRepository_FirstOrCreate as it's difficult to mock GORM's FirstOrCreate behavior with go-sqlmock")
+	t.Skip(
+		"Skipping TestManagerRepository_FirstOrCreate as it's difficult to mock GORM's FirstOrCreate behavior with go-sqlmock",
+	)
 }
 
 // TestManagerRepository_Create tests the Create method
@@ -160,15 +164,16 @@ func TestManagerRepository_Create(t *testing.T) {
 			setupMock: func(mock sqlmock.Sqlmock) {
 				// Expect insert
 				mock.ExpectBegin()
-				mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `managers` (`merchant_id`,`global_manager_id`,`account`,`email`,`deleted_at`,`created_at`,`updated_at`) VALUES (?,?,?,?,?,?,?)")).WithArgs(
-					sqlmock.AnyArg(), // MerchantID
-					sqlmock.AnyArg(), // GlobalManagerID
-					sqlmock.AnyArg(), // Account
-					sqlmock.AnyArg(), // Email
-					sqlmock.AnyArg(), // CreatedAt
-					sqlmock.AnyArg(), // UpdatedAt
-					sqlmock.AnyArg(), // DeletedAt
-				).
+				mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `managers` (`merchant_id`,`global_manager_id`,`account`,`email`,`deleted_at`,`created_at`,`updated_at`) VALUES (?,?,?,?,?,?,?)")).
+					WithArgs(
+						sqlmock.AnyArg(), // MerchantID
+						sqlmock.AnyArg(), // GlobalManagerID
+						sqlmock.AnyArg(), // Account
+						sqlmock.AnyArg(), // Email
+						sqlmock.AnyArg(), // CreatedAt
+						sqlmock.AnyArg(), // UpdatedAt
+						sqlmock.AnyArg(), // DeletedAt
+					).
 					WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectCommit()
 			},
@@ -180,7 +185,9 @@ func TestManagerRepository_Create(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup mock DB
 			db, mock, sqlDB := setupManagerMockDB(t)
-			defer sqlDB.Close()
+			defer func() {
+				_ = sqlDB.Close()
+			}()
 
 			// Setup mock expectations
 			tc.setupMock(mock)
@@ -242,7 +249,9 @@ func TestManagerRepository_Update(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup mock DB
 			db, mock, sqlDB := setupManagerMockDB(t)
-			defer sqlDB.Close()
+			defer func() {
+				_ = sqlDB.Close()
+			}()
 
 			// Setup mock expectations
 			tc.setupMock(mock)
@@ -307,7 +316,9 @@ func TestManagerRepository_Delete(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup mock DB
 			db, mock, sqlDB := setupManagerMockDB(t)
-			defer sqlDB.Close()
+			defer func() {
+				_ = sqlDB.Close()
+			}()
 
 			// Setup mock expectations
 			tc.setupMock(mock)
@@ -370,7 +381,9 @@ func TestManagerRepository_Upsert(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup mock DB
 			db, mock, sqlDB := setupManagerMockDB(t)
-			defer sqlDB.Close()
+			defer func() {
+				_ = sqlDB.Close()
+			}()
 
 			// Setup mock expectations
 			tc.setupMock(mock)
@@ -457,7 +470,9 @@ func TestManagerRepository_FindByGlobalID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup mock DB
 			db, mock, sqlDB := setupManagerMockDB(t)
-			defer sqlDB.Close()
+			defer func() {
+				_ = sqlDB.Close()
+			}()
 
 			// Setup mock expectations
 			tc.setupMock(mock)
