@@ -15,7 +15,7 @@ type PlayerTagRepository struct {
 	db *gorm.DB
 }
 
-func NewPlayerLevelRepository(db *gorm.DB) repositoryport.PlayerTagRepository {
+func NewPlayerTagRepository(db *gorm.DB) repositoryport.PlayerTagRepository {
 	return &PlayerTagRepository{db: db}
 }
 
