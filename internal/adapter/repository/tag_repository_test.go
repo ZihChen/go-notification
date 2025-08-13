@@ -3,6 +3,9 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"regexp"
+	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
@@ -10,9 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"regexp"
-	"testing"
-	"time"
 )
 
 type TagTestCase struct {
@@ -47,7 +47,11 @@ func TestTagRepository_Upsert(t *testing.T) {
 			id:   1,
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
-				pattern := regexp.QuoteMeta("INSERT INTO `tags`") + ".*" + regexp.QuoteMeta("ON DUPLICATE KEY UPDATE")
+				pattern := regexp.QuoteMeta(
+					"INSERT INTO `tags`",
+				) + ".*" + regexp.QuoteMeta(
+					"ON DUPLICATE KEY UPDATE",
+				)
 				mock.ExpectExec(pattern).
 					WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectCommit()
@@ -93,7 +97,11 @@ func TestTagRepository_BatchUpsert(t *testing.T) {
 		id:   1,
 		setupMock: func(mock sqlmock.Sqlmock) {
 			mock.ExpectBegin()
-			pattern := regexp.QuoteMeta("INSERT INTO `tags`") + ".*" + regexp.QuoteMeta("ON DUPLICATE KEY UPDATE")
+			pattern := regexp.QuoteMeta(
+				"INSERT INTO `tags`",
+			) + ".*" + regexp.QuoteMeta(
+				"ON DUPLICATE KEY UPDATE",
+			)
 			mock.ExpectExec(pattern).
 				WillReturnResult(sqlmock.NewResult(1, 2))
 			mock.ExpectCommit()

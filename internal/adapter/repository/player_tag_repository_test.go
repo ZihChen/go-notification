@@ -3,15 +3,16 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"regexp"
+	"testing"
+	"time"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"regexp"
-	"testing"
-	"time"
 )
 
 type PlayerTagTestCase struct {

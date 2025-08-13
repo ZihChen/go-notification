@@ -4,6 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"regexp"
+	"testing"
+	"time"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
@@ -11,9 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"regexp"
-	"testing"
-	"time"
 )
 
 type PlayerTestCase struct {
@@ -130,7 +131,10 @@ func TestPlayerRepository_FindByGlobalID(t *testing.T) {
 			tc.setupMock(mock)
 			repo := NewPlayerRepository(db)
 
-			player, err := repo.FindByGlobalID(context.Background(), tc.expectedPlayer.GlobalPlayerID)
+			player, err := repo.FindByGlobalID(
+				context.Background(),
+				tc.expectedPlayer.GlobalPlayerID,
+			)
 			if tc.expectedError != nil {
 				assert.Error(t, err)
 				if errors.Is(tc.expectedError, errmsg.ErrRepoPlayerNotFound) {

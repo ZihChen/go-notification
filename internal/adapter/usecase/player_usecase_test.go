@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -107,16 +106,13 @@ func createMockDependencies(
 }
 
 // 測試 SyncPlayer 方法 - 創建新玩家
-func TestPlayerUseCase_SyncPlayer_Create(t *testing.T) {
+func TestPlayerUseCase_SyncPlayer(t *testing.T) {
 	// 準備測試數據
 	globalMerchantID := "FATCAT-MERCHANT-1"
-	globalPlayerID := "FATCAT-PLAYER-7241"
 
 	playerRepo, merchantRepo, levelRepo, eventProducer, logger, _ := createMockDependencies(t)
 
-	playerRepo.On("FindByGlobalID", mock.Anything, globalPlayerID).
-		Return(nil, fmt.Errorf("record not found"))
-	playerRepo.On("Create", mock.Anything, mock.AnythingOfType("*entitys.Player")).Return(nil)
+	playerRepo.On("Upsert", mock.Anything, mock.AnythingOfType("*entity.Player")).Return(nil)
 
 	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(&entity.Merchant{
 		ID:               1,
@@ -128,90 +124,16 @@ func TestPlayerUseCase_SyncPlayer_Create(t *testing.T) {
 		UpdatedAt:        time.Now(),
 	}, nil)
 
-	eventProducer.On("PublishPlayerSync", mock.Anything, mock.AnythingOfType("*event.CloudEvent")).
-		Return(nil)
-
-	// 創建用例
 	useCase := NewPlayerUseCase(playerRepo, merchantRepo, levelRepo, eventProducer, logger)
 
-	// 創建測試事件
-	playerEvent := createPlayerEvent()
-
 	// 執行測試
-	err := useCase.SyncPlayer(context.Background(), playerEvent)
+	err := useCase.SyncPlayer(context.Background(), createPlayerEvent())
 
 	// 驗證結果
 	assert.NoError(t, err)
 	playerRepo.AssertExpectations(t)
 	merchantRepo.AssertExpectations(t)
 	eventProducer.AssertExpectations(t)
-}
-
-// 測試 SyncPlayer 方法 - 更新現有玩家
-func TestPlayerUseCase_SyncPlayer_Update(t *testing.T) {
-	// 準備測試數據
-	globalMerchantID := "FATCAT-MERCHANT-1"
-	globalPlayerID := "FATCAT-PLAYER-7241"
-	playerAccount := "testplayer"
-	playerEmail := "updated@example.com" // 更新的郵箱
-	apiKey := "test-api-key"
-	oldEmail := "old@example.com"
-
-	// 準備現有玩家
-	existingPlayer := &entity.Player{
-		ID:             1,
-		MerchantID:     1,
-		GlobalPlayerID: globalPlayerID,
-		APIKey:         apiKey,
-		Account:        "oldaccount",
-		Email:          &oldEmail,
-		CreatedAt:      time.Now().Add(-24 * time.Hour),
-		UpdatedAt:      time.Now().Add(-24 * time.Hour),
-	}
-
-	playerRepo, merchantRepo, levelRepo, eventProducer, logger, _ := createMockDependencies(t)
-
-	playerRepo.On("FindByGlobalID", mock.Anything, globalPlayerID).Return(existingPlayer, nil)
-	playerRepo.On("Update", mock.Anything, mock.AnythingOfType("*entitys.Player")).Return(nil)
-
-	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(&entity.Merchant{
-		ID:               1,
-		GlobalMerchantID: globalMerchantID,
-		Name:             "Test Merchant",
-		DisplayName:      "Test Merchant Display",
-		APIKey:           "merchant-api-key",
-		CreatedAt:        time.Now(),
-		UpdatedAt:        time.Now(),
-	}, nil)
-
-	eventProducer.On("PublishPlayerSync", mock.Anything, mock.AnythingOfType("*event.CloudEvent")).
-		Return(nil)
-
-	// 創建用例
-	useCase := NewPlayerUseCase(playerRepo, merchantRepo, levelRepo, eventProducer, logger)
-
-	// 創建測試事件
-	playerEvent := &event.PlayerEvent{
-		GlobalMerchantID:    globalMerchantID,
-		GlobalPlayerLevelID: globalPlayerID,
-		Account:             playerAccount,
-		Email:               playerEmail,
-	}
-
-	// 執行測試
-	err := useCase.SyncPlayer(context.Background(), playerEvent)
-
-	// 驗證結果
-	assert.NoError(t, err)
-	playerRepo.AssertExpectations(t)
-	merchantRepo.AssertExpectations(t)
-	eventProducer.AssertExpectations(t)
-
-	// 驗證更新時保留了原始的 API 密鑰
-	updated := playerRepo.Calls[1].Arguments.Get(1).(*entity.Player)
-	assert.Equal(t, apiKey, updated.APIKey)
-	assert.Equal(t, playerAccount, updated.Account)
-	assert.Equal(t, playerEmail, *updated.Email)
 }
 
 // 測試 GetPlayerByID 方法
@@ -330,7 +252,7 @@ func TestPlayerUseCase_UpdatePlayerLastActive(t *testing.T) {
 	playerRepo, merchantRepo, levelRepo, eventProducer, logger, _ := createMockDependencies(t)
 
 	playerRepo.On("FindByID", mock.Anything, playerID).Return(existingPlayer, nil)
-	playerRepo.On("Update", mock.Anything, mock.AnythingOfType("*entitys.Player")).Return(nil)
+	playerRepo.On("Update", mock.Anything, mock.AnythingOfType("*entity.Player")).Return(nil)
 
 	// 創建用例
 	useCase := NewPlayerUseCase(playerRepo, merchantRepo, levelRepo, eventProducer, logger)

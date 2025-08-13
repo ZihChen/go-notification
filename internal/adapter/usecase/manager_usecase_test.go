@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -92,16 +91,11 @@ func createManagerEvent() *event.ManagerEvent {
 }
 
 // 測試 SyncManager 方法 - 創建新管理員
-func TestManagerUseCase_SyncManager_Create(t *testing.T) {
+func TestManagerUseCase_SyncManager(t *testing.T) {
 	// 準備測試數據
 	globalMerchantID := "FATCAT-MERCHANT-1"
-	globalManagerID := "FATCAT-MANAGER-231"
 
 	managerRepo, merchantRepo, eventProducer, logger := createManagerMockDependencies(t)
-
-	managerRepo.On("FindByGlobalID", mock.Anything, globalManagerID).
-		Return(nil, fmt.Errorf("record not found"))
-	managerRepo.On("Create", mock.Anything, mock.AnythingOfType("*entitys.Manager")).Return(nil)
 
 	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(&entity.Merchant{
 		ID:               1,
@@ -113,9 +107,7 @@ func TestManagerUseCase_SyncManager_Create(t *testing.T) {
 		UpdatedAt:        time.Now(),
 	}, nil)
 
-	// 創建模擬事件生產者
-	eventProducer.On("PublishManagerSync", mock.Anything, mock.AnythingOfType("*event.CloudEvent")).
-		Return(nil)
+	managerRepo.On("Upsert", mock.Anything, mock.Anything).Return(nil)
 
 	// 創建用例
 	useCase := NewManagerUseCase(managerRepo, merchantRepo, eventProducer, logger)
@@ -130,65 +122,6 @@ func TestManagerUseCase_SyncManager_Create(t *testing.T) {
 	assert.NoError(t, err)
 	managerRepo.AssertExpectations(t)
 	merchantRepo.AssertExpectations(t)
-	eventProducer.AssertExpectations(t)
-}
-
-// 測試 SyncManager 方法 - 更新現有管理員
-func TestManagerUseCase_SyncManager_Update(t *testing.T) {
-	// 準備測試數據
-	globalMerchantID := "FATCAT-MERCHANT-1"
-	globalManagerID := "FATCAT-MANAGER-231"
-	managerAccount := "testmanager"
-	managerEmail := "updated@example.com" // 更新的郵箱
-	oldEmail := "old@example.com"
-	// 準備現有管理員
-	existingManager := &entity.Manager{
-		ID:              1,
-		MerchantID:      1,
-		GlobalManagerID: globalManagerID,
-		Account:         "oldaccount",
-		Email:           &oldEmail,
-		CreatedAt:       time.Now().Add(-24 * time.Hour),
-		UpdatedAt:       time.Now().Add(-24 * time.Hour),
-	}
-	managerRepo, merchantRepo, eventProducer, logger := createManagerMockDependencies(t)
-	// 創建模擬資料庫
-	managerRepo.On("FindByGlobalID", mock.Anything, globalManagerID).Return(existingManager, nil)
-	managerRepo.On("Update", mock.Anything, mock.AnythingOfType("*entitys.Manager")).Return(nil)
-
-	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(&entity.Merchant{
-		ID:               1,
-		GlobalMerchantID: globalMerchantID,
-		Name:             "Test Merchant",
-		DisplayName:      "Test Merchant Display",
-		APIKey:           "merchant-api-key",
-		CreatedAt:        time.Now(),
-		UpdatedAt:        time.Now(),
-	}, nil)
-
-	// 創建模擬事件生產者
-	eventProducer.On("PublishManagerSync", mock.Anything, mock.AnythingOfType("*event.CloudEvent")).
-		Return(nil)
-
-	// 創建用例
-	useCase := NewManagerUseCase(managerRepo, merchantRepo, eventProducer, logger)
-
-	// 創建測試事件
-	managerEvent := createManagerEvent()
-
-	// 執行測試
-	err := useCase.SyncManager(context.Background(), managerEvent)
-
-	// 驗證結果
-	assert.NoError(t, err)
-	managerRepo.AssertExpectations(t)
-	merchantRepo.AssertExpectations(t)
-	eventProducer.AssertExpectations(t)
-
-	// 驗證更新後的數據
-	updated := managerRepo.Calls[1].Arguments.Get(1).(*entity.Manager)
-	assert.Equal(t, managerAccount, updated.Account)
-	assert.Equal(t, managerEmail, *updated.Email)
 }
 
 // 測試 GetManagerByID 方法

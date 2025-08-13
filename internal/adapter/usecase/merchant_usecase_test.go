@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -102,20 +101,14 @@ func createMerchantEvent() *event.MerchantEvent {
 	}
 }
 
-func TestMerchantUseCase_SyncMerchant_Create(t *testing.T) {
-	// 準備測試數據
-	globalMerchantID := "FATCAT-MERCHANT-1"
-
+func TestMerchantUseCase_SyncMerchant(t *testing.T) {
 	// 創建模擬資料庫
 	merchantRepo := new(MockMerchantRepository)
-	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).
-		Return(nil, fmt.Errorf("record not found"))
-	merchantRepo.On("Create", mock.Anything, mock.AnythingOfType("*entitys.Merchant")).Return(nil)
+	merchantRepo.On("Upsert", mock.Anything, mock.Anything).
+		Return(nil)
 
 	// 創建模擬事件生產者
 	eventProducer := new(MockEventProducer)
-	eventProducer.On("PublishMerchantSync", mock.Anything, mock.AnythingOfType("*event.CloudEvent")).
-		Return(nil)
 
 	// 創建記錄器
 	logger := helper.SetupLoggerMock(t)
@@ -133,58 +126,6 @@ func TestMerchantUseCase_SyncMerchant_Create(t *testing.T) {
 	assert.NoError(t, err)
 	merchantRepo.AssertExpectations(t)
 	eventProducer.AssertExpectations(t)
-}
-
-func TestMerchantUseCase_SyncMerchant_Update(t *testing.T) {
-	// 準備測試數據
-	globalMerchantID := "FATCAT-MERCHANT-1"
-	merchantName := "TestMerchant"
-	displayName := "Test Merchant"
-	apiKey := "test-api-key"
-
-	// 準備現有商戶
-	existingMerchant := &entity.Merchant{
-		ID:               1,
-		GlobalMerchantID: globalMerchantID,
-		Name:             "OldName",
-		DisplayName:      "Old Display Name",
-		APIKey:           apiKey,
-		CreatedAt:        time.Now().Add(-24 * time.Hour),
-		UpdatedAt:        time.Now().Add(-24 * time.Hour),
-	}
-
-	// 創建模擬資料庫
-	merchantRepo := new(MockMerchantRepository)
-	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(existingMerchant, nil)
-	merchantRepo.On("Update", mock.Anything, mock.AnythingOfType("*entitys.Merchant")).Return(nil)
-
-	// 創建模擬事件生產者
-	eventProducer := new(MockEventProducer)
-	eventProducer.On("PublishMerchantSync", mock.Anything, mock.AnythingOfType("*event.CloudEvent")).
-		Return(nil)
-
-	// 創建記錄器
-	logger := helper.SetupLoggerMock(t)
-
-	// 創建用例
-	useCase := NewMerchantUseCase(merchantRepo, eventProducer, logger)
-
-	// 創建測試事件
-	merchantEvent := createMerchantEvent()
-
-	// 執行測試
-	err := useCase.SyncMerchant(context.Background(), merchantEvent)
-
-	// 驗證結果
-	assert.NoError(t, err)
-	merchantRepo.AssertExpectations(t)
-	eventProducer.AssertExpectations(t)
-
-	// 驗證更新時保留了原始的 API 密鑰
-	updated := merchantRepo.Calls[1].Arguments.Get(1).(*entity.Merchant)
-	assert.Equal(t, apiKey, updated.APIKey)
-	assert.Equal(t, merchantName, updated.Name)
-	assert.Equal(t, displayName, updated.DisplayName)
 }
 
 func TestMerchantUseCase_GetMerchantByID(t *testing.T) {
