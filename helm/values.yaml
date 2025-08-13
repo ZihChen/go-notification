@@ -1,0 +1,19 @@
+# Global settings
+global:
+  environment: production
+
+# Application settings
+app:
+  name: fatnotificationcat
+  appName: fatnotificationcat
+  image:
+    repository: 637423324672.dkr.ecr.ap-northeast-1.amazonaws.com/quantumcat/fatnotificationcat
+    tag: latest
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 64Mi
