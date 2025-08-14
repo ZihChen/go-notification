@@ -189,8 +189,8 @@ func TestMerchantRedisToWorker(t *testing.T) {
 	}
 
 	cloudEvent := event.CloudEvent{
-		SpecVersion:     "1.0",
-		Type:            cfg.Events.MerchantSync,
+		SpecVersion: "1.0",
+		//Type:            cfg.Events.MerchantSync,
 		Source:          "/test/merchant",
 		Subject:         "merchant_sync",
 		ID:              uuid.New().String(),
@@ -365,8 +365,8 @@ func TestPlayerRedisToWorker(t *testing.T) {
 	}
 
 	cloudEvent := event.CloudEvent{
-		SpecVersion:     "1.0",
-		Type:            cfg.Events.PlayerSync,
+		SpecVersion: "1.0",
+		//Type:            cfg.Events.PlayerSync,
 		Source:          "/test/player",
 		Subject:         "player_sync",
 		ID:              uuid.New().String(),
@@ -541,8 +541,8 @@ func TestManagerRedisToWorker(t *testing.T) {
 	}
 
 	cloudEvent := event.CloudEvent{
-		SpecVersion:     "1.0",
-		Type:            cfg.Events.ManagerSync,
+		SpecVersion: "1.0",
+		//Type:            cfg.Events.ManagerSync,
 		Source:          "/test/manager",
 		Subject:         "manager_sync",
 		ID:              uuid.New().String(),

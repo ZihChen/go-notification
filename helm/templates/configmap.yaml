@@ -46,9 +46,6 @@ data:
   # OPENOBSERVE_LOGS_PASSWORD: <secret>
 
   # KDS Events
-  EVENT_MERCHANT_SYNC: tw.jvd.fatcat.merchant.sync.v1
-  EVENT_PLAYER_SYNC: tw.jvd.fatcat.player.sync.v1
-  EVENT_MANAGER_SYNC: tw.jvd.fatcat.manager.sync.v1
   EVENT_IDENTITY_MERCHANT_SYNC: tw.jvd.fatidentitycat.merchant.sync.v1
   EVENT_IDENTITY_PLAYER_SYNC: tw.jvd.fatidentitycat.player.sync.v1
   EVENT_IDENTITY_MANAGER_SYNC: tw.jvd.fatidentitycat.manager.sync.v1
