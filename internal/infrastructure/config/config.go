@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/spf13/viper"
 )
@@ -151,10 +152,21 @@ func LoadConfig() (*Config, error) {
 
 // LoadAWSConfig 加載AWS配置
 func (c *Config) LoadAWSConfig(ctx context.Context) (aws.Config, error) {
-	return awsconfig.LoadDefaultConfig(
-		ctx,
+	var opts []func(*awsconfig.LoadOptions) error
+
+	opts = append(
+		opts,
 		awsconfig.WithRegion(c.AWS.Region),
-		awsconfig.WithCredentialsProvider(
+		awsconfig.WithRetryer(func() aws.Retryer {
+			return retry.NewStandard(func(o *retry.StandardOptions) {
+				o.MaxAttempts = 3               // 最大重試次數
+				o.MaxBackoff = 10 * time.Second // 最大重試間隔
+			})
+		}),
+	)
+
+	if c.App.Env == "local" {
+		opts = append(opts, awsconfig.WithCredentialsProvider(
 			aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
 				return aws.Credentials{
 					AccessKeyID:     c.AWS.AccessKeyID,
@@ -162,6 +174,7 @@ func (c *Config) LoadAWSConfig(ctx context.Context) (aws.Config, error) {
 					SessionToken:    c.AWS.SessionToken,
 				}, nil
 			}),
-		),
-	)
+		))
+	}
+	return awsconfig.LoadDefaultConfig(ctx, opts...)
 }
