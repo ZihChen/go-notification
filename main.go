@@ -4,6 +4,7 @@ import (
 	_ "ariga.io/atlas-provider-gorm/gormschema"
 	"github.com/jvdiamondtech/ms-notification-cat/cmd"
 	_ "github.com/jvdiamondtech/ms-notification-cat/cmd/consumer"
+	_ "github.com/jvdiamondtech/ms-notification-cat/cmd/scheduler"
 	_ "github.com/jvdiamondtech/ms-notification-cat/cmd/web"
 	_ "github.com/jvdiamondtech/ms-notification-cat/cmd/worker"
 	_ "github.com/jvdiamondtech/ms-notification-cat/docs" // 導入 swagger 文檔

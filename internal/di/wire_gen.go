@@ -122,6 +122,12 @@ func InitializeConsumer(cfg *config.Config, logger infraport.Logger, redisManage
 	return kdsService, nil
 }
 
+// InitializeSchedulerComponents 初始化 Scheduler 服務的處理器
+func InitializeSchedulerComponents(cfg *config.Config, logger infraport.Logger, redisManager *redis.Manager, db *gorm.DB) (*handler.SchedulerHandler, error) {
+	schedulerHandler := handler.NewSchedulerHandler(logger)
+	return schedulerHandler, nil
+}
+
 // wire.go:
 
 // WorkerComponents 包含 worker 所需的所有組件

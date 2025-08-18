@@ -1,0 +1,178 @@
+package scheduler
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/jvdiamondtech/ms-notification-cat/cmd"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/di"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/database/mysql"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
+	"github.com/robfig/cron/v3"
+	"github.com/spf13/cobra"
+)
+
+// Command 創建並返回scheduler子命令
+func Command() *cobra.Command {
+	schedulerCmd := &cobra.Command{
+		Use:   "scheduler",
+		Short: "Start the scheduler service",
+		Long:  `Start the scheduler service to handle scheduled tasks and cron jobs`,
+		Run:   runScheduler,
+	}
+
+	return schedulerCmd
+}
+
+func init() {
+	cmd.AddCommand(Command())
+}
+
+const (
+	gracefulShutdownTime = 30 * time.Second
+)
+
+type services struct {
+	tracer       *tracing.Tracer
+	redisManager *redis.Manager
+	db           *mysql.Database
+	cronManager  *cron.Cron
+}
+
+// runScheduler 啟動Scheduler服務
+func runScheduler(cobraCmd *cobra.Command, args []string) {
+	// 獲取配置和日誌
+	cfg := cmd.GetConfig()
+	logger := cmd.GetLogger()
+
+	// 主程序的Context
+	rootCtx, rootCancel := context.WithCancel(context.Background())
+	defer rootCancel()
+
+	// 初始化所有服務
+	s, err := initializeServices(rootCtx, cfg, logger)
+	if err != nil {
+		logger.FatalWithContext(
+			rootCtx,
+			"Failed to initialize scheduler services",
+			logger.Error("err", err),
+		)
+	}
+	defer s.cleanup(rootCtx, logger)
+
+	// 使用Wire初始化Scheduler組件
+	schedulerHandler, err := di.InitializeSchedulerComponents(
+		cfg,
+		logger,
+		s.redisManager,
+		s.db.GetDBConnection(),
+	)
+	if err != nil {
+		logger.FatalLog("Failed to initialize scheduler components", logger.Error("err", err))
+		return
+	}
+
+	// 註冊所有排程任務
+	schedulerHandler.RegisterJobs(s.cronManager)
+	logger.InfoWithContext(rootCtx, "Scheduler jobs registered successfully")
+
+	// 啟動 Cron 調度器
+	s.cronManager.Start()
+	logger.InfoWithContext(rootCtx, "Scheduler service started successfully")
+
+	// 等待中斷信號
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	logger.InfoWithContext(rootCtx, "Shutting down scheduler...")
+	rootCancel()
+
+	// 停止 Cron 調度器
+	cronCtx := s.cronManager.Stop()
+
+	// 等待優雅關閉或超時
+	select {
+	case <-cronCtx.Done():
+		logger.InfoWithContext(
+			rootCtx,
+			"All scheduled jobs stopped gracefully",
+		)
+	case <-time.After(gracefulShutdownTime):
+		logger.WarnWithContext(
+			rootCtx,
+			"Force shutdown - some jobs may still be running",
+		)
+	}
+
+	logger.InfoWithContext(rootCtx, "Scheduler service exited")
+}
+
+func initializeServices(
+	ctx context.Context,
+	cfg *config.Config,
+	logger infraport.Logger,
+) (*services, error) {
+	// 初始化追踪器
+	tracer, err := tracing.NewTracer(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize tracer: %w", err)
+	}
+	logger.InfoWithContext(ctx, "Successfully initialized scheduler tracer!")
+
+	// 初始化DB連線
+	db, err := mysql.NewDatabase(cfg, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize database: %w", err)
+	}
+
+	if err = db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+	logger.InfoWithContext(ctx, "Successfully initialized database connection!")
+
+	// 初始化Redis連線
+	redisManager := redis.NewRedisManager(cfg)
+	if err = redisManager.Connect(ctx); err != nil {
+		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
+	}
+	logger.InfoWithContext(ctx, "Successfully initialized Redis connection!")
+
+	// 初始化 Cron 調度器，使用秒級精度
+	cronManager := cron.New(cron.WithSeconds())
+
+	return &services{
+		tracer:       tracer,
+		redisManager: redisManager,
+		db:           db,
+		cronManager:  cronManager,
+	}, nil
+}
+
+func (s *services) cleanup(ctx context.Context, logger infraport.Logger) {
+	// 關閉追蹤器
+	if err := s.tracer.Shutdown(ctx); err != nil {
+		logger.ErrorLog("Failed to shutdown tracer", logger.Error("err", err))
+	}
+
+	// 關閉資料庫連線
+	if err := s.db.Close(); err != nil {
+		logger.ErrorLog("Failed to close database connection", logger.Error("err", err))
+	} else {
+		logger.InfoWithContext(ctx, "Database connection closed successfully")
+	}
+
+	// 關閉Redis連線
+	if err := s.redisManager.Close(); err != nil {
+		logger.ErrorLog("Failed to close Redis connection", logger.Error("err", err))
+	} else {
+		logger.InfoWithContext(ctx, "Redis connection closed successfully")
+	}
+}

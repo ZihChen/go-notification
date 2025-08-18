@@ -93,6 +93,31 @@ services:
     networks:
       - fatcatnet
     restart: always
+  fat-notification-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fat-notification-scheduler
+    entrypoint: [
+      "dlv",
+      "--listen=:6386",
+      "--headless=true",
+      "--api-version=2",
+      "--accept-multiclient",
+      "exec",
+      "./fat_notification_cat",
+      "--",
+      "scheduler"
+    ]
+    environment:
+      - TZ=Asia/Taipei
+    ports:
+      - "6386:6386"   #debugger接口
+    depends_on:
+      - redis
+    networks:
+      - fatcatnet
+    restart: always
 volumes:
   notification_redis_data:
 

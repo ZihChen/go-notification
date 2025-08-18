@@ -110,3 +110,11 @@ func provideRedisClient(manager *redisCache.Manager) (*redis.Client, error) {
 	}
 	return redisInstance, nil
 }
+
+// InitializeSchedulerComponents 初始化 Scheduler 服務的處理器
+func InitializeSchedulerComponents(cfg *config.Config, logger infraport.Logger, redisManager *redisCache.Manager, db *gorm.DB) (*handler.SchedulerHandler, error) {
+	wire.Build(
+		handler.NewSchedulerHandler,
+	)
+	return nil, nil
+}
