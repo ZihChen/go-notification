@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
@@ -81,7 +82,7 @@ func (r *MessageCampaignRepository) FindActiveByFocus(
 
 	now := time.Now()
 	result := r.db.WithContext(ctx).
-		Where("focus = ? OR focus = ?", focus, entity.FocusAll).
+		Where("focus = ? OR focus = ?", focus, consts.TargetAll).
 		Where("(send_start_time IS NULL OR send_start_time <= ?) AND (send_end_time IS NULL OR send_end_time >= ?)", now, now).
 		Find(&campaigns)
 
@@ -145,41 +146,39 @@ func (r *MessageCampaignRepository) Delete(ctx context.Context, id uint64) error
 // 將DB模型映射到領域模型
 func mapToDomainMessageCampaign(campaign *models.MessageCampaign) *entity.MessageCampaign {
 	return &entity.MessageCampaign{
-		ID:               campaign.ID,
-		Category:         campaign.Category,
-		Item:             campaign.Item,
-		Title:            campaign.Title,
-		Content:          campaign.Content,
-		Focus:            campaign.Focus,
-		AutoSend:         campaign.AutoSend,
-		TotalTargetCount: campaign.TotalTargetCount,
-		RealSentCount:    campaign.RealSentCount,
-		SendStartTime:    campaign.SendStartTime,
-		SendEndTime:      campaign.SendEndTime,
-		CreatedBy:        campaign.CreatedBy,
-		UpdatedBy:        campaign.UpdatedBy,
-		CreatedAt:        campaign.CreatedAt,
-		UpdatedAt:        campaign.UpdatedAt,
+		ID:            campaign.ID,
+		Category:      campaign.Category,
+		Item:          campaign.Item,
+		Title:         campaign.Title,
+		Content:       campaign.Content,
+		Target:        campaign.Target,
+		AutoSend:      campaign.AutoSend,
+		RealSentCount: campaign.RealSentCount,
+		SendStartTime: campaign.SendStartTime,
+		SendEndTime:   campaign.SendEndTime,
+		CreatedBy:     campaign.CreatedBy,
+		UpdatedBy:     campaign.UpdatedBy,
+		CreatedAt:     campaign.CreatedAt,
+		UpdatedAt:     campaign.UpdatedAt,
 	}
 }
 
 // 將領域模型映射到DB模型
 func mapToDBMessageCampaign(campaign *entity.MessageCampaign) *models.MessageCampaign {
 	return &models.MessageCampaign{
-		ID:               campaign.ID,
-		Category:         campaign.Category,
-		Item:             campaign.Item,
-		Title:            campaign.Title,
-		Content:          campaign.Content,
-		Focus:            campaign.Focus,
-		AutoSend:         campaign.AutoSend,
-		TotalTargetCount: campaign.TotalTargetCount,
-		RealSentCount:    campaign.RealSentCount,
-		SendStartTime:    campaign.SendStartTime,
-		SendEndTime:      campaign.SendEndTime,
-		CreatedBy:        campaign.CreatedBy,
-		UpdatedBy:        campaign.UpdatedBy,
-		CreatedAt:        campaign.CreatedAt,
-		UpdatedAt:        campaign.UpdatedAt,
+		ID:            campaign.ID,
+		Category:      campaign.Category,
+		Item:          campaign.Item,
+		Title:         campaign.Title,
+		Content:       campaign.Content,
+		Target:        campaign.Target,
+		AutoSend:      campaign.AutoSend,
+		RealSentCount: campaign.RealSentCount,
+		SendStartTime: campaign.SendStartTime,
+		SendEndTime:   campaign.SendEndTime,
+		CreatedBy:     campaign.CreatedBy,
+		UpdatedBy:     campaign.UpdatedBy,
+		CreatedAt:     campaign.CreatedAt,
+		UpdatedAt:     campaign.UpdatedAt,
 	}
 }

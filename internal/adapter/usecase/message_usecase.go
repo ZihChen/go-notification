@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"strings"
 	"time"
 
@@ -48,7 +49,7 @@ func (u *MessageUseCase) CreateMessageCampaign(
 	tracing.RecordSpanAttributes(span,
 		attribute.String("campaign.title", campaign.Title),
 		attribute.Int("campaign.category", int(campaign.Category)),
-		attribute.Int("campaign.focus", int(campaign.Focus)),
+		attribute.Int("campaign.target", int(campaign.Target)),
 	)
 
 	tracing.TraceEvent(span, "Creating message campaign")
@@ -224,8 +225,6 @@ func (u *MessageUseCase) GetPlayerMessages(
 	for i, message := range messages {
 		summaries[i] = entity.MessageSummary{
 			ID:        message.ID,
-			Title:     message.Title,
-			Summary:   generateSummary(message.Content),
 			IsRead:    message.IsRead,
 			CreatedAt: message.CreatedAt,
 		}
@@ -327,8 +326,6 @@ func (u *MessageUseCase) processPlayerMessages(ctx context.Context, globalPlayer
 			message := &entity.PlayerMessage{
 				GlobalPlayerID: globalPlayerID,
 				CampaignID:     campaign.ID,
-				Title:          campaign.Title,
-				Content:        campaign.Content,
 				IsRead:         false,
 				CreatedAt:      time.Now(),
 			}
@@ -357,7 +354,7 @@ func (u *MessageUseCase) processPlayerMessages(ctx context.Context, globalPlayer
 // determinePlayerFocus 根據玩家最後活躍時間判斷焦點類型
 func (u *MessageUseCase) determinePlayerFocus(player *entity.Player) uint8 {
 	if player.LastActiveAt == nil {
-		return entity.FocusNotActivity // 沒有活躍記錄視為不活躍
+		return consts.TargetNotActivity // 沒有活躍記錄視為不活躍
 	}
 
 	now := time.Now()
@@ -365,11 +362,11 @@ func (u *MessageUseCase) determinePlayerFocus(player *entity.Player) uint8 {
 
 	switch {
 	case daysSinceActive <= 30:
-		return entity.FocusInThirty // 30天內
+		return consts.TargetHighActivity // 30天內
 	case daysSinceActive <= 100:
-		return entity.FocusLowActivity // 31-100天
+		return consts.TargetLowActivity // 31-100天
 	default:
-		return entity.FocusNotActivity // 100天以上
+		return consts.TargetNotActivity // 100天以上
 	}
 }
 

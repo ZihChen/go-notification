@@ -198,11 +198,11 @@ func mapToDomainPlayerMessage(message *models.PlayerMessage) *entity.PlayerMessa
 	return &entity.PlayerMessage{
 		ID:             message.ID,
 		GlobalPlayerID: message.GlobalPlayerID,
+		PlayerID:       message.PlayerID,
 		CampaignID:     message.CampaignID,
-		Title:          message.Title,
-		Content:        message.Content,
 		IsRead:         message.IsRead,
 		CreatedAt:      message.CreatedAt,
+		UpdatedAt:      message.UpdatedAt,
 	}
 }
 
@@ -211,10 +211,10 @@ func mapToDBPlayerMessage(message *entity.PlayerMessage) *models.PlayerMessage {
 	return &models.PlayerMessage{
 		ID:             message.ID,
 		GlobalPlayerID: message.GlobalPlayerID,
+		PlayerID:       message.PlayerID,
 		CampaignID:     message.CampaignID,
-		Title:          message.Title,
-		Content:        message.Content,
 		IsRead:         message.IsRead,
 		CreatedAt:      message.CreatedAt,
+		UpdatedAt:      message.UpdatedAt,
 	}
 }

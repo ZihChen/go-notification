@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
@@ -106,34 +107,6 @@ func (h *HTTPHandler) RegisterRoutes(router *gin.Engine) {
 
 	// 健康檢查
 	router.GET("/health", h.HealthCheck)
-}
-
-// CreateMessageCampaignRequest 創建訊息活動請求
-type CreateMessageCampaignRequest struct {
-	Category         uint8      `json:"category"           binding:"required,min=1,max=3"`
-	Item             uint8      `json:"item"               binding:"required,min=1,max=6"`
-	Title            string     `json:"title"              binding:"required,max=255"`
-	Content          string     `json:"content"            binding:"required"`
-	Focus            uint8      `json:"focus"              binding:"required"`
-	AutoSend         bool       `json:"auto_send"`
-	TotalTargetCount int        `json:"total_target_count"`
-	SendStartTime    *time.Time `json:"send_start_time"`
-	SendEndTime      *time.Time `json:"send_end_time"`
-	CreatedBy        string     `json:"created_by"         binding:"required,max=100"`
-}
-
-// UpdateMessageCampaignRequest 更新訊息活動請求
-type UpdateMessageCampaignRequest struct {
-	Category         uint8      `json:"category"           binding:"required,min=1,max=3"`
-	Item             uint8      `json:"item"               binding:"required,min=1,max=6"`
-	Title            string     `json:"title"              binding:"required,max=255"`
-	Content          string     `json:"content"            binding:"required"`
-	Focus            uint8      `json:"focus"              binding:"required"`
-	AutoSend         bool       `json:"auto_send"`
-	TotalTargetCount int        `json:"total_target_count"`
-	SendStartTime    *time.Time `json:"send_start_time"`
-	SendEndTime      *time.Time `json:"send_end_time"`
-	UpdatedBy        string     `json:"updated_by"         binding:"required,max=100"`
 }
 
 // 以下是現有的方法（商戶、玩家、管理員）...
@@ -453,13 +426,13 @@ func (h *HTTPHandler) GetManagerByGlobalID(c *gin.Context) {
 // @Tags 訊息管理
 // @Accept json
 // @Produce json
-// @Param request body CreateMessageCampaignRequest true "創建請求"
+// @Param request body dto.CreateMessageCampaignRequest true "創建請求"
 // @Success 201 {object} MessageCampaign
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/message-campaigns [post]
 func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
-	var req CreateMessageCampaignRequest
+	var req dto.CreateMessageCampaignRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid request format: " + err.Error(),
@@ -468,16 +441,15 @@ func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
 	}
 
 	campaign := &entity.MessageCampaign{
-		Category:         req.Category,
-		Item:             req.Item,
-		Title:            req.Title,
-		Content:          req.Content,
-		Focus:            req.Focus,
-		AutoSend:         req.AutoSend,
-		TotalTargetCount: req.TotalTargetCount,
-		SendStartTime:    req.SendStartTime,
-		SendEndTime:      req.SendEndTime,
-		CreatedBy:        req.CreatedBy,
+		Category:      req.Category,
+		Item:          req.Item,
+		Title:         req.Title,
+		Content:       req.Content,
+		Target:        req.Target,
+		AutoSend:      req.AutoSend,
+		SendStartTime: req.SendStartTime,
+		SendEndTime:   req.SendEndTime,
+		CreatedBy:     req.CreatedBy,
 	}
 
 	if err := h.messageUseCase.CreateMessageCampaign(c.Request.Context(), campaign); err != nil {
@@ -504,7 +476,7 @@ func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
 		return
 	}
 
-	var req UpdateMessageCampaignRequest
+	var req dto.UpdateMessageCampaignRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid request format: " + err.Error(),
@@ -513,17 +485,16 @@ func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
 	}
 
 	campaign := &entity.MessageCampaign{
-		ID:               id,
-		Category:         req.Category,
-		Item:             req.Item,
-		Title:            req.Title,
-		Content:          req.Content,
-		Focus:            req.Focus,
-		AutoSend:         req.AutoSend,
-		TotalTargetCount: req.TotalTargetCount,
-		SendStartTime:    req.SendStartTime,
-		SendEndTime:      req.SendEndTime,
-		UpdatedBy:        &req.UpdatedBy,
+		ID:            id,
+		Category:      req.Category,
+		Item:          req.Item,
+		Title:         req.Title,
+		Content:       req.Content,
+		Target:        req.Target,
+		AutoSend:      req.AutoSend,
+		SendStartTime: req.SendStartTime,
+		SendEndTime:   req.SendEndTime,
+		UpdatedBy:     &req.UpdatedBy,
 	}
 
 	if err := h.messageUseCase.UpdateMessageCampaign(c.Request.Context(), campaign); err != nil {
