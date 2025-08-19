@@ -74,6 +74,11 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, data *event.PlayerEvent)
 		}
 	}
 
+	var lastActiveAt *time.Time
+	if !data.LastActiveAt.IsZero() {
+		lastActiveAt = &data.LastActiveAt
+	}
+
 	player := entity.Player{
 		MerchantID:     merchant.ID,
 		LevelID:        level.ID,
@@ -81,6 +86,7 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, data *event.PlayerEvent)
 		APIKey:         uuid.New().String(), // 生成新的API密鑰
 		Account:        data.Account,
 		Email:          &data.Email,
+		LastActiveAt:   lastActiveAt,
 		CreatedAt:      data.UpdatedAt,
 		UpdatedAt:      data.UpdatedAt,
 	}

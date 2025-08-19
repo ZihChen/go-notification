@@ -122,11 +122,11 @@ func (r *PlayerRepository) Upsert(ctx context.Context, player *entity.Player) er
 				"CASE WHEN ? > updated_at AND level_id != ? THEN ? ELSE level_id END",
 				playerModel.UpdatedAt, playerModel.LevelID, playerModel.LevelID),
 			"email": gorm.Expr(
-				"CASE WHEN ? > updated_at AND email != ? THEN ? ELSE email END",
-				playerModel.UpdatedAt, playerModel.Email, playerModel.Email),
+				"CASE WHEN ? > updated_at THEN ? ELSE email END",
+				playerModel.UpdatedAt, playerModel.Email),
 			"last_active_at": gorm.Expr(
-				"CASE WHEN ? > updated_at AND last_active_at != ? THEN ? ELSE last_active_at END",
-				playerModel.UpdatedAt, playerModel.LastActiveAt, playerModel.LastActiveAt),
+				"CASE WHEN ? > updated_at THEN ? ELSE last_active_at END",
+				playerModel.LastActiveAt, playerModel.LastActiveAt),
 			"updated_at": gorm.Expr(
 				"CASE WHEN ? > updated_at THEN ? ELSE updated_at END",
 				playerModel.UpdatedAt, playerModel.UpdatedAt),

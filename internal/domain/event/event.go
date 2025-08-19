@@ -59,6 +59,7 @@ type PlayerEvent struct {
 	GlobalPlayerLevelID string      `json:"global_player_level_id"`
 	ID                  uint64      `json:"id"`
 	MerchantID          uint64      `json:"merchant_id"`
+	LastActiveAt        time.Time   `json:"last_active_at"`
 	CreatedAt           time.Time   `json:"created_at"`
 	UpdatedAt           time.Time   `json:"updated_at"`
 	PlayerLevel         PlayerLevel `json:"player_level,omitempty"`
