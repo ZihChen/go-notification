@@ -1,94 +1,327 @@
-# fat_notification_cat
+# Fat Notification Cat
 
+基於 Go 語言開發的微服務通知管理系統，專為商戶、玩家和管理員提供訊息推送與通知管理服務。採用六角架構（Hexagonal Architecture）設計，整合 AWS Kinesis Data Streams 進行事件處理，並使用 Redis 進行快取與任務佇列管理。
 
+## 專案架構
 
-## Getting started
+### 核心服務
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+系統包含四個可獨立運行的核心服務：
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+1. **Web Service** (`cmd/web`) 
+   - HTTP API 服務器，使用 Gin 框架
+   - 提供 RESTful API 端點進行 CRUD 操作
+   - 預設端口：8080
 
-## Add your files
+2. **Consumer Service** (`cmd/consumer`)
+   - 處理來自 AWS Kinesis Data Streams 的事件
+   - 實時消費並處理串流資料
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+3. **Worker Service** (`cmd/worker`)
+   - 背景任務處理器
+   - 使用 Asynq 進行非同步任務處理
+
+4. **Scheduler Service** (`cmd/scheduler`)
+   - 管理排程任務和訊息活動
+   - 定時執行批次作業
+
+### 領域實體
+
+- **Merchant** - 商戶實體
+- **Player** - 終端用戶/客戶
+- **Manager** - 管理員用戶
+- **Message Campaign** - 通知活動和訊息推送
+- **Tags/Levels** - 用戶分類和層級管理
+
+### 清潔架構分層
+
+專案遵循六角架構，具有明確的關注點分離：
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.jvdtech.dev/fatcat/fat_notification_cat.git
-git branch -M main
-git push -uf origin main
+internal/
+├── domain/              # 核心業務邏輯、介面定義（Ports）
+│   ├── entity/         # 領域實體
+│   ├── repositoryport/ # Repository 介面
+│   └── errmsg/        # 自定義錯誤類型
+├── adapter/            # 領域介面實作（Adapters）
+│   ├── handler/       # HTTP/Worker/Scheduler 處理器
+│   ├── repository/    # 資料庫操作實作
+│   ├── usecase/      # 業務用例
+│   └── service/      # 外部服務整合
+└── infrastructure/     # 外部依賴
+    ├── database/      # MySQL with GORM
+    ├── cache/redis/   # Redis 快取
+    ├── kds/          # AWS Kinesis 整合
+    ├── queue/        # Asynq 任務佇列
+    └── tracing/      # OpenTelemetry 整合
 ```
 
-## Integrate with your tools
+### 依賴注入
 
-- [ ] [Set up project integrations](https://gitlab.jvdtech.dev/fatcat/fat_notification_cat/-/settings/integrations)
+使用 Google Wire 進行編譯時期依賴注入 (`internal/di/wire.go`)
 
-## Collaborate with your team
+## 快速開始
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+### 環境需求
 
-## Test and Deploy
+- Go 1.21+
+- Docker & Docker Compose
+- MySQL 8.0+
+- Redis 7.0+
+- AWS 帳號（用於 Kinesis Data Streams）
 
-Use the built-in continuous integration in GitLab.
+### 本地開發
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+1. 複製專案並安裝依賴
+```bash
+git clone https://gitlab.jvdtech.dev/fatcat/fat_notification_cat.git
+cd fat_notification_cat
+go mod download
+```
 
-***
+2. 設定環境變數
+```bash
+cp .env.example .env
+# 編輯 .env 檔案，設定必要的環境變數
+```
 
-# Editing this README
+3. 啟動依賴服務
+```bash
+docker-compose up -d mysql redis
+```
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+4. 執行資料庫遷移
+```bash
+atlas migrate apply --env local
+```
 
-## Suggestions for a good README
+5. 啟動服務
+```bash
+# 啟動 Web 服務
+go run main.go web
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+# 啟動 Consumer 服務
+go run main.go consumer
 
-## Name
-Choose a self-explaining name for your project.
+# 啟動 Worker 服務
+go run main.go worker
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+# 啟動 Scheduler 服務
+go run main.go scheduler
+```
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+## 開發指令
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+### 建置與執行
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+```bash
+# 使用 Docker Compose 啟動所有服務
+docker-compose up -d --build
+```
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+### 測試
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+```bash
+# 執行所有測試
+go test ./...
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+# 執行測試並產生覆蓋率報告
+go test -cover ./...
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+# 執行組件測試
+go test -v ./internal/adapter/...
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+# 執行測試並產生 HTML 覆蓋率報告
+go test -coverprofile=coverage.out ./internal/adapter/...
+go tool cover -func=coverage.out 
+```
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+### 程式碼品質
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+```bash
+# 執行 linter
+golangci-lint run --fix
+```
 
-## License
-For open source projects, say how it is licensed.
+### 資料庫遷移
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
- 
+```bash
+# 產生新的遷移檔案
+./migrate.sh gen <migration_name> 
+
+# 執行遷移
+./migrate.sh apply
+
+# 查看遷移狀態
+./migrate.sh status
+```
+
+### Wire 依賴注入
+
+```bash
+# 安裝 Wire
+go install github.com/google/wire/cmd/wire@latest
+
+# 重新產生 wire_gen.go
+wire ./internal/di
+```
+
+## API 文件
+
+專案使用 Swagger 產生 API 文件：
+
+```bash
+# 安裝 swag
+go install github.com/swaggo/swag/cmd/swag@latest
+
+# 產生/更新 Swagger 文件
+swag init
+
+# 存取 Swagger UI（Web 服務啟動後）
+# http://localhost:8080/swagger/index.html
+```
+
+## 事件流程
+
+1. **事件接收**：事件通過 AWS Kinesis Data Streams 抵達
+2. **事件消費**：Consumer 服務處理 KDS 事件並將任務加入 Redis 佇列
+3. **非同步處理**：Worker 服務非同步處理 Redis 佇列中的任務
+4. **API 互動**：Web 服務提供 HTTP API 進行直接互動
+
+## 配置管理
+
+應用程式使用 Viper 進行配置管理，配置從環境變數和 `.env` 檔案載入。
+
+### 主要配置項目
+
+- **資料庫連線**（MySQL）
+  - `DB_HOST`
+  - `DB_PORT`
+  - `DB_NAME`
+  - `DB_USER`
+  - `DB_PASSWORD`
+
+- **Redis 連線**
+  - `REDIS_HOST`
+  - `REDIS_PORT`
+  - `REDIS_PASSWORD`
+
+- **AWS 設定**
+  - `AWS_REGION`
+  - `AWS_ACCESS_KEY_ID`
+  - `AWS_SECRET_ACCESS_KEY`
+  - `KINESIS_STREAM_NAME`
+
+- **OpenTelemetry 追蹤**
+  - `OTEL_EXPORTER_OTLP_ENDPOINT`
+  - `OTEL_SERVICE_NAME`
+
+- **服務端口**
+  - `WEB_PORT`（預設：8080）
+  - `WORKER_CONCURRENCY`
+  - `SCHEDULER_INTERVAL`
+
+## 設計模式
+
+### Repository Pattern
+所有資料庫操作都通過定義在 `internal/domain/repositoryport/` 的 repository 介面進行
+
+### Use Case Pattern
+業務邏輯封裝在 use case 中，協調 repositories 和 services
+
+### Event-Driven Architecture
+系統使用事件進行服務間通訊，通過 KDS 和 Redis 佇列實現
+
+### Error Handling
+在 `internal/domain/errmsg/` 定義自定義錯誤類型，確保整個應用程式的錯誤處理一致性
+
+## 監控與追蹤
+
+專案整合 OpenTelemetry 進行分散式追蹤：
+
+- 自動追蹤 HTTP 請求
+- 追蹤資料庫查詢
+- 追蹤 Redis 操作
+- 追蹤 AWS Kinesis 操作
+- 自定義 span 用於業務邏輯追蹤
+
+## 部署
+
+### Docker 部署
+
+```bash
+# 建置映像
+docker build -t fat-notification-cat:latest .
+
+# 執行容器
+docker run -p 8080:8080 --env-file .env fat-notification-cat:latest web
+```
+
+### Kubernetes 部署
+
+專案包含 Helm charts 用於 Kubernetes 部署：
+
+```bash
+# 安裝 Helm chart
+helm install fat-notification-cat ./helm/fat-notification-cat
+
+# 升級部署
+helm upgrade fat-notification-cat ./helm/fat-notification-cat
+
+# 查看部署狀態
+kubectl get pods -l app=fat-notification-cat
+```
+
+## 故障排除
+
+### 常見問題
+
+1. **資料庫連線失敗**
+   - 確認 MySQL 服務正在運行
+   - 檢查資料庫連線配置
+   - 確認防火牆規則
+
+2. **Redis 連線問題**
+   - 確認 Redis 服務正在運行
+   - 檢查 Redis 密碼配置
+   - 確認網路連通性
+
+3. **AWS Kinesis 錯誤**
+   - 驗證 AWS 憑證
+   - 確認 Kinesis stream 存在
+   - 檢查 IAM 權限
+
+4. **Wire 產生錯誤**
+   - 確保已安裝最新版 Wire
+   - 檢查 provider 函數簽名
+   - 確認所有依賴都已正確註冊
+
+## 貢獻指南
+
+1. Fork 專案
+2. 建立功能分支 (`git checkout -b feature/amazing-feature`)
+3. 提交變更 (`git commit -m 'Add some amazing feature'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
+5. 開啟 Merge Request
+
+### 程式碼規範
+
+- 遵循 [Effective Go](https://golang.org/doc/effective_go.html) 指南
+- 使用 `gofmt` 格式化程式碼
+- 撰寫單元測試覆蓋核心邏輯
+- 保持函數簡潔，單一職責
+- 使用有意義的變數和函數名稱
+
+## 授權
+
+本專案採用專有授權。詳情請聯繫專案維護者。
+
+## 專案狀態
+
+專案目前處於積極開發階段。歡迎提出問題和建議。
+
+## 聯絡資訊
+
+- 專案維護者：FatCat Team
+- GitLab：https://gitlab.jvdtech.dev/fatcat/fat_notification_cat
+- 問題追蹤：https://gitlab.jvdtech.dev/fatcat/fat_notification_cat/-/issues
