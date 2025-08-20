@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
@@ -66,6 +67,46 @@ func (r *PlayerRepository) FirstOrCreate(ctx context.Context, player *entity.Pla
 
 	player.ID = playerModel.ID
 	return nil
+}
+
+// FindByTargetType 根據目標類型查找玩家
+func (r *PlayerRepository) FindByTargetType(
+	ctx context.Context,
+	targetType uint8,
+	offset, limit int,
+) ([]*entity.Player, error) {
+	var players []models.Player
+
+	query := r.db.WithContext(ctx)
+
+	now := time.Now()
+	switch targetType {
+	case consts.TargetHighActivity:
+		thirtyDaysAgo := now.AddDate(0, 0, -30)
+		query = query.Where("last_active_at IS NOT NULL AND last_active_at >= ?", thirtyDaysAgo)
+	case consts.TargetLowActivity:
+		thirtyDaysAgo := now.AddDate(0, 0, -30)
+		hundredDaysAgo := now.AddDate(0, 0, -100)
+		query = query.Where("last_active_at IS NOT NULL AND last_active_at < ? AND last_active_at >= ?", thirtyDaysAgo, hundredDaysAgo)
+	case consts.TargetNotActivity:
+		hundredDaysAgo := now.AddDate(0, 0, -100)
+		query = query.Where("last_active_at IS NULL OR last_active_at < ?", hundredDaysAgo)
+	case consts.TargetAll:
+	default:
+		return nil, fmt.Errorf("unsupported target type: %d", targetType)
+	}
+
+	result := query.Offset(offset).Limit(limit).Find(&players)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	domainPlayers := make([]*entity.Player, len(players))
+	for i, player := range players {
+		domainPlayers[i] = mapToDomainPlayer(&player)
+	}
+
+	return domainPlayers, nil
 }
 
 // Create 創建玩家

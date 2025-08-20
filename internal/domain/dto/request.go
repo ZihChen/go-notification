@@ -1,6 +1,10 @@
 package dto
 
-import "time"
+import (
+	"time"
+
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+)
 
 type CreateMessageCampaignRequest struct {
 	Category         uint8      `json:"category"           binding:"required,min=1,max=3"`
@@ -27,4 +31,22 @@ type UpdateMessageCampaignRequest struct {
 	SendStartTime    *time.Time `json:"send_start_time"`
 	SendEndTime      *time.Time `json:"send_end_time"`
 	UpdatedBy        string     `json:"updated_by"         binding:"required,max=100"`
+}
+
+// ErrorResponse 錯誤響應
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
+// SuccessResponse 成功響應
+type SuccessResponse struct {
+	Status string `json:"status"`
+}
+
+// MessageCampaignListResponse 活動列表響應
+type MessageCampaignListResponse struct {
+	Data     []*entity.MessageCampaign `json:"data"`
+	Page     int                       `json:"page"`
+	PageSize int                       `json:"page_size"`
+	Total    int                       `json:"total"`
 }

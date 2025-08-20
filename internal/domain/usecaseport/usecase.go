@@ -41,6 +41,9 @@ type MessageUseCase interface {
 		page, pageSize int,
 	) (*entity.MessageListResponse, error)
 	MarkMessageAsRead(ctx context.Context, globalPlayerID string, messageID uint64) error
+	ProcessScheduledCampaigns(ctx context.Context) error
+	SendCampaignToPlayers(ctx context.Context, campaignID uint64) error
+	SendCampaignToPlayersAsync(ctx context.Context, campaignID uint64) error
 }
 
 type PlayerLevelUseCase interface {

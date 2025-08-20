@@ -1,4 +1,4 @@
-package usecase
+package message_campaign
 
 import (
 	"context"

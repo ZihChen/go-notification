@@ -11,6 +11,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/job"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/repository"
 	usecase2 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase/message_campaign"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/serviceport"
 	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
@@ -49,7 +50,7 @@ var baseSet = wire.NewSet(
 	usecase2.NewMerchantUseCase,
 	usecase2.NewPlayerUseCase,
 	usecase2.NewManagerUseCase,
-	usecase2.NewMessageUseCase,
+	message_campaign.NewMessageUseCase,
 	usecase2.NewLevelUseCase,
 	usecase2.NewTagUseCase,
 )

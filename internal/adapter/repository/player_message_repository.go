@@ -9,6 +9,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // PlayerMessageRepository GORM實現的會員訊息資料庫
@@ -191,6 +192,89 @@ func (r *PlayerMessageRepository) CheckMessageExists(
 	}
 
 	return count > 0, nil
+}
+
+// CreateBatchOptimized 優化的批次創建玩家訊息
+func (r *PlayerMessageRepository) CreateBatchOptimized(
+	ctx context.Context,
+	messages []*entity.PlayerMessage,
+	batchSize int,
+) error {
+	if len(messages) == 0 {
+		return nil
+	}
+
+	// 分批處理避免單次插入過多記錄
+	for i := 0; i < len(messages); i += batchSize {
+		end := i + batchSize
+		if end > len(messages) {
+			end = len(messages)
+		}
+
+		batch := messages[i:end]
+		messageModels := make([]*models.PlayerMessage, len(batch))
+
+		for j, message := range batch {
+			messageModels[j] = &models.PlayerMessage{
+				GlobalPlayerID: message.GlobalPlayerID,
+				PlayerID:       message.PlayerID,
+				CampaignID:     message.CampaignID,
+				IsRead:         message.IsRead,
+				CreatedAt:      message.CreatedAt,
+				UpdatedAt:      message.UpdatedAt,
+			}
+		}
+
+		// 使用 IGNORE 避免重複鍵錯誤，性能更好
+		result := r.db.WithContext(ctx).
+			Clauses(clause.OnConflict{DoNothing: true}).
+			Create(&messageModels)
+
+		if result.Error != nil {
+			return fmt.Errorf("batch create messages: %w", result.Error)
+		}
+	}
+
+	return nil
+}
+
+// CheckMessageExistsBatch 批次檢查訊息是否存在
+func (r *PlayerMessageRepository) CheckMessageExistsBatch(
+	ctx context.Context,
+	playerIDs []uint64,
+	campaignID uint64,
+) (map[uint64]bool, error) {
+	if len(playerIDs) == 0 {
+		return make(map[uint64]bool), nil
+	}
+
+	var existingRecords []struct {
+		PlayerID uint64 `gorm:"column:player_id"`
+	}
+
+	result := r.db.WithContext(ctx).
+		Model(&models.PlayerMessage{}).
+		Select("player_id").
+		Where("player_id IN ? AND campaign_id = ?", playerIDs, campaignID).
+		Find(&existingRecords)
+
+	if result.Error != nil {
+		return nil, fmt.Errorf("check message exists batch: %w", result.Error)
+	}
+
+	existsMap := make(map[uint64]bool)
+
+	// 初始化所有玩家為false
+	for _, playerID := range playerIDs {
+		existsMap[playerID] = false
+	}
+
+	// 標記已存在的玩家為true
+	for _, record := range existingRecords {
+		existsMap[record.PlayerID] = true
+	}
+
+	return existsMap, nil
 }
 
 // 將DB模型映射到領域模型

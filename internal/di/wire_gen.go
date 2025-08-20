@@ -14,6 +14,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/job"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase/message_campaign"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/serviceport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
@@ -46,7 +47,7 @@ func InitializeWebServer(cfg *config.Config, logger infraport.Logger, redisManag
 	managerUseCase := usecase.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger)
 	messageCampaignRepository := repository.NewMessageCampaignRepository(db)
 	playerMessageRepository := repository.NewPlayerMessageRepository(db)
-	messageUseCase := usecase.NewMessageUseCase(messageCampaignRepository, playerMessageRepository, playerRepository, logger)
+	messageUseCase := message_campaign.NewMessageUseCase(messageCampaignRepository, playerMessageRepository, playerRepository, logger)
 	httpHandler := handler.NewHTTPHandler(merchantUseCase, playerUseCase, managerUseCase, messageUseCase, logger)
 	return httpHandler, nil
 }
@@ -127,7 +128,10 @@ func InitializeConsumer(cfg *config.Config, logger infraport.Logger, redisManage
 // InitializeSchedulerComponents 初始化 Scheduler 服務的處理器
 func InitializeSchedulerComponents(cfg *config.Config, logger infraport.Logger, redisManager *redis.Manager, db *gorm.DB) (*scheduler.Handler, error) {
 	messageCampaignRepository := repository.NewMessageCampaignRepository(db)
-	scheduledJob := job.NewMessageCampaignTriggerJob(messageCampaignRepository)
+	playerMessageRepository := repository.NewPlayerMessageRepository(db)
+	playerRepository := repository.NewPlayerRepository(db)
+	messageUseCase := message_campaign.NewMessageUseCase(messageCampaignRepository, playerMessageRepository, playerRepository, logger)
+	scheduledJob := job.NewMessageCampaignTriggerJob(messageUseCase, logger)
 	registry := job.NewRegistry(scheduledJob)
 	schedulerHandler := scheduler.NewSchedulerHandler(logger, registry)
 	return schedulerHandler, nil
@@ -141,7 +145,7 @@ type WorkerComponents struct {
 	Server  *asynq.Server
 }
 
-var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient, repository.NewMerchantRepository, repository.NewPlayerRepository, repository.NewManagerRepository, repository.NewMessageCampaignRepository, repository.NewPlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, provideEventProducer, usecase.NewMerchantUseCase, usecase.NewPlayerUseCase, usecase.NewManagerUseCase, usecase.NewMessageUseCase, usecase.NewLevelUseCase, usecase.NewTagUseCase)
+var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient, repository.NewMerchantRepository, repository.NewPlayerRepository, repository.NewManagerRepository, repository.NewMessageCampaignRepository, repository.NewPlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, provideEventProducer, usecase.NewMerchantUseCase, usecase.NewPlayerUseCase, usecase.NewManagerUseCase, message_campaign.NewMessageUseCase, usecase.NewLevelUseCase, usecase.NewTagUseCase)
 
 // 事件生產者提供者
 func provideEventProducer(kdsService *kds.KDSService, logger infraport.Logger) serviceport.EventProducer {

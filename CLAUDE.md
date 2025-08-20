@@ -162,14 +162,18 @@ Custom error types defined in `internal/domain/errmsg/` for consistent error han
 - **Database**: 
   - internal/infrastructure/models/message_campaign.go:8
   - internal/infrastructure/models/player_message.go:6
+- **Scheduler & CronJob**:
+  - internal/adapter/job/message_campaign_trigger_job.go:23
 
 #### Implementation Guidelines
 1. 遵循 clean architecture 原則
 2. 加入適當的錯誤處理
-3. 排程發送做到高併發處理、以及高延展性，可依照需求擴充發送速度，以3秒內完成10萬筆資料為目標
-4. 目前還沒有發送消息的第三方服務，現階段發送消息以建立好player_message為主，會員透過讀取站內信的API來獲得訊息，但需要考慮未來有可能串接其他第三方的消息服務
-5. 發送完需要紀錄發送了多少筆，並寫回message_campaign.real_sent_count
-6. RESTful API需要加入Swagger
+3. 適時加入Redis快取應用
+4. 避免DB  N+1 query問題
+5. 排程發送做到高併發處理、以及高延展性，可依照需求擴充發送速度，以3秒內完成10萬筆資料為目標
+6. 目前還沒有發送消息的第三方服務，現階段發送消息以建立好player_message為主，會員透過讀取站內信的API來獲得訊息，但需要考慮未來有可能串接其他第三方的消息服務
+7. 發送完需要紀錄發送了多少筆，並寫回message_campaign.real_sent_count
+8. RESTful API需要加入Swagger
 
 #### Testing Requirements
 - Unit tests for use cases

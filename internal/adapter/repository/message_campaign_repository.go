@@ -98,6 +98,32 @@ func (r *MessageCampaignRepository) FindActiveByFocus(
 	return domainCampaigns, nil
 }
 
+// FindScheduledCampaigns 查找應該立即發送的排程活動
+func (r *MessageCampaignRepository) FindScheduledCampaigns(
+	ctx context.Context,
+) ([]*entity.MessageCampaign, error) {
+	var campaigns []models.MessageCampaign
+
+	now := time.Now()
+	result := r.db.WithContext(ctx).
+		Where("auto_send = ?", false).
+		Where("send_start_time IS NOT NULL").
+		Where("send_start_time <= ?", now).
+		Where("(send_end_time IS NULL OR send_end_time >= ?)", now).
+		Find(&campaigns)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	domainCampaigns := make([]*entity.MessageCampaign, len(campaigns))
+	for i, campaign := range campaigns {
+		domainCampaigns[i] = mapToDomainMessageCampaign(&campaign)
+	}
+
+	return domainCampaigns, nil
+}
+
 // Create 創建會員訊息活動
 func (r *MessageCampaignRepository) Create(
 	ctx context.Context,
@@ -124,6 +150,28 @@ func (r *MessageCampaignRepository) Update(
 	result := r.db.WithContext(ctx).Save(campaignModel)
 	if result.Error != nil {
 		return result.Error
+	}
+
+	return nil
+}
+
+// UpdateSentCount 更新實際發送人數
+func (r *MessageCampaignRepository) UpdateSentCount(
+	ctx context.Context,
+	campaignID uint64,
+	count int64,
+) error {
+	result := r.db.WithContext(ctx).
+		Model(&models.MessageCampaign{}).
+		Where("id = ?", campaignID).
+		Update("real_sent_count", count)
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("record not found")
 	}
 
 	return nil

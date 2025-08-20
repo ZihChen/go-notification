@@ -2,29 +2,42 @@ package job
 
 import (
 	"context"
-	"fmt"
 	"time"
 
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/jobport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
 )
 
 type MessageCampaignTriggerJob struct {
-	campaignRepo repositoryport.MessageCampaignRepository
+	messageUseCase usecaseport.MessageUseCase
+	logger         infraport.Logger
 }
 
 func NewMessageCampaignTriggerJob(
-	campaignRepo repositoryport.MessageCampaignRepository) jobport.ScheduledJob {
+	messageUseCase usecaseport.MessageUseCase,
+	logger infraport.Logger) jobport.ScheduledJob {
 	return &MessageCampaignTriggerJob{
-		campaignRepo: campaignRepo,
+		messageUseCase: messageUseCase,
+		logger:         logger,
 	}
 }
 
 func (j *MessageCampaignTriggerJob) Execute(ctx context.Context) error {
-	fmt.Printf("[%s] 執行示例任務: %s\n", time.Now().Format("2006-01-02 15:04:05"), j.GetName())
-	// 模擬任務執行時間
-	time.Sleep(2 * time.Second)
-	fmt.Printf("[%s] 任務完成: %s\n", time.Now().Format("2006-01-02 15:04:05"), j.GetName())
+	j.logger.InfoLog("Starting message campaign trigger job execution")
+
+	start := time.Now()
+	defer func() {
+		duration := time.Since(start)
+		j.logger.InfoLog("Message campaign trigger job completed",
+			j.logger.String("duration", duration.String()))
+	}()
+
+	if err := j.messageUseCase.ProcessScheduledCampaigns(ctx); err != nil {
+		j.logger.ErrorLog("Failed to process scheduled campaigns", j.logger.Error("err", err))
+		return err
+	}
+
 	return nil
 }
 
@@ -33,9 +46,9 @@ func (j *MessageCampaignTriggerJob) GetName() string {
 }
 
 func (j *MessageCampaignTriggerJob) GetCron() string {
-	return "*/5 * * * * *"
+	return "0 */1 * * * *"
 }
 
 func (j *MessageCampaignTriggerJob) GetTimeInterval() time.Duration {
-	return 5 * time.Second
+	return 1 * time.Minute
 }

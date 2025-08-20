@@ -21,6 +21,7 @@ type Player = entity.Player
 type Manager = entity.Manager
 type MessageCampaign = entity.MessageCampaign
 type MessageListResponse = entity.MessageListResponse
+type MessageCampaignListResponse = dto.MessageCampaignListResponse
 
 // 錯誤響應模型
 type ErrorResponse struct {
@@ -423,13 +424,13 @@ func (h *HTTPHandler) GetManagerByGlobalID(c *gin.Context) {
 // CreateMessageCampaign 創建會員訊息活動
 // @Summary 創建會員訊息活動
 // @Description 創建新的會員訊息活動
-// @Tags 訊息管理
+// @Tags Message Campaign
 // @Accept json
 // @Produce json
 // @Param request body dto.CreateMessageCampaignRequest true "創建請求"
-// @Success 201 {object} MessageCampaign
-// @Failure 400 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
+// @Success 201 {object} entity.MessageCampaign
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /api/v1/message-campaigns [post]
 func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
 	var req dto.CreateMessageCampaignRequest
@@ -467,6 +468,18 @@ func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
 }
 
 // UpdateMessageCampaign 更新會員訊息活動
+// @Summary 更新會員訊息活動
+// @Description 更新指定ID的會員訊息活動
+// @Tags Message Campaign
+// @Accept json
+// @Produce json
+// @Param id path int true "Campaign ID"
+// @Param request body dto.UpdateMessageCampaignRequest true "Update message campaign request"
+// @Success 200 {object} entity.MessageCampaign
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/message-campaigns/{id} [put]
 func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -519,6 +532,15 @@ func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
 }
 
 // DeleteMessageCampaign 刪除會員訊息活動
+// @Summary 刪除會員訊息活動
+// @Description 刪除指定ID的會員訊息活動
+// @Tags Message Campaign
+// @Param id path int true "Campaign ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/message-campaigns/{id} [delete]
 func (h *HTTPHandler) DeleteMessageCampaign(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -552,6 +574,15 @@ func (h *HTTPHandler) DeleteMessageCampaign(c *gin.Context) {
 }
 
 // GetMessageCampaign 獲取會員訊息活動
+// @Summary 獲取會員訊息活動
+// @Description 根據ID獲取會員訊息活動詳情
+// @Tags Message Campaign
+// @Param id path int true "Campaign ID"
+// @Success 200 {object} entity.MessageCampaign
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/message-campaigns/{id} [get]
 func (h *HTTPHandler) GetMessageCampaign(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -584,6 +615,14 @@ func (h *HTTPHandler) GetMessageCampaign(c *gin.Context) {
 }
 
 // ListMessageCampaigns 列出會員訊息活動
+// @Summary 列出會員訊息活動
+// @Description 分頁列出會員訊息活動
+// @Tags Message Campaign
+// @Param page query int false "頁碼" default(1)
+// @Param page_size query int false "每頁數量" default(10)
+// @Success 200 {object} MessageCampaignListResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/message-campaigns [get]
 func (h *HTTPHandler) ListMessageCampaigns(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
@@ -609,12 +648,14 @@ func (h *HTTPHandler) ListMessageCampaigns(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"campaigns": campaigns,
-		"total":     total,
-		"page":      page,
-		"page_size": pageSize,
-	})
+	response := dto.MessageCampaignListResponse{
+		Data:     campaigns,
+		Page:     page,
+		PageSize: pageSize,
+		Total:    total,
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 // GetPlayerMessages 獲取玩家訊息列表

@@ -21,6 +21,7 @@ type MerchantRepository interface {
 type PlayerRepository interface {
 	FindByID(ctx context.Context, id uint64) (*entity.Player, error)
 	FindByGlobalID(ctx context.Context, globalID string) (*entity.Player, error)
+	FindByTargetType(ctx context.Context, targetType uint8, offset, limit int) ([]*entity.Player, error)
 	FirstOrCreate(ctx context.Context, player *entity.Player) error
 	Create(ctx context.Context, player *entity.Player) error
 	Update(ctx context.Context, player *entity.Player) error
@@ -44,8 +45,10 @@ type MessageCampaignRepository interface {
 	FindByID(ctx context.Context, id uint64) (*entity.MessageCampaign, error)
 	FindAll(ctx context.Context, page, pageSize int) ([]*entity.MessageCampaign, int, error)
 	FindActiveByFocus(ctx context.Context, focus uint8) ([]*entity.MessageCampaign, error)
+	FindScheduledCampaigns(ctx context.Context) ([]*entity.MessageCampaign, error)
 	Create(ctx context.Context, campaign *entity.MessageCampaign) error
 	Update(ctx context.Context, campaign *entity.MessageCampaign) error
+	UpdateSentCount(ctx context.Context, campaignID uint64, count int64) error
 	Delete(ctx context.Context, id uint64) error
 }
 
@@ -63,8 +66,10 @@ type PlayerMessageRepository interface {
 	) (*entity.PlayerMessageStats, error)
 	Create(ctx context.Context, message *entity.PlayerMessage) error
 	CreateBatch(ctx context.Context, messages []*entity.PlayerMessage) error
+	CreateBatchOptimized(ctx context.Context, messages []*entity.PlayerMessage, batchSize int) error
 	MarkAsRead(ctx context.Context, globalPlayerID string, messageID uint64) error
 	CheckMessageExists(ctx context.Context, globalPlayerID string, campaignID uint64) (bool, error)
+	CheckMessageExistsBatch(ctx context.Context, playerIDs []uint64, campaignID uint64) (map[uint64]bool, error)
 }
 
 type LevelRepository interface {
