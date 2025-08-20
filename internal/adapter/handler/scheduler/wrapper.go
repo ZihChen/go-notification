@@ -3,11 +3,12 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/jobport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
-	"time"
 )
 
 // JobWrapper 包裝job執行邏輯，添加追蹤和日誌

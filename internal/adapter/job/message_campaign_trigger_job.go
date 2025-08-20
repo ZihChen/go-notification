@@ -3,9 +3,10 @@ package job
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/jobport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
-	"time"
 )
 
 type MessageCampaignTriggerJob struct {

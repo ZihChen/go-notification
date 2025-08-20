@@ -2,10 +2,10 @@ package scheduler
 
 import (
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/job"
 	"log"
 	"time"
 
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/job"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/jobport"
 	"github.com/robfig/cron/v3"
