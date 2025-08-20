@@ -2,6 +2,11 @@ apiVersion: v2
 name: fatnotificationcat
 description: A Helm chart for Fat Notification Cat application
 
+dependencies:
+  - name: redis
+    version: "0.1.0"
+    repository: "https://helm.jvdev.cc/"
+
 # A chart can be either an 'application' or a 'library' chart.
 #
 # Application charts are a collection of templates that can be packaged into versioned archives
