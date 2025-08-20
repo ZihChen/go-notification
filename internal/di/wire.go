@@ -7,6 +7,8 @@ import (
 	"github.com/google/wire"
 	"github.com/hibiken/asynq"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler/scheduler"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/job"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/repository"
 	usecase2 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
@@ -112,9 +114,12 @@ func provideRedisClient(manager *redisCache.Manager) (*redis.Client, error) {
 }
 
 // InitializeSchedulerComponents 初始化 Scheduler 服務的處理器
-func InitializeSchedulerComponents(cfg *config.Config, logger infraport.Logger, redisManager *redisCache.Manager, db *gorm.DB) (*handler.SchedulerHandler, error) {
+func InitializeSchedulerComponents(cfg *config.Config, logger infraport.Logger, redisManager *redisCache.Manager, db *gorm.DB) (*scheduler.Handler, error) {
 	wire.Build(
-		handler.NewSchedulerHandler,
+		baseSet,
+		job.NewMessageCampaignTriggerJob,
+		job.NewRegistry,
+		scheduler.NewSchedulerHandler,
 	)
 	return nil, nil
 }

@@ -10,6 +10,8 @@ import (
 	"github.com/google/wire"
 	"github.com/hibiken/asynq"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler/scheduler"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/job"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
@@ -123,8 +125,11 @@ func InitializeConsumer(cfg *config.Config, logger infraport.Logger, redisManage
 }
 
 // InitializeSchedulerComponents 初始化 Scheduler 服務的處理器
-func InitializeSchedulerComponents(cfg *config.Config, logger infraport.Logger, redisManager *redis.Manager, db *gorm.DB) (*handler.SchedulerHandler, error) {
-	schedulerHandler := handler.NewSchedulerHandler(logger)
+func InitializeSchedulerComponents(cfg *config.Config, logger infraport.Logger, redisManager *redis.Manager, db *gorm.DB) (*scheduler.Handler, error) {
+	messageCampaignRepository := repository.NewMessageCampaignRepository(db)
+	scheduledJob := job.NewMessageCampaignTriggerJob(messageCampaignRepository)
+	registry := job.NewRegistry(scheduledJob)
+	schedulerHandler := scheduler.NewSchedulerHandler(logger, registry)
 	return schedulerHandler, nil
 }
 
