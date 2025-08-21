@@ -10,6 +10,7 @@ import (
 	"github.com/google/wire"
 	"github.com/hibiken/asynq"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler/api"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler/scheduler"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/job"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/repository"
@@ -28,7 +29,7 @@ import (
 // Injectors from wire.go:
 
 // InitializeWebServer 初始化 Web 服務的 HTTP 處理器
-func InitializeWebServer(cfg *config.Config, logger infraport.Logger, redisManager *redis.Manager, db *gorm.DB) (*handler.HTTPHandler, error) {
+func InitializeWebServer(cfg *config.Config, logger infraport.Logger, redisManager *redis.Manager, db *gorm.DB) (*api.HTTPHandler, error) {
 	merchantRepository := repository.NewMerchantRepository(db)
 	queueService, err := queue.NewQueueService(cfg, logger)
 	if err != nil {
@@ -48,7 +49,7 @@ func InitializeWebServer(cfg *config.Config, logger infraport.Logger, redisManag
 	messageCampaignRepository := repository.NewMessageCampaignRepository(db)
 	playerMessageRepository := repository.NewPlayerMessageRepository(db)
 	messageUseCase := message_campaign.NewMessageUseCase(messageCampaignRepository, playerMessageRepository, playerRepository, logger)
-	httpHandler := handler.NewHTTPHandler(merchantUseCase, playerUseCase, managerUseCase, messageUseCase, logger)
+	httpHandler := api.NewHTTPHandler(merchantUseCase, playerUseCase, managerUseCase, messageUseCase, logger)
 	return httpHandler, nil
 }
 

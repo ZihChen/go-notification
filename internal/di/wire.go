@@ -7,6 +7,7 @@ import (
 	"github.com/google/wire"
 	"github.com/hibiken/asynq"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler/api"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler/scheduler"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/job"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/repository"
@@ -61,11 +62,11 @@ func provideEventProducer(kdsService *kds.KDSService, logger infraport.Logger) s
 }
 
 // InitializeWebServer 初始化 Web 服務的 HTTP 處理器
-func InitializeWebServer(cfg *config.Config, logger infraport.Logger, redisManager *redisCache.Manager, db *gorm.DB) (*handler.HTTPHandler, error) {
+func InitializeWebServer(cfg *config.Config, logger infraport.Logger, redisManager *redisCache.Manager, db *gorm.DB) (*api.HTTPHandler, error) {
 	wire.Build(
 		baseSet,
 		kds.NewKDSService,
-		handler.NewHTTPHandler,
+		api.NewHTTPHandler,
 	)
 	return nil, nil
 }
