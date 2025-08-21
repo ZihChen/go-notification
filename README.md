@@ -23,7 +23,8 @@
 
 4. **Scheduler Service** (`cmd/scheduler`)
    - 管理排程任務和訊息活動
-   - 定時執行批次作業
+   - 使用 Cron 表達式定時執行 Job
+   - 支援訊息活動觸發和系統維護任務
 
 ### 領域實體
 
@@ -33,27 +34,59 @@
 - **Message Campaign** - 通知活動和訊息推送
 - **Tags/Levels** - 用戶分類和層級管理
 
-### 清潔架構分層
+###  Clean Architecture 分層
 
 專案遵循六角架構，具有明確的關注點分離：
 
 ```
-internal/
-├── domain/              # 核心業務邏輯、介面定義（Ports）
-│   ├── entity/         # 領域實體
-│   ├── repositoryport/ # Repository 介面
-│   └── errmsg/        # 自定義錯誤類型
-├── adapter/            # 領域介面實作（Adapters）
-│   ├── handler/       # HTTP/Worker/Scheduler 處理器
-│   ├── repository/    # 資料庫操作實作
-│   ├── usecase/      # 業務用例
-│   └── service/      # 外部服務整合
-└── infrastructure/     # 外部依賴
-    ├── database/      # MySQL with GORM
-    ├── cache/redis/   # Redis 快取
-    ├── kds/          # AWS Kinesis 整合
-    ├── queue/        # Asynq 任務佇列
-    └── tracing/      # OpenTelemetry 整合
+.
+├── cmd/                 # 應用程式入口點
+│   ├── root.go         # Cobra CLI 根命令
+│   ├── web/            # Web API 服務
+│   ├── consumer/       # Kinesis 事件消費者
+│   ├── worker/         # 背景任務處理器
+│   └── scheduler/      # 排程任務管理
+├── docs/               # API 文件
+│   ├── swagger.json    # Swagger JSON 規格
+│   └── swagger.yaml    # Swagger YAML 規格
+├── internal/
+│   ├── domain/         # 核心業務邏輯、介面定義（Ports）
+│   │   ├── entity/     # 領域實體
+│   │   ├── dto/        # 資料傳輸物件
+│   │   ├── event/      # 事件定義
+│   │   ├── consts/     # 常數定義
+│   │   ├── errmsg/     # 自定義錯誤類型
+│   │   ├── repositoryport/ # Repository 介面
+│   │   ├── usecaseport/    # Use Case 介面
+│   │   ├── serviceport/    # Service 介面
+│   │   ├── jobport/        # 排程任務介面
+│   │   └── infraport/      # 基礎設施介面
+│   ├── adapter/        # 領域介面實作（Adapters）
+│   │   ├── handler/    # HTTP/Worker/Scheduler 處理器
+│   │   │   └── scheduler/ # 排程處理器元件
+│   │   ├── repository/ # 資料庫操作實作
+│   │   ├── usecase/    # 業務用例
+│   │   │   └── message_campaign/ # 訊息活動用例
+│   │   ├── job/        # 排程任務實作
+│   │   └── service/    # 外部服務整合
+│   ├── infrastructure/ # 外部依賴
+│   │   ├── database/   # 資料庫連線管理
+│   │   │   └── mysql/  # MySQL 實作
+│   │   ├── cache/      
+│   │   │   └── redis/  # Redis 快取管理
+│   │   ├── kds/        # AWS Kinesis 整合
+│   │   ├── queue/      # Asynq 任務佇列
+│   │   ├── logger/     # 日誌服務
+│   │   ├── models/     # 資料庫模型
+│   │   └── tracing/    # OpenTelemetry 追蹤
+│   └── di/             # 依賴注入（Wire）
+│       ├── wire.go     # Wire 配置
+│       └── wire_gen.go # Wire 產生的程式碼
+├── migrations/         # 資料庫遷移檔案
+├── test/              # 整合測試
+│   └── helper/        # 測試輔助工具
+└── helm/              # Kubernetes Helm Charts
+    └── templates/     # K8s 資源模板
 ```
 
 ### 依賴注入
@@ -228,6 +261,12 @@ swag init
 
 ### Use Case Pattern
 業務邏輯封裝在 use case 中，協調 repositories 和 services
+
+### Job Pattern
+所有排程任務實作 `jobport.ScheduledJob` 介面，統一在 `internal/adapter/job/` 管理
+- Job Registry 模式進行集中管理
+- 使用 Wire 進行依賴注入
+- 編譯時檢查確保介面實作
 
 ### Event-Driven Architecture
 系統使用事件進行服務間通訊，通過 KDS 和 Redis 佇列實現
