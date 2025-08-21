@@ -3,10 +3,11 @@ package message_campaign
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
-	"time"
 )
 
 // ProcessScheduledCampaigns 處理排程的活動
@@ -77,7 +78,11 @@ func (u *MessageUseCase) SendCampaignToPlayers(ctx context.Context, campaignID u
 
 		var newMessages []*entity.PlayerMessage
 		for _, player := range players {
-			exists, err := u.playerMessageRepo.CheckMessageExists(ctx, player.GlobalPlayerID, campaignID)
+			exists, err := u.playerMessageRepo.CheckMessageExists(
+				ctx,
+				player.GlobalPlayerID,
+				campaignID,
+			)
 			if err != nil {
 				u.logger.WarnLog("Failed to check message existence",
 					u.logger.String("global_player_id", player.GlobalPlayerID),

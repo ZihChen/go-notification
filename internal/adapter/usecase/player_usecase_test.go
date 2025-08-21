@@ -38,7 +38,11 @@ func (m *MockPlayerRepository) FindByGlobalID(
 	return args.Get(0).(*entity.Player), args.Error(1)
 }
 
-func (m *MockPlayerRepository) FindByTargetType(ctx context.Context, targetType uint8, offset, limit int) ([]*entity.Player, error) {
+func (m *MockPlayerRepository) FindByTargetType(
+	ctx context.Context,
+	targetType uint8,
+	offset, limit int,
+) ([]*entity.Player, error) {
 	args := m.Called(ctx, targetType, offset, limit)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)

@@ -131,8 +131,8 @@ func InitializeSchedulerComponents(cfg *config.Config, logger infraport.Logger, 
 	playerMessageRepository := repository.NewPlayerMessageRepository(db)
 	playerRepository := repository.NewPlayerRepository(db)
 	messageUseCase := message_campaign.NewMessageUseCase(messageCampaignRepository, playerMessageRepository, playerRepository, logger)
-	scheduledJob := job.NewMessageCampaignTriggerJob(messageUseCase, logger)
-	registry := job.NewRegistry(scheduledJob)
+	messageCampaignTriggerJob := job.NewMessageCampaignTriggerJob(messageUseCase, logger)
+	registry := job.NewRegistry(messageCampaignTriggerJob)
 	schedulerHandler := scheduler.NewSchedulerHandler(logger, registry)
 	return schedulerHandler, nil
 }

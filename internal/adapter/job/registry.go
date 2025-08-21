@@ -7,13 +7,15 @@ type Registry struct {
 	jobs map[string]jobport.ScheduledJob
 }
 
+// NewRegistry 透過依賴注入初始化Job
 func NewRegistry(
-	campaignTrigger jobport.ScheduledJob,
+	campaignTrigger *MessageCampaignTriggerJob,
 ) *Registry {
 	registry := &Registry{
 		jobs: make(map[string]jobport.ScheduledJob),
 	}
 
+	// 要執行的Job在這裡註冊
 	registry.Register(campaignTrigger)
 
 	return registry

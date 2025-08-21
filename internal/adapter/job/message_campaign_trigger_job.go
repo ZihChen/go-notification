@@ -9,6 +9,9 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
 )
 
+// 確保 MessageCampaignTriggerJob 實現了 jobport.ScheduledJob 介面
+var _ jobport.ScheduledJob = (*MessageCampaignTriggerJob)(nil)
+
 type MessageCampaignTriggerJob struct {
 	messageUseCase usecaseport.MessageUseCase
 	logger         infraport.Logger
@@ -16,7 +19,7 @@ type MessageCampaignTriggerJob struct {
 
 func NewMessageCampaignTriggerJob(
 	messageUseCase usecaseport.MessageUseCase,
-	logger infraport.Logger) jobport.ScheduledJob {
+	logger infraport.Logger) *MessageCampaignTriggerJob {
 	return &MessageCampaignTriggerJob{
 		messageUseCase: messageUseCase,
 		logger:         logger,
@@ -47,8 +50,4 @@ func (j *MessageCampaignTriggerJob) GetName() string {
 
 func (j *MessageCampaignTriggerJob) GetCron() string {
 	return "0 */1 * * * *"
-}
-
-func (j *MessageCampaignTriggerJob) GetTimeInterval() time.Duration {
-	return 1 * time.Minute
 }

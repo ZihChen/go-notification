@@ -87,7 +87,11 @@ func (r *PlayerRepository) FindByTargetType(
 	case consts.TargetLowActivity:
 		thirtyDaysAgo := now.AddDate(0, 0, -30)
 		hundredDaysAgo := now.AddDate(0, 0, -100)
-		query = query.Where("last_active_at IS NOT NULL AND last_active_at < ? AND last_active_at >= ?", thirtyDaysAgo, hundredDaysAgo)
+		query = query.Where(
+			"last_active_at IS NOT NULL AND last_active_at < ? AND last_active_at >= ?",
+			thirtyDaysAgo,
+			hundredDaysAgo,
+		)
 	case consts.TargetNotActivity:
 		hundredDaysAgo := now.AddDate(0, 0, -100)
 		query = query.Where("last_active_at IS NULL OR last_active_at < ?", hundredDaysAgo)
