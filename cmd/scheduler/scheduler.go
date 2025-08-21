@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/cmd"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler/scheduler"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/di"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
@@ -40,10 +41,10 @@ const (
 )
 
 type services struct {
-	tracer       *tracing.Tracer
-	redisManager *redis.Manager
-	db           *mysql.Database
-	cronManager  *cron.Cron
+	tracer           *tracing.Tracer
+	db               *mysql.Database
+	redisManager     *redis.Manager
+	schedulerHandler *scheduler.Handler
 }
 
 // runScheduler 啟動Scheduler服務
@@ -57,7 +58,7 @@ func runScheduler(cobraCmd *cobra.Command, args []string) {
 	defer rootCancel()
 
 	// 初始化所有服務
-	s, err := initializeServices(rootCtx, cfg, logger)
+	svc, err := initializeServices(rootCtx, cfg, logger)
 	if err != nil {
 		logger.FatalWithContext(
 			rootCtx,
@@ -65,26 +66,17 @@ func runScheduler(cobraCmd *cobra.Command, args []string) {
 			logger.Error("err", err),
 		)
 	}
-	defer s.cleanup(rootCtx, logger)
+	defer svc.cleanup(rootCtx, logger)
 
-	// 使用Wire初始化Scheduler組件
-	schedulerHandler, err := di.InitializeSchedulerComponents(
-		cfg,
-		logger,
-		s.redisManager,
-		s.db.GetDBConnection(),
-	)
-	if err != nil {
-		logger.FatalLog("Failed to initialize scheduler components", logger.Error("err", err))
-		return
-	}
+	// 初始化 Cron 調度器，使用秒級精度
+	cronManager := cron.New(cron.WithSeconds())
 
 	// 註冊所有排程任務
-	schedulerHandler.RegisterJobs(s.cronManager)
+	svc.schedulerHandler.RegisterJobs(cronManager)
 	logger.InfoWithContext(rootCtx, "Scheduler jobs registered successfully")
 
 	// 啟動 Cron 調度器
-	s.cronManager.Start()
+	cronManager.Start()
 	logger.InfoWithContext(rootCtx, "Scheduler service started successfully")
 
 	// 等待中斷信號
@@ -96,7 +88,7 @@ func runScheduler(cobraCmd *cobra.Command, args []string) {
 	rootCancel()
 
 	// 停止 Cron 調度器
-	cronCtx := s.cronManager.Stop()
+	cronCtx := cronManager.Stop()
 
 	// 等待優雅關閉或超時
 	select {
@@ -145,14 +137,23 @@ func initializeServices(
 	}
 	logger.InfoWithContext(ctx, "Successfully initialized Redis connection!")
 
-	// 初始化 Cron 調度器，使用秒級精度
-	cronManager := cron.New(cron.WithSeconds())
+	// 使用Wire初始化Scheduler組件
+	schedulerHandler, err := di.InitializeSchedulerComponents(
+		cfg,
+		logger,
+		redisManager,
+		db.GetDBConnection(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize scheduler components: %w", err)
+	}
+	logger.InfoWithContext(ctx, "Successfully initialized scheduler components!")
 
 	return &services{
-		tracer:       tracer,
-		redisManager: redisManager,
-		db:           db,
-		cronManager:  cronManager,
+		tracer:           tracer,
+		db:               db,
+		redisManager:     redisManager,
+		schedulerHandler: schedulerHandler,
 	}, nil
 }
 

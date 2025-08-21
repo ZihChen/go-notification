@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler/api"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jvdiamondtech/ms-notification-cat/cmd"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler/api"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/di"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
@@ -66,7 +66,7 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	defer rootCancel()
 
 	// 初始化所有服務
-	sv, err := initializeServices(rootCtx, cfg, logger)
+	svc, err := initializeServices(rootCtx, cfg, logger)
 	if err != nil {
 		logger.FatalWithContext(
 			rootCtx,
@@ -74,7 +74,7 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 			logger.Error("err", err),
 		)
 	}
-	defer sv.cleanup(rootCtx, logger)
+	defer svc.cleanup(rootCtx, logger)
 
 	// 創建追蹤 span
 	ctx, rootSpan := tracing.StartSpan(rootCtx, "WebService")
@@ -92,7 +92,7 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	router := gin.Default()
 
 	// 註冊路由
-	sv.httpHandler.RegisterRoutes(router)
+	svc.httpHandler.RegisterRoutes(router)
 
 	// 創建HTTP服務器
 	server := &http.Server{
@@ -107,7 +107,8 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 			"Starting web server",
 			logger.Int("port", serverPort),
 		)
-		if serverErr := server.ListenAndServe(); serverErr != nil && !errors.Is(serverErr, http.ErrServerClosed) {
+		if serverErr := server.ListenAndServe(); serverErr != nil &&
+			!errors.Is(serverErr, http.ErrServerClosed) {
 			logger.FatalWithContext(
 				ctx,
 				"Failed to start server",

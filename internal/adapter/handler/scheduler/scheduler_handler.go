@@ -79,12 +79,6 @@ func (h *Handler) registerJob(config ScheduledJobConfig) error {
 		return fmt.Errorf("job schedule is required")
 	}
 
-	if config.Schedule != "" {
-		h.logger.WarnLog("Both schedule and interval specified, using schedule",
-			h.logger.String("job_name", config.Name),
-			h.logger.String("schedule", config.Schedule))
-	}
-
 	h.jobs = append(h.jobs, config)
 	h.logger.InfoLog("Registered scheduled job",
 		h.logger.String("job_name", config.Name),
