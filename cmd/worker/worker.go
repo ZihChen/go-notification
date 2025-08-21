@@ -2,6 +2,8 @@ package worker
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -9,8 +11,11 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/jvdiamondtech/ms-notification-cat/cmd"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/di"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/database/mysql"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"github.com/spf13/cobra"
@@ -32,61 +37,129 @@ func init() {
 	cmd.AddCommand(Command())
 }
 
+const (
+	gracefulShutdownTime = 10 * time.Second
+)
+
+type services struct {
+	tracer        *tracing.Tracer
+	db            *mysql.Database
+	redisManager  *redis.Manager
+	workerHandler *handler.WorkerHandler
+	workerServer  *asynq.Server
+}
+
 // runWorker 啟動Worker
 func runWorker(cobraCmd *cobra.Command, args []string) {
 	// 獲取配置和日誌
 	cfg := cmd.GetConfig()
 	logger := cmd.GetLogger()
+
 	// 主程序的Context
-	rootCtx := context.Background()
+	rootCtx, rootCancel := context.WithCancel(context.Background())
+	defer rootCancel()
+
+	// 初始化所有服務
+	svc, err := initializeServices(rootCtx, cfg, logger)
+	if err != nil {
+		logger.FatalWithContext(
+			rootCtx,
+			"Failed to initialize worker services",
+			logger.Error("err", err),
+		)
+	}
+	defer svc.cleanup(rootCtx, logger)
+
+	// 創建追蹤 span
+	ctx, rootSpan := tracing.StartSpan(rootCtx, "WorkerService")
+	defer tracing.SpanEnd(rootSpan)
+
+	// 創建並註冊任務處理器
+	mux := asynq.NewServeMux()
+	svc.workerHandler.RegisterHandlers(mux)
+	logger.InfoWithContext(ctx, "Task handlers registered successfully")
+
+	// 記錄Worker啟動
+	logger.InfoWithContext(ctx, "Starting worker service",
+		logger.String("redis", cfg.Redis.Domain),
+		logger.Int("redis_port", cfg.Redis.Port))
+	tracing.TraceEvent(rootSpan, "Starting worker service")
+
+	// 啟動Worker服務器
+	go func() {
+		if serverErr := svc.workerServer.Start(mux); serverErr != nil &&
+			!errors.Is(serverErr, asynq.ErrServerClosed) {
+			logger.FatalWithContext(
+				ctx,
+				"Failed to start worker server",
+				logger.Error("err", serverErr),
+			)
+			tracing.RecordSpanError(rootSpan, serverErr)
+		}
+	}()
+
+	// 等待中斷信號
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	logger.InfoWithContext(ctx, "Shutting down worker...")
+	rootCancel()
+
+	// 記錄關閉事件
+	tracing.TraceEvent(rootSpan, "Shutting down worker service")
+
+	// 優雅關閉Worker
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), gracefulShutdownTime)
+	defer cancel()
+
+	done := make(chan struct{})
+	go func() {
+		svc.workerServer.Shutdown()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		logger.InfoWithContext(ctx, "Worker service shutdown completed gracefully")
+	case <-shutdownCtx.Done():
+		logger.WarnWithContext(ctx, "Worker service shutdown timeout - forcing exit")
+	}
+
+	// 記錄成功關閉
+	tracing.TraceEvent(rootSpan, "Worker service exited gracefully")
+	logger.InfoWithContext(ctx, "Worker service exited")
+}
+
+func initializeServices(
+	ctx context.Context,
+	cfg *config.Config,
+	logger infraport.Logger,
+) (*services, error) {
 	// 初始化追踪器
 	tracer, err := tracing.NewTracer(cfg)
 	if err != nil {
-		logger.FatalLog("Failed to initialize tracer", logger.Error("err", err))
+		return nil, fmt.Errorf("failed to initialize tracer: %w", err)
 	}
-	defer func() {
-		err = tracer.Shutdown(context.Background())
-		if err != nil {
-			logger.ErrorWithContext(
-				rootCtx,
-				"Failed to shutdown tracer",
-				logger.Error("err", err),
-			)
-		}
-	}()
-	logger.InfoWithContext(rootCtx, "Successfully initialized tracer!")
-
-	ctx, rootSpan := tracing.StartSpan(context.Background(), "WorkerService")
-	defer tracing.SpanEnd(rootSpan)
+	logger.InfoWithContext(ctx, "Successfully initialized worker tracer!")
 
 	// 初始化DB連線
 	db, err := mysql.NewDatabase(cfg, logger)
 	if err != nil {
-		logger.FatalLog("Failed to initialize database", logger.Error("err", err))
+		return nil, fmt.Errorf("failed to initialize database: %w", err)
 	}
-	defer func() {
-		err = db.Close() // 主程序結束後關閉DB連線
-		if err != nil {
-			logger.ErrorLog("Failed to close database connection", logger.Error("err", err))
-		}
-		logger.InfoLog("Database connection closed successfull")
-	}()
 
 	if err = db.Ping(); err != nil {
-		logger.FatalLog("Failed to ping database", logger.Error("err", err))
+		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
+	logger.InfoWithContext(ctx, "Successfully initialized database connection!")
 
 	// 初始化Redis連線
 	redisManager := redis.NewRedisManager(cfg)
-	defer func() {
-		err = redisManager.Close() // 主程序結束後關閉Redis連線
-		if err != nil {
-			logger.ErrorLog("Failed to close Redis connection", logger.Error("err", err))
-		}
-	}()
-	if err = redisManager.Connect(rootCtx); err != nil {
-		logger.FatalLog("Failed to connect to Redis", logger.Error("err", err))
+	if err = redisManager.Connect(ctx); err != nil {
+		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
 	}
+	logger.InfoWithContext(ctx, "Successfully initialized Redis connection!")
 
 	// 使用Wire初始化Worker組件
 	components, err := di.InitializeWorkerComponents(
@@ -96,59 +169,36 @@ func runWorker(cobraCmd *cobra.Command, args []string) {
 		db.GetDBConnection(),
 	)
 	if err != nil {
-		logger.FatalLog("Failed to initialize worker components", logger.Error("err", err))
-		tracing.RecordSpanError(rootSpan, err)
-		return
+		return nil, fmt.Errorf("failed to initialize worker components: %w", err)
+	}
+	logger.InfoWithContext(ctx, "Successfully initialized worker components!")
+
+	return &services{
+		tracer:        tracer,
+		db:            db,
+		redisManager:  redisManager,
+		workerHandler: components.Handler,
+		workerServer:  components.Server,
+	}, nil
+}
+
+func (s *services) cleanup(ctx context.Context, logger infraport.Logger) {
+	// 關閉追蹤器
+	if err := s.tracer.Shutdown(ctx); err != nil {
+		logger.ErrorLog("Failed to shutdown tracer", logger.Error("err", err))
 	}
 
-	mux := asynq.NewServeMux()
-
-	// 記錄Worker啟動
-	logger.InfoLog("Starting worker service",
-		logger.String("redis", cfg.Redis.Domain),
-		logger.Int("redis_port", cfg.Redis.Port))
-	tracing.TraceEvent(rootSpan, "Starting worker service")
-
-	components.Handler.RegisterHandlers(mux)
-	logger.InfoLog("Task handlers registered")
-
-	go func() {
-		if err := components.Server.Start(mux); err != nil {
-			if err != asynq.ErrServerClosed {
-				logger.FatalLog("Failed to start worker server", logger.Error("err", err))
-				tracing.RecordSpanError(rootSpan, err)
-			}
-		}
-	}()
-
-	// 等待中斷信號優雅地關閉服務器
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	logger.InfoLog("Shutting down worker...")
-	// 記錄關閉事件
-	tracing.TraceEvent(rootSpan, "Shutting down worker service")
-
-	shutdownCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	// 關閉Worker
-	done := make(chan struct{})
-	go func() {
-		components.Server.Shutdown()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		logger.InfoLog("Worker service shutdown completed gracefully")
-	case <-shutdownCtx.Done():
-		logger.WarnLog("Worker service shutdown timeout - forcing exit")
+	// 關閉資料庫連線
+	if err := s.db.Close(); err != nil {
+		logger.ErrorLog("Failed to close database connection", logger.Error("err", err))
+	} else {
+		logger.InfoWithContext(ctx, "Database connection closed successfully")
 	}
 
-	// 記錄成功關閉
-	tracing.TraceEvent(rootSpan, "Worker service exited gracefully")
-
-	logger.InfoLog("Worker exited")
+	// 關閉Redis連線
+	if err := s.redisManager.Close(); err != nil {
+		logger.ErrorLog("Failed to close Redis connection", logger.Error("err", err))
+	} else {
+		logger.InfoWithContext(ctx, "Redis connection closed successfully")
+	}
 }
