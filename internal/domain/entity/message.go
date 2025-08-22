@@ -20,6 +20,7 @@ type MessageCampaign struct {
 	UpdatedBy     *string    `json:"updated_by,omitempty"` // 最後更新者帳號或名稱
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
+	DeletedAt     *time.Time `json:"deleted_at,omitempty"`
 }
 
 // PlayerMessage 會員訊息模型

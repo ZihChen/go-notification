@@ -177,7 +177,7 @@ func (r *MessageCampaignRepository) UpdateSentCount(
 	return nil
 }
 
-// Delete 刪除會員訊息活動
+// Delete 軟刪除會員訊息活動（設置 deleted_at 時間戳）
 func (r *MessageCampaignRepository) Delete(ctx context.Context, id uint64) error {
 	result := r.db.WithContext(ctx).Delete(&models.MessageCampaign{}, id)
 	if result.Error != nil {
@@ -193,6 +193,12 @@ func (r *MessageCampaignRepository) Delete(ctx context.Context, id uint64) error
 
 // 將DB模型映射到領域模型
 func mapToDomainMessageCampaign(campaign *models.MessageCampaign) *entity.MessageCampaign {
+	var deletedAt *time.Time
+	if campaign.DeletedAt.Valid {
+		deletedTime := campaign.DeletedAt.Time
+		deletedAt = &deletedTime
+	}
+
 	return &entity.MessageCampaign{
 		ID:            campaign.ID,
 		Category:      campaign.Category,
@@ -208,12 +214,13 @@ func mapToDomainMessageCampaign(campaign *models.MessageCampaign) *entity.Messag
 		UpdatedBy:     campaign.UpdatedBy,
 		CreatedAt:     campaign.CreatedAt,
 		UpdatedAt:     campaign.UpdatedAt,
+		DeletedAt:     deletedAt,
 	}
 }
 
 // 將領域模型映射到DB模型
 func mapToDBMessageCampaign(campaign *entity.MessageCampaign) *models.MessageCampaign {
-	return &models.MessageCampaign{
+	dbMessageCampaign := &models.MessageCampaign{
 		ID:            campaign.ID,
 		Category:      campaign.Category,
 		Item:          campaign.Item,
@@ -229,4 +236,11 @@ func mapToDBMessageCampaign(campaign *entity.MessageCampaign) *models.MessageCam
 		CreatedAt:     campaign.CreatedAt,
 		UpdatedAt:     campaign.UpdatedAt,
 	}
+	if campaign.DeletedAt != nil {
+		dbMessageCampaign.DeletedAt = gorm.DeletedAt{
+			Time:  *campaign.DeletedAt,
+			Valid: true,
+		}
+	}
+	return dbMessageCampaign
 }
