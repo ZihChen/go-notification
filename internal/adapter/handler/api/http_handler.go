@@ -12,6 +12,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/http/response"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -110,7 +111,7 @@ func (h *HTTPHandler) RegisterRoutes(router *gin.Engine) {
 	router.GET("/health", h.HealthCheck)
 }
 
-// 以下是現有的方法（商戶、玩家、管理員）...
+// HealthCheck 以下是現有的方法（商戶、玩家、管理員）...
 // HealthCheck 健康檢查
 // @Summary 健康檢查
 // @Description 檢查服務是否正常運行
@@ -435,9 +436,8 @@ func (h *HTTPHandler) GetManagerByGlobalID(c *gin.Context) {
 func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
 	var req dto.CreateMessageCampaignRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request format: " + err.Error(),
-		})
+		response.NewResponse(c).
+			Error(response.ErrCodeBadRequest, "Invalid request format", err.Error()).Return()
 		return
 	}
 
@@ -458,13 +458,11 @@ func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
 			h.logger.String("title", req.Title),
 			h.logger.Error("err", err))
 
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to create message campaign",
-		})
+		response.InternalServerError(c, "Failed to create message campaign", err.Error()).Return()
 		return
 	}
 
-	c.JSON(http.StatusCreated, campaign)
+	response.CreatedSuccess(c).Return()
 }
 
 // UpdateMessageCampaign 更新會員訊息活動
@@ -483,17 +481,17 @@ func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
 func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid campaign ID",
-		})
+		response.BadRequest(c, "Invalid campaign ID").Return()
 		return
 	}
 
 	var req dto.UpdateMessageCampaignRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request format: " + err.Error(),
-		})
+		response.NewResponse(c).
+			Status(http.StatusBadRequest).
+			Success(false).
+			Error(response.ErrCodeBadRequest, "Invalid request format", err.Error()).
+			Return()
 		return
 	}
 
@@ -512,9 +510,7 @@ func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
 
 	if err := h.messageUseCase.UpdateMessageCampaign(c.Request.Context(), campaign); err != nil {
 		if err.Error() == "record not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Message campaign not found",
-			})
+			response.NotFound(c, "Message campaign not found").Return()
 			return
 		}
 
@@ -522,13 +518,11 @@ func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
 			h.logger.UInt64("id", id),
 			h.logger.Error("err", err))
 
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to update message campaign",
-		})
+		response.InternalServerError(c, "Failed to update message campaign").Return()
 		return
 	}
 
-	c.JSON(http.StatusOK, campaign)
+	response.OK(c).Data(campaign).Return()
 }
 
 // DeleteMessageCampaign 刪除會員訊息活動
@@ -544,17 +538,13 @@ func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
 func (h *HTTPHandler) DeleteMessageCampaign(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid campaign ID",
-		})
+		response.BadRequest(c, "Invalid campaign ID").Return()
 		return
 	}
 
 	if err := h.messageUseCase.DeleteMessageCampaign(c.Request.Context(), id); err != nil {
 		if err.Error() == "record not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Message campaign not found",
-			})
+			response.NotFound(c, "Message campaign not found").Return()
 			return
 		}
 
@@ -562,15 +552,11 @@ func (h *HTTPHandler) DeleteMessageCampaign(c *gin.Context) {
 			h.logger.UInt64("id", id),
 			h.logger.Error("err", err))
 
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to delete message campaign",
-		})
+		response.InternalServerError(c, "Failed to delete message campaign").Return()
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-	})
+	response.DeletedSuccess(c).Return()
 }
 
 // GetMessageCampaign 獲取會員訊息活動
@@ -586,18 +572,14 @@ func (h *HTTPHandler) DeleteMessageCampaign(c *gin.Context) {
 func (h *HTTPHandler) GetMessageCampaign(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid campaign ID",
-		})
+		response.BadRequest(c, "Invalid campaign ID").Return()
 		return
 	}
 
 	campaign, err := h.messageUseCase.GetMessageCampaign(c.Request.Context(), id)
 	if err != nil {
 		if err.Error() == "record not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Message campaign not found",
-			})
+			response.NotFound(c, "Message campaign not found").Return()
 			return
 		}
 
@@ -605,13 +587,11 @@ func (h *HTTPHandler) GetMessageCampaign(c *gin.Context) {
 			h.logger.UInt64("id", id),
 			h.logger.Error("err", err))
 
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get message campaign",
-		})
+		response.InternalServerError(c, "Failed to get message campaign").Return()
 		return
 	}
 
-	c.JSON(http.StatusOK, campaign)
+	response.OK(c).Data(campaign).Return()
 }
 
 // ListMessageCampaigns 列出會員訊息活動
@@ -641,21 +621,15 @@ func (h *HTTPHandler) ListMessageCampaigns(c *gin.Context) {
 	)
 	if err != nil {
 		h.logger.ErrorLog("Failed to list message campaigns", h.logger.Error("err", err))
-
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to list message campaigns",
-		})
+		response.InternalServerError(c, "Failed to list message campaigns").Return()
 		return
 	}
 
-	response := dto.MessageCampaignListResponse{
-		Data:     campaigns,
-		Page:     page,
-		PageSize: pageSize,
-		Total:    total,
-	}
-
-	c.JSON(http.StatusOK, response)
+	response.NewResponse(c).
+		Success(true).
+		Data(campaigns).
+		Pagination(page, pageSize, total).
+		Return()
 }
 
 // GetPlayerMessages 獲取玩家訊息列表
