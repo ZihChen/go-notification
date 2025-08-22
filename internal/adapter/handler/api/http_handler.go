@@ -24,12 +24,12 @@ type MessageCampaign = entity.MessageCampaign
 type MessageListResponse = entity.MessageListResponse
 type MessageCampaignListResponse = dto.MessageCampaignListResponse
 
-// 錯誤響應模型
+// ErrorResponse 錯誤響應模型
 type ErrorResponse struct {
 	Error string `json:"error" example:"An error occurred"`
 }
 
-// 成功響應模型
+// SuccessResponse 成功響應模型
 type SuccessResponse struct {
 	Status string `json:"status" example:"success"`
 }
@@ -140,64 +140,34 @@ func (h *HTTPHandler) HealthCheck(c *gin.Context) {
 func (h *HTTPHandler) GetMerchantByID(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid merchant ID",
-		})
-		return
+		response.BadRequest(c, "invalid merchant ID", err.Error()).Return()
 	}
 
 	merchant, err := h.merchantUseCase.GetMerchantByID(c.Request.Context(), id)
 	if err != nil {
 		if err.Error() == "record not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Merchant not found",
-			})
-			return
+			response.NotFound(c, "merchant not found", err.Error()).Return()
 		}
-
-		h.logger.ErrorLog("Failed to get merchant by ID",
-			h.logger.UInt64("id", id),
-			h.logger.Error("err", err))
-
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get merchant",
-		})
-		return
+		response.InternalServerError(c, "failed to get merchant", err.Error()).Return()
 	}
-
-	c.JSON(http.StatusOK, merchant)
+	response.OK(c).Data(merchant).Return()
 }
 
 // GetMerchantByGlobalID 通過全局ID獲取商戶
 func (h *HTTPHandler) GetMerchantByGlobalID(c *gin.Context) {
 	globalID := c.Param("global_id")
 	if globalID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Global merchant ID is required",
-		})
-		return
+		response.BadRequest(c, "global merchant ID is required").Return()
 	}
 
 	merchant, err := h.merchantUseCase.GetMerchantByGlobalID(c.Request.Context(), globalID)
 	if err != nil {
 		if err.Error() == "record not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Merchant not found",
-			})
-			return
+			response.NotFound(c, "merchant not found", err.Error()).Return()
 		}
-
-		h.logger.ErrorLog("Failed to get merchant by global ID",
-			h.logger.String("global_id", globalID),
-			h.logger.Error("err", err))
-
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get merchant",
-		})
-		return
+		response.InternalServerError(c, "failed to get merchant", err.Error()).Return()
 	}
-
-	c.JSON(http.StatusOK, merchant)
+	response.OK(c).Data(merchant).Return()
 }
 
 // GetPlayerByID 通過ID獲取玩家
@@ -215,32 +185,17 @@ func (h *HTTPHandler) GetMerchantByGlobalID(c *gin.Context) {
 func (h *HTTPHandler) GetPlayerByID(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid player ID",
-		})
-		return
+		response.BadRequest(c, "invalid player ID", err.Error()).Return()
 	}
 
 	player, err := h.playerUseCase.GetPlayerByID(c.Request.Context(), id)
 	if err != nil {
 		if err.Error() == "record not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Player not found",
-			})
-			return
+			response.NotFound(c, "player not found", err.Error()).Return()
 		}
-
-		h.logger.ErrorLog("Failed to get player by ID",
-			h.logger.UInt64("id", id),
-			h.logger.Error("err", err))
-
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get player",
-		})
-		return
+		response.InternalServerError(c, "failed to get player", err.Error()).Return()
 	}
-
-	c.JSON(http.StatusOK, player)
+	response.OK(c).Data(player).Return()
 }
 
 // GetPlayerByGlobalID 通過全局ID獲取玩家
@@ -255,36 +210,21 @@ func (h *HTTPHandler) GetPlayerByID(c *gin.Context) {
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/players/global/{global_id} [get]
-
 func (h *HTTPHandler) GetPlayerByGlobalID(c *gin.Context) {
 	globalID := c.Param("global_id")
 	if globalID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Global player ID is required",
-		})
-		return
+		response.BadRequest(c, "global player ID is required").Return()
 	}
 
 	player, err := h.playerUseCase.GetPlayerByGlobalID(c.Request.Context(), globalID)
 	if err != nil {
 		if err.Error() == "record not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Player not found",
-			})
-			return
+			response.NotFound(c, "player not found", err.Error()).Return()
 		}
 
-		h.logger.ErrorLog("Failed to get player by global ID",
-			h.logger.String("global_id", globalID),
-			h.logger.Error("err", err))
-
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get player",
-		})
-		return
+		response.InternalServerError(c, "failed to get player", err.Error()).Return()
 	}
-
-	c.JSON(http.StatusOK, player)
+	response.OK(c).Data(player).Return()
 }
 
 // UpdatePlayerLastActive 更新玩家最後活躍時間
@@ -299,37 +239,21 @@ func (h *HTTPHandler) GetPlayerByGlobalID(c *gin.Context) {
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/players/{id}/active [put]
-
 func (h *HTTPHandler) UpdatePlayerLastActive(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid player ID",
-		})
-		return
+		response.BadRequest(c, "invalid player ID", err.Error()).Return()
 	}
 
-	if err := h.playerUseCase.UpdatePlayerLastActive(c.Request.Context(), id); err != nil {
+	if err = h.playerUseCase.UpdatePlayerLastActive(c.Request.Context(), id); err != nil {
 		if err.Error() == "record not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Player not found",
-			})
-			return
+			response.NotFound(c, "player not found", err.Error()).Return()
 		}
-
-		h.logger.ErrorLog("Failed to update player last active time",
-			h.logger.UInt64("id", id),
-			h.logger.Error("err", err))
-
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to update player",
-		})
-		return
+		response.InternalServerError(c, "failed to update player last active", err.Error()).Return()
 	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-	})
+	response.OK(c).Data(gin.H{
+		"playerID": id,
+	}).Return()
 }
 
 // GetManagerByID 通過ID獲取管理員
@@ -348,32 +272,17 @@ func (h *HTTPHandler) UpdatePlayerLastActive(c *gin.Context) {
 func (h *HTTPHandler) GetManagerByID(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid manager ID",
-		})
-		return
+		response.BadRequest(c, "invalid Manager ID", err.Error()).Return()
 	}
 
 	manager, err := h.managerUseCase.GetManagerByID(c.Request.Context(), id)
 	if err != nil {
 		if err.Error() == "record not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Manager not found",
-			})
-			return
+			response.BadRequest(c, "manager not found", err.Error()).Return()
 		}
-
-		h.logger.ErrorLog("Failed to get manager by ID",
-			h.logger.UInt64("id", id),
-			h.logger.Error("err", err))
-
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get manager",
-		})
-		return
+		response.BadRequest(c, "failed to get manager", err.Error()).Return()
 	}
-
-	c.JSON(http.StatusOK, manager)
+	response.OK(c).Data(manager).Return()
 }
 
 // GetManagerByGlobalID 通過全局ID獲取管理員
@@ -388,36 +297,20 @@ func (h *HTTPHandler) GetManagerByID(c *gin.Context) {
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/managers/global/{global_id} [get]
-
 func (h *HTTPHandler) GetManagerByGlobalID(c *gin.Context) {
 	globalID := c.Param("global_id")
 	if globalID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Global manager ID is required",
-		})
-		return
+		response.BadRequest(c, "global manager ID is required").Return()
 	}
 
 	manager, err := h.managerUseCase.GetManagerByGlobalID(c.Request.Context(), globalID)
 	if err != nil {
 		if err.Error() == "record not found" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Manager not found",
-			})
-			return
+			response.NotFound(c, "manager not found", err.Error()).Return()
 		}
-
-		h.logger.ErrorLog("Failed to get manager by global ID",
-			h.logger.String("global_id", globalID),
-			h.logger.Error("err", err))
-
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get manager",
-		})
-		return
+		response.InternalServerError(c, "failed to get manager", err.Error()).Return()
 	}
-
-	c.JSON(http.StatusOK, manager)
+	response.OK(c).Data(manager).Return()
 }
 
 // 以下是新增的訊息相關方法
@@ -436,9 +329,7 @@ func (h *HTTPHandler) GetManagerByGlobalID(c *gin.Context) {
 func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
 	var req dto.CreateMessageCampaignRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.NewResponse(c).
-			Error(response.ErrCodeBadRequest, "Invalid request format", err.Error()).Return()
-		return
+		response.BadRequest(c, "invalid request format", err.Error()).Return()
 	}
 
 	campaign := &entity.MessageCampaign{
@@ -454,14 +345,8 @@ func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
 	}
 
 	if err := h.messageUseCase.CreateMessageCampaign(c.Request.Context(), campaign); err != nil {
-		h.logger.ErrorLog("Failed to create message campaign",
-			h.logger.String("title", req.Title),
-			h.logger.Error("err", err))
-
-		response.InternalServerError(c, "Failed to create message campaign", err.Error()).Return()
-		return
+		response.InternalServerError(c, "failed to create message campaign", err.Error()).Return()
 	}
-
 	response.CreatedSuccess(c).Return()
 }
 
@@ -481,18 +366,12 @@ func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
 func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		response.BadRequest(c, "Invalid campaign ID").Return()
-		return
+		response.BadRequest(c, "invalid campaign ID", err.Error()).Return()
 	}
 
 	var req dto.UpdateMessageCampaignRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.NewResponse(c).
-			Status(http.StatusBadRequest).
-			Success(false).
-			Error(response.ErrCodeBadRequest, "Invalid request format", err.Error()).
-			Return()
-		return
+	if err = c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "invalid request format", err.Error()).Return()
 	}
 
 	campaign := &entity.MessageCampaign{
@@ -508,20 +387,12 @@ func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
 		UpdatedBy:     &req.UpdatedBy,
 	}
 
-	if err := h.messageUseCase.UpdateMessageCampaign(c.Request.Context(), campaign); err != nil {
+	if err = h.messageUseCase.UpdateMessageCampaign(c.Request.Context(), campaign); err != nil {
 		if err.Error() == "record not found" {
-			response.NotFound(c, "Message campaign not found").Return()
-			return
+			response.NotFound(c, "message campaign not found", err.Error()).Return()
 		}
-
-		h.logger.ErrorLog("Failed to update message campaign",
-			h.logger.UInt64("id", id),
-			h.logger.Error("err", err))
-
-		response.InternalServerError(c, "Failed to update message campaign").Return()
-		return
+		response.InternalServerError(c, "failed to update message campaign", err.Error()).Return()
 	}
-
 	response.OK(c).Data(campaign).Return()
 }
 
@@ -538,24 +409,15 @@ func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
 func (h *HTTPHandler) DeleteMessageCampaign(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		response.BadRequest(c, "Invalid campaign ID").Return()
-		return
+		response.BadRequest(c, "invalid campaign ID", err.Error()).Return()
 	}
 
-	if err := h.messageUseCase.DeleteMessageCampaign(c.Request.Context(), id); err != nil {
+	if err = h.messageUseCase.DeleteMessageCampaign(c.Request.Context(), id); err != nil {
 		if err.Error() == "record not found" {
-			response.NotFound(c, "Message campaign not found").Return()
-			return
+			response.NotFound(c, "message campaign not found", err.Error()).Return()
 		}
-
-		h.logger.ErrorLog("Failed to delete message campaign",
-			h.logger.UInt64("id", id),
-			h.logger.Error("err", err))
-
-		response.InternalServerError(c, "Failed to delete message campaign").Return()
-		return
+		response.InternalServerError(c, "failed to delete message campaign", err.Error()).Return()
 	}
-
 	response.DeletedSuccess(c).Return()
 }
 
@@ -572,25 +434,17 @@ func (h *HTTPHandler) DeleteMessageCampaign(c *gin.Context) {
 func (h *HTTPHandler) GetMessageCampaign(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		response.BadRequest(c, "Invalid campaign ID").Return()
-		return
+		response.BadRequest(c, "invalid campaign ID", err.Error()).Return()
 	}
 
 	campaign, err := h.messageUseCase.GetMessageCampaign(c.Request.Context(), id)
 	if err != nil {
 		if err.Error() == "record not found" {
-			response.NotFound(c, "Message campaign not found").Return()
-			return
+			response.NotFound(c, "message campaign not found", err.Error()).Return()
 		}
-
-		h.logger.ErrorLog("Failed to get message campaign",
-			h.logger.UInt64("id", id),
-			h.logger.Error("err", err))
-
-		response.InternalServerError(c, "Failed to get message campaign").Return()
+		response.InternalServerError(c, "failed to get message campaign", err.Error()).Return()
 		return
 	}
-
 	response.OK(c).Data(campaign).Return()
 }
 
@@ -620,13 +474,10 @@ func (h *HTTPHandler) ListMessageCampaigns(c *gin.Context) {
 		pageSize,
 	)
 	if err != nil {
-		h.logger.ErrorLog("Failed to list message campaigns", h.logger.Error("err", err))
-		response.InternalServerError(c, "Failed to list message campaigns").Return()
-		return
+		response.InternalServerError(c, "failed to list message campaigns", err.Error()).Return()
 	}
 
-	response.NewResponse(c).
-		Success(true).
+	response.OK(c).
 		Data(campaigns).
 		Pagination(page, pageSize, total).
 		Return()
@@ -636,10 +487,7 @@ func (h *HTTPHandler) ListMessageCampaigns(c *gin.Context) {
 func (h *HTTPHandler) GetPlayerMessages(c *gin.Context) {
 	globalPlayerID := c.Param("global_player_id")
 	if globalPlayerID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Global player ID is required",
-		})
-		return
+		response.BadRequest(c, "global player ID is required").Return()
 	}
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -652,66 +500,40 @@ func (h *HTTPHandler) GetPlayerMessages(c *gin.Context) {
 		pageSize = 10
 	}
 
-	response, err := h.messageUseCase.GetPlayerMessages(
+	res, err := h.messageUseCase.GetPlayerMessages(
 		c.Request.Context(),
 		globalPlayerID,
 		page,
 		pageSize,
 	)
 	if err != nil {
-		h.logger.ErrorLog("Failed to get player messages",
-			h.logger.String("global_player_id", globalPlayerID),
-			h.logger.Error("err", err))
-
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get player messages",
-		})
-		return
+		response.InternalServerError(c, "failed to get player messages", err.Error()).Return()
 	}
-
-	c.JSON(http.StatusOK, response)
+	response.OK(c).Data(res).Return()
 }
 
 // MarkMessageAsRead 標記訊息為已讀
 func (h *HTTPHandler) MarkMessageAsRead(c *gin.Context) {
 	globalPlayerID := c.Param("global_player_id")
 	if globalPlayerID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Global player ID is required",
-		})
-		return
+		response.BadRequest(c, "global player ID is required").Return()
 	}
 
 	messageID, err := strconv.ParseUint(c.Param("message_id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid message ID",
-		})
-		return
+		response.BadRequest(c, "invalid message ID", err.Error()).Return()
 	}
 
-	if err := h.messageUseCase.MarkMessageAsRead(c.Request.Context(), globalPlayerID, messageID); err != nil {
+	if err = h.messageUseCase.MarkMessageAsRead(c.Request.Context(), globalPlayerID, messageID); err != nil {
 		if err.Error() == "record not found or already read" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Message not found or already read",
-			})
-			return
+			response.NotFound(c, "message not found or already read", err.Error()).Return()
 		}
-
-		h.logger.ErrorLog("Failed to mark message as read",
-			h.logger.String("global_player_id", globalPlayerID),
-			h.logger.UInt64("message_id", messageID),
-			h.logger.Error("err", err))
-
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to mark message as read",
-		})
-		return
+		response.InternalServerError(c, "failed to mark message as read", err.Error()).Return()
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-	})
+	response.OK(c).Data(gin.H{
+		"messageID": messageID,
+	}).Return()
 }
 
 // SSEHandler Server-Sent Events處理器

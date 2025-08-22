@@ -120,7 +120,7 @@ func (r *Builder) ErrorMessage(message string) *Builder {
 
 // Return 發送響應
 func (r *Builder) Return() {
-	r.context.JSON(r.statusCode, r.response)
+	r.abortWithPanic()
 }
 
 // JSON 發送響應（Send 的別名）
@@ -128,7 +128,23 @@ func (r *Builder) JSON() {
 	r.Return()
 }
 
-// Abort 中斷請求並發送響應
+// Abort 中斷請求並發送響應（阻止後續 handler 執行）
 func (r *Builder) Abort() {
 	r.context.AbortWithStatusJSON(r.statusCode, r.response)
+}
+
+// ResponseSentError 表示響應已經發送的特殊錯誤
+type ResponseSentError struct {
+	Message string
+}
+
+func (e ResponseSentError) Error() string {
+	return e.Message
+}
+
+// abortWithPanic 中斷請求、發送響應並拋出受控 panic 來終止當前函數
+// 注意：需要在適當的地方使用 recover() 來處理 panic
+func (r *Builder) abortWithPanic() {
+	r.context.AbortWithStatusJSON(r.statusCode, r.response)
+	panic(ResponseSentError{Message: "response already sent"})
 }

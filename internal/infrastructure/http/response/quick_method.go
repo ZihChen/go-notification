@@ -60,10 +60,18 @@ func InternalServerError(c *gin.Context, message string, details ...interface{})
 
 // CreatedSuccess 創建成功快捷方式
 func CreatedSuccess(c *gin.Context) *Builder {
-	return NewResponse(c).Status(http.StatusCreated).Success(true)
+	return NewResponse(
+		c,
+	).Status(http.StatusCreated).
+		Data(SuccessMessage{"created success"}).
+		Success(true)
 }
 
 // DeletedSuccess 刪除成功快捷方式
 func DeletedSuccess(c *gin.Context) *Builder {
-	return NewResponse(c).Status(http.StatusNoContent).Success(true)
+	return NewResponse(
+		c,
+	).Status(http.StatusNoContent).
+		Data(SuccessMessage{"deleted success"}).
+		Success(true)
 }

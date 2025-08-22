@@ -10,6 +10,20 @@ import (
 // ErrorHandler 全局錯誤處理中間件
 func ErrorHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		defer func() {
+			if r := recover(); r != nil {
+				// 檢查是否是我們的響應已發送錯誤
+				if _, ok := r.(response.ResponseSentError); ok {
+					// 這是預期的響應中斷，不需要額外處理
+					c.Header("X-Response-Sent", "true")
+					return
+				}
+
+				// 其他 panic 情況，記錄錯誤並返回 500
+				response.InternalServerError(c, "Internal server error").Return()
+			}
+		}()
+
 		c.Next()
 
 		// 處理請求過程中的錯誤
