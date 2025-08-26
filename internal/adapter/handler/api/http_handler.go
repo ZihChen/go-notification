@@ -454,24 +454,29 @@ func (h *HTTPHandler) GetMessageCampaign(c *gin.Context) {
 // @Tags Message Campaign
 // @Param page query int false "頁碼" default(1)
 // @Param page_size query int false "每頁數量" default(10)
+// @Param include_deleted query bool false "是否包含已刪除的活動" default(false)
+// @Param status query []int false "狀態篩選 (1=草稿, 2=已排程, 3=已發送, 4=已取消)"
 // @Success 200 {object} MessageCampaignListResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/message-campaigns [get]
 func (h *HTTPHandler) ListMessageCampaigns(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
-
-	if page < 1 {
-		page = 1
+	var req dto.ListMessageCampaignsRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.BadRequest(c, "invalid query parameters", err.Error()).Return()
+		return
 	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 10
+
+	// 設定預設值
+	if req.Page < 1 {
+		req.Page = 1
+	}
+	if req.PageSize < 1 || req.PageSize > 100 {
+		req.PageSize = 10
 	}
 
 	campaigns, total, err := h.messageUseCase.ListMessageCampaigns(
 		c.Request.Context(),
-		page,
-		pageSize,
+		&req,
 	)
 	if err != nil {
 		response.InternalServerError(c, "failed to list message campaigns", err.Error()).Return()
@@ -479,7 +484,7 @@ func (h *HTTPHandler) ListMessageCampaigns(c *gin.Context) {
 
 	response.OK(c).
 		Data(campaigns).
-		Pagination(page, pageSize, total).
+		Pagination(req.Page, req.PageSize, total).
 		Return()
 }
 

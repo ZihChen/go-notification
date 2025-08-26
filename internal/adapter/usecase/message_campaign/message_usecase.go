@@ -6,7 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jinzhu/copier"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
@@ -160,27 +162,36 @@ func (u *MessageUseCase) GetMessageCampaign(
 // ListMessageCampaigns 列出會員訊息活動
 func (u *MessageUseCase) ListMessageCampaigns(
 	ctx context.Context,
-	page, pageSize int,
+	req *dto.ListMessageCampaignsRequest,
 ) ([]*entity.MessageCampaign, int, error) {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.ListMessageCampaigns")
 	defer tracing.SpanEnd(span)
 
 	tracing.RecordSpanAttributes(span,
-		attribute.Int("page", page),
-		attribute.Int("page_size", pageSize),
+		attribute.Int("page", req.Page),
+		attribute.Int("page_size", req.PageSize),
 	)
 
-	campaigns, total, err := u.campaignRepo.FindAll(ctx, page, pageSize)
+	// 轉換 DTO 到 Query 物件
+	query := &entity.MessageCampaignsQuery{
+		IncludeDeleted: true,
+	}
+	err := copier.Copy(query, req)
 	if err != nil {
 		tracing.RecordSpanError(span, err)
-		return nil, 0, fmt.Errorf("list campaigns: %w", err)
+		return nil, 0, fmt.Errorf("copy query failed: %w", err)
+	}
+
+	campaigns, total, err := u.campaignRepo.FindAllWithOptions(ctx, query)
+	if err != nil {
+		tracing.RecordSpanError(span, err)
+		return nil, 0, fmt.Errorf("list campaigns with options: %w", err)
 	}
 
 	tracing.RecordSpanAttributes(span,
 		attribute.Int("total_campaigns", total),
 		attribute.Int("returned_campaigns", len(campaigns)),
 	)
-
 	return campaigns, total, nil
 }
 

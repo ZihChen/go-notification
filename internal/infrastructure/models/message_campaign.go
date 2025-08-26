@@ -13,6 +13,7 @@ type MessageCampaign struct {
 	Item          uint8          `json:"item"                      gorm:"column:item;not null"`     // 1=registration, 2=identity_verification, ..., 6=all
 	Title         string         `json:"title"                     gorm:"size:255;column:title;not null"`
 	Content       string         `json:"content"                   gorm:"column:content;type:mediumtext"`          // 可包含 HTML Tag
+	Status        uint8          `json:"status"                    gorm:"column:status;not null;default:1"`        // 1=draft, 2=scheduled, 3=sent, 4=cancelled, 5=archived
 	Target        uint8          `json:"target"                    gorm:"column:target;not null"`                  // 1=_high_activity, 2=_low_activity, 3=_not_activity, 8=_one, 9=_level, 10=_tag, 11=_all
 	AutoSend      bool           `json:"auto_send"                 gorm:"column:auto_send;not null;default:false"` // 是否為系統自動訊息
 	RealSentCount int64          `json:"real_sent_count"           gorm:"column:real_sent_count;default:0"`        // 實際成功發送人數

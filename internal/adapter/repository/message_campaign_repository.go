@@ -40,32 +40,73 @@ func (r *MessageCampaignRepository) FindByID(
 	return mapToDomainMessageCampaign(&campaign), nil
 }
 
-// FindAll 查找所有會員訊息活動（支援分頁）
-func (r *MessageCampaignRepository) FindAll(
+// FindAllWithOptions 根據篩選條件查找會員訊息活動
+func (r *MessageCampaignRepository) FindAllWithOptions(
 	ctx context.Context,
-	page, pageSize int,
+	query *entity.MessageCampaignsQuery,
 ) ([]*entity.MessageCampaign, int, error) {
 	var campaigns []models.MessageCampaign
 	var total int64
-	domainCampaigns := make([]*entity.MessageCampaign, len(campaigns))
+
+	builder := r.db.WithContext(ctx).Model(&models.MessageCampaign{})
+
+	// 是否包含已刪除的記錄
+	if query.IncludeDeleted {
+		builder = builder.Unscoped()
+	}
+
+	// 類別篩選
+	if query.Category > 0 {
+		builder = builder.Where("category = ?", query.Category)
+	}
+
+	// 項目篩選
+	if query.Item > 0 {
+		builder = builder.Where("item = ?", query.Item)
+	}
+
+	// 狀態篩選
+	if len(query.Status) > 0 {
+		builder = builder.Where("status IN (?)", query.Status)
+	}
+
+	// 是否顯示自動發送
+	if !query.ShowAutoSend {
+		builder = builder.Where("auto_send = ?", false)
+	}
+
+	// 建立者篩選
+	if query.CreatedBy != "" {
+		builder = builder.Where("created_by = ?", query.CreatedBy)
+	}
+
+	// 時間範圍篩選
+	if query.StartAt != "" {
+		builder = builder.Where("created_at >= ?", query.StartAt)
+	}
+	if query.EndAt != "" {
+		builder = builder.Where("created_at <= ?", query.EndAt)
+	}
 
 	// 計算總數
-	if err := r.db.WithContext(ctx).Model(&models.MessageCampaign{}).Count(&total).Error; err != nil {
-		return domainCampaigns, 0, err
+	if err := builder.Count(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("count error: %w", err)
 	}
 
 	// 查詢分頁數據
-	offset := (page - 1) * pageSize
-	result := r.db.WithContext(ctx).
+	offset := (query.Page - 1) * query.PageSize
+	result := builder.
 		Order("created_at DESC").
 		Offset(offset).
-		Limit(pageSize).
+		Limit(query.PageSize).
 		Find(&campaigns)
 
 	if result.Error != nil {
-		return domainCampaigns, 0, result.Error
+		return nil, 0, result.Error
 	}
 
+	// 在查詢到數據後再初始化 slice
+	domainCampaigns := make([]*entity.MessageCampaign, len(campaigns))
 	for i, campaign := range campaigns {
 		domainCampaigns[i] = mapToDomainMessageCampaign(&campaign)
 	}
@@ -206,6 +247,7 @@ func mapToDomainMessageCampaign(campaign *models.MessageCampaign) *entity.Messag
 		Title:         campaign.Title,
 		Content:       campaign.Content,
 		Target:        campaign.Target,
+		Status:        campaign.Status,
 		AutoSend:      campaign.AutoSend,
 		RealSentCount: campaign.RealSentCount,
 		SendStartTime: campaign.SendStartTime,
@@ -227,6 +269,7 @@ func mapToDBMessageCampaign(campaign *entity.MessageCampaign) *models.MessageCam
 		Title:         campaign.Title,
 		Content:       campaign.Content,
 		Target:        campaign.Target,
+		Status:        campaign.Status,
 		AutoSend:      campaign.AutoSend,
 		RealSentCount: campaign.RealSentCount,
 		SendStartTime: campaign.SendStartTime,

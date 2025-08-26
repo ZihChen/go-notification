@@ -47,7 +47,10 @@ type ManagerRepository interface {
 // MessageCampaignRepository 會員訊息活動資料庫接口
 type MessageCampaignRepository interface {
 	FindByID(ctx context.Context, id uint64) (*entity.MessageCampaign, error)
-	FindAll(ctx context.Context, page, pageSize int) ([]*entity.MessageCampaign, int, error)
+	FindAllWithOptions(
+		ctx context.Context,
+		query *entity.MessageCampaignsQuery,
+	) ([]*entity.MessageCampaign, int, error)
 	FindActiveByFocus(ctx context.Context, focus uint8) ([]*entity.MessageCampaign, error)
 	FindScheduledCampaigns(ctx context.Context) ([]*entity.MessageCampaign, error)
 	Create(ctx context.Context, campaign *entity.MessageCampaign) error

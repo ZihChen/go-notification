@@ -40,3 +40,11 @@ const (
 	ItemOther
 	ItemAll
 )
+
+// MessageCampaign Status 狀態常數
+const (
+	StatusDraft     uint8 = 1 // 草稿
+	StatusScheduled uint8 = 2 // 已排程
+	StatusSent      uint8 = 3 // 已發送
+	StatusCancelled uint8 = 4 // 已取消
+)

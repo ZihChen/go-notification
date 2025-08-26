@@ -3,6 +3,7 @@ package usecaseport
 import (
 	"context"
 
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 )
@@ -33,7 +34,7 @@ type MessageUseCase interface {
 	GetMessageCampaign(ctx context.Context, id uint64) (*entity.MessageCampaign, error)
 	ListMessageCampaigns(
 		ctx context.Context,
-		page, pageSize int,
+		req *dto.ListMessageCampaignsRequest,
 	) ([]*entity.MessageCampaign, int, error)
 	GetPlayerMessages(
 		ctx context.Context,
