@@ -114,15 +114,51 @@ func (h *HTTPHandler) RegisterRoutes(router *gin.Engine) {
 // HealthCheck 以下是現有的方法（商戶、玩家、管理員）...
 // HealthCheck 健康檢查
 // @Summary 健康檢查
-// @Description 檢查服務是否正常運行
+// @Description 檢查服務是否正常運行，包含基本服務狀態
 // @Tags 系統
 // @Produce json
 // @Success 200 {object} SuccessResponse
 // @Router /health [get]
 func (h *HTTPHandler) HealthCheck(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"status": "ok",
-	})
+	ctx := c.Request.Context()
+	healthStatus := gin.H{
+		"status":    "healthy",
+		"timestamp": time.Now().Format(time.RFC3339),
+		"version":   "1.0.0",
+		"services":  gin.H{},
+	}
+
+	services := healthStatus["services"].(gin.H)
+
+	// 檢查數據庫連接 - 通過嘗試獲取商戶來測試數據庫
+	if _, err := h.merchantUseCase.GetMerchantByID(ctx, 1); err != nil {
+		// 如果獲取商戶失敗，檢查是否是"not found"錯誤（說明數據庫連接正常）
+		if err.Error() != "merchant not found" && err.Error() != "record not found" {
+			services["database"] = gin.H{
+				"status": "unhealthy",
+				"error":  "database connection failed",
+			}
+			h.logger.ErrorWithContext(
+				ctx,
+				"Database health check failed",
+				h.logger.Error("error", err),
+			)
+
+			// 返回503服務不可用
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"status": "unhealthy",
+				"error":  "database service unavailable",
+			})
+			return
+		}
+	}
+
+	services["database"] = gin.H{
+		"status": "healthy",
+	}
+
+	// 返回健康狀態
+	c.JSON(http.StatusOK, healthStatus)
 }
 
 // GetMerchantByID 通過ID獲取商戶

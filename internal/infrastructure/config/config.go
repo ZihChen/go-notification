@@ -15,6 +15,7 @@ import (
 // Config 應用程序配置
 type Config struct {
 	App      AppConfig
+	Server   ServerConfig
 	Database DatabaseConfig
 	Redis    RedisConfig
 	AWS      AWSConfig
@@ -31,25 +32,42 @@ type AppConfig struct {
 	Debug bool
 }
 
+// ServerConfig HTTP服務器配置
+type ServerConfig struct {
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	IdleTimeout  time.Duration
+}
+
 // DatabaseConfig 資料庫配置
 type DatabaseConfig struct {
-	Host     string
-	Port     int
-	User     string
-	Password string
-	DBName   string
-	Options  string
-	MaxIdle  int
-	MaxOpen  int
-	Timeout  time.Duration
+	Host        string
+	Port        int
+	User        string
+	Password    string
+	DBName      string
+	Options     string
+	MaxIdle     int
+	MaxOpen     int
+	MaxLifetime time.Duration
+	MaxIdleTime time.Duration
 }
 
 // RedisConfig Redis配置
 type RedisConfig struct {
-	Domain   string
-	Port     int
-	Password string
-	DB       int
+	Domain       string
+	Port         int
+	Password     string
+	DB           int
+	PoolSize     int
+	MinIdleConns int
+	MaxRetries   int
+	DialTimeout  time.Duration
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	PoolTimeout  time.Duration
+	IdleTimeout  time.Duration
+	MaxConnAge   time.Duration
 }
 
 // AWSConfig AWS配置
@@ -109,22 +127,37 @@ func LoadConfig() (*Config, error) {
 			Port:  viper.GetInt("APP_PORT"),
 			Debug: viper.GetBool("APP_DEBUG"),
 		},
+		Server: ServerConfig{
+			ReadTimeout:  getTimeWithDefault("SERVER_READ_TIMEOUT", 30*time.Second),
+			WriteTimeout: getTimeWithDefault("SERVER_WRITE_TIMEOUT", 30*time.Second),
+			IdleTimeout:  getTimeWithDefault("SERVER_IDLE_TIMEOUT", 120*time.Second),
+		},
 		Database: DatabaseConfig{
-			Host:     viper.GetString("DB_HOST"),
-			Port:     viper.GetInt("DB_PORT"),
-			User:     viper.GetString("DB_USER"),
-			Password: viper.GetString("DB_PASSWORD"),
-			DBName:   viper.GetString("DB_NAME"),
-			Options:  viper.GetString("DB_OPTIONS"),
-			MaxIdle:  viper.GetInt("DB_MAX_IDLE"),
-			MaxOpen:  viper.GetInt("DB_MAX_OPEN"),
-			Timeout:  viper.GetDuration("DB_TIMEOUT"),
+			Host:        viper.GetString("DB_HOST"),
+			Port:        viper.GetInt("DB_PORT"),
+			User:        viper.GetString("DB_USER"),
+			Password:    viper.GetString("DB_PASSWORD"),
+			DBName:      viper.GetString("DB_NAME"),
+			Options:     viper.GetString("DB_OPTIONS"),
+			MaxIdle:     getIntWithDefault("DB_MAX_IDLE", 25),
+			MaxOpen:     getIntWithDefault("DB_MAX_OPEN", 100),
+			MaxLifetime: getTimeWithDefault("DB_MAX_LIFETIME", 1*time.Hour),
+			MaxIdleTime: getTimeWithDefault("DB_MAX_IDLE_TIME", 30*time.Minute),
 		},
 		Redis: RedisConfig{
-			Domain:   viper.GetString("REDIS_DOMAIN"),
-			Port:     viper.GetInt("REDIS_PORT"),
-			Password: viper.GetString("REDIS_PWD"),
-			DB:       viper.GetInt("REDIS_DB"),
+			Domain:       viper.GetString("REDIS_DOMAIN"),
+			Port:         viper.GetInt("REDIS_PORT"),
+			Password:     viper.GetString("REDIS_PWD"),
+			DB:           viper.GetInt("REDIS_DB"),
+			PoolSize:     getIntWithDefault("REDIS_POOL_SIZE", 20),
+			MinIdleConns: getIntWithDefault("REDIS_MIN_IDLE_CONNS", 5),
+			MaxRetries:   getIntWithDefault("REDIS_MAX_RETRIES", 3),
+			DialTimeout:  getTimeWithDefault("REDIS_DIAL_TIMEOUT", 5*time.Second),
+			ReadTimeout:  getTimeWithDefault("REDIS_READ_TIMEOUT", 3*time.Second),
+			WriteTimeout: getTimeWithDefault("REDIS_WRITE_TIMEOUT", 3*time.Second),
+			PoolTimeout:  getTimeWithDefault("REDIS_POOL_TIMEOUT", 4*time.Second),
+			IdleTimeout:  getTimeWithDefault("REDIS_IDLE_TIMEOUT", 5*time.Minute),
+			MaxConnAge:   getTimeWithDefault("REDIS_MAX_CONN_AGE", 30*time.Minute),
 		},
 		AWS: AWSConfig{
 			AccessKeyID:     viper.GetString("AWS_ACCESS_KEY_ID"),
@@ -207,4 +240,26 @@ func parseAPIKeys(apiKeysString string) []string {
 	}
 
 	return cleanedKeys
+}
+
+// Helper functions for default values
+func getTimeWithDefault(key string, defaultValue time.Duration) time.Duration {
+	if value := viper.GetDuration(key); value != 0 {
+		return value
+	}
+	return defaultValue
+}
+
+func getIntWithDefault(key string, defaultValue int) int {
+	if value := viper.GetInt(key); value != 0 {
+		return value
+	}
+	return defaultValue
+}
+
+func getBoolWithDefault(key string, defaultValue bool) bool {
+	if viper.IsSet(key) {
+		return viper.GetBool(key)
+	}
+	return defaultValue
 }

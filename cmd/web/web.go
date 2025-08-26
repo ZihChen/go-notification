@@ -108,9 +108,13 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 
 	// 創建HTTP服務器
 	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", serverPort),
-		Handler: router,
+		Addr:         fmt.Sprintf(":%d", serverPort),
+		Handler:      router,
+		ReadTimeout:  cfg.Server.ReadTimeout,  // 讀取請求的超時時間
+		WriteTimeout: cfg.Server.WriteTimeout, // 寫入響應的超時時間
+		IdleTimeout:  cfg.Server.IdleTimeout,  // 空閒連接的超時時間
 	}
+	server.SetKeepAlivesEnabled(true)
 
 	// 在後台運行服務器
 	go func() {
@@ -137,15 +141,29 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	logger.InfoWithContext(ctx, "Shutting down server...")
 	tracing.TraceEvent(rootSpan, "Shutting down web server")
 
+	// 創建帶超時的上下文用於優雅關閉
 	shutdownCtx, cancel := context.WithTimeout(ctx, shutdownTimeout)
 	defer cancel()
 
+	// 關閉HTTP服務器，停止接受新請求，並等待現有請求完成
 	if err = server.Shutdown(shutdownCtx); err != nil {
 		logger.ErrorWithContext(
 			ctx,
 			"Failed to gracefully shutdown server",
 			logger.Error("err", err),
 		)
+	} else {
+		logger.InfoWithContext(ctx, "HTTP server shutdown gracefully")
+	}
+
+	// 額外檢查是否還有活動連接
+	select {
+	case <-shutdownCtx.Done():
+		if shutdownCtx.Err() == context.DeadlineExceeded {
+			logger.WarnWithContext(ctx, "Server shutdown timeout exceeded, forcing exit")
+		}
+	default:
+		logger.InfoWithContext(ctx, "All connections closed gracefully")
 	}
 
 	tracing.TraceEvent(rootSpan, "Web server exited gracefully")

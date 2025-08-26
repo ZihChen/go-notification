@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"gorm.io/driver/mysql"
@@ -68,14 +67,8 @@ func NewDatabase(cfg *config.Config) (*Database, error) {
 		maxOpen = 100
 	}
 
-	timeout := cfg.Database.Timeout
-	if timeout <= 0 {
-		timeout = 5 * time.Second
-	}
-
 	sqlDB.SetMaxIdleConns(maxIdle)
 	sqlDB.SetMaxOpenConns(maxOpen)
-	sqlDB.SetConnMaxLifetime(timeout)
 
 	return &Database{DB: db}, nil
 }
