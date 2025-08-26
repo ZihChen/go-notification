@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -19,6 +20,7 @@ type Config struct {
 	AWS      AWSConfig
 	Tracing  TracingConfig
 	Events   EventsConfig
+	Auth     AuthConfig
 }
 
 // AppConfig 應用程序基本配置
@@ -77,6 +79,14 @@ type EventsConfig struct {
 	IdentityTagSync         string
 	IdentityPlayerLevelSync string
 	IdentityPlayerTagsSync  string
+}
+
+// AuthConfig API認證配置
+type AuthConfig struct {
+	Enabled        bool
+	APIKeys        []string
+	HeaderKey      string
+	EncryptionType string
 }
 
 // LoadConfig 加載配置
@@ -139,6 +149,12 @@ func LoadConfig() (*Config, error) {
 			IdentityPlayerLevelSync: viper.GetString("EVENT_IDENTITY_PLAYER_LEVEL_SYNC"),
 			IdentityPlayerTagsSync:  viper.GetString("EVENT_IDENTITY_PLAYER_TAGS_SYNC"),
 		},
+		Auth: AuthConfig{
+			Enabled:        viper.GetBool("AUTH_ENABLED"),
+			APIKeys:        parseAPIKeys(viper.GetString("AUTH_API_KEYS")),
+			HeaderKey:      viper.GetString("AUTH_HEADER_KEY"),
+			EncryptionType: viper.GetString("AUTH_ENCRYPTION_TYPE"),
+		},
 	}
 
 	return config, nil
@@ -171,4 +187,24 @@ func (c *Config) LoadAWSConfig(ctx context.Context) (aws.Config, error) {
 		))
 	}
 	return awsconfig.LoadDefaultConfig(ctx, opts...)
+}
+
+// parseAPIKeys 解析逗號分隔的API Key字符串
+func parseAPIKeys(apiKeysString string) []string {
+	if apiKeysString == "" {
+		return []string{}
+	}
+
+	// 分割並清理空格
+	keys := strings.Split(apiKeysString, ",")
+	var cleanedKeys []string
+
+	for _, key := range keys {
+		cleanedKey := strings.TrimSpace(key)
+		if cleanedKey != "" {
+			cleanedKeys = append(cleanedKeys, cleanedKey)
+		}
+	}
+
+	return cleanedKeys
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/database/mysql"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/http/middleware"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"github.com/spf13/cobra"
 )
@@ -90,6 +91,17 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 
 	// 創建 Gin 路由
 	router := gin.Default()
+
+	// 加入Middleware
+	router.Use(middleware.ErrorHandler())
+	// 如果啟用了API Key認證，則添加認證middleware
+	if cfg.Auth.Enabled {
+		router.Use(middleware.AuthMiddleware(middleware.AuthConfig{
+			APIKeys:        cfg.Auth.APIKeys,
+			HeaderKey:      cfg.Auth.HeaderKey,
+			EncryptionType: cfg.Auth.EncryptionType,
+		}))
+	}
 
 	// 註冊路由
 	svc.httpHandler.RegisterRoutes(router)
