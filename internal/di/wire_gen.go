@@ -48,7 +48,7 @@ func InitializeWebServer(cfg *config.Config, logger infraport.Logger, redisManag
 	managerUseCase := usecase.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger)
 	messageCampaignRepository := repository.NewMessageCampaignRepository(db)
 	playerMessageRepository := repository.NewPlayerMessageRepository(db)
-	messageUseCase := message_campaign.NewMessageUseCase(messageCampaignRepository, playerMessageRepository, playerRepository, logger)
+	messageUseCase := message_campaign.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, logger)
 	httpHandler := api.NewHTTPHandler(merchantUseCase, playerUseCase, managerUseCase, messageUseCase, logger)
 	return httpHandler, nil
 }
@@ -129,9 +129,10 @@ func InitializeConsumer(cfg *config.Config, logger infraport.Logger, redisManage
 // InitializeSchedulerComponents 初始化 Scheduler 服務的處理器
 func InitializeSchedulerComponents(cfg *config.Config, logger infraport.Logger, redisManager *redis.Manager, db *gorm.DB) (*scheduler.Handler, error) {
 	messageCampaignRepository := repository.NewMessageCampaignRepository(db)
+	merchantRepository := repository.NewMerchantRepository(db)
 	playerMessageRepository := repository.NewPlayerMessageRepository(db)
 	playerRepository := repository.NewPlayerRepository(db)
-	messageUseCase := message_campaign.NewMessageUseCase(messageCampaignRepository, playerMessageRepository, playerRepository, logger)
+	messageUseCase := message_campaign.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, logger)
 	messageCampaignTriggerJob := job.NewMessageCampaignTriggerJob(messageUseCase, logger)
 	registry := job.NewRegistry(messageCampaignTriggerJob)
 	schedulerHandler := scheduler.NewSchedulerHandler(logger, registry)

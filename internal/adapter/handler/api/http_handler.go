@@ -363,7 +363,9 @@ func (h *HTTPHandler) GetManagerByGlobalID(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /api/v1/message-campaigns [post]
 func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
-	req := &dto.CreateMessageCampaignRequest{}
+	req := &dto.CreateMessageCampaignRequest{
+		GlobalMerchantID: c.GetString("global_merchant_id"),
+	}
 	if err := c.ShouldBindJSON(req); err != nil {
 		response.BadRequest(c, "invalid request format", err.Error()).Return()
 	}

@@ -10,6 +10,8 @@ type MessageCampaign struct {
 	Category      uint8      `json:"category"` // 1=member, 2=bonus, 3=others
 	Item          uint8      `json:"item"`     // 1=registration, 2=identity_verification, ..., 6=all
 	Title         string     `json:"title"`
+	MerchantID    uint64     `json:"merchant_id"`
+	GlobalID      string     `json:"global_id"`
 	Content       string     `json:"content"`         // 可包含 HTML Tag
 	Target        uint8      `json:"target"`          // 1=_in_thirty, 2=_low_activity, 3=_not_activity, 8=_one, 9=_level, 10=_tag, 11=_all
 	Status        uint8      `json:"status"`          // 1=draft, 2=scheduled, 3=sent, 4=cancelled, 5=archived

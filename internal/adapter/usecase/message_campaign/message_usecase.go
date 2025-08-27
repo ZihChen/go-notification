@@ -2,14 +2,17 @@ package message_campaign
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jinzhu/copier"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
@@ -20,6 +23,7 @@ import (
 // MessageUseCase 訊息用例
 type MessageUseCase struct {
 	campaignRepo      repositoryport.MessageCampaignRepository
+	merchantRepo      repositoryport.MerchantRepository
 	playerMessageRepo repositoryport.PlayerMessageRepository
 	playerRepo        repositoryport.PlayerRepository
 	logger            infraport.Logger
@@ -28,12 +32,14 @@ type MessageUseCase struct {
 // NewMessageUseCase 創建訊息用例
 func NewMessageUseCase(
 	campaignRepo repositoryport.MessageCampaignRepository,
+	merchantRepo repositoryport.MerchantRepository,
 	playerMessageRepo repositoryport.PlayerMessageRepository,
 	playerRepo repositoryport.PlayerRepository,
 	logger infraport.Logger,
 ) usecaseport.MessageUseCase {
 	return &MessageUseCase{
 		campaignRepo:      campaignRepo,
+		merchantRepo:      merchantRepo,
 		playerMessageRepo: playerMessageRepo,
 		playerRepo:        playerRepo,
 		logger:            logger,
@@ -54,14 +60,21 @@ func (u *MessageUseCase) CreateMessageCampaign(
 		attribute.Int("campaign.target", int(campaign.Target)),
 	)
 
+	merchant, err := u.merchantRepo.FindByGlobalID(ctx, campaign.GlobalMerchantID)
+	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
+		tracing.RecordSpanError(span, err)
+		return fmt.Errorf("find merchant: %w", err)
+	}
 	tracing.TraceEvent(span, "Creating message campaign")
 
 	// 轉換 DTO 到 Entity 物件
 	campaignEntity := &entity.MessageCampaign{
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		GlobalID:   uuid.NewString(),
+		MerchantID: merchant.ID,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}
-	err := copier.Copy(campaignEntity, campaign)
+	err = copier.Copy(campaignEntity, campaign)
 	if err != nil {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("copy campaign failed: %w", err)

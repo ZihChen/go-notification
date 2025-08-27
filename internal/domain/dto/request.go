@@ -7,14 +7,15 @@ import (
 )
 
 type CreateMessageCampaignRequest struct {
-	Category      uint8      `json:"category"        binding:"required,min=1,max=3"`
-	Item          uint8      `json:"item"            binding:"required,min=1,max=6"`
-	Title         string     `json:"title"           binding:"required,max=255"`
-	Content       string     `json:"content"         binding:"required"`
-	Target        uint8      `json:"target"          binding:"required"`
-	SendStartTime *time.Time `json:"send_start_time"`
-	SendEndTime   *time.Time `json:"send_end_time"`
-	CreatedBy     string     `json:"created_by"      binding:"required,max=100"`
+	GlobalMerchantID string     `json:"global_merchant_id"`
+	Category         uint8      `json:"category"           binding:"required,min=1,max=3"`
+	Item             uint8      `json:"item"               binding:"required,min=1,max=6"`
+	Title            string     `json:"title"              binding:"required,max=255"`
+	Content          string     `json:"content"            binding:"required"`
+	Target           uint8      `json:"target"             binding:"required"`
+	SendStartTime    *time.Time `json:"send_start_time"`
+	SendEndTime      *time.Time `json:"send_end_time"`
+	CreatedBy        string     `json:"created_by"         binding:"required,max=100"`
 }
 
 type ListMessageCampaignsRequest struct {

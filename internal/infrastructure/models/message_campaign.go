@@ -11,6 +11,8 @@ type MessageCampaign struct {
 	ID            uint64         `json:"id"                        gorm:"primaryKey;autoIncrement"`
 	Category      uint8          `json:"category"                  gorm:"column:category;not null"` // 1=member, 2=bonus, 3=others
 	Item          uint8          `json:"item"                      gorm:"column:item;not null"`     // 1=registration, 2=identity_verification, ..., 6=all
+	MerchantID    uint64         `json:"merchant_id"               gorm:"index;not null;default:0"`
+	GlobalID      string         `json:"global_id"                 gorm:"uniqueIndex;size:100;not null;default:''"`
 	Title         string         `json:"title"                     gorm:"size:255;column:title;not null"`
 	Content       string         `json:"content"                   gorm:"column:content;type:mediumtext"`          // 可包含 HTML Tag
 	Status        uint8          `json:"status"                    gorm:"column:status;not null;default:1"`        // 1=draft, 2=scheduled, 3=sent, 4=cancelled, 5=archived
