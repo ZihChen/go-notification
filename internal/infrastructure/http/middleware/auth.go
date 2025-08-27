@@ -11,17 +11,12 @@ import (
 )
 
 type AuthConfig struct {
-	APIKeys        []string
+	APIKeys        map[string]string
 	HeaderKey      string
 	EncryptionType string // "md5", "base64", "plain"
 }
 
 func AuthMiddleware(config AuthConfig) gin.HandlerFunc {
-	// 預處理API Keys為map以加快查詢速度
-	validKeys := make(map[string]bool)
-	for _, key := range config.APIKeys {
-		validKeys[key] = true
-	}
 
 	// 設定預設header key
 	headerKey := config.HeaderKey
@@ -43,13 +38,15 @@ func AuthMiddleware(config AuthConfig) gin.HandlerFunc {
 			response.Unauthorized(c, "Invalid API key format", err.Error()).Return()
 		}
 
-		// 驗證API Key
-		if !validKeys[decryptedKey] {
+		// 驗證API Key並取得對應的merchant ID
+		merchantID, exists := config.APIKeys[decryptedKey]
+		if !exists {
 			response.Unauthorized(c, "Invalid API key", "The provided API key is invalid").Return()
+			return
 		}
 
-		// 將解密後的API Key存入context供後續使用
 		c.Set("api_key", decryptedKey)
+		c.Set("global_merchant_id", merchantID)
 		c.Next()
 	}
 }

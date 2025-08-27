@@ -24,7 +24,10 @@ func TestNewAPIKeyAuthMiddleware(t *testing.T) {
 		{
 			name: "Valid plain API key",
 			config: AuthConfig{
-				APIKeys:        []string{"test-api-key", "another-key"},
+				APIKeys: map[string]string{
+					"test-api-key": "MERCHANT-1",
+					"another-key":  "MERCHANT-2",
+				},
 				HeaderKey:      "X-API-Key",
 				EncryptionType: "plain",
 			},
@@ -36,7 +39,10 @@ func TestNewAPIKeyAuthMiddleware(t *testing.T) {
 		{
 			name: "Valid base64 encoded API key",
 			config: AuthConfig{
-				APIKeys:        []string{"test-api-key", "another-key"},
+				APIKeys: map[string]string{
+					"test-api-key": "MERCHANT-1",
+					"another-key":  "MERCHANT-2",
+				},
 				HeaderKey:      "X-API-Key",
 				EncryptionType: "base64",
 			},
@@ -48,7 +54,7 @@ func TestNewAPIKeyAuthMiddleware(t *testing.T) {
 		{
 			name: "Missing API key",
 			config: AuthConfig{
-				APIKeys:        []string{"test-api-key"},
+				APIKeys:        map[string]string{"test-api-key": "MERCHANT-1"},
 				HeaderKey:      "X-API-Key",
 				EncryptionType: "plain",
 			},
@@ -60,7 +66,7 @@ func TestNewAPIKeyAuthMiddleware(t *testing.T) {
 		{
 			name: "Invalid API key",
 			config: AuthConfig{
-				APIKeys:        []string{"test-api-key"},
+				APIKeys:        map[string]string{"test-api-key": "MERCHANT-1"},
 				HeaderKey:      "X-API-Key",
 				EncryptionType: "plain",
 			},
@@ -72,7 +78,7 @@ func TestNewAPIKeyAuthMiddleware(t *testing.T) {
 		{
 			name: "Invalid base64 encoding",
 			config: AuthConfig{
-				APIKeys:        []string{"test-api-key"},
+				APIKeys:        map[string]string{"test-api-key": "MERCHANT-1"},
 				HeaderKey:      "X-API-Key",
 				EncryptionType: "base64",
 			},
@@ -84,11 +90,11 @@ func TestNewAPIKeyAuthMiddleware(t *testing.T) {
 		{
 			name: "Default header key",
 			config: AuthConfig{
-				APIKeys:        []string{"test-api-key"},
+				APIKeys:        map[string]string{"test-api-key": "MERCHANT-1"},
 				HeaderKey:      "",
 				EncryptionType: "plain",
 			},
-			headerKey:      "X-API-Key",
+			headerKey:      "API-Key",
 			headerValue:    "test-api-key",
 			expectedStatus: http.StatusOK,
 			expectedBody:   "success",
@@ -117,6 +123,39 @@ func TestNewAPIKeyAuthMiddleware(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAuthMiddleware_MerchantIDContext(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	config := AuthConfig{
+		APIKeys:        map[string]string{"test-key": "MERCHANT-123"},
+		HeaderKey:      "X-API-Key",
+		EncryptionType: "plain",
+	}
+
+	router := gin.New()
+	router.Use(AuthMiddleware(config))
+	router.GET("/test", func(c *gin.Context) {
+		apiKey, exists := c.Get("api_key")
+		assert.True(t, exists)
+		assert.Equal(t, "test-key", apiKey)
+
+		merchantID, exists := c.Get("global_merchant_id")
+		assert.True(t, exists)
+		assert.Equal(t, "MERCHANT-123", merchantID)
+
+		c.String(http.StatusOK, "success")
+	})
+
+	req, _ := http.NewRequest("GET", "/test", nil)
+	req.Header.Set("X-API-Key", "test-key")
+
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, req)
+
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.Equal(t, "success", recorder.Body.String())
 }
 
 func TestDecryptAPIKey(t *testing.T) {

@@ -2,8 +2,8 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -102,7 +102,7 @@ type EventsConfig struct {
 // AuthConfig API認證配置
 type AuthConfig struct {
 	Enabled        bool
-	APIKeys        []string
+	APIKeys        map[string]string
 	HeaderKey      string
 	EncryptionType string
 }
@@ -184,7 +184,7 @@ func LoadConfig() (*Config, error) {
 		},
 		Auth: AuthConfig{
 			Enabled:        viper.GetBool("AUTH_ENABLED"),
-			APIKeys:        parseAPIKeys(viper.GetString("AUTH_API_KEYS")),
+			APIKeys:        parseAPIKeyMap(viper.GetString("AUTH_API_KEYS")),
 			HeaderKey:      viper.GetString("AUTH_HEADER_KEY"),
 			EncryptionType: viper.GetString("AUTH_ENCRYPTION_TYPE"),
 		},
@@ -222,24 +222,20 @@ func (c *Config) LoadAWSConfig(ctx context.Context) (aws.Config, error) {
 	return awsconfig.LoadDefaultConfig(ctx, opts...)
 }
 
-// parseAPIKeys 解析逗號分隔的API Key字符串
-func parseAPIKeys(apiKeysString string) []string {
+// parseAPIKeyMap 解析JSON格式的API Key映射字符串
+func parseAPIKeyMap(apiKeysString string) map[string]string {
 	if apiKeysString == "" {
-		return []string{}
+		return map[string]string{}
 	}
 
-	// 分割並清理空格
-	keys := strings.Split(apiKeysString, ",")
-	var cleanedKeys []string
-
-	for _, key := range keys {
-		cleanedKey := strings.TrimSpace(key)
-		if cleanedKey != "" {
-			cleanedKeys = append(cleanedKeys, cleanedKey)
-		}
+	keyMap := make(map[string]string)
+	err := json.Unmarshal([]byte(apiKeysString), &keyMap)
+	if err != nil {
+		// 如果JSON解析失败，返回空map
+		return map[string]string{}
 	}
 
-	return cleanedKeys
+	return keyMap
 }
 
 // Helper functions for default values

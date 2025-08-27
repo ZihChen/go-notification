@@ -76,7 +76,12 @@ func setupWorkerComponents(
 	require.NoError(t, err, "Should connect to database without error")
 
 	// 初始化 Worker 組件
-	workerComponents, err := di.InitializeWorkerComponents(cfg, logger, redisManager, db.GetDBConnection())
+	workerComponents, err := di.InitializeWorkerComponents(
+		cfg,
+		logger,
+		redisManager,
+		db.GetDBConnection(),
+	)
 	require.NoError(t, err, "Should initialize worker components without error")
 
 	// 清理函數
@@ -228,7 +233,9 @@ func TestMerchantRedisToWorker(t *testing.T) {
 	db, err := database.NewDatabase(cfg, logger)
 	require.NoError(t, err, "Should connect to database without error")
 	var merchant models.Merchant
-	result := db.GetDBConnection().Where("global_merchant_id = ?", globalMerchantID).First(&merchant)
+	result := db.GetDBConnection().
+		Where("global_merchant_id = ?", globalMerchantID).
+		First(&merchant)
 	assert.NoError(t, result.Error, "Should find merchant in database")
 	assert.Equal(t, globalMerchantID, merchant.GlobalMerchantID, "Global merchant ID should match")
 	assert.Equal(t, merchantName, merchant.Name, "Merchant name should match")

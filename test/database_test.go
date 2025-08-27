@@ -2,13 +2,13 @@
 package tests
 
 import (
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/database/mysql"
-	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
-	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/database/mysql"
+	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDBConnection(t *testing.T) {
