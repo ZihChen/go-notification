@@ -196,6 +196,36 @@ func (r *MessageCampaignRepository) Update(
 	return nil
 }
 
+// UpdateFields 更新指定字段
+func (r *MessageCampaignRepository) UpdateFields(
+	ctx context.Context,
+	id uint64,
+	updates map[string]interface{},
+	includeDeleted bool,
+) error {
+	if len(updates) == 0 {
+		return fmt.Errorf("no fields to update")
+	}
+	builder := r.db.WithContext(ctx).Model(&models.MessageCampaign{})
+
+	// 是否更新已刪除的記錄
+	if includeDeleted {
+		builder = builder.Unscoped()
+	}
+
+	result := builder.Where("id = ?", id).
+		Updates(updates)
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("record not found")
+	}
+	return nil
+}
+
 // UpdateSentCount 更新實際發送人數
 func (r *MessageCampaignRepository) UpdateSentCount(
 	ctx context.Context,

@@ -43,7 +43,7 @@ func NewMessageUseCase(
 // CreateMessageCampaign 創建會員訊息活動
 func (u *MessageUseCase) CreateMessageCampaign(
 	ctx context.Context,
-	campaign *entity.MessageCampaign,
+	campaign *dto.CreateMessageCampaignRequest,
 ) error {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.CreateMessageCampaign")
 	defer tracing.SpanEnd(span)
@@ -56,29 +56,36 @@ func (u *MessageUseCase) CreateMessageCampaign(
 
 	tracing.TraceEvent(span, "Creating message campaign")
 
-	campaign.CreatedAt = time.Now()
-	campaign.UpdatedAt = time.Now()
+	// 轉換 DTO 到 Entity 物件
+	campaignEntity := &entity.MessageCampaign{
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	err := copier.Copy(campaignEntity, campaign)
+	if err != nil {
+		tracing.RecordSpanError(span, err)
+		return fmt.Errorf("copy campaign failed: %w", err)
+	}
 
-	if err := u.campaignRepo.Create(ctx, campaign); err != nil {
+	if err = u.campaignRepo.Create(ctx, campaignEntity); err != nil {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("create campaign: %w", err)
 	}
 
-	tracing.RecordSpanAttributes(span, attribute.Int64("campaign.id", int64(campaign.ID)))
+	tracing.RecordSpanAttributes(span, attribute.Int64("campaign.id", int64(campaignEntity.ID)))
 	tracing.TraceEvent(span, "Message campaign created successfully")
 
-	u.logger.InfoLog("Message campaign created",
-		u.logger.Int64("campaign_id", int64(campaign.ID)),
-		u.logger.String("title", campaign.Title),
-		u.logger.String("created_by", campaign.CreatedBy))
-
+	u.logger.InfoWithContext(ctx, "Message campaign created",
+		u.logger.Int64("campaign_id", int64(campaignEntity.ID)),
+		u.logger.String("title", campaignEntity.Title),
+		u.logger.String("created_by", campaignEntity.CreatedBy))
 	return nil
 }
 
 // UpdateMessageCampaign 更新會員訊息活動
 func (u *MessageUseCase) UpdateMessageCampaign(
 	ctx context.Context,
-	campaign *entity.MessageCampaign,
+	campaign *dto.UpdateMessageCampaignRequest,
 ) error {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.UpdateMessageCampaign")
 	defer tracing.SpanEnd(span)
@@ -97,23 +104,30 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 		return fmt.Errorf("find campaign: %w", err)
 	}
 
-	// 保持創建時間和創建者不變
-	campaign.CreatedAt = existing.CreatedAt
-	campaign.CreatedBy = existing.CreatedBy
-	campaign.UpdatedAt = time.Now()
+	// 轉換 DTO 到 Entity 物件
+	campaignEntity := &entity.MessageCampaign{
+		CreatedAt: existing.CreatedAt,
+		CreatedBy: existing.CreatedBy,
+		Status:    consts.MessageCampaignStatusDraft,
+		UpdatedAt: time.Now(),
+	}
+	err = copier.Copy(campaignEntity, campaign)
+	if err != nil {
+		tracing.RecordSpanError(span, err)
+		return fmt.Errorf("copy campaign failed: %w", err)
+	}
 
-	if err = u.campaignRepo.Update(ctx, campaign); err != nil {
+	if err = u.campaignRepo.Update(ctx, campaignEntity); err != nil {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("update campaign: %w", err)
 	}
 
 	tracing.TraceEvent(span, "Message campaign updated successfully")
 
-	u.logger.InfoLog("Message campaign updated",
+	u.logger.InfoWithContext(ctx, "Message campaign updated",
 		u.logger.Int64("campaign_id", int64(campaign.ID)),
 		u.logger.String("title", campaign.Title),
-		u.logger.String("updated_by", *campaign.UpdatedBy))
-
+		u.logger.String("updated_by", *campaignEntity.UpdatedBy))
 	return nil
 }
 
@@ -130,11 +144,21 @@ func (u *MessageUseCase) DeleteMessageCampaign(ctx context.Context, id uint64) e
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("delete campaign: %w", err)
 	}
+	setColumn := map[string]interface{}{
+		"status": consts.MessageCampaignStatusCancelled,
+	}
+
+	if err := u.campaignRepo.UpdateFields(ctx, id, setColumn, true); err != nil {
+		tracing.RecordSpanError(span, err)
+		return fmt.Errorf("update campaign status: %w", err)
+	}
 
 	tracing.TraceEvent(span, "Message campaign deleted successfully")
-
-	u.logger.InfoLog("Message campaign deleted", u.logger.Int64("campaign_id", int64(id)))
-
+	u.logger.InfoWithContext(
+		ctx,
+		"Message campaign deleted",
+		u.logger.Int64("campaign_id", int64(id)),
+	)
 	return nil
 }
 

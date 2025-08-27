@@ -363,24 +363,17 @@ func (h *HTTPHandler) GetManagerByGlobalID(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /api/v1/message-campaigns [post]
 func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
-	var req dto.CreateMessageCampaignRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	req := &dto.CreateMessageCampaignRequest{}
+	if err := c.ShouldBindJSON(req); err != nil {
 		response.BadRequest(c, "invalid request format", err.Error()).Return()
 	}
 
-	campaign := &entity.MessageCampaign{
-		Category:      req.Category,
-		Item:          req.Item,
-		Title:         req.Title,
-		Content:       req.Content,
-		Target:        req.Target,
-		AutoSend:      req.AutoSend,
-		SendStartTime: req.SendStartTime,
-		SendEndTime:   req.SendEndTime,
-		CreatedBy:     req.CreatedBy,
-	}
-
-	if err := h.messageUseCase.CreateMessageCampaign(c.Request.Context(), campaign); err != nil {
+	if err := h.messageUseCase.CreateMessageCampaign(c.Request.Context(), req); err != nil {
+		h.logger.ErrorWithContext(
+			c.Request.Context(),
+			"failed to create message campaign",
+			h.logger.Error("err", err),
+		)
 		response.InternalServerError(c, "failed to create message campaign", err.Error()).Return()
 	}
 	response.CreatedSuccess(c).Return()
@@ -405,31 +398,20 @@ func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
 		response.BadRequest(c, "invalid campaign ID", err.Error()).Return()
 	}
 
-	var req dto.UpdateMessageCampaignRequest
+	req := &dto.UpdateMessageCampaignRequest{
+		ID: id,
+	}
 	if err = c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "invalid request format", err.Error()).Return()
 	}
 
-	campaign := &entity.MessageCampaign{
-		ID:            id,
-		Category:      req.Category,
-		Item:          req.Item,
-		Title:         req.Title,
-		Content:       req.Content,
-		Target:        req.Target,
-		AutoSend:      req.AutoSend,
-		SendStartTime: req.SendStartTime,
-		SendEndTime:   req.SendEndTime,
-		UpdatedBy:     &req.UpdatedBy,
-	}
-
-	if err = h.messageUseCase.UpdateMessageCampaign(c.Request.Context(), campaign); err != nil {
+	if err = h.messageUseCase.UpdateMessageCampaign(c.Request.Context(), req); err != nil {
 		if err.Error() == "record not found" {
 			response.NotFound(c, "message campaign not found", err.Error()).Return()
 		}
 		response.InternalServerError(c, "failed to update message campaign", err.Error()).Return()
 	}
-	response.OK(c).Data(campaign).Return()
+	response.OK(c).Data(req).Return()
 }
 
 // DeleteMessageCampaign 刪除會員訊息活動

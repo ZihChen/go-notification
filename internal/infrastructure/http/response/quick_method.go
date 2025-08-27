@@ -71,7 +71,7 @@ func CreatedSuccess(c *gin.Context) *Builder {
 func DeletedSuccess(c *gin.Context) *Builder {
 	return NewResponse(
 		c,
-	).Status(http.StatusNoContent).
+	).Status(http.StatusOK).
 		Data(SuccessMessage{"deleted success"}).
 		Success(true)
 }

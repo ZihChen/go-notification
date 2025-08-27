@@ -55,6 +55,12 @@ type MessageCampaignRepository interface {
 	FindScheduledCampaigns(ctx context.Context) ([]*entity.MessageCampaign, error)
 	Create(ctx context.Context, campaign *entity.MessageCampaign) error
 	Update(ctx context.Context, campaign *entity.MessageCampaign) error
+	UpdateFields(
+		ctx context.Context,
+		id uint64,
+		updates map[string]interface{},
+		includeDeleted bool,
+	) error
 	UpdateSentCount(ctx context.Context, campaignID uint64, count int64) error
 	Delete(ctx context.Context, id uint64) error
 }
