@@ -18,7 +18,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/database"
+	database "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/database/mysql"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
 	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
@@ -72,17 +72,17 @@ func setupWorkerComponents(
 	require.NoError(t, err, "Should connect to Redis without error")
 
 	// 初始化資料庫連接
-	db, err := database.NewDatabase(cfg)
+	db, err := database.NewDatabase(cfg, logger)
 	require.NoError(t, err, "Should connect to database without error")
 
 	// 初始化 Worker 組件
-	workerComponents, err := di.InitializeWorkerComponents(cfg, logger, redisManager, db.DB)
+	workerComponents, err := di.InitializeWorkerComponents(cfg, logger, redisManager, db.GetDBConnection())
 	require.NoError(t, err, "Should initialize worker components without error")
 
 	// 清理函數
 	cleanup := func() {
 		// 關閉資料庫連接
-		sqlDB, _ := db.DB.DB()
+		sqlDB, _ := db.GetDBConnection().DB()
 		if sqlDB != nil {
 			err = sqlDB.Close()
 			require.NoError(t, err)
@@ -171,6 +171,9 @@ func TestMerchantRedisToWorker(t *testing.T) {
 	kinesisClient, streamName, _, cleanupKinesis := setupKinesisClient(t)
 	defer cleanupKinesis()
 
+	// 建立 Logger
+	logger := helper.SetupLoggerMock(t)
+
 	// 建立商戶唯一標識
 	testID := time.Now().Format("20060102150405")
 	globalMerchantID := "TEST-MERCHANT-" + testID
@@ -222,10 +225,10 @@ func TestMerchantRedisToWorker(t *testing.T) {
 	t.Logf("Processed merchant sync task directly")
 
 	// 驗證資料庫中有商戶記錄
-	db, err := database.NewDatabase(cfg)
+	db, err := database.NewDatabase(cfg, logger)
 	require.NoError(t, err, "Should connect to database without error")
 	var merchant models.Merchant
-	result := db.DB.Where("global_merchant_id = ?", globalMerchantID).First(&merchant)
+	result := db.GetDBConnection().Where("global_merchant_id = ?", globalMerchantID).First(&merchant)
 	assert.NoError(t, result.Error, "Should find merchant in database")
 	assert.Equal(t, globalMerchantID, merchant.GlobalMerchantID, "Global merchant ID should match")
 	assert.Equal(t, merchantName, merchant.Name, "Merchant name should match")
@@ -306,7 +309,7 @@ func TestMerchantRedisToWorker(t *testing.T) {
 	}
 
 	// 清理 - 刪除測試商戶
-	db.DB.Delete(&merchant)
+	db.GetDBConnection().Delete(&merchant)
 	t.Logf("Deleted test merchant from database: %d", merchant.ID)
 
 	// 最終驗證
@@ -329,8 +332,11 @@ func TestPlayerRedisToWorker(t *testing.T) {
 	kinesisClient, streamName, _, cleanupKinesis := setupKinesisClient(t)
 	defer cleanupKinesis()
 
+	// 建立 Logger
+	logger := helper.SetupLoggerMock(t)
+
 	// 建立資料庫連接
-	db, err := database.NewDatabase(cfg)
+	db, err := database.NewDatabase(cfg, logger)
 	require.NoError(t, err, "Should connect to database without error")
 
 	// 首先需要建立一個商戶作為外鍵關聯
@@ -345,7 +351,7 @@ func TestPlayerRedisToWorker(t *testing.T) {
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),
 	}
-	result := db.DB.Create(merchant)
+	result := db.GetDBConnection().Create(merchant)
 	require.NoError(t, result.Error, "Should create merchant without error")
 	t.Logf("Created test merchant in database: %d", merchant.ID)
 
@@ -399,7 +405,7 @@ func TestPlayerRedisToWorker(t *testing.T) {
 
 	// 驗證資料庫中有玩家記錄
 	var player models.Player
-	result = db.DB.Where("global_player_id = ?", globalPlayerID).First(&player)
+	result = db.GetDBConnection().Where("global_player_id = ?", globalPlayerID).First(&player)
 	assert.NoError(t, result.Error, "Should find player in database")
 	assert.Equal(t, globalPlayerID, player.GlobalPlayerID, "Global player ID should match")
 	assert.Equal(t, playerAccount, player.Account, "Player account should match")
@@ -480,9 +486,9 @@ func TestPlayerRedisToWorker(t *testing.T) {
 	}
 
 	// 清理 - 刪除測試玩家和商戶
-	db.DB.Delete(&player)
+	db.GetDBConnection().Delete(&player)
 	t.Logf("Deleted test player from database: %d", player.ID)
-	db.DB.Delete(&merchant)
+	db.GetDBConnection().Delete(&merchant)
 	t.Logf("Deleted test merchant from database: %d", merchant.ID)
 
 	// 最終驗證
@@ -505,8 +511,11 @@ func TestManagerRedisToWorker(t *testing.T) {
 	kinesisClient, streamName, _, cleanupKinesis := setupKinesisClient(t)
 	defer cleanupKinesis()
 
+	// 建立 Logger
+	logger := helper.SetupLoggerMock(t)
+
 	// 建立資料庫連接
-	db, err := database.NewDatabase(cfg)
+	db, err := database.NewDatabase(cfg, logger)
 	require.NoError(t, err, "Should connect to database without error")
 
 	// 首先需要建立一個商戶作為外鍵關聯
@@ -521,7 +530,7 @@ func TestManagerRedisToWorker(t *testing.T) {
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),
 	}
-	result := db.DB.Create(merchant)
+	result := db.GetDBConnection().Create(merchant)
 	require.NoError(t, result.Error, "Should create merchant without error")
 	t.Logf("Created test merchant in database: %d", merchant.ID)
 
@@ -575,7 +584,7 @@ func TestManagerRedisToWorker(t *testing.T) {
 
 	// 驗證資料庫中有管理員記錄
 	var manager models.Manager
-	result = db.DB.Where("global_manager_id = ?", globalManagerID).First(&manager)
+	result = db.GetDBConnection().Where("global_manager_id = ?", globalManagerID).First(&manager)
 	assert.NoError(t, result.Error, "Should find manager in database")
 	assert.Equal(t, globalManagerID, manager.GlobalManagerID, "Global manager ID should match")
 	assert.Equal(t, managerAccount, manager.Account, "Manager account should match")
@@ -657,9 +666,9 @@ func TestManagerRedisToWorker(t *testing.T) {
 	}
 
 	// 清理 - 刪除測試管理員和商戶
-	db.DB.Delete(&manager)
+	db.GetDBConnection().Delete(&manager)
 	t.Logf("Deleted test manager from database: %d", manager.ID)
-	db.DB.Delete(&merchant)
+	db.GetDBConnection().Delete(&merchant)
 	t.Logf("Deleted test merchant from database: %d", merchant.ID)
 
 	// 最終驗證
