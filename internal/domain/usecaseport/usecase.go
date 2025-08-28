@@ -30,8 +30,8 @@ type PlayerUseCase interface {
 type MessageUseCase interface {
 	CreateMessageCampaign(ctx context.Context, campaign *dto.CreateMessageCampaignRequest) error
 	UpdateMessageCampaign(ctx context.Context, campaign *dto.UpdateMessageCampaignRequest) error
-	DeleteMessageCampaign(ctx context.Context, id uint64) error
-	GetMessageCampaign(ctx context.Context, id uint64) (*entity.MessageCampaign, error)
+	DeleteMessageCampaign(ctx context.Context, globalID string) error
+	GetMessageCampaign(ctx context.Context, globalID string) (*entity.MessageCampaign, error)
 	ListMessageCampaigns(
 		ctx context.Context,
 		req *dto.ListMessageCampaignsRequest,

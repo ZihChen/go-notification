@@ -47,6 +47,7 @@ type ManagerRepository interface {
 // MessageCampaignRepository 會員訊息活動資料庫接口
 type MessageCampaignRepository interface {
 	FindByID(ctx context.Context, id uint64) (*entity.MessageCampaign, error)
+	FindByGlobalID(ctx context.Context, globalID string) (*entity.MessageCampaign, error)
 	FindAllWithOptions(
 		ctx context.Context,
 		query *entity.MessageCampaignsQuery,

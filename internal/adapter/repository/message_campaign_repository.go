@@ -40,6 +40,23 @@ func (r *MessageCampaignRepository) FindByID(
 	return mapToDomainMessageCampaign(&campaign), nil
 }
 
+// FindByGlobalID 通過GlobalID查找會員訊息活動
+func (r *MessageCampaignRepository) FindByGlobalID(
+	ctx context.Context,
+	globalID string,
+) (*entity.MessageCampaign, error) {
+	var campaign models.MessageCampaign
+	result := r.db.WithContext(ctx).Where("global_id = ?", globalID).First(&campaign)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("record not found")
+		}
+		return &entity.MessageCampaign{}, result.Error
+	}
+
+	return mapToDomainMessageCampaign(&campaign), nil
+}
+
 // FindAllWithOptions 根據篩選條件查找會員訊息活動
 func (r *MessageCampaignRepository) FindAllWithOptions(
 	ctx context.Context,

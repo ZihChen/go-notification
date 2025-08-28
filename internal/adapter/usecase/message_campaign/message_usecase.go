@@ -104,14 +104,14 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 	defer tracing.SpanEnd(span)
 
 	tracing.RecordSpanAttributes(span,
-		attribute.Int64("campaign.id", int64(campaign.ID)),
+		attribute.String("campaign.global_id", campaign.GlobalID),
 		attribute.String("campaign.title", campaign.Title),
 	)
 
 	tracing.TraceEvent(span, "Updating message campaign")
 
 	// 檢查活動是否存在
-	existing, err := u.campaignRepo.FindByID(ctx, campaign.ID)
+	existing, err := u.campaignRepo.FindByGlobalID(ctx, campaign.GlobalID)
 	if err != nil {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("find campaign: %w", err)
@@ -119,11 +119,17 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 
 	// 轉換 DTO 到 Entity 物件
 	campaignEntity := &entity.MessageCampaign{
-		CreatedAt: existing.CreatedAt,
-		CreatedBy: existing.CreatedBy,
-		Status:    consts.MessageCampaignStatusDraft,
-		UpdatedAt: time.Now(),
+		ID:         existing.ID,
+		MerchantID: existing.MerchantID,
+		GlobalID:   existing.GlobalID,
+		CreatedAt:  existing.CreatedAt,
+		CreatedBy:  existing.CreatedBy,
+		Status:     consts.MessageCampaignStatusDraft,
+		UpdatedAt:  time.Now(),
+		UpdatedBy:  &campaign.UpdatedBy,
 	}
+
+	// 先複製可更新的字段
 	err = copier.Copy(campaignEntity, campaign)
 	if err != nil {
 		tracing.RecordSpanError(span, err)
@@ -138,22 +144,29 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 	tracing.TraceEvent(span, "Message campaign updated successfully")
 
 	u.logger.InfoWithContext(ctx, "Message campaign updated",
-		u.logger.Int64("campaign_id", int64(campaign.ID)),
+		u.logger.String("campaign_global_id", campaign.GlobalID),
 		u.logger.String("title", campaign.Title),
 		u.logger.String("updated_by", *campaignEntity.UpdatedBy))
 	return nil
 }
 
 // DeleteMessageCampaign 刪除會員訊息活動
-func (u *MessageUseCase) DeleteMessageCampaign(ctx context.Context, id uint64) error {
+func (u *MessageUseCase) DeleteMessageCampaign(ctx context.Context, globalID string) error {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.DeleteMessageCampaign")
 	defer tracing.SpanEnd(span)
 
-	tracing.RecordSpanAttributes(span, attribute.Int64("campaign.id", int64(id)))
+	tracing.RecordSpanAttributes(span, attribute.String("campaign.global_id", globalID))
 
 	tracing.TraceEvent(span, "Deleting message campaign")
 
-	if err := u.campaignRepo.Delete(ctx, id); err != nil {
+	// 先查找記錄以獲取ID（用於後續更新狀態）
+	existing, err := u.campaignRepo.FindByGlobalID(ctx, globalID)
+	if err != nil {
+		tracing.RecordSpanError(span, err)
+		return fmt.Errorf("find campaign: %w", err)
+	}
+
+	if err = u.campaignRepo.Delete(ctx, existing.ID); err != nil {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("delete campaign: %w", err)
 	}
@@ -161,7 +174,7 @@ func (u *MessageUseCase) DeleteMessageCampaign(ctx context.Context, id uint64) e
 		"status": consts.MessageCampaignStatusCancelled,
 	}
 
-	if err := u.campaignRepo.UpdateFields(ctx, id, setColumn, true); err != nil {
+	if err = u.campaignRepo.UpdateFields(ctx, existing.ID, setColumn, true); err != nil {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("update campaign status: %w", err)
 	}
@@ -170,7 +183,7 @@ func (u *MessageUseCase) DeleteMessageCampaign(ctx context.Context, id uint64) e
 	u.logger.InfoWithContext(
 		ctx,
 		"Message campaign deleted",
-		u.logger.Int64("campaign_id", int64(id)),
+		u.logger.String("campaign_global_id", globalID),
 	)
 	return nil
 }
@@ -178,14 +191,14 @@ func (u *MessageUseCase) DeleteMessageCampaign(ctx context.Context, id uint64) e
 // GetMessageCampaign 獲取會員訊息活動
 func (u *MessageUseCase) GetMessageCampaign(
 	ctx context.Context,
-	id uint64,
+	globalID string,
 ) (*entity.MessageCampaign, error) {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.GetMessageCampaign")
 	defer tracing.SpanEnd(span)
 
-	tracing.RecordSpanAttributes(span, attribute.Int64("campaign.id", int64(id)))
+	tracing.RecordSpanAttributes(span, attribute.String("campaign.global_id", globalID))
 
-	campaign, err := u.campaignRepo.FindByID(ctx, id)
+	campaign, err := u.campaignRepo.FindByGlobalID(ctx, globalID)
 	if err != nil {
 		tracing.RecordSpanError(span, err)
 		return nil, fmt.Errorf("find campaign: %w", err)

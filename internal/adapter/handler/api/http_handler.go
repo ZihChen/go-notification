@@ -94,9 +94,9 @@ func (h *HTTPHandler) RegisterRoutes(router *gin.Engine) {
 	{
 		campaigns.POST("", h.CreateMessageCampaign)
 		campaigns.GET("", h.ListMessageCampaigns)
-		campaigns.GET("/:id", h.GetMessageCampaign)
-		campaigns.PUT("/:id", h.UpdateMessageCampaign)
-		campaigns.DELETE("/:id", h.DeleteMessageCampaign)
+		campaigns.GET("/:global_id", h.GetMessageCampaign)
+		campaigns.PUT("/:global_id", h.UpdateMessageCampaign)
+		campaigns.DELETE("/:global_id", h.DeleteMessageCampaign)
 	}
 
 	// 玩家端 - 訊息查看
@@ -383,26 +383,28 @@ func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
 
 // UpdateMessageCampaign 更新會員訊息活動
 // @Summary 更新會員訊息活動
-// @Description 更新指定ID的會員訊息活動
+// @Description 更新指定GlobalID的會員訊息活動
 // @Tags Message Campaign
 // @Accept json
 // @Produce json
-// @Param id path int true "Campaign ID"
+// @Param id path string true "Campaign Global ID"
 // @Param request body dto.UpdateMessageCampaignRequest true "Update message campaign request"
 // @Success 200 {object} entity.MessageCampaign
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/message-campaigns/{id} [put]
+// @Router /api/v1/message-campaigns/{global_id} [put]
 func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		response.BadRequest(c, "invalid campaign ID", err.Error()).Return()
+	globalID := c.Param("global_id")
+	if globalID == "" {
+		response.BadRequest(c, "invalid campaign global_id", "global_id parameter is required").Return()
 	}
 
 	req := &dto.UpdateMessageCampaignRequest{
-		ID: id,
+		GlobalID:         globalID,
+		GlobalMerchantID: c.GetString("global_merchant_id"),
 	}
+	var err error
 	if err = c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "invalid request format", err.Error()).Return()
 	}
@@ -418,21 +420,21 @@ func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
 
 // DeleteMessageCampaign 刪除會員訊息活動
 // @Summary 刪除會員訊息活動
-// @Description 刪除指定ID的會員訊息活動
+// @Description 刪除指定GlobalID的會員訊息活動
 // @Tags Message Campaign
-// @Param id path int true "Campaign ID"
+// @Param global_id path string true "Campaign Global ID"
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/message-campaigns/{id} [delete]
+// @Router /api/v1/message-campaigns/{global_id} [delete]
 func (h *HTTPHandler) DeleteMessageCampaign(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		response.BadRequest(c, "invalid campaign ID", err.Error()).Return()
+	globalID := c.Param("global_id")
+	if globalID == "" {
+		response.BadRequest(c, "invalid campaign global_id", "global_id parameter is required").Return()
 	}
 
-	if err = h.messageUseCase.DeleteMessageCampaign(c.Request.Context(), id); err != nil {
+	if err := h.messageUseCase.DeleteMessageCampaign(c.Request.Context(), globalID); err != nil {
 		if err.Error() == "record not found" {
 			response.NotFound(c, "message campaign not found", err.Error()).Return()
 		}
@@ -443,21 +445,21 @@ func (h *HTTPHandler) DeleteMessageCampaign(c *gin.Context) {
 
 // GetMessageCampaign 獲取會員訊息活動
 // @Summary 獲取會員訊息活動
-// @Description 根據ID獲取會員訊息活動詳情
+// @Description 根據GlobalID獲取會員訊息活動詳情
 // @Tags Message Campaign
-// @Param id path int true "Campaign ID"
+// @Param global_id path string true "Campaign Global ID"
 // @Success 200 {object} entity.MessageCampaign
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/message-campaigns/{id} [get]
+// @Router /api/v1/message-campaigns/{global_id} [get]
 func (h *HTTPHandler) GetMessageCampaign(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		response.BadRequest(c, "invalid campaign ID", err.Error()).Return()
+	globalID := c.Param("global_id")
+	if globalID == "" {
+		response.BadRequest(c, "invalid campaign global_id", "global_id parameter is required").Return()
 	}
 
-	campaign, err := h.messageUseCase.GetMessageCampaign(c.Request.Context(), id)
+	campaign, err := h.messageUseCase.GetMessageCampaign(c.Request.Context(), globalID)
 	if err != nil {
 		if err.Error() == "record not found" {
 			response.NotFound(c, "message campaign not found", err.Error()).Return()
