@@ -146,90 +146,55 @@ System uses events for inter-service communication via KDS and Redis queues
 ### Error Handling
 Custom error types defined in `internal/domain/errmsg/` for consistent error handling across the application
 
+## Documentation Structure
+
+### Claude Documentation
+The project maintains structured documentation for development guidance:
+
+- **docs/claude/CLAUDE-QUICK.md** - Quick reference for daily development
+- **docs/claude/CLAUDE-CURRENT.md** - Current project status and active tasks
+- **docs/claude/features/** - Feature specifications and documentation
+- **docs/claude/archive/** - Completed feature archives
+
+### Current Status
+**主要功能完成**: 會員訊息排程發送系統已完成核心開發，現進入測試驗證階段
+
 ## Development Specifications
 
-### Feature: 會員訊息排程發送系統
+### Current Focus: Testing & Validation Phase (2025-08-28)
 
-#### Overview
+The core message campaign scheduling system has been completed and is now in comprehensive testing phase.
+For detailed current tasks, see `docs/claude/CLAUDE-CURRENT.md`.
 
-會員訊息排程發送系統已完成核心功能實作，提供完整的訊息活動生命週期管理，包括創建、修改、排程發送等功能。系統採用高併發設計，支援大規模用戶訊息推送。
+### Completed Features
 
-#### Requirements Status
-- [x] 完成創建會員訊息活動API
-- [x] 完成修改會員訊息活動API  
-- [x] 完成定時發送會員訊息排程
-- [x] 實作API認證中間件與權限控制
-- [x] 整合Merchant關聯功能
-- [x] 新增軟刪除與狀態管理
+#### 會員訊息排程發送系統 v1.1 ✅
+- **Status**: Core development completed
+- **Archive**: `docs/claude/archive/2025-08/message-campaign-v1.1/CLAUDE-2025-08-28-v1.1-COMPLETED.md`
+- **Specification**: `docs/claude/features/message-campaign/spec.md`
 
-#### Technical Implementation
+**Key Achievements:**
+- ✅ Message Campaign CRUD APIs
+- ✅ Scheduled message delivery system  
+- ✅ API authentication middleware with merchant isolation
+- ✅ High-concurrency processing (target: 100k messages in 3 seconds)
+- ✅ Soft delete and lifecycle management
+- ✅ Complete Swagger API documentation
 
-- **HTTP Handlers**
-  - `internal/adapter/handler/worker_handler.go` - Worker服務處理器
-  - Message Campaign CRUD API端點
-  - 整合Swagger文檔支援
+**Technical Implementation:**
+- Clean architecture with hexagonal pattern
+- Event-driven architecture via KDS and Redis
+- Repository pattern with optimized queries
+- OpenTelemetry distributed tracing integration
+- Comprehensive error handling and logging
 
-- **Domain Models**
-  - `internal/infrastructure/models/message_campaign.go` - 訊息活動模型
-  - `internal/infrastructure/models/player_message.go` - 玩家訊息模型
-  - 支援軟刪除、狀態管理、商戶關聯
+### Active Development Areas
 
-- **Scheduler System**
-  - `internal/adapter/job/message_campaign_trigger_job.go` - 排程觸發任務
-  - 使用Cron表達式定時執行
-  - 高併發處理設計，目標3秒完成10萬筆發送
+#### Current Phase: Testing & Validation
+- Functional testing of all API endpoints
+- Integration testing between services
+- Performance testing and optimization
+- Security testing and vulnerability assessment
+- Reliability and fault tolerance testing
 
-- **Authentication Middleware**
-  - `internal/infrastructure/http/middleware/auth.go` - API認證中間件
-  - 支援Merchant映射與權限控制
-
-- **Business Logic**
-  - `internal/adapter/usecase/message_campaign/` - 訊息活動用例
-  - Repository pattern實作
-  - 統一錯誤處理機制
-
-#### Implementation Guidelines
-
-**已實作的核心原則：**
-1. ✅ 遵循 clean architecture 原則
-2. ✅ 加入統一錯誤處理機制
-3. ✅ 整合Redis快取與任務佇列
-4. ✅ 使用Repository pattern避免N+1查詢問題
-5. ✅ 實作高併發排程處理機制
-6. ✅ 建立player_message作為訊息傳遞基礎
-7. ✅ 實作real_sent_count統計回寫機制
-8. ✅ 完整Swagger API文檔支援
-
-**系統特性：**
-- 採用事件驅動架構，通過KDS和Redis實現異步處理
-- 支援軟刪除與完整的生命週期狀態管理
-- API認證中間件提供安全的權限控制
-- 統一響應格式與錯誤處理機制
-- 為未來第三方消息服務整合預留擴展接口
-
-#### Testing Requirements
-- Unit tests for use cases
-- Integration tests for repositories
-- API tests for handlers
-
-#### Performance Metrics
-
-- **高併發處理**：設計目標3秒內處理10萬筆訊息發送
-- **可擴展性**：支援水平擴展，可根據負載調整Worker數量
-- **可靠性**：採用Redis任務佇列確保訊息不丟失
-- **監控**：整合OpenTelemetry分散式追蹤
-
-#### API Endpoints
-
-主要API端點通過Swagger文檔提供完整說明：
-- `GET /swagger/index.html` - API文檔入口
-- Message Campaign CRUD操作
-- 支援批量操作與狀態管理
-- 完整的錯誤碼與響應格式規範
-
-#### Future Enhancements
-
-- 第三方消息服務整合接口（已預留擴展點）
-- 更豐富的訊息模板系統
-- 高級排程規則支援
-- 訊息發送結果詳細分析
+For detailed testing checklist, see `docs/claude/CLAUDE-CURRENT.md`.
