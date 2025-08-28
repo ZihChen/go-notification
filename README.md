@@ -74,6 +74,9 @@
 │   │   │   └── mysql/  # MySQL 實作
 │   │   ├── cache/      
 │   │   │   └── redis/  # Redis 快取管理
+│   │   ├── http/      
+│   │   │   ├── response/    # API響應元件
+│   │   │   └── middleware/  # API中間件
 │   │   ├── kds/        # AWS Kinesis 整合
 │   │   ├── queue/      # Asynq 任務佇列
 │   │   ├── logger/     # 日誌服務
@@ -97,7 +100,7 @@
 
 ### 環境需求
 
-- Go 1.21+
+- Go 1.23+
 - Docker & Docker Compose
 - MySQL 8.0+
 - Redis 7.0+
@@ -234,16 +237,37 @@ swag init
   - `DB_USER`
   - `DB_PASSWORD`
 
+- **資料庫連線池配置**（MySQL）
+  - `DB_MAX_IDLE`
+  - `DB_MAX_OPEN`
+  - `DB_MAX_LIFETIME`
+  - `DB_MAX_IDLE_TIME`
+
 - **Redis 連線**
-  - `REDIS_HOST`
+  - `REDIS_DOMAIN`
   - `REDIS_PORT`
-  - `REDIS_PASSWORD`
+  - `REDIS_PWD`
+  - `REDIS_DB`
+  - 
+- **Redis Pool 設置**
+  - `REDIS_POOL_SIZE`
+  - `REDIS_MIN_IDLE_CONNS`
+  - `REDIS_MAX_RETRIES`
+  - `REDIS_DIAL_TIMEOUT`
+  - `REDIS_READ_TIMEOUT`
+  - `REDIS_WRITE_TIMEOUT`
+  - `REDIS_POOL_TIMEOUT`
+  - `REDIS_IDLE_TIMEOUT`
+  - `REDIS_MAX_CONN_AGE`
 
 - **AWS 設定**
   - `AWS_REGION`
   - `AWS_ACCESS_KEY_ID`
   - `AWS_SECRET_ACCESS_KEY`
   - `KINESIS_STREAM_NAME`
+  - `KINESIS_STREAM_ARN`
+  - `DYNAMODB_TABLE`
+  - `DYNAMODB_PARTITION_KEY`
 
 - **OpenTelemetry 追蹤**
   - `OTEL_EXPORTER_OTLP_ENDPOINT`
@@ -254,6 +278,11 @@ swag init
   - `WORKER_CONCURRENCY`
   - `SCHEDULER_INTERVAL`
 
+- **Middleware 中間件驗證**
+  - `AUTH_ENABLED`
+  - `AUTH_API_KEYS`
+  - `AUTH_HEADER_KEY`
+  
 ## 設計模式
 
 ### Repository Pattern
@@ -355,9 +384,40 @@ kubectl get pods -l app=fat-notification-cat
 
 本專案採用專有授權。詳情請聯繫專案維護者。
 
+## 最新功能更新
+
+### 會員訊息排程發送系統
+
+- **新增會員訊息活動管理 API**
+  - 支援創建、修改、查詢會員訊息活動
+  - 整合商戶(Merchant)關聯功能
+  - 軟刪除功能與狀態管理
+
+- **排程發送機制**
+  - 使用 Scheduler Service 進行定時觸發
+  - 支援高併發處理，目標 3 秒完成 10 萬筆資料發送
+  - 自動記錄實際發送數量至 `real_sent_count`
+
+- **API 認證系統**
+  - 新增 API 認證中間件
+  - 支援商戶映射與權限控制
+  - 統一錯誤響應格式
+
+### 技術改進
+
+- **資料庫架構重構**
+  - 優化資料表結構
+  - 改善測試檔案組織
+  - 新增軟刪除支援
+
+- **響應處理機制**
+  - 統一 HTTP 響應格式
+  - 改善錯誤處理機制
+  - 新增響應構建器
+
 ## 專案狀態
 
-專案目前處於積極開發階段。歡迎提出問題和建議。
+專案目前處於積極開發階段，最新實現了完整的會員訊息排程發送系統。
 
 ## 聯絡資訊
 
