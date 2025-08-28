@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,12 +15,13 @@ func TestNewAPIKeyAuthMiddleware(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
-		name           string
-		config         AuthConfig
-		headerKey      string
-		headerValue    string
-		expectedStatus int
-		expectedBody   string
+		name            string
+		config          AuthConfig
+		headerKey       string
+		headerValue     string
+		expectedStatus  int
+		expectedBody    string
+		expectErrorJSON bool
 	}{
 		{
 			name: "Valid plain API key",
@@ -31,10 +33,11 @@ func TestNewAPIKeyAuthMiddleware(t *testing.T) {
 				HeaderKey:      "X-API-Key",
 				EncryptionType: "plain",
 			},
-			headerKey:      "X-API-Key",
-			headerValue:    "test-api-key",
-			expectedStatus: http.StatusOK,
-			expectedBody:   "success",
+			headerKey:       "X-API-Key",
+			headerValue:     "test-api-key",
+			expectedStatus:  http.StatusOK,
+			expectedBody:    "success",
+			expectErrorJSON: false,
 		},
 		{
 			name: "Valid base64 encoded API key",
@@ -46,10 +49,11 @@ func TestNewAPIKeyAuthMiddleware(t *testing.T) {
 				HeaderKey:      "X-API-Key",
 				EncryptionType: "base64",
 			},
-			headerKey:      "X-API-Key",
-			headerValue:    base64.StdEncoding.EncodeToString([]byte("test-api-key")),
-			expectedStatus: http.StatusOK,
-			expectedBody:   "success",
+			headerKey:       "X-API-Key",
+			headerValue:     base64.StdEncoding.EncodeToString([]byte("test-api-key")),
+			expectedStatus:  http.StatusOK,
+			expectedBody:    "success",
+			expectErrorJSON: false,
 		},
 		{
 			name: "Missing API key",
@@ -58,10 +62,11 @@ func TestNewAPIKeyAuthMiddleware(t *testing.T) {
 				HeaderKey:      "X-API-Key",
 				EncryptionType: "plain",
 			},
-			headerKey:      "",
-			headerValue:    "",
-			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   "",
+			headerKey:       "",
+			headerValue:     "",
+			expectedStatus:  http.StatusUnauthorized,
+			expectedBody:    "",
+			expectErrorJSON: true,
 		},
 		{
 			name: "Invalid API key",
@@ -70,10 +75,11 @@ func TestNewAPIKeyAuthMiddleware(t *testing.T) {
 				HeaderKey:      "X-API-Key",
 				EncryptionType: "plain",
 			},
-			headerKey:      "X-API-Key",
-			headerValue:    "invalid-key",
-			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   "",
+			headerKey:       "X-API-Key",
+			headerValue:     "invalid-key",
+			expectedStatus:  http.StatusUnauthorized,
+			expectedBody:    "",
+			expectErrorJSON: true,
 		},
 		{
 			name: "Invalid base64 encoding",
@@ -82,10 +88,11 @@ func TestNewAPIKeyAuthMiddleware(t *testing.T) {
 				HeaderKey:      "X-API-Key",
 				EncryptionType: "base64",
 			},
-			headerKey:      "X-API-Key",
-			headerValue:    "not-valid-base64!@#",
-			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   "",
+			headerKey:       "X-API-Key",
+			headerValue:     "not-valid-base64!@#",
+			expectedStatus:  http.StatusUnauthorized,
+			expectedBody:    "",
+			expectErrorJSON: true,
 		},
 		{
 			name: "Default header key",
@@ -94,16 +101,21 @@ func TestNewAPIKeyAuthMiddleware(t *testing.T) {
 				HeaderKey:      "",
 				EncryptionType: "plain",
 			},
-			headerKey:      "API-Key",
-			headerValue:    "test-api-key",
-			expectedStatus: http.StatusOK,
-			expectedBody:   "success",
+			headerKey:       "API-Key",
+			headerValue:     "test-api-key",
+			expectedStatus:  http.StatusOK,
+			expectedBody:    "success",
+			expectErrorJSON: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// 創建一個新的路由器和中間件
 			router := gin.New()
+
+			// 添加recover中間件來處理response.Return()的panic
+			router.Use(gin.Recovery())
 			router.Use(AuthMiddleware(tt.config))
 			router.GET("/test", func(c *gin.Context) {
 				c.String(http.StatusOK, "success")
@@ -120,6 +132,13 @@ func TestNewAPIKeyAuthMiddleware(t *testing.T) {
 			assert.Equal(t, tt.expectedStatus, recorder.Code)
 			if tt.expectedBody != "" {
 				assert.Equal(t, tt.expectedBody, recorder.Body.String())
+			} else if tt.expectErrorJSON {
+				// 驗證錯誤情況下返回的JSON結構
+				var response map[string]interface{}
+				err := json.Unmarshal(recorder.Body.Bytes(), &response)
+				assert.NoError(t, err)
+				assert.False(t, response["success"].(bool))
+				assert.NotNil(t, response["error"])
 			}
 		})
 	}
@@ -135,6 +154,8 @@ func TestAuthMiddleware_MerchantIDContext(t *testing.T) {
 	}
 
 	router := gin.New()
+	// 添加recovery中間件來處理panic
+	router.Use(gin.Recovery())
 	router.Use(AuthMiddleware(config))
 	router.GET("/test", func(c *gin.Context) {
 		apiKey, exists := c.Get("api_key")
