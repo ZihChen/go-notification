@@ -36,6 +36,8 @@ type MessageUseCase interface {
 		ctx context.Context,
 		req *dto.ListMessageCampaignsRequest,
 	) ([]*entity.MessageCampaign, int, error)
+	GetMerchantAutoSettings(ctx context.Context, merchantID string) (*dto.MerchantAutoSettingsResponse, error)
+	CreateOrUpdateMerchantAutoSettings(ctx context.Context, merchantID string, req *dto.MerchantAutoSettingsRequest) (*dto.AutoSettingsOperationResponse, error)
 	GetPlayerMessages(
 		ctx context.Context,
 		globalPlayerID string,

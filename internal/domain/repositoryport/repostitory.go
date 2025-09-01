@@ -54,6 +54,11 @@ type MessageCampaignRepository interface {
 	) ([]*entity.MessageCampaign, int, error)
 	FindActiveByFocus(ctx context.Context, focus uint8) ([]*entity.MessageCampaign, error)
 	FindScheduledCampaigns(ctx context.Context) ([]*entity.MessageCampaign, error)
+	// Auto-send settings methods
+	FindAutoSettingsByMerchantID(ctx context.Context, merchantID uint64) ([]*entity.MessageCampaign, error)
+	FindAutoSettingByCategoryItemTrigger(ctx context.Context, merchantID uint64, category uint8, item uint8, triggerType string) (*entity.MessageCampaign, error)
+	UpsertAutoSettings(ctx context.Context, campaigns []*entity.MessageCampaign) error
+	DeleteAutoSettingsByMerchantID(ctx context.Context, merchantID uint64) error
 	Create(ctx context.Context, campaign *entity.MessageCampaign) error
 	Update(ctx context.Context, campaign *entity.MessageCampaign) error
 	UpdateFields(

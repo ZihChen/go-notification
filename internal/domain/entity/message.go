@@ -7,8 +7,9 @@ import (
 // MessageCampaign 會員訊息活動模型
 type MessageCampaign struct {
 	ID            uint64     `json:"id"`
-	Category      uint8      `json:"category"` // 1=member, 2=bonus, 3=others
-	Item          uint8      `json:"item"`     // 1=registration, 2=identity_verification, ..., 6=all
+	Category      uint8      `json:"category"`      // 1=member, 2=bonus, 3=others
+	Item          uint8      `json:"item"`          // 1=registration, 2=identity_verification, ..., 6=all
+	TriggerType   string     `json:"trigger_type"`  // success, failure (for auto-send settings)
 	Title         string     `json:"title"`
 	MerchantID    uint64     `json:"merchant_id"`
 	GlobalID      string     `json:"global_id"`

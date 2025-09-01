@@ -291,6 +291,7 @@ func mapToDomainMessageCampaign(campaign *models.MessageCampaign) *entity.Messag
 		ID:            campaign.ID,
 		Category:      campaign.Category,
 		Item:          campaign.Item,
+		TriggerType:   campaign.TriggerType,
 		Title:         campaign.Title,
 		MerchantID:    campaign.MerchantID,
 		GlobalID:      campaign.GlobalID,
@@ -315,6 +316,7 @@ func mapToDBMessageCampaign(campaign *entity.MessageCampaign) *models.MessageCam
 		ID:            campaign.ID,
 		Category:      campaign.Category,
 		Item:          campaign.Item,
+		TriggerType:   campaign.TriggerType,
 		Title:         campaign.Title,
 		Content:       campaign.Content,
 		MerchantID:    campaign.MerchantID,
@@ -337,4 +339,91 @@ func mapToDBMessageCampaign(campaign *entity.MessageCampaign) *models.MessageCam
 		}
 	}
 	return dbMessageCampaign
+}
+
+// FindAutoSettingsByMerchantID 查找商戶的自動設定
+func (r *MessageCampaignRepository) FindAutoSettingsByMerchantID(ctx context.Context, merchantID uint64) ([]*entity.MessageCampaign, error) {
+	var campaigns []models.MessageCampaign
+	result := r.db.WithContext(ctx).Where("merchant_id = ? AND auto_send = ?", merchantID, true).Find(&campaigns)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	domainCampaigns := make([]*entity.MessageCampaign, len(campaigns))
+	for i, campaign := range campaigns {
+		domainCampaigns[i] = mapToDomainMessageCampaign(&campaign)
+	}
+
+	return domainCampaigns, nil
+}
+
+// FindAutoSettingByCategoryItemTrigger 根據 category、item 和 trigger_type 查找特定自動設定
+func (r *MessageCampaignRepository) FindAutoSettingByCategoryItemTrigger(
+	ctx context.Context,
+	merchantID uint64,
+	category uint8,
+	item uint8,
+	triggerType string,
+) (*entity.MessageCampaign, error) {
+	var campaign models.MessageCampaign
+	result := r.db.WithContext(ctx).Where(
+		"merchant_id = ? AND category = ? AND item = ? AND trigger_type = ? AND auto_send = ?",
+		merchantID, category, item, triggerType, true,
+	).First(&campaign)
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("record not found")
+		}
+		return nil, result.Error
+	}
+
+	return mapToDomainMessageCampaign(&campaign), nil
+}
+
+// UpsertAutoSettings 批量新增或更新自動設定
+func (r *MessageCampaignRepository) UpsertAutoSettings(ctx context.Context, campaigns []*entity.MessageCampaign) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for _, campaign := range campaigns {
+			dbCampaign := mapToDBMessageCampaign(campaign)
+			
+			// 嘗試查找現有記錄
+			var existing models.MessageCampaign
+			err := tx.Where(
+				"merchant_id = ? AND category = ? AND item = ? AND trigger_type = ? AND auto_send = ?",
+				campaign.MerchantID, campaign.Category, campaign.Item, campaign.TriggerType, true,
+			).First(&existing).Error
+
+			if err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					// 不存在，建立新記錄
+					now := time.Now()
+					dbCampaign.CreatedAt = now
+					dbCampaign.UpdatedAt = now
+					if dbCampaign.SendStartTime == nil {
+						dbCampaign.SendStartTime = &now
+					}
+					if err := tx.Create(dbCampaign).Error; err != nil {
+						return err
+					}
+				} else {
+					return err
+				}
+			} else {
+				// 存在，更新記錄
+				dbCampaign.ID = existing.ID
+				dbCampaign.CreatedAt = existing.CreatedAt
+				dbCampaign.UpdatedAt = time.Now()
+				if err := tx.Save(dbCampaign).Error; err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+}
+
+// DeleteAutoSettingsByMerchantID 刪除商戶的所有自動設定
+func (r *MessageCampaignRepository) DeleteAutoSettingsByMerchantID(ctx context.Context, merchantID uint64) error {
+	return r.db.WithContext(ctx).Where("merchant_id = ? AND auto_send = ?", merchantID, true).Delete(&models.MessageCampaign{}).Error
 }
