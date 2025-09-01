@@ -10,7 +10,7 @@ type CreateMessageCampaignRequest struct {
 	GlobalMerchantID string     `json:"global_merchant_id"`
 	Category         uint8      `json:"category"           binding:"required,min=1,max=3"`
 	Item             uint8      `json:"item"               binding:"required,min=1,max=6"`
-	TriggerType      string     `json:"trigger_type"      binding:"omitempty,oneof=success failure"`
+	TriggerType      string     `json:"trigger_type"       binding:"omitempty,oneof=success failure"`
 	Title            string     `json:"title"              binding:"required,max=255"`
 	Content          string     `json:"content"            binding:"required"`
 	Target           uint8      `json:"target"             binding:"required"`
@@ -35,15 +35,15 @@ type ListMessageCampaignsRequest struct {
 type UpdateMessageCampaignRequest struct {
 	GlobalID         string     `json:"global_id"`
 	GlobalMerchantID string     `json:"global_merchant_id"`
-	Category         uint8      `json:"category"        binding:"required,min=1,max=3"`
-	Item             uint8      `json:"item"            binding:"required,min=1,max=6"`
-	TriggerType      string     `json:"trigger_type"    binding:"omitempty,oneof=success failure"`
-	Title            string     `json:"title"           binding:"required,max=255"`
-	Content          string     `json:"content"         binding:"required"`
-	Target           uint8      `json:"target"          binding:"required"`
+	Category         uint8      `json:"category"           binding:"required,min=1,max=3"`
+	Item             uint8      `json:"item"               binding:"required,min=1,max=6"`
+	TriggerType      string     `json:"trigger_type"       binding:"omitempty,oneof=success failure"`
+	Title            string     `json:"title"              binding:"required,max=255"`
+	Content          string     `json:"content"            binding:"required"`
+	Target           uint8      `json:"target"             binding:"required"`
 	SendStartTime    *time.Time `json:"send_start_time"`
 	SendEndTime      *time.Time `json:"send_end_time"`
-	UpdatedBy        string     `json:"updated_by"      binding:"required,max=100"`
+	UpdatedBy        string     `json:"updated_by"         binding:"required,max=100"`
 }
 
 // ErrorResponse 錯誤響應
@@ -66,28 +66,29 @@ type MessageCampaignListResponse struct {
 
 // AutoSettingItem 自動設定項目
 type AutoSettingItem struct {
-	Category    uint8  `json:"category"    binding:"required,min=1,max=3"`
-	Item        uint8  `json:"item"        binding:"required,min=1,max=6"`
+	Category    uint8  `json:"category"     binding:"required,min=1,max=3"`
+	Item        uint8  `json:"item"         binding:"required,min=1,max=6"`
 	TriggerType string `json:"trigger_type" binding:"required,oneof=success failure"`
-	Title       string `json:"title"       binding:"required,max=255"`
-	Content     string `json:"content"     binding:"required"`
+	Title       string `json:"title"        binding:"required,max=255"`
+	Content     string `json:"content"      binding:"required"`
 }
 
 // MerchantAutoSettingsRequest 商戶自動設定請求
 type MerchantAutoSettingsRequest struct {
-	Settings []AutoSettingItem `json:"settings" binding:"required,min=1,max=10"`
+	GlobalMerchantID string            `json:"global_merchant_id"`
+	Settings         []AutoSettingItem `json:"settings"           binding:"required,min=1,max=10"`
 }
 
 // MerchantAutoSettingsResponse 商戶自動設定回應
 type MerchantAutoSettingsResponse struct {
-	MerchantID string                    `json:"merchant_id"`
-	Settings   []*entity.MessageCampaign `json:"settings"`
+	GlobalMerchantID string                    `json:"global_merchant_id"`
+	Settings         []*entity.MessageCampaign `json:"settings"`
 }
 
 // AutoSettingsOperationResponse 自動設定操作回應
 type AutoSettingsOperationResponse struct {
-	MerchantID   string `json:"merchant_id"`
-	CreatedCount int    `json:"created_count,omitempty"`
-	UpdatedCount int    `json:"updated_count,omitempty"`
-	Operation    string `json:"operation"` // create, update
+	GlobalMerchantID string `json:"global_merchant_id"`
+	CreatedCount     int    `json:"created_count,omitempty"`
+	UpdatedCount     int    `json:"updated_count,omitempty"`
+	Operation        string `json:"operation"` // create, update
 }

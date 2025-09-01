@@ -446,13 +446,13 @@ func generateSummary(content string) string {
 // GetMerchantAutoSettings 獲取商戶自動設定
 func (u *MessageUseCase) GetMerchantAutoSettings(
 	ctx context.Context,
-	merchantID string,
+	globalMerchantID string,
 ) (*dto.MerchantAutoSettingsResponse, error) {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.GetMerchantAutoSettings")
 	defer tracing.SpanEnd(span)
 
 	// 獲取商戶資訊
-	merchant, err := u.merchantRepo.FindByGlobalID(ctx, merchantID)
+	merchant, err := u.merchantRepo.FindByGlobalID(ctx, globalMerchantID)
 	if err != nil {
 		tracing.RecordSpanError(span, err)
 		return nil, fmt.Errorf("find merchant: %w", err)
@@ -466,22 +466,21 @@ func (u *MessageUseCase) GetMerchantAutoSettings(
 	}
 
 	return &dto.MerchantAutoSettingsResponse{
-		MerchantID: merchantID,
-		Settings:   campaigns,
+		GlobalMerchantID: globalMerchantID,
+		Settings:         campaigns,
 	}, nil
 }
 
 // CreateOrUpdateMerchantAutoSettings 建立或更新商戶自動設定
 func (u *MessageUseCase) CreateOrUpdateMerchantAutoSettings(
 	ctx context.Context,
-	merchantID string,
 	req *dto.MerchantAutoSettingsRequest,
 ) (*dto.AutoSettingsOperationResponse, error) {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.CreateOrUpdateMerchantAutoSettings")
 	defer tracing.SpanEnd(span)
 
 	// 獲取商戶資訊
-	merchant, err := u.merchantRepo.FindByGlobalID(ctx, merchantID)
+	merchant, err := u.merchantRepo.FindByGlobalID(ctx, req.GlobalMerchantID)
 	if err != nil {
 		tracing.RecordSpanError(span, err)
 		return nil, fmt.Errorf("find merchant: %w", err)
@@ -490,18 +489,15 @@ func (u *MessageUseCase) CreateOrUpdateMerchantAutoSettings(
 	// 轉換 DTO 為 entity
 	campaigns := make([]*entity.MessageCampaign, len(req.Settings))
 	for i, setting := range req.Settings {
-		// 生成 GlobalID
-		globalID := fmt.Sprintf("%s-auto-%d-%d-%s", merchantID, setting.Category, setting.Item, setting.TriggerType)
-
 		campaign := &entity.MessageCampaign{
 			MerchantID:    merchant.ID,
-			GlobalID:      globalID,
+			GlobalID:      uuid.NewString(),
 			Category:      setting.Category,
 			Item:          setting.Item,
 			TriggerType:   setting.TriggerType,
 			Title:         setting.Title,
 			Content:       setting.Content,
-			Target:        consts.TargetAll, // 預設為所有玩家
+			Target:        consts.TargetAll,                      // 預設為所有玩家
 			Status:        consts.MessageCampaignStatusScheduled, // 預設為已排程
 			AutoSend:      true,
 			RealSentCount: 0,
@@ -511,69 +507,20 @@ func (u *MessageUseCase) CreateOrUpdateMerchantAutoSettings(
 	}
 
 	// 批量新增或更新
-	if err := u.campaignRepo.UpsertAutoSettings(ctx, campaigns); err != nil {
+	if err = u.campaignRepo.UpsertAutoSettings(ctx, campaigns); err != nil {
 		tracing.RecordSpanError(span, err)
 		return nil, fmt.Errorf("upsert auto settings: %w", err)
 	}
 
-	// 記錄日誌
-	u.logger.InfoLog("Auto settings created/updated",
-		u.logger.String("merchant_id", merchantID),
+	u.logger.InfoWithContext(ctx, "Auto settings created/updated",
+		u.logger.UInt64("merchant_id", merchant.ID),
 		u.logger.Int("settings_count", len(req.Settings)))
 
 	// 反回結果
 	return &dto.AutoSettingsOperationResponse{
-		MerchantID:    merchantID,
-		CreatedCount:  len(req.Settings),
-		UpdatedCount:  0, // 無法精確區分新增和更新的數量
-		Operation:     "upsert",
+		GlobalMerchantID: req.GlobalMerchantID,
+		CreatedCount:     len(req.Settings),
+		UpdatedCount:     0, // 無法精確區分新增和更新的數量
+		Operation:        "upsert",
 	}, nil
-}
-
-// getDefaultAutoSettingsForMerchant 獲取商戶的預設自動設定
-func (u *MessageUseCase) getDefaultAutoSettingsForMerchant(merchantID string) []*dto.AutoSettingItem {
-	return []*dto.AutoSettingItem{
-		{
-			Category:    consts.CategoryMember, // 1=member
-			Item:        consts.ItemRegistration, // 1=registration
-			TriggerType: "success",
-			Title:       "會員註冊成功通知",
-			Content:     "歡迎加入我們！您的帳戶已成功建立。",
-		},
-		{
-			Category:    consts.CategoryMember, // 1=member
-			Item:        consts.ItemIdentityVerification, // 2=identity_verification
-			TriggerType: "success",
-			Title:       "實名驗證成功通知",
-			Content:     "恭喜您完成實名驗證！",
-		},
-		{
-			Category:    consts.CategoryMember, // 1=member
-			Item:        consts.ItemIdentityVerification, // 2=identity_verification
-			TriggerType: "failure",
-			Title:       "實名驗證失敗通知",
-			Content:     "實名驗證失敗，請重新提交資料。",
-		},
-		{
-			Category:    consts.CategoryMember, // 1=member
-			Item:        consts.ItemBankCard, // 3=bank_card
-			TriggerType: "success",
-			Title:       "銀行卡綁定成功通知",
-			Content:     "銀行卡已成功綁定到您的帳戶。",
-		},
-		{
-			Category:    consts.CategoryBonus, // 2=bonus
-			Item:        consts.ItemTask, // 4=task
-			TriggerType: "success",
-			Title:       "優惠派發成功通知",
-			Content:     "恭喜獲得新優惠！請查看您的帳戶。",
-		},
-		{
-			Category:    consts.CategoryBonus, // 2=bonus
-			Item:        consts.ItemTask, // 4=task
-			TriggerType: "failure",
-			Title:       "優惠派發失敗通知",
-			Content:     "優惠派發失敗，請聯繫客服。",
-		},
-	}
 }

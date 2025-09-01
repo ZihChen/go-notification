@@ -342,9 +342,14 @@ func mapToDBMessageCampaign(campaign *entity.MessageCampaign) *models.MessageCam
 }
 
 // FindAutoSettingsByMerchantID 查找商戶的自動設定
-func (r *MessageCampaignRepository) FindAutoSettingsByMerchantID(ctx context.Context, merchantID uint64) ([]*entity.MessageCampaign, error) {
+func (r *MessageCampaignRepository) FindAutoSettingsByMerchantID(
+	ctx context.Context,
+	merchantID uint64,
+) ([]*entity.MessageCampaign, error) {
 	var campaigns []models.MessageCampaign
-	result := r.db.WithContext(ctx).Where("merchant_id = ? AND auto_send = ?", merchantID, true).Find(&campaigns)
+	result := r.db.WithContext(ctx).
+		Where("merchant_id = ? AND auto_send = ?", merchantID, true).
+		Find(&campaigns)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -382,16 +387,23 @@ func (r *MessageCampaignRepository) FindAutoSettingByCategoryItemTrigger(
 }
 
 // UpsertAutoSettings 批量新增或更新自動設定
-func (r *MessageCampaignRepository) UpsertAutoSettings(ctx context.Context, campaigns []*entity.MessageCampaign) error {
+func (r *MessageCampaignRepository) UpsertAutoSettings(
+	ctx context.Context,
+	campaigns []*entity.MessageCampaign,
+) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		for _, campaign := range campaigns {
 			dbCampaign := mapToDBMessageCampaign(campaign)
-			
+
 			// 嘗試查找現有記錄
 			var existing models.MessageCampaign
 			err := tx.Where(
 				"merchant_id = ? AND category = ? AND item = ? AND trigger_type = ? AND auto_send = ?",
-				campaign.MerchantID, campaign.Category, campaign.Item, campaign.TriggerType, true,
+				campaign.MerchantID,
+				campaign.Category,
+				campaign.Item,
+				campaign.TriggerType,
+				true,
 			).First(&existing).Error
 
 			if err != nil {
@@ -403,8 +415,8 @@ func (r *MessageCampaignRepository) UpsertAutoSettings(ctx context.Context, camp
 					if dbCampaign.SendStartTime == nil {
 						dbCampaign.SendStartTime = &now
 					}
-					if err := tx.Create(dbCampaign).Error; err != nil {
-						return err
+					if err = tx.Create(dbCampaign).Error; err != nil {
+						return fmt.Errorf("tx create error:%w", err)
 					}
 				} else {
 					return err
@@ -412,10 +424,11 @@ func (r *MessageCampaignRepository) UpsertAutoSettings(ctx context.Context, camp
 			} else {
 				// 存在，更新記錄
 				dbCampaign.ID = existing.ID
+				dbCampaign.GlobalID = existing.GlobalID
 				dbCampaign.CreatedAt = existing.CreatedAt
 				dbCampaign.UpdatedAt = time.Now()
-				if err := tx.Save(dbCampaign).Error; err != nil {
-					return err
+				if err = tx.Save(dbCampaign).Error; err != nil {
+					return fmt.Errorf("tx save error:%w", err)
 				}
 			}
 		}
@@ -424,6 +437,12 @@ func (r *MessageCampaignRepository) UpsertAutoSettings(ctx context.Context, camp
 }
 
 // DeleteAutoSettingsByMerchantID 刪除商戶的所有自動設定
-func (r *MessageCampaignRepository) DeleteAutoSettingsByMerchantID(ctx context.Context, merchantID uint64) error {
-	return r.db.WithContext(ctx).Where("merchant_id = ? AND auto_send = ?", merchantID, true).Delete(&models.MessageCampaign{}).Error
+func (r *MessageCampaignRepository) DeleteAutoSettingsByMerchantID(
+	ctx context.Context,
+	merchantID uint64,
+) error {
+	return r.db.WithContext(ctx).
+		Where("merchant_id = ? AND auto_send = ?", merchantID, true).
+		Delete(&models.MessageCampaign{}).
+		Error
 }

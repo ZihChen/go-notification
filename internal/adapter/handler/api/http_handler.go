@@ -97,11 +97,11 @@ func (h *HTTPHandler) RegisterRoutes(router *gin.Engine) {
 		campaigns.GET("/:global_id", h.GetMessageCampaign)
 		campaigns.PUT("/:global_id", h.UpdateMessageCampaign)
 		campaigns.DELETE("/:global_id", h.DeleteMessageCampaign)
-		
+
 		// 自動設定 API
-		campaigns.GET("/auto-settings/:merchant_id", h.GetMerchantAutoSettings)
-		campaigns.POST("/auto-settings/:merchant_id", h.CreateOrUpdateMerchantAutoSettings)
-		campaigns.PUT("/auto-settings/:merchant_id", h.CreateOrUpdateMerchantAutoSettings)
+		campaigns.GET("/auto-settings", h.GetMerchantAutoSettings)
+		campaigns.POST("/auto-settings", h.CreateOrUpdateMerchantAutoSettings)
+		campaigns.PUT("/auto-settings", h.CreateOrUpdateMerchantAutoSettings)
 	}
 
 	// 玩家端 - 訊息查看
@@ -402,7 +402,8 @@ func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
 func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
 	globalID := c.Param("global_id")
 	if globalID == "" {
-		response.BadRequest(c, "invalid campaign global_id", "global_id parameter is required").Return()
+		response.BadRequest(c, "invalid campaign global_id", "global_id parameter is required").
+			Return()
 	}
 
 	req := &dto.UpdateMessageCampaignRequest{
@@ -436,7 +437,8 @@ func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
 func (h *HTTPHandler) DeleteMessageCampaign(c *gin.Context) {
 	globalID := c.Param("global_id")
 	if globalID == "" {
-		response.BadRequest(c, "invalid campaign global_id", "global_id parameter is required").Return()
+		response.BadRequest(c, "invalid campaign global_id", "global_id parameter is required").
+			Return()
 	}
 
 	if err := h.messageUseCase.DeleteMessageCampaign(c.Request.Context(), globalID); err != nil {
@@ -461,7 +463,8 @@ func (h *HTTPHandler) DeleteMessageCampaign(c *gin.Context) {
 func (h *HTTPHandler) GetMessageCampaign(c *gin.Context) {
 	globalID := c.Param("global_id")
 	if globalID == "" {
-		response.BadRequest(c, "invalid campaign global_id", "global_id parameter is required").Return()
+		response.BadRequest(c, "invalid campaign global_id", "global_id parameter is required").
+			Return()
 	}
 
 	campaign, err := h.messageUseCase.GetMessageCampaign(c.Request.Context(), globalID)
@@ -566,6 +569,96 @@ func (h *HTTPHandler) MarkMessageAsRead(c *gin.Context) {
 	response.OK(c).Data(gin.H{
 		"messageID": messageID,
 	}).Return()
+}
+
+// GetMerchantAutoSettings 獲取商戶自動設定
+// @Summary 獲取商戶自動設定
+// @Description 根據商戶ID獲取會員訊息自動派發設定
+// @Tags 會員訊息自動設定
+// @Accept json
+// @Produce json
+// @Param merchant_id path string true "商戶ID"
+// @Success 200 {object} dto.MerchantAutoSettingsResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/message-campaigns/auto-settings/{merchant_id} [get]
+func (h *HTTPHandler) GetMerchantAutoSettings(c *gin.Context) {
+	GlobalMerchantID := c.GetString("global_merchant_id")
+	result, err := h.messageUseCase.GetMerchantAutoSettings(c.Request.Context(), GlobalMerchantID)
+	if err != nil {
+		if err.Error() == "record not found" {
+			response.NotFound(c, "merchant not found or has no auto settings").Return()
+		}
+		h.logger.ErrorWithContext(
+			c.Request.Context(),
+			"failed to get merchant auto settings",
+			h.logger.Error("err", err),
+			h.logger.String("global_merchant_id", GlobalMerchantID),
+		)
+		response.InternalServerError(c, "failed to get auto settings", err.Error()).Return()
+	}
+	response.OK(c).Data(result).Return()
+}
+
+// CreateOrUpdateMerchantAutoSettings 新增或更新商戶自動設定
+// @Summary 新增或更新商戶自動設定
+// @Description 為特定商戶建立或更新會員訊息自動派發設定
+// @Tags 會員訊息自動設定
+// @Accept json
+// @Produce json
+// @Param merchant_id path string true "商戶ID"
+// @Param request body dto.MerchantAutoSettingsRequest true "自動設定請求"
+// @Success 200 {object} dto.AutoSettingsOperationResponse "更新成功"
+// @Success 201 {object} dto.AutoSettingsOperationResponse "建立成功"
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/message-campaigns/auto-settings [post]
+// @Router /api/v1/message-campaigns/auto-settings [put]
+func (h *HTTPHandler) CreateOrUpdateMerchantAutoSettings(c *gin.Context) {
+	req := &dto.MerchantAutoSettingsRequest{
+		GlobalMerchantID: c.GetString("global_merchant_id"),
+	}
+	if err := c.ShouldBindJSON(req); err != nil {
+		h.logger.ErrorWithContext(
+			c.Request.Context(),
+			"invalid request format",
+			h.logger.Error("err", err),
+		)
+		response.BadRequest(c, "invalid request format", err.Error()).Return()
+	}
+
+	if len(req.Settings) == 0 {
+		response.BadRequest(c, "settings cannot be empty").Return()
+	}
+
+	if len(req.Settings) > 10 {
+		response.BadRequest(c, "settings count cannot exceed 10").Return()
+	}
+
+	result, err := h.messageUseCase.CreateOrUpdateMerchantAutoSettings(
+		c.Request.Context(),
+		req,
+	)
+	if err != nil {
+		h.logger.ErrorWithContext(
+			c.Request.Context(),
+			"failed to create/update merchant auto settings",
+			h.logger.Error("err", err),
+			h.logger.String("global_merchant_id", req.GlobalMerchantID),
+			h.logger.Int("settings_count", len(req.Settings)),
+		)
+		response.InternalServerError(c, "failed to create/update auto settings", err.Error()).
+			Return()
+		return
+	}
+
+	// 根據 HTTP 方法提供不同的回應狀態碼
+	if c.Request.Method == http.MethodPost {
+		response.CreatedSuccess(c).Data(result).Return()
+	} else {
+		response.OK(c).Data(result).Return()
+	}
 }
 
 // SSEHandler Server-Sent Events處理器
@@ -674,111 +767,5 @@ func (h *HTTPHandler) SSEHandler(c *gin.Context) {
 			)
 			c.Writer.Flush()
 		}
-	}
-}
-
-// GetMerchantAutoSettings 獲取商戶自動設定
-// @Summary 獲取商戶自動設定
-// @Description 根據商戶ID獲取會員訊息自動派發設定
-// @Tags 會員訊息自動設定
-// @Accept json
-// @Produce json
-// @Param merchant_id path string true "商戶ID"
-// @Success 200 {object} dto.MerchantAutoSettingsResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /api/v1/message-campaigns/auto-settings/{merchant_id} [get]
-func (h *HTTPHandler) GetMerchantAutoSettings(c *gin.Context) {
-	merchantID := c.Param("merchant_id")
-	if merchantID == "" {
-		response.BadRequest(c, "merchant_id is required").Return()
-		return
-	}
-
-	result, err := h.messageUseCase.GetMerchantAutoSettings(c.Request.Context(), merchantID)
-	if err != nil {
-		if err.Error() == "record not found" {
-			response.NotFound(c, "merchant not found or has no auto settings").Return()
-			return
-		}
-		h.logger.ErrorWithContext(
-			c.Request.Context(),
-			"failed to get merchant auto settings",
-			h.logger.Error("err", err),
-			h.logger.String("merchant_id", merchantID),
-		)
-		response.InternalServerError(c, "failed to get auto settings", err.Error()).Return()
-		return
-	}
-
-	response.OK(c).Data(result).Return()
-}
-
-// CreateOrUpdateMerchantAutoSettings 新增或更新商戶自動設定
-// @Summary 新增或更新商戶自動設定
-// @Description 為特定商戶建立或更新會員訊息自動派發設定
-// @Tags 會員訊息自動設定
-// @Accept json
-// @Produce json
-// @Param merchant_id path string true "商戶ID"
-// @Param request body dto.MerchantAutoSettingsRequest true "自動設定請求"
-// @Success 200 {object} dto.AutoSettingsOperationResponse "更新成功"
-// @Success 201 {object} dto.AutoSettingsOperationResponse "建立成功"
-// @Failure 400 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /api/v1/message-campaigns/auto-settings/{merchant_id} [post]
-// @Router /api/v1/message-campaigns/auto-settings/{merchant_id} [put]
-func (h *HTTPHandler) CreateOrUpdateMerchantAutoSettings(c *gin.Context) {
-	merchantID := c.Param("merchant_id")
-	if merchantID == "" {
-		response.BadRequest(c, "merchant_id is required").Return()
-		return
-	}
-
-	var req dto.MerchantAutoSettingsRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.ErrorWithContext(
-			c.Request.Context(),
-			"invalid request format",
-			h.logger.Error("err", err),
-		)
-		response.BadRequest(c, "invalid request format", err.Error()).Return()
-		return
-	}
-
-	// 驗證請求內容
-	if len(req.Settings) == 0 {
-		response.BadRequest(c, "settings cannot be empty").Return()
-		return
-	}
-
-	if len(req.Settings) > 10 {
-		response.BadRequest(c, "settings count cannot exceed 10").Return()
-		return
-	}
-
-	result, err := h.messageUseCase.CreateOrUpdateMerchantAutoSettings(
-		c.Request.Context(),
-		merchantID,
-		&req,
-	)
-	if err != nil {
-		h.logger.ErrorWithContext(
-			c.Request.Context(),
-			"failed to create/update merchant auto settings",
-			h.logger.Error("err", err),
-			h.logger.String("merchant_id", merchantID),
-			h.logger.Int("settings_count", len(req.Settings)),
-		)
-		response.InternalServerError(c, "failed to create/update auto settings", err.Error()).Return()
-		return
-	}
-
-	// 根據 HTTP 方法提供不同的回應狀態碼
-	if c.Request.Method == http.MethodPost {
-		response.CreatedSuccess(c).Data(result).Return()
-	} else {
-		response.OK(c).Data(result).Return()
 	}
 }

@@ -263,18 +263,18 @@ func getBoolWithDefault(key string, defaultValue bool) bool {
 // PrintConfig 輸出所有配置值用於除錯和追蹤
 func (c *Config) PrintConfig() {
 	fmt.Println("=== Configuration Summary ===")
-	
+
 	fmt.Printf("\n[App]\n")
 	fmt.Printf("  Name: %s\n", c.App.Name)
 	fmt.Printf("  Environment: %s\n", c.App.Env)
 	fmt.Printf("  Port: %d\n", c.App.Port)
 	fmt.Printf("  Debug: %t\n", c.App.Debug)
-	
+
 	fmt.Printf("\n[Server]\n")
 	fmt.Printf("  ReadTimeout: %v\n", c.Server.ReadTimeout)
 	fmt.Printf("  WriteTimeout: %v\n", c.Server.WriteTimeout)
 	fmt.Printf("  IdleTimeout: %v\n", c.Server.IdleTimeout)
-	
+
 	fmt.Printf("\n[Database]\n")
 	fmt.Printf("  Host: %s\n", c.Database.Host)
 	fmt.Printf("  Port: %d\n", c.Database.Port)
@@ -286,7 +286,7 @@ func (c *Config) PrintConfig() {
 	fmt.Printf("  MaxOpen: %d\n", c.Database.MaxOpen)
 	fmt.Printf("  MaxLifetime: %v\n", c.Database.MaxLifetime)
 	fmt.Printf("  MaxIdleTime: %v\n", c.Database.MaxIdleTime)
-	
+
 	fmt.Printf("\n[Redis]\n")
 	fmt.Printf("  Domain: %s\n", c.Redis.Domain)
 	fmt.Printf("  Port: %d\n", c.Redis.Port)
@@ -301,7 +301,7 @@ func (c *Config) PrintConfig() {
 	fmt.Printf("  PoolTimeout: %v\n", c.Redis.PoolTimeout)
 	fmt.Printf("  IdleTimeout: %v\n", c.Redis.IdleTimeout)
 	fmt.Printf("  MaxConnAge: %v\n", c.Redis.MaxConnAge)
-	
+
 	fmt.Printf("\n[AWS]\n")
 	fmt.Printf("  AccessKeyID: %s\n", maskAPIKey(c.AWS.AccessKeyID))
 	fmt.Printf("  SecretAccessKey: %s\n", maskAPIKey(c.AWS.SecretAccessKey))
@@ -311,18 +311,18 @@ func (c *Config) PrintConfig() {
 	fmt.Printf("  DynamoDBTable: %s\n", c.AWS.DynamoDBTable)
 	fmt.Printf("  PartitionKey: %s\n", c.AWS.PartitionKey)
 	fmt.Printf("  SortKey: %s\n", c.AWS.SortKey)
-	
+
 	fmt.Printf("\n[Tracing]\n")
 	fmt.Printf("  Endpoint: %s\n", c.Tracing.Endpoint)
 	fmt.Printf("  APIKey: %s\n", maskAPIKey(c.Tracing.APIKey))
 	fmt.Printf("  StreamName: %s\n", c.Tracing.StreamName)
-	
+
 	fmt.Printf("\n[Auth]\n")
 	fmt.Printf("  Enabled: %t\n", c.Auth.Enabled)
 	fmt.Printf("  HeaderKey: %s\n", c.Auth.HeaderKey)
 	fmt.Printf("  EncryptionType: %s\n", c.Auth.EncryptionType)
 	fmt.Printf("  APIKeys Count: %d\n", len(c.Auth.APIKeys))
-	
+
 	fmt.Printf("\n[Events]\n")
 	fmt.Printf("  IdentityMerchantSync: %s\n", c.Events.IdentityMerchantSync)
 	fmt.Printf("  IdentityPlayerSync: %s\n", c.Events.IdentityPlayerSync)
@@ -330,7 +330,7 @@ func (c *Config) PrintConfig() {
 	fmt.Printf("  IdentityTagSync: %s\n", c.Events.IdentityTagSync)
 	fmt.Printf("  IdentityPlayerLevelSync: %s\n", c.Events.IdentityPlayerLevelSync)
 	fmt.Printf("  IdentityPlayerTagsSync: %s\n", c.Events.IdentityPlayerTagsSync)
-	
+
 	fmt.Println("\n==============================")
 }
 

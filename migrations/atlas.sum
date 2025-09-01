@@ -1,4 +1,4 @@
-h1:QFSJwMLD/dDAWhGlyS3eRenyuwyPyIzQBE3z9Wm2FCY=
+h1:329zL+RzhkUuRm+/cKCA4Xds3IHVz9YITfjtMKC4T1k=
 20250714052909_init.sql h1:VLYnlk762Xa/xC+kB3ZAuSl8cJ8sUuYSx4I4kP2K0tQ=
 20250731063541_create_level_table.sql h1:9TAZCgjx6HWhMg3bo3IK3XskS/ksCx+usnp/UXJ3cio=
 20250731073029_create_player_tags_table.sql h1:p2kmgsa2hL7S6qL3Q9dg4fXBbEFik1X7jtH6Fn7wwqM=
@@ -8,3 +8,4 @@ h1:QFSJwMLD/dDAWhGlyS3eRenyuwyPyIzQBE3z9Wm2FCY=
 20250822033148_add_message_campaign_delete_at.sql h1:PYq5C6096SoauyrnC10XVeP2T/ksQli4GMT/oIZMnRw=
 20250826061701_add_message_campaign_status.sql h1:RwCr4f6nh60GJ9Va/z8p7SIshqMKpsSEHgA4+mTew+E=
 20250827093447_add_campaign_merchant_gloabl_id.sql h1:XJaOLBj2DWnphwtOJ+H+AqxDAxYoZMEAXhL8FNQ5bhE=
+20250901062340_add_message_campaign_trigger.sql h1:mH4Oa7x6aLuh/j7bMe6YxkLhS3i9CF0IuJmXkxSkf/A=

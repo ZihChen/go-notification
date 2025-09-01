@@ -9,8 +9,8 @@ import (
 // MessageCampaign 會員訊息活動模型
 type MessageCampaign struct {
 	ID            uint64         `json:"id"                        gorm:"primaryKey;autoIncrement"`
-	Category      uint8          `json:"category"                  gorm:"column:category;not null"` // 1=member, 2=bonus, 3=others
-	Item          uint8          `json:"item"                      gorm:"column:item;not null"`     // 1=registration, 2=identity_verification, ..., 6=all
+	Category      uint8          `json:"category"                  gorm:"column:category;not null"`                               // 1=member, 2=bonus, 3=others
+	Item          uint8          `json:"item"                      gorm:"column:item;not null"`                                   // 1=registration, 2=identity_verification, ..., 6=all
 	TriggerType   string         `json:"trigger_type"              gorm:"column:trigger_type;size:20;not null;default:'success'"` // success, failure (for auto-send settings)
 	MerchantID    uint64         `json:"merchant_id"               gorm:"index;not null;default:0"`
 	GlobalID      string         `json:"global_id"                 gorm:"uniqueIndex;size:100;not null;default:''"`
