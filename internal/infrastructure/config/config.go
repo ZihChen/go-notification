@@ -259,3 +259,99 @@ func getBoolWithDefault(key string, defaultValue bool) bool {
 	}
 	return defaultValue
 }
+
+// PrintConfig 輸出所有配置值用於除錯和追蹤
+func (c *Config) PrintConfig() {
+	fmt.Println("=== Configuration Summary ===")
+	
+	fmt.Printf("\n[App]\n")
+	fmt.Printf("  Name: %s\n", c.App.Name)
+	fmt.Printf("  Environment: %s\n", c.App.Env)
+	fmt.Printf("  Port: %d\n", c.App.Port)
+	fmt.Printf("  Debug: %t\n", c.App.Debug)
+	
+	fmt.Printf("\n[Server]\n")
+	fmt.Printf("  ReadTimeout: %v\n", c.Server.ReadTimeout)
+	fmt.Printf("  WriteTimeout: %v\n", c.Server.WriteTimeout)
+	fmt.Printf("  IdleTimeout: %v\n", c.Server.IdleTimeout)
+	
+	fmt.Printf("\n[Database]\n")
+	fmt.Printf("  Host: %s\n", c.Database.Host)
+	fmt.Printf("  Port: %d\n", c.Database.Port)
+	fmt.Printf("  User: %s\n", c.Database.User)
+	fmt.Printf("  Password: %s\n", maskPassword(c.Database.Password))
+	fmt.Printf("  DBName: %s\n", c.Database.DBName)
+	fmt.Printf("  Options: %s\n", c.Database.Options)
+	fmt.Printf("  MaxIdle: %d\n", c.Database.MaxIdle)
+	fmt.Printf("  MaxOpen: %d\n", c.Database.MaxOpen)
+	fmt.Printf("  MaxLifetime: %v\n", c.Database.MaxLifetime)
+	fmt.Printf("  MaxIdleTime: %v\n", c.Database.MaxIdleTime)
+	
+	fmt.Printf("\n[Redis]\n")
+	fmt.Printf("  Domain: %s\n", c.Redis.Domain)
+	fmt.Printf("  Port: %d\n", c.Redis.Port)
+	fmt.Printf("  Password: %s\n", maskPassword(c.Redis.Password))
+	fmt.Printf("  DB: %d\n", c.Redis.DB)
+	fmt.Printf("  PoolSize: %d\n", c.Redis.PoolSize)
+	fmt.Printf("  MinIdleConns: %d\n", c.Redis.MinIdleConns)
+	fmt.Printf("  MaxRetries: %d\n", c.Redis.MaxRetries)
+	fmt.Printf("  DialTimeout: %v\n", c.Redis.DialTimeout)
+	fmt.Printf("  ReadTimeout: %v\n", c.Redis.ReadTimeout)
+	fmt.Printf("  WriteTimeout: %v\n", c.Redis.WriteTimeout)
+	fmt.Printf("  PoolTimeout: %v\n", c.Redis.PoolTimeout)
+	fmt.Printf("  IdleTimeout: %v\n", c.Redis.IdleTimeout)
+	fmt.Printf("  MaxConnAge: %v\n", c.Redis.MaxConnAge)
+	
+	fmt.Printf("\n[AWS]\n")
+	fmt.Printf("  AccessKeyID: %s\n", maskAPIKey(c.AWS.AccessKeyID))
+	fmt.Printf("  SecretAccessKey: %s\n", maskAPIKey(c.AWS.SecretAccessKey))
+	fmt.Printf("  SessionToken: %s\n", maskAPIKey(c.AWS.SessionToken))
+	fmt.Printf("  Region: %s\n", c.AWS.Region)
+	fmt.Printf("  KinesisStream: %s\n", c.AWS.KinesisStream)
+	fmt.Printf("  DynamoDBTable: %s\n", c.AWS.DynamoDBTable)
+	fmt.Printf("  PartitionKey: %s\n", c.AWS.PartitionKey)
+	fmt.Printf("  SortKey: %s\n", c.AWS.SortKey)
+	
+	fmt.Printf("\n[Tracing]\n")
+	fmt.Printf("  Endpoint: %s\n", c.Tracing.Endpoint)
+	fmt.Printf("  APIKey: %s\n", maskAPIKey(c.Tracing.APIKey))
+	fmt.Printf("  StreamName: %s\n", c.Tracing.StreamName)
+	
+	fmt.Printf("\n[Auth]\n")
+	fmt.Printf("  Enabled: %t\n", c.Auth.Enabled)
+	fmt.Printf("  HeaderKey: %s\n", c.Auth.HeaderKey)
+	fmt.Printf("  EncryptionType: %s\n", c.Auth.EncryptionType)
+	fmt.Printf("  APIKeys Count: %d\n", len(c.Auth.APIKeys))
+	
+	fmt.Printf("\n[Events]\n")
+	fmt.Printf("  IdentityMerchantSync: %s\n", c.Events.IdentityMerchantSync)
+	fmt.Printf("  IdentityPlayerSync: %s\n", c.Events.IdentityPlayerSync)
+	fmt.Printf("  IdentityManagerSync: %s\n", c.Events.IdentityManagerSync)
+	fmt.Printf("  IdentityTagSync: %s\n", c.Events.IdentityTagSync)
+	fmt.Printf("  IdentityPlayerLevelSync: %s\n", c.Events.IdentityPlayerLevelSync)
+	fmt.Printf("  IdentityPlayerTagsSync: %s\n", c.Events.IdentityPlayerTagsSync)
+	
+	fmt.Println("\n==============================")
+}
+
+// maskPassword 遮蔽密碼顯示
+func maskPassword(password string) string {
+	if password == "" {
+		return "<empty>"
+	}
+	if len(password) <= 4 {
+		return "****"
+	}
+	return password[:2] + "****" + password[len(password)-2:]
+}
+
+// maskAPIKey 遮蔽API Key顯示
+func maskAPIKey(key string) string {
+	if key == "" {
+		return "<empty>"
+	}
+	if len(key) <= 8 {
+		return "********"
+	}
+	return key[:4] + "****" + key[len(key)-4:]
+}
