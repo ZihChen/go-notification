@@ -3,9 +3,10 @@
 ## 快速開發指南
 
 ### 當前狀態
-- **主要功能**: 會員訊息排程發送系統 ✅ 已完成
-- **當前階段**: 測試與驗證 🔄 進行中
-- **下一里程碑**: 生產部署準備
+- **v1.2**: 路由架構重構 ✅ 已完成 (2025-09-01)
+- **v1.1**: 會員訊息排程發送系統 ✅ 已完成 (2025-08-28)
+- **當前階段**: 架構優化與測試驗證 🔄 進行中
+- **下一里程碑**: 系統穩定性驗證與性能優化
 
 ### 快速命令
 
@@ -22,6 +23,9 @@ go run main.go consumer  # KDS消費者
 
 # 檢視Swagger API文檔
 # http://localhost:8080/swagger/index.html
+# 
+# 檢視性能分析（pprof）
+# http://localhost:8080/debug/pprof/
 ```
 
 #### 測試命令
@@ -59,13 +63,20 @@ wire ./internal/di
 
 ### 重要檔案位置
 
+#### 路由系統 ✨ **NEW**
+- `internal/adapter/router/router_manager.go` - 路由管理器
+- `internal/adapter/router/api_router.go` - API路由組件
+- `internal/adapter/router/swagger_router.go` - Swagger路由組件
+- `internal/adapter/router/health_router.go` - 健康檢查路由
+- `internal/adapter/router/pprof_router.go` - 性能分析路由
+
 #### 核心業務邏輯
 - `internal/adapter/usecase/message_campaign/` - 訊息活動用例
 - `internal/adapter/repository/message_campaign_repository.go` - 資料存取
 - `internal/infrastructure/models/message_campaign.go` - 資料模型
 
 #### API處理
-- `internal/adapter/handler/worker_handler.go` - HTTP端點
+- `internal/adapter/handler/api/http_handler.go` - HTTP端點處理器
 - `internal/infrastructure/http/middleware/auth.go` - 認證中間件
 
 #### 排程系統
@@ -93,23 +104,33 @@ docs/claude/
 
 ### API快速測試
 
+#### 健康檢查
+```bash
+curl -X GET http://localhost:8080/health
+```
+
 #### 創建訊息活動
 ```bash
-curl -X POST http://localhost:8080/api/message-campaigns \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+curl -X POST http://localhost:8080/api/v1/message-campaigns \
+  -H "API-Key: YOUR_BASE64_ENCODED_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "title": "測試活動",
     "content": "這是一個測試訊息",
-    "scheduled_at": "2025-08-30T10:00:00Z"
+    "scheduled_at": "2025-09-01T10:00:00Z"
   }'
 ```
 
 #### 查詢活動列表
 ```bash
-curl -X GET http://localhost:8080/api/message-campaigns \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+curl -X GET http://localhost:8080/api/v1/message-campaigns \
+  -H "API-Key: YOUR_BASE64_ENCODED_API_KEY"
 ```
+
+#### Swagger API測試
+- 訪問: http://localhost:8080/swagger/index.html
+- 點擊 "Authorize" 按鈕
+- 輸入 base64 編碼的 API Key
 
 ### 除錯技巧
 
@@ -124,6 +145,18 @@ docker-compose logs -f scheduler
 docker exec -it redis redis-cli
 127.0.0.1:6379> KEYS *
 127.0.0.1:6379> LLEN asynq:default
+```
+
+#### 性能分析 ✨ **NEW**
+```bash
+# CPU 性能分析
+go tool pprof http://localhost:8080/debug/pprof/profile
+
+# 記憶體使用分析
+go tool pprof http://localhost:8080/debug/pprof/heap
+
+# Goroutine 分析
+go tool pprof http://localhost:8080/debug/pprof/goroutine
 ```
 
 #### 資料庫檢查
@@ -159,6 +192,27 @@ sleep 10  # 等待服務啟動
 go test ./...
 ```
 
+### 路由架構新功能 ✨
+
+#### 模組化路由管理
+```go
+// 使用新的路由管理器
+routerManager := router.NewRouterManager(httpHandler)
+routerManager.SetupRoutersWithMiddleware(ginEngine, config)
+```
+
+#### 獨立路由組件
+- **API Router**: 處理業務邏輯路由，使用認證中間件
+- **Swagger Router**: 處理API文檔，不使用認證中間件  
+- **Health Router**: 處理健康檢查，不使用認證中間件
+- **Pprof Router**: 處理性能分析，不使用認證中間件
+
+#### CORS 配置優化
+- 開發環境使用寬鬆的CORS設定
+- 解決Swagger UI調用API的CORS問題
+- 支援所有必要的HTTP方法和headers
+
 ---
-**更新日期**: 2025-08-28  
+**更新日期**: 2025-09-01  
+**版本**: v1.2 (路由架構重構)  
 **用途**: 日常開發快速參考

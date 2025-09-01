@@ -63,7 +63,14 @@
 │   │   └── infraport/      # 基礎設施介面
 │   ├── adapter/        # 領域介面實作（Adapters）
 │   │   ├── handler/    # HTTP/Worker/Scheduler 處理器
+│   │   │   ├── api/    # HTTP API 處理器
 │   │   │   └── scheduler/ # 排程處理器元件
+│   │   ├── router/     # 路由管理器（新增）
+│   │   │   ├── router_manager.go # 路由管理器
+│   │   │   ├── api_router.go     # API 路由
+│   │   │   ├── swagger_router.go # Swagger 路由
+│   │   │   ├── health_router.go  # 健康檢查路由
+│   │   │   └── pprof_router.go   # 性能分析路由
 │   │   ├── repository/ # 資料庫操作實作
 │   │   ├── usecase/    # 業務用例
 │   │   │   └── message_campaign/ # 訊息活動用例
@@ -386,7 +393,24 @@ kubectl get pods -l app=fat-notification-cat
 
 ## 最新功能更新
 
-### 會員訊息排程發送系統
+### v1.2 路由架構重構 ✨
+
+- **模組化路由管理系統**
+  - 全新的路由管理器（Router Manager）架構
+  - 分離的路由組件：API、Swagger、健康檢查、pprof 性能分析
+  - 各組件獨立的中間件配置，避免相互影響
+
+- **改進的中間件管理**
+  - 優化 CORS 配置，解決 Swagger API 呼叫問題
+  - 統一的中間件配置管理
+  - 支援開發和生產環境的不同配置策略
+
+- **增強的開發工具支援**
+  - 內建 pprof 性能分析路由
+  - 改進的 Swagger 文檔配置
+  - 增強的請求日誌和調試功能
+
+### v1.1 會員訊息排程發送系統 ✅
 
 - **新增會員訊息活動管理 API**
   - 支援創建、修改、查詢會員訊息活動
@@ -405,6 +429,11 @@ kubectl get pods -l app=fat-notification-cat
 
 ### 技術改進
 
+- **路由架構重構**
+  - 模組化路由管理器設計
+  - 獨立的路由組件與中間件配置
+  - 支援性能分析和調試工具
+
 - **資料庫架構重構**
   - 優化資料表結構
   - 改善測試檔案組織
@@ -415,9 +444,14 @@ kubectl get pods -l app=fat-notification-cat
   - 改善錯誤處理機制
   - 新增響應構建器
 
+- **CORS 和 API 調用優化**
+  - 修復 Swagger UI 的 CORS 問題
+  - 優化開發環境的 API 調用體驗
+  - 改進的 API 文檔配置
+
 ## 專案狀態
 
-專案目前處於積極開發階段，最新實現了完整的會員訊息排程發送系統。
+專案目前處於積極開發階段，最新完成了路由架構重構（v1.2），並實現了完整的會員訊息排程發送系統（v1.1）。目前進入測試驗證階段，focus on 系統穩定性和性能優化。
 
 ## 聯絡資訊
 

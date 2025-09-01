@@ -32,6 +32,12 @@ The codebase follows hexagonal architecture with clear separation:
 - `internal/domain/` - Core business logic, interfaces (ports)
 - `internal/adapter/` - Implementation of domain interfaces
   - `handler/` - HTTP/Worker/Scheduler handlers
+  - `router/` - **NEW** Modular router management system
+    - `router_manager.go` - Central router coordinator
+    - `api_router.go` - API route registration
+    - `swagger_router.go` - Swagger documentation routes
+    - `health_router.go` - Health check routes
+    - `pprof_router.go` - Performance profiling routes
   - `repository/` - Database operations
   - `usecase/` - Business use cases
   - `service/` - External service integrations
@@ -140,6 +146,13 @@ All database operations go through repository interfaces defined in `internal/do
 ### Use Case Pattern
 Business logic is encapsulated in use cases that orchestrate repositories and services
 
+### Router Management Pattern ✨ **NEW**
+Modular router architecture with separated concerns:
+- **Router Manager** - Central coordinator for all route registration
+- **Component Routers** - Individual routers for specific functionality (API, Swagger, health, pprof)
+- **Independent Middleware** - Each router manages its own middleware stack
+- **Environment-aware Configuration** - Different settings for development vs production
+
 ### Event-Driven Architecture
 System uses events for inter-service communication via KDS and Redis queues
 
@@ -157,19 +170,38 @@ The project maintains structured documentation for development guidance:
 - **docs/claude/archive/** - Completed feature archives
 
 ### Current Status
-**主要功能完成**: 會員訊息排程發送系統已完成核心開發，現進入測試驗證階段
+**v1.2 路由架構重構完成**: 模組化路由管理系統已完成開發與整合  
+**v1.1 主要功能完成**: 會員訊息排程發送系統已完成核心開發，現進入測試驗證階段
 
 ## Development Specifications
 
-### Current Focus: Testing & Validation Phase (2025-08-28)
+### Current Focus: Architecture Refinement & Testing Phase (2025-09-01)
 
-The core message campaign scheduling system has been completed and is now in comprehensive testing phase.
+**Recently Completed:**
+- ✅ Router architecture refactoring with modular design
+- ✅ CORS configuration optimization for Swagger integration
+- ✅ Independent middleware management per router component
+- ✅ Performance profiling routes (pprof) integration
+
+**Current Phase:**
+- Testing and validation of the refactored router architecture
+- Performance optimization and system stability improvements
+- Comprehensive testing of message campaign system
+
 For detailed current tasks, see `docs/claude/CLAUDE-CURRENT.md`.
 
 ### Completed Features
 
+#### 路由架構重構 v1.2 ✅
+- **Status**: Completed (2025-09-01)
+- **Key Components**: 
+  - Modular router management system
+  - Independent middleware configuration
+  - CORS optimization for Swagger integration
+  - Performance profiling routes integration
+
 #### 會員訊息排程發送系統 v1.1 ✅
-- **Status**: Core development completed
+- **Status**: Core development completed (2025-08-28)
 - **Archive**: `docs/claude/archive/2025-08/message-campaign-v1.1/CLAUDE-2025-08-28-v1.1-COMPLETED.md`
 - **Specification**: `docs/claude/features/message-campaign/spec.md`
 
