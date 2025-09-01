@@ -13,8 +13,6 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/http/response"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 type Merchant = entity.Merchant
@@ -58,66 +56,6 @@ func NewHTTPHandler(
 		messageUseCase:  messageUseCase,
 		logger:          logger,
 	}
-}
-
-// RegisterRoutes 註冊路由
-func (h *HTTPHandler) RegisterRoutes(router *gin.Engine, authMiddleware gin.HandlerFunc) {
-	// Swagger 文檔路由 (不需要認證)
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
-	// API 路由群組 (需要認證)
-	api := router.Group("/api/v1")
-	if authMiddleware != nil {
-		api.Use(authMiddleware)
-	}
-
-	// 商戶相關路由
-	merchants := api.Group("/merchants")
-	{
-		merchants.GET("/:id", h.GetMerchantByID)
-		merchants.GET("/global/:global_id", h.GetMerchantByGlobalID)
-	}
-
-	// 玩家相關路由
-	players := api.Group("/players")
-	{
-		players.GET("/:id", h.GetPlayerByID)
-		players.GET("/global/:global_id", h.GetPlayerByGlobalID)
-		players.PUT("/:id/active", h.UpdatePlayerLastActive)
-	}
-
-	// 管理員相關路由
-	managers := api.Group("/managers")
-	{
-		managers.GET("/:id", h.GetManagerByID)
-		managers.GET("/global/:global_id", h.GetManagerByGlobalID)
-	}
-
-	// 管理端 - 訊息活動管理
-	campaigns := api.Group("/message-campaigns")
-	{
-		campaigns.POST("", h.CreateMessageCampaign)
-		campaigns.GET("", h.ListMessageCampaigns)
-		campaigns.GET("/:global_id", h.GetMessageCampaign)
-		campaigns.PUT("/:global_id", h.UpdateMessageCampaign)
-		campaigns.DELETE("/:global_id", h.DeleteMessageCampaign)
-
-		// 自動設定 API
-		campaigns.GET("/auto-settings", h.GetMerchantAutoSettings)
-		campaigns.POST("/auto-settings", h.CreateOrUpdateMerchantAutoSettings)
-		campaigns.PUT("/auto-settings", h.CreateOrUpdateMerchantAutoSettings)
-	}
-
-	// 玩家端 - 訊息查看
-	messages := api.Group("/messages")
-	{
-		messages.GET("/player/:global_player_id", h.GetPlayerMessages)
-		messages.PUT("/player/:global_player_id/:message_id/read", h.MarkMessageAsRead)
-		messages.GET("/player/:global_player_id/sse", h.SSEHandler)
-	}
-
-	// 健康檢查
-	router.GET("/health", h.HealthCheck)
 }
 
 // HealthCheck 以下是現有的方法（商戶、玩家、管理員）...

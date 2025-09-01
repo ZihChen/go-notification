@@ -10,16 +10,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jvdiamondtech/ms-notification-cat/cmd"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler/api"
+	routermgr "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/router"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/di"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/database/mysql"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/http/middleware"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"github.com/spf13/cobra"
 )
@@ -96,30 +95,9 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	// 創建 Gin 路由
 	router := gin.Default()
 
-	// 配置CORS中間件
-	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"*"}
-	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
-	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization", "API-Key"}
-	config.ExposeHeaders = []string{"Content-Length"}
-	config.AllowCredentials = true
-	router.Use(cors.New(config))
-
-	// 加入全局Middleware
-	router.Use(middleware.ErrorHandler())
-
-	// 創建認證中間件配置（如果啟用）
-	var authMiddleware gin.HandlerFunc
-	if cfg.Auth.Enabled {
-		authMiddleware = middleware.AuthMiddleware(middleware.AuthConfig{
-			APIKeys:        cfg.Auth.APIKeys,
-			HeaderKey:      cfg.Auth.HeaderKey,
-			EncryptionType: cfg.Auth.EncryptionType,
-		})
-	}
-
-	// 註冊路由，將認證中間件傳入
-	svc.httpHandler.RegisterRoutes(router, authMiddleware)
+	// 使用路由管理器配置所有中間件並註冊路由
+	routerManager := routermgr.NewRouterManager(svc.httpHandler)
+	routerManager.SetupRoutersWithMiddleware(router, cfg)
 
 	// 創建HTTP服務器
 	server := &http.Server{

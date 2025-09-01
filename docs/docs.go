@@ -1463,7 +1463,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "localhost:8080",
-	BasePath:         "",
+	BasePath:         "/api/v1",
 	Schemes:          []string{},
 	Title:            "Notification Service API",
 	Description:      "用於管理商戶、玩家和管理員的身份服務",
