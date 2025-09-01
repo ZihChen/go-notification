@@ -1,0 +1,957 @@
+definitions:
+  api.ErrorResponse:
+    properties:
+      error:
+        example: An error occurred
+        type: string
+    type: object
+  api.Manager:
+    properties:
+      account:
+        type: string
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      email:
+        type: string
+      global_manager_id:
+        type: string
+      id:
+        type: integer
+      merchant_id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  api.Merchant:
+    properties:
+      api_key:
+        type: string
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      display_name:
+        type: string
+      global_merchant_id:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  api.MessageCampaignListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/entity.MessageCampaign'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  api.Player:
+    properties:
+      account:
+        type: string
+      api_key:
+        type: string
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      email:
+        type: string
+      global_player_id:
+        type: string
+      id:
+        type: integer
+      last_active_at:
+        type: string
+      level_id:
+        type: integer
+      merchant_id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  api.SuccessResponse:
+    properties:
+      status:
+        example: success
+        type: string
+    type: object
+  dto.AutoSettingItem:
+    properties:
+      category:
+        maximum: 3
+        minimum: 1
+        type: integer
+      content:
+        type: string
+      item:
+        maximum: 6
+        minimum: 1
+        type: integer
+      title:
+        maxLength: 255
+        type: string
+      trigger_type:
+        enum:
+        - success
+        - failure
+        type: string
+    required:
+    - category
+    - content
+    - item
+    - title
+    - trigger_type
+    type: object
+  dto.AutoSettingsOperationResponse:
+    properties:
+      created_count:
+        type: integer
+      global_merchant_id:
+        type: string
+      operation:
+        description: create, update
+        type: string
+      updated_count:
+        type: integer
+    type: object
+  dto.CreateMessageCampaignRequest:
+    properties:
+      category:
+        maximum: 3
+        minimum: 1
+        type: integer
+      content:
+        type: string
+      created_by:
+        maxLength: 100
+        type: string
+      global_merchant_id:
+        type: string
+      item:
+        maximum: 6
+        minimum: 1
+        type: integer
+      send_end_time:
+        type: string
+      send_start_time:
+        type: string
+      target:
+        type: integer
+      title:
+        maxLength: 255
+        type: string
+      trigger_type:
+        enum:
+        - success
+        - failure
+        type: string
+    required:
+    - category
+    - content
+    - created_by
+    - item
+    - target
+    - title
+    type: object
+  dto.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  dto.MerchantAutoSettingsRequest:
+    properties:
+      global_merchant_id:
+        type: string
+      settings:
+        items:
+          $ref: '#/definitions/dto.AutoSettingItem'
+        maxItems: 10
+        minItems: 1
+        type: array
+    required:
+    - settings
+    type: object
+  dto.MerchantAutoSettingsResponse:
+    properties:
+      global_merchant_id:
+        type: string
+      settings:
+        items:
+          $ref: '#/definitions/entity.MessageCampaign'
+        type: array
+    type: object
+  dto.UpdateMessageCampaignRequest:
+    properties:
+      category:
+        maximum: 3
+        minimum: 1
+        type: integer
+      content:
+        type: string
+      global_id:
+        type: string
+      global_merchant_id:
+        type: string
+      item:
+        maximum: 6
+        minimum: 1
+        type: integer
+      send_end_time:
+        type: string
+      send_start_time:
+        type: string
+      target:
+        type: integer
+      title:
+        maxLength: 255
+        type: string
+      trigger_type:
+        enum:
+        - success
+        - failure
+        type: string
+      updated_by:
+        maxLength: 100
+        type: string
+    required:
+    - category
+    - content
+    - item
+    - target
+    - title
+    - updated_by
+    type: object
+  entity.MessageCampaign:
+    properties:
+      auto_send:
+        description: 是否為系統自動訊息
+        type: boolean
+      category:
+        description: 1=member, 2=bonus, 3=others
+        type: integer
+      content:
+        description: 可包含 HTML Tag
+        type: string
+      created_at:
+        type: string
+      created_by:
+        description: 建立者帳號或名稱
+        type: string
+      deleted_at:
+        type: string
+      global_id:
+        type: string
+      id:
+        type: integer
+      item:
+        description: 1=registration, 2=identity_verification, ..., 6=all
+        type: integer
+      merchant_id:
+        type: integer
+      real_sent_count:
+        description: 實際成功發送人數
+        type: integer
+      send_end_time:
+        type: string
+      send_start_time:
+        type: string
+      status:
+        description: 1=draft, 2=scheduled, 3=sent, 4=cancelled, 5=archived
+        type: integer
+      target:
+        description: 1=_in_thirty, 2=_low_activity, 3=_not_activity, 8=_one, 9=_level,
+          10=_tag, 11=_all
+        type: integer
+      title:
+        type: string
+      trigger_type:
+        description: success, failure (for auto-send settings)
+        type: string
+      updated_at:
+        type: string
+      updated_by:
+        description: 最後更新者帳號或名稱
+        type: string
+    type: object
+  entity.MessageListResponse:
+    properties:
+      messages:
+        items:
+          $ref: '#/definitions/entity.MessageSummary'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      stats:
+        $ref: '#/definitions/entity.PlayerMessageStats'
+      total:
+        type: integer
+    type: object
+  entity.MessageSummary:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      is_read:
+        type: boolean
+      summary:
+        description: 內容摘要
+        type: string
+      title:
+        type: string
+    type: object
+  entity.PlayerMessageStats:
+    properties:
+      read_count:
+        type: integer
+      total_count:
+        type: integer
+      unread_count:
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@jvdiamondtech.com
+    name: API Support
+    url: http://www.jvdiamondtech.com/support
+  description: 用於管理商戶、玩家和管理員的身份服務
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Notification Service API
+  version: "1.0"
+paths:
+  /api/v1/managers/global/{global_id}:
+    get:
+      consumes:
+      - application/json
+      description: 根據管理員全局ID獲取管理員信息
+      parameters:
+      - description: 管理員全局ID
+        in: path
+        name: global_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Manager'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 通過全局ID獲取管理員
+      tags:
+      - 管理員
+  /api/v1/merchants/{id}:
+    get:
+      consumes:
+      - application/json
+      description: 根據商戶ID獲取商戶信息
+      parameters:
+      - description: 商戶ID
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Merchant'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 通過ID獲取商戶
+      tags:
+      - 商戶
+  /api/v1/merchants/global/{global_id}:
+    get:
+      consumes:
+      - application/json
+      description: 根據商戶全局ID獲取商戶信息
+      parameters:
+      - description: 商戶全局ID
+        in: path
+        name: global_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Merchant'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 通過全局ID獲取商戶
+      tags:
+      - 商戶
+  /api/v1/message-campaigns:
+    get:
+      description: 分頁列出會員訊息活動
+      parameters:
+      - default: 1
+        description: 頁碼
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每頁數量
+        in: query
+        name: page_size
+        type: integer
+      - default: false
+        description: 是否包含已刪除的活動
+        in: query
+        name: include_deleted
+        type: boolean
+      - collectionFormat: csv
+        description: 狀態篩選 (1=草稿, 2=已排程, 3=已發送, 4=已取消)
+        in: query
+        items:
+          type: integer
+        name: status
+        type: array
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.MessageCampaignListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 列出會員訊息活動
+      tags:
+      - 會員訊息活動
+    post:
+      consumes:
+      - application/json
+      description: 創建新的會員訊息活動
+      parameters:
+      - description: 創建請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateMessageCampaignRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/entity.MessageCampaign'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 創建會員訊息活動
+      tags:
+      - 會員訊息活動
+  /api/v1/message-campaigns/{global_id}:
+    delete:
+      description: 刪除指定GlobalID的會員訊息活動
+      parameters:
+      - description: Campaign Global ID
+        in: path
+        name: global_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 刪除會員訊息活動
+      tags:
+      - 會員訊息活動
+    get:
+      description: 根據GlobalID獲取會員訊息活動詳情
+      parameters:
+      - description: Campaign Global ID
+        in: path
+        name: global_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.MessageCampaign'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 獲取會員訊息活動
+      tags:
+      - 會員訊息活動
+    put:
+      consumes:
+      - application/json
+      description: 更新指定GlobalID的會員訊息活動
+      parameters:
+      - description: Campaign Global ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update message campaign request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateMessageCampaignRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.MessageCampaign'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 更新會員訊息活動
+      tags:
+      - 會員訊息活動
+  /api/v1/message-campaigns/auto-settings:
+    get:
+      consumes:
+      - application/json
+      description: 根據商戶ID獲取會員訊息自動派發設定
+      parameters:
+      - description: 商戶ID
+        in: path
+        name: merchant_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MerchantAutoSettingsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 獲取商戶自動設定
+      tags:
+      - 會員訊息自動設定
+    post:
+      consumes:
+      - application/json
+      description: 為特定商戶建立或更新會員訊息自動派發設定
+      parameters:
+      - description: 自動設定請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.MerchantAutoSettingsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 更新成功
+          schema:
+            $ref: '#/definitions/dto.AutoSettingsOperationResponse'
+        "201":
+          description: 建立成功
+          schema:
+            $ref: '#/definitions/dto.AutoSettingsOperationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 新增或更新商戶自動設定
+      tags:
+      - 會員訊息自動設定
+    put:
+      consumes:
+      - application/json
+      description: 為特定商戶建立或更新會員訊息自動派發設定
+      parameters:
+      - description: 自動設定請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.MerchantAutoSettingsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 更新成功
+          schema:
+            $ref: '#/definitions/dto.AutoSettingsOperationResponse'
+        "201":
+          description: 建立成功
+          schema:
+            $ref: '#/definitions/dto.AutoSettingsOperationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 新增或更新商戶自動設定
+      tags:
+      - 會員訊息自動設定
+  /api/v1/messages/player/{global_player_id}:
+    get:
+      consumes:
+      - application/json
+      description: 分頁獲取指定玩家的訊息列表
+      parameters:
+      - description: 全域玩家ID
+        in: path
+        name: global_player_id
+        required: true
+        type: string
+      - default: 1
+        description: 頁碼
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每頁數量
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.MessageListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 獲取玩家訊息列表
+      tags:
+      - 玩家訊息
+  /api/v1/messages/player/{global_player_id}/{message_id}/read:
+    put:
+      consumes:
+      - application/json
+      description: 將指定玩家的指定訊息標記為已讀
+      parameters:
+      - description: 全域玩家ID
+        in: path
+        name: global_player_id
+        required: true
+        type: string
+      - description: 訊息ID
+        format: int64
+        in: path
+        name: message_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 標記訊息為已讀
+      tags:
+      - 玩家訊息
+  /api/v1/messages/player/{global_player_id}/sse:
+    get:
+      consumes:
+      - application/json
+      description: 為指定玩家建立SSE連接，即時推送訊息更新
+      parameters:
+      - description: 全域玩家ID
+        in: path
+        name: global_player_id
+        required: true
+        type: string
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: SSE stream
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Server-Sent Events訊息推送
+      tags:
+      - 玩家訊息
+  /api/v1/players/{id}:
+    get:
+      consumes:
+      - application/json
+      description: 根據玩家ID獲取玩家信息
+      parameters:
+      - description: 玩家ID
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Player'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 通過ID獲取玩家
+      tags:
+      - 玩家
+  /api/v1/players/{id}/active:
+    put:
+      consumes:
+      - application/json
+      description: 將玩家的最後活躍時間更新為當前時間
+      parameters:
+      - description: 玩家ID
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 更新玩家最後活躍時間
+      tags:
+      - 玩家
+  /api/v1/players/global/{global_id}:
+    get:
+      consumes:
+      - application/json
+      description: 根據玩家全局ID獲取玩家信息
+      parameters:
+      - description: 玩家全局ID
+        in: path
+        name: global_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Player'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 通過全局ID獲取玩家
+      tags:
+      - 玩家
+  /health:
+    get:
+      description: 檢查服務是否正常運行，包含基本服務狀態
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+      summary: 健康檢查
+      tags:
+      - 系統
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: API-Key
+    type: apiKey
+swagger: "2.0"

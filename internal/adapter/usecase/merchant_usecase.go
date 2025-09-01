@@ -160,18 +160,6 @@ func (u *MerchantUseCase) GetMerchantByID(
 	return merchant, nil
 }
 
-// GetMerchantByGlobalID 通過全局ID獲取商戶
-// @Summary 通過全局ID獲取商戶
-// @Description 根據商戶全局ID獲取商戶信息
-// @Tags 商戶
-// @Accept json
-// @Produce json
-// @Param global_id path string true "商戶全局ID"
-// @Success 200 {object} Merchant
-// @Failure 400 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /api/v1/merchants/global/{global_id} [get]
 func (u *MerchantUseCase) GetMerchantByGlobalID(
 	ctx context.Context,
 	globalID string,

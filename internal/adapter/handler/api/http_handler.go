@@ -61,11 +61,15 @@ func NewHTTPHandler(
 }
 
 // RegisterRoutes 註冊路由
-func (h *HTTPHandler) RegisterRoutes(router *gin.Engine) {
-	// Swagger 文檔路由
+func (h *HTTPHandler) RegisterRoutes(router *gin.Engine, authMiddleware gin.HandlerFunc) {
+	// Swagger 文檔路由 (不需要認證)
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
+	// API 路由群組 (需要認證)
 	api := router.Group("/api/v1")
+	if authMiddleware != nil {
+		api.Use(authMiddleware)
+	}
 
 	// 商戶相關路由
 	merchants := api.Group("/merchants")
@@ -177,6 +181,7 @@ func (h *HTTPHandler) HealthCheck(c *gin.Context) {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
+// @Security ApiKeyAuth
 // @Router /api/v1/merchants/{id} [get]
 func (h *HTTPHandler) GetMerchantByID(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
@@ -195,6 +200,18 @@ func (h *HTTPHandler) GetMerchantByID(c *gin.Context) {
 }
 
 // GetMerchantByGlobalID 通過全局ID獲取商戶
+// @Summary 通過全局ID獲取商戶
+// @Description 根據商戶全局ID獲取商戶信息
+// @Tags 商戶
+// @Accept json
+// @Produce json
+// @Param global_id path string true "商戶全局ID"
+// @Success 200 {object} Merchant
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/merchants/global/{global_id} [get]
 func (h *HTTPHandler) GetMerchantByGlobalID(c *gin.Context) {
 	globalID := c.Param("global_id")
 	if globalID == "" {
@@ -222,6 +239,7 @@ func (h *HTTPHandler) GetMerchantByGlobalID(c *gin.Context) {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
+// @Security ApiKeyAuth
 // @Router /api/v1/players/{id} [get]
 func (h *HTTPHandler) GetPlayerByID(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
@@ -250,6 +268,7 @@ func (h *HTTPHandler) GetPlayerByID(c *gin.Context) {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
+// @Security ApiKeyAuth
 // @Router /api/v1/players/global/{global_id} [get]
 func (h *HTTPHandler) GetPlayerByGlobalID(c *gin.Context) {
 	globalID := c.Param("global_id")
@@ -279,6 +298,7 @@ func (h *HTTPHandler) GetPlayerByGlobalID(c *gin.Context) {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
+// @Security ApiKeyAuth
 // @Router /api/v1/players/{id}/active [put]
 func (h *HTTPHandler) UpdatePlayerLastActive(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
@@ -308,6 +328,7 @@ func (h *HTTPHandler) UpdatePlayerLastActive(c *gin.Context) {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
+// @Security ApiKeyAuth
 // @Router /api/v1/managers/{id} [get]
 
 func (h *HTTPHandler) GetManagerByID(c *gin.Context) {
@@ -337,6 +358,7 @@ func (h *HTTPHandler) GetManagerByID(c *gin.Context) {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
+// @Security ApiKeyAuth
 // @Router /api/v1/managers/global/{global_id} [get]
 func (h *HTTPHandler) GetManagerByGlobalID(c *gin.Context) {
 	globalID := c.Param("global_id")
@@ -359,13 +381,14 @@ func (h *HTTPHandler) GetManagerByGlobalID(c *gin.Context) {
 // CreateMessageCampaign 創建會員訊息活動
 // @Summary 創建會員訊息活動
 // @Description 創建新的會員訊息活動
-// @Tags Message Campaign
+// @Tags 會員訊息活動
 // @Accept json
 // @Produce json
 // @Param request body dto.CreateMessageCampaignRequest true "創建請求"
 // @Success 201 {object} entity.MessageCampaign
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
+// @Security ApiKeyAuth
 // @Router /api/v1/message-campaigns [post]
 func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
 	req := &dto.CreateMessageCampaignRequest{
@@ -389,7 +412,7 @@ func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
 // UpdateMessageCampaign 更新會員訊息活動
 // @Summary 更新會員訊息活動
 // @Description 更新指定GlobalID的會員訊息活動
-// @Tags Message Campaign
+// @Tags 會員訊息活動
 // @Accept json
 // @Produce json
 // @Param id path string true "Campaign Global ID"
@@ -398,6 +421,7 @@ func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
+// @Security ApiKeyAuth
 // @Router /api/v1/message-campaigns/{global_id} [put]
 func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
 	globalID := c.Param("global_id")
@@ -427,12 +451,13 @@ func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
 // DeleteMessageCampaign 刪除會員訊息活動
 // @Summary 刪除會員訊息活動
 // @Description 刪除指定GlobalID的會員訊息活動
-// @Tags Message Campaign
+// @Tags 會員訊息活動
 // @Param global_id path string true "Campaign Global ID"
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
+// @Security ApiKeyAuth
 // @Router /api/v1/message-campaigns/{global_id} [delete]
 func (h *HTTPHandler) DeleteMessageCampaign(c *gin.Context) {
 	globalID := c.Param("global_id")
@@ -453,12 +478,13 @@ func (h *HTTPHandler) DeleteMessageCampaign(c *gin.Context) {
 // GetMessageCampaign 獲取會員訊息活動
 // @Summary 獲取會員訊息活動
 // @Description 根據GlobalID獲取會員訊息活動詳情
-// @Tags Message Campaign
+// @Tags 會員訊息活動
 // @Param global_id path string true "Campaign Global ID"
 // @Success 200 {object} entity.MessageCampaign
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
+// @Security ApiKeyAuth
 // @Router /api/v1/message-campaigns/{global_id} [get]
 func (h *HTTPHandler) GetMessageCampaign(c *gin.Context) {
 	globalID := c.Param("global_id")
@@ -481,13 +507,14 @@ func (h *HTTPHandler) GetMessageCampaign(c *gin.Context) {
 // ListMessageCampaigns 列出會員訊息活動
 // @Summary 列出會員訊息活動
 // @Description 分頁列出會員訊息活動
-// @Tags Message Campaign
+// @Tags 會員訊息活動
 // @Param page query int false "頁碼" default(1)
 // @Param page_size query int false "每頁數量" default(10)
 // @Param include_deleted query bool false "是否包含已刪除的活動" default(false)
 // @Param status query []int false "狀態篩選 (1=草稿, 2=已排程, 3=已發送, 4=已取消)"
 // @Success 200 {object} MessageCampaignListResponse
 // @Failure 500 {object} ErrorResponse
+// @Security ApiKeyAuth
 // @Router /api/v1/message-campaigns [get]
 func (h *HTTPHandler) ListMessageCampaigns(c *gin.Context) {
 	var req dto.ListMessageCampaignsRequest
@@ -519,6 +546,19 @@ func (h *HTTPHandler) ListMessageCampaigns(c *gin.Context) {
 }
 
 // GetPlayerMessages 獲取玩家訊息列表
+// @Summary 獲取玩家訊息列表
+// @Description 分頁獲取指定玩家的訊息列表
+// @Tags 玩家訊息
+// @Accept json
+// @Produce json
+// @Param global_player_id path string true "全域玩家ID"
+// @Param page query int false "頁碼" default(1)
+// @Param page_size query int false "每頁數量" default(10)
+// @Success 200 {object} entity.MessageListResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/messages/player/{global_player_id} [get]
 func (h *HTTPHandler) GetPlayerMessages(c *gin.Context) {
 	globalPlayerID := c.Param("global_player_id")
 	if globalPlayerID == "" {
@@ -548,6 +588,19 @@ func (h *HTTPHandler) GetPlayerMessages(c *gin.Context) {
 }
 
 // MarkMessageAsRead 標記訊息為已讀
+// @Summary 標記訊息為已讀
+// @Description 將指定玩家的指定訊息標記為已讀
+// @Tags 玩家訊息
+// @Accept json
+// @Produce json
+// @Param global_player_id path string true "全域玩家ID"
+// @Param message_id path uint64 true "訊息ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/messages/player/{global_player_id}/{message_id}/read [put]
 func (h *HTTPHandler) MarkMessageAsRead(c *gin.Context) {
 	globalPlayerID := c.Param("global_player_id")
 	if globalPlayerID == "" {
@@ -582,7 +635,8 @@ func (h *HTTPHandler) MarkMessageAsRead(c *gin.Context) {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/message-campaigns/auto-settings/{merchant_id} [get]
+// @Security ApiKeyAuth
+// @Router /api/v1/message-campaigns/auto-settings [get]
 func (h *HTTPHandler) GetMerchantAutoSettings(c *gin.Context) {
 	GlobalMerchantID := c.GetString("global_merchant_id")
 	result, err := h.messageUseCase.GetMerchantAutoSettings(c.Request.Context(), GlobalMerchantID)
@@ -613,6 +667,7 @@ func (h *HTTPHandler) GetMerchantAutoSettings(c *gin.Context) {
 // @Success 201 {object} dto.AutoSettingsOperationResponse "建立成功"
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
+// @Security ApiKeyAuth
 // @Router /api/v1/message-campaigns/auto-settings [post]
 // @Router /api/v1/message-campaigns/auto-settings [put]
 func (h *HTTPHandler) CreateOrUpdateMerchantAutoSettings(c *gin.Context) {
@@ -670,6 +725,7 @@ func (h *HTTPHandler) CreateOrUpdateMerchantAutoSettings(c *gin.Context) {
 // @Param global_player_id path string true "全域玩家ID"
 // @Success 200 {string} string "SSE stream"
 // @Failure 400 {object} ErrorResponse
+// @Security ApiKeyAuth
 // @Router /api/v1/messages/player/{global_player_id}/sse [get]
 func (h *HTTPHandler) SSEHandler(c *gin.Context) {
 	globalPlayerID := c.Param("global_player_id")
