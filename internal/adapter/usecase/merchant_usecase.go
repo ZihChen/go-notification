@@ -8,10 +8,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/serviceport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -19,17 +19,17 @@ import (
 
 // MerchantUseCase 商戶用例
 type MerchantUseCase struct {
-	merchantRepo  repositoryport.MerchantRepository
-	eventProducer serviceport.EventProducer
-	logger        infraport.Logger
+	merchantRepo  repository.MerchantRepository
+	eventProducer service.EventProducer
+	logger        infrastructure.Logger
 }
 
 // NewMerchantUseCase 創建商戶用例
 func NewMerchantUseCase(
-	merchantRepo repositoryport.MerchantRepository,
-	eventProducer serviceport.EventProducer,
-	logger infraport.Logger,
-) usecaseport.MerchantUseCase {
+	merchantRepo repository.MerchantRepository,
+	eventProducer service.EventProducer,
+	logger infrastructure.Logger,
+) inbound.MerchantUseCase {
 	return &MerchantUseCase{
 		merchantRepo:  merchantRepo,
 		eventProducer: eventProducer,

@@ -15,7 +15,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/di"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	database "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/database/mysql"
@@ -58,7 +58,7 @@ func processTaskDirectly(
 
 func setupWorkerComponents(
 	t *testing.T,
-) (*di.WorkerComponents, *config.Config, infraport.Logger, func()) {
+) (*di.WorkerComponents, *config.Config, infrastructure.Logger, func()) {
 	// 讀取配置
 	cfg, err := config.LoadConfig()
 	require.NoError(t, err, "Should load config without error")

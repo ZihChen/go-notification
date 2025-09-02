@@ -19,7 +19,10 @@ type MockMessageCampaignRepository struct {
 	mock.Mock
 }
 
-func (m *MockMessageCampaignRepository) FindByID(ctx context.Context, id uint64) (*entity.MessageCampaign, error) {
+func (m *MockMessageCampaignRepository) FindByID(
+	ctx context.Context,
+	id uint64,
+) (*entity.MessageCampaign, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -27,7 +30,10 @@ func (m *MockMessageCampaignRepository) FindByID(ctx context.Context, id uint64)
 	return args.Get(0).(*entity.MessageCampaign), args.Error(1)
 }
 
-func (m *MockMessageCampaignRepository) FindByGlobalID(ctx context.Context, globalID string) (*entity.MessageCampaign, error) {
+func (m *MockMessageCampaignRepository) FindByGlobalID(
+	ctx context.Context,
+	globalID string,
+) (*entity.MessageCampaign, error) {
 	args := m.Called(ctx, globalID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -35,7 +41,10 @@ func (m *MockMessageCampaignRepository) FindByGlobalID(ctx context.Context, glob
 	return args.Get(0).(*entity.MessageCampaign), args.Error(1)
 }
 
-func (m *MockMessageCampaignRepository) FindAllWithOptions(ctx context.Context, query *entity.MessageCampaignsQuery) ([]*entity.MessageCampaign, int, error) {
+func (m *MockMessageCampaignRepository) FindAllWithOptions(
+	ctx context.Context,
+	query *entity.MessageCampaignsQuery,
+) ([]*entity.MessageCampaign, int, error) {
 	args := m.Called(ctx, query)
 	if args.Get(0) == nil {
 		return nil, args.Int(1), args.Error(2)
@@ -43,7 +52,10 @@ func (m *MockMessageCampaignRepository) FindAllWithOptions(ctx context.Context, 
 	return args.Get(0).([]*entity.MessageCampaign), args.Int(1), args.Error(2)
 }
 
-func (m *MockMessageCampaignRepository) FindActiveByFocus(ctx context.Context, focus uint8) ([]*entity.MessageCampaign, error) {
+func (m *MockMessageCampaignRepository) FindActiveByFocus(
+	ctx context.Context,
+	focus uint8,
+) ([]*entity.MessageCampaign, error) {
 	args := m.Called(ctx, focus)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -51,7 +63,9 @@ func (m *MockMessageCampaignRepository) FindActiveByFocus(ctx context.Context, f
 	return args.Get(0).([]*entity.MessageCampaign), args.Error(1)
 }
 
-func (m *MockMessageCampaignRepository) FindScheduledCampaigns(ctx context.Context) ([]*entity.MessageCampaign, error) {
+func (m *MockMessageCampaignRepository) FindScheduledCampaigns(
+	ctx context.Context,
+) ([]*entity.MessageCampaign, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -59,7 +73,10 @@ func (m *MockMessageCampaignRepository) FindScheduledCampaigns(ctx context.Conte
 	return args.Get(0).([]*entity.MessageCampaign), args.Error(1)
 }
 
-func (m *MockMessageCampaignRepository) FindAutoSettingsByMerchantID(ctx context.Context, merchantID uint64) ([]*entity.MessageCampaign, error) {
+func (m *MockMessageCampaignRepository) FindAutoSettingsByMerchantID(
+	ctx context.Context,
+	merchantID uint64,
+) ([]*entity.MessageCampaign, error) {
 	args := m.Called(ctx, merchantID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -67,7 +84,13 @@ func (m *MockMessageCampaignRepository) FindAutoSettingsByMerchantID(ctx context
 	return args.Get(0).([]*entity.MessageCampaign), args.Error(1)
 }
 
-func (m *MockMessageCampaignRepository) FindAutoSettingByCategoryItemTrigger(ctx context.Context, merchantID uint64, category uint8, item uint8, triggerType string) (*entity.MessageCampaign, error) {
+func (m *MockMessageCampaignRepository) FindAutoSettingByCategoryItemTrigger(
+	ctx context.Context,
+	merchantID uint64,
+	category uint8,
+	item uint8,
+	triggerType string,
+) (*entity.MessageCampaign, error) {
 	args := m.Called(ctx, merchantID, category, item, triggerType)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -75,33 +98,54 @@ func (m *MockMessageCampaignRepository) FindAutoSettingByCategoryItemTrigger(ctx
 	return args.Get(0).(*entity.MessageCampaign), args.Error(1)
 }
 
-func (m *MockMessageCampaignRepository) UpsertAutoSettings(ctx context.Context, campaigns []*entity.MessageCampaign) error {
+func (m *MockMessageCampaignRepository) UpsertAutoSettings(
+	ctx context.Context,
+	campaigns []*entity.MessageCampaign,
+) error {
 	args := m.Called(ctx, campaigns)
 	return args.Error(0)
 }
 
-func (m *MockMessageCampaignRepository) DeleteAutoSettingsByMerchantID(ctx context.Context, merchantID uint64) error {
+func (m *MockMessageCampaignRepository) DeleteAutoSettingsByMerchantID(
+	ctx context.Context,
+	merchantID uint64,
+) error {
 	args := m.Called(ctx, merchantID)
 	return args.Error(0)
 }
 
-func (m *MockMessageCampaignRepository) Create(ctx context.Context, campaign *entity.MessageCampaign) error {
+func (m *MockMessageCampaignRepository) Create(
+	ctx context.Context,
+	campaign *entity.MessageCampaign,
+) error {
 	args := m.Called(ctx, campaign)
 	campaign.ID = 1 // 設置創建的活動ID
 	return args.Error(0)
 }
 
-func (m *MockMessageCampaignRepository) Update(ctx context.Context, campaign *entity.MessageCampaign) error {
+func (m *MockMessageCampaignRepository) Update(
+	ctx context.Context,
+	campaign *entity.MessageCampaign,
+) error {
 	args := m.Called(ctx, campaign)
 	return args.Error(0)
 }
 
-func (m *MockMessageCampaignRepository) UpdateFields(ctx context.Context, id uint64, updates map[string]interface{}, includeDeleted bool) error {
+func (m *MockMessageCampaignRepository) UpdateFields(
+	ctx context.Context,
+	id uint64,
+	updates map[string]interface{},
+	includeDeleted bool,
+) error {
 	args := m.Called(ctx, id, updates, includeDeleted)
 	return args.Error(0)
 }
 
-func (m *MockMessageCampaignRepository) UpdateSentCount(ctx context.Context, campaignID uint64, count int64) error {
+func (m *MockMessageCampaignRepository) UpdateSentCount(
+	ctx context.Context,
+	campaignID uint64,
+	count int64,
+) error {
 	args := m.Called(ctx, campaignID, count)
 	return args.Error(0)
 }
@@ -115,7 +159,10 @@ type MockMerchantRepository struct {
 	mock.Mock
 }
 
-func (m *MockMerchantRepository) FindByID(ctx context.Context, id uint64) (*entity.Merchant, error) {
+func (m *MockMerchantRepository) FindByID(
+	ctx context.Context,
+	id uint64,
+) (*entity.Merchant, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -123,7 +170,10 @@ func (m *MockMerchantRepository) FindByID(ctx context.Context, id uint64) (*enti
 	return args.Get(0).(*entity.Merchant), args.Error(1)
 }
 
-func (m *MockMerchantRepository) FindByGlobalID(ctx context.Context, globalID string) (*entity.Merchant, error) {
+func (m *MockMerchantRepository) FindByGlobalID(
+	ctx context.Context,
+	globalID string,
+) (*entity.Merchant, error) {
 	args := m.Called(ctx, globalID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -131,7 +181,10 @@ func (m *MockMerchantRepository) FindByGlobalID(ctx context.Context, globalID st
 	return args.Get(0).(*entity.Merchant), args.Error(1)
 }
 
-func (m *MockMerchantRepository) FirstOrCreate(ctx context.Context, merchant *entity.Merchant) error {
+func (m *MockMerchantRepository) FirstOrCreate(
+	ctx context.Context,
+	merchant *entity.Merchant,
+) error {
 	args := m.Called(ctx, merchant)
 	merchant.ID = 1
 	return args.Error(0)
@@ -162,7 +215,10 @@ type MockPlayerMessageRepository struct {
 	mock.Mock
 }
 
-func (m *MockPlayerMessageRepository) FindByID(ctx context.Context, id uint64) (*entity.PlayerMessage, error) {
+func (m *MockPlayerMessageRepository) FindByID(
+	ctx context.Context,
+	id uint64,
+) (*entity.PlayerMessage, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -170,7 +226,11 @@ func (m *MockPlayerMessageRepository) FindByID(ctx context.Context, id uint64) (
 	return args.Get(0).(*entity.PlayerMessage), args.Error(1)
 }
 
-func (m *MockPlayerMessageRepository) FindByPlayerID(ctx context.Context, globalPlayerID string, page, pageSize int) ([]*entity.PlayerMessage, int, error) {
+func (m *MockPlayerMessageRepository) FindByPlayerID(
+	ctx context.Context,
+	globalPlayerID string,
+	page, pageSize int,
+) ([]*entity.PlayerMessage, int, error) {
 	args := m.Called(ctx, globalPlayerID, page, pageSize)
 	if args.Get(0) == nil {
 		return nil, args.Int(1), args.Error(2)
@@ -178,7 +238,10 @@ func (m *MockPlayerMessageRepository) FindByPlayerID(ctx context.Context, global
 	return args.Get(0).([]*entity.PlayerMessage), args.Int(1), args.Error(2)
 }
 
-func (m *MockPlayerMessageRepository) GetPlayerMessageStats(ctx context.Context, globalPlayerID string) (*entity.PlayerMessageStats, error) {
+func (m *MockPlayerMessageRepository) GetPlayerMessageStats(
+	ctx context.Context,
+	globalPlayerID string,
+) (*entity.PlayerMessageStats, error) {
 	args := m.Called(ctx, globalPlayerID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -186,13 +249,19 @@ func (m *MockPlayerMessageRepository) GetPlayerMessageStats(ctx context.Context,
 	return args.Get(0).(*entity.PlayerMessageStats), args.Error(1)
 }
 
-func (m *MockPlayerMessageRepository) Create(ctx context.Context, message *entity.PlayerMessage) error {
+func (m *MockPlayerMessageRepository) Create(
+	ctx context.Context,
+	message *entity.PlayerMessage,
+) error {
 	args := m.Called(ctx, message)
 	message.ID = 1
 	return args.Error(0)
 }
 
-func (m *MockPlayerMessageRepository) CreateBatch(ctx context.Context, messages []*entity.PlayerMessage) error {
+func (m *MockPlayerMessageRepository) CreateBatch(
+	ctx context.Context,
+	messages []*entity.PlayerMessage,
+) error {
 	args := m.Called(ctx, messages)
 	for i, message := range messages {
 		message.ID = uint64(i + 1)
@@ -200,22 +269,38 @@ func (m *MockPlayerMessageRepository) CreateBatch(ctx context.Context, messages 
 	return args.Error(0)
 }
 
-func (m *MockPlayerMessageRepository) CreateBatchOptimized(ctx context.Context, messages []*entity.PlayerMessage, batchSize int) error {
+func (m *MockPlayerMessageRepository) CreateBatchOptimized(
+	ctx context.Context,
+	messages []*entity.PlayerMessage,
+	batchSize int,
+) error {
 	args := m.Called(ctx, messages, batchSize)
 	return args.Error(0)
 }
 
-func (m *MockPlayerMessageRepository) MarkAsRead(ctx context.Context, globalPlayerID string, messageID uint64) error {
+func (m *MockPlayerMessageRepository) MarkAsRead(
+	ctx context.Context,
+	globalPlayerID string,
+	messageID uint64,
+) error {
 	args := m.Called(ctx, globalPlayerID, messageID)
 	return args.Error(0)
 }
 
-func (m *MockPlayerMessageRepository) CheckMessageExists(ctx context.Context, globalPlayerID string, campaignID uint64) (bool, error) {
+func (m *MockPlayerMessageRepository) CheckMessageExists(
+	ctx context.Context,
+	globalPlayerID string,
+	campaignID uint64,
+) (bool, error) {
 	args := m.Called(ctx, globalPlayerID, campaignID)
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockPlayerMessageRepository) CheckMessageExistsBatch(ctx context.Context, playerIDs []uint64, campaignID uint64) (map[uint64]bool, error) {
+func (m *MockPlayerMessageRepository) CheckMessageExistsBatch(
+	ctx context.Context,
+	playerIDs []uint64,
+	campaignID uint64,
+) (map[uint64]bool, error) {
 	args := m.Called(ctx, playerIDs, campaignID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -235,7 +320,10 @@ func (m *MockPlayerRepository) FindByID(ctx context.Context, id uint64) (*entity
 	return args.Get(0).(*entity.Player), args.Error(1)
 }
 
-func (m *MockPlayerRepository) FindByGlobalID(ctx context.Context, globalID string) (*entity.Player, error) {
+func (m *MockPlayerRepository) FindByGlobalID(
+	ctx context.Context,
+	globalID string,
+) (*entity.Player, error) {
 	args := m.Called(ctx, globalID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -243,7 +331,11 @@ func (m *MockPlayerRepository) FindByGlobalID(ctx context.Context, globalID stri
 	return args.Get(0).(*entity.Player), args.Error(1)
 }
 
-func (m *MockPlayerRepository) FindByTargetType(ctx context.Context, targetType uint8, offset, limit int) ([]*entity.Player, error) {
+func (m *MockPlayerRepository) FindByTargetType(
+	ctx context.Context,
+	targetType uint8,
+	offset, limit int,
+) ([]*entity.Player, error) {
 	args := m.Called(ctx, targetType, offset, limit)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -346,11 +438,14 @@ func stringPtr(s string) *string {
 
 // Test CreateMessageCampaign
 func TestMessageUseCase_CreateMessageCampaign(t *testing.T) {
-	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(t)
+	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(
+		t,
+	)
 
 	merchant := createTestMerchant()
 	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").Return(merchant, nil)
-	campaignRepo.On("Create", mock.Anything, mock.AnythingOfType("*entity.MessageCampaign")).Return(nil)
+	campaignRepo.On("Create", mock.Anything, mock.AnythingOfType("*entity.MessageCampaign")).
+		Return(nil)
 
 	useCase := NewMessageUseCase(campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger)
 
@@ -374,9 +469,12 @@ func TestMessageUseCase_CreateMessageCampaign(t *testing.T) {
 
 // Test CreateMessageCampaign with merchant repository error (not ErrRepoMerchantNotFound)
 func TestMessageUseCase_CreateMessageCampaign_MerchantRepositoryError(t *testing.T) {
-	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(t)
+	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(
+		t,
+	)
 
-	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").Return(nil, errors.New("database connection error"))
+	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").
+		Return(nil, errors.New("database connection error"))
 
 	useCase := NewMessageUseCase(campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger)
 
@@ -399,11 +497,15 @@ func TestMessageUseCase_CreateMessageCampaign_MerchantRepositoryError(t *testing
 
 // Test UpdateMessageCampaign
 func TestMessageUseCase_UpdateMessageCampaign(t *testing.T) {
-	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(t)
+	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(
+		t,
+	)
 
 	existingCampaign := createTestMessageCampaign()
-	campaignRepo.On("FindByGlobalID", mock.Anything, "test-campaign-global-id").Return(existingCampaign, nil)
-	campaignRepo.On("Update", mock.Anything, mock.AnythingOfType("*entity.MessageCampaign")).Return(nil)
+	campaignRepo.On("FindByGlobalID", mock.Anything, "test-campaign-global-id").
+		Return(existingCampaign, nil)
+	campaignRepo.On("Update", mock.Anything, mock.AnythingOfType("*entity.MessageCampaign")).
+		Return(nil)
 
 	useCase := NewMessageUseCase(campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger)
 
@@ -426,10 +528,13 @@ func TestMessageUseCase_UpdateMessageCampaign(t *testing.T) {
 
 // Test DeleteMessageCampaign
 func TestMessageUseCase_DeleteMessageCampaign(t *testing.T) {
-	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(t)
+	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(
+		t,
+	)
 
 	existingCampaign := createTestMessageCampaign()
-	campaignRepo.On("FindByGlobalID", mock.Anything, "test-campaign-global-id").Return(existingCampaign, nil)
+	campaignRepo.On("FindByGlobalID", mock.Anything, "test-campaign-global-id").
+		Return(existingCampaign, nil)
 	campaignRepo.On("Delete", mock.Anything, uint64(1)).Return(nil)
 	campaignRepo.On("UpdateFields", mock.Anything, uint64(1), mock.Anything, true).Return(nil)
 
@@ -443,10 +548,13 @@ func TestMessageUseCase_DeleteMessageCampaign(t *testing.T) {
 
 // Test GetMessageCampaign
 func TestMessageUseCase_GetMessageCampaign(t *testing.T) {
-	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(t)
+	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(
+		t,
+	)
 
 	expectedCampaign := createTestMessageCampaign()
-	campaignRepo.On("FindByGlobalID", mock.Anything, "test-campaign-global-id").Return(expectedCampaign, nil)
+	campaignRepo.On("FindByGlobalID", mock.Anything, "test-campaign-global-id").
+		Return(expectedCampaign, nil)
 
 	useCase := NewMessageUseCase(campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger)
 
@@ -462,7 +570,9 @@ func TestMessageUseCase_GetMessageCampaign(t *testing.T) {
 
 // Test ListMessageCampaigns
 func TestMessageUseCase_ListMessageCampaigns(t *testing.T) {
-	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(t)
+	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(
+		t,
+	)
 
 	expectedCampaigns := []*entity.MessageCampaign{createTestMessageCampaign()}
 	expectedTotal := 1
@@ -489,7 +599,9 @@ func TestMessageUseCase_ListMessageCampaigns(t *testing.T) {
 
 // Test GetPlayerMessages
 func TestMessageUseCase_GetPlayerMessages(t *testing.T) {
-	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(t)
+	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(
+		t,
+	)
 
 	globalPlayerID := "FATCAT-PLAYER-1"
 	lastActive := time.Now().Add(-15 * 24 * time.Hour) // 15 days ago - high activity
@@ -497,8 +609,11 @@ func TestMessageUseCase_GetPlayerMessages(t *testing.T) {
 
 	// Mock player lookup and campaign matching
 	playerRepo.On("FindByGlobalID", mock.Anything, globalPlayerID).Return(testPlayer, nil)
-	campaignRepo.On("FindActiveByFocus", mock.Anything, consts.TargetHighActivity).Return([]*entity.MessageCampaign{}, nil)
-	playerMessageRepo.On("CreateBatch", mock.Anything, mock.AnythingOfType("[]*entity.PlayerMessage")).Return(nil).Maybe()
+	campaignRepo.On("FindActiveByFocus", mock.Anything, consts.TargetHighActivity).
+		Return([]*entity.MessageCampaign{}, nil)
+	playerMessageRepo.On("CreateBatch", mock.Anything, mock.AnythingOfType("[]*entity.PlayerMessage")).
+		Return(nil).
+		Maybe()
 
 	// Mock stats and messages
 	stats := &entity.PlayerMessageStats{
@@ -524,7 +639,8 @@ func TestMessageUseCase_GetPlayerMessages(t *testing.T) {
 	}
 
 	playerMessageRepo.On("GetPlayerMessageStats", mock.Anything, globalPlayerID).Return(stats, nil)
-	playerMessageRepo.On("FindByPlayerID", mock.Anything, globalPlayerID, 1, 10).Return(messages, 2, nil)
+	playerMessageRepo.On("FindByPlayerID", mock.Anything, globalPlayerID, 1, 10).
+		Return(messages, 2, nil)
 
 	useCase := NewMessageUseCase(campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger)
 
@@ -547,7 +663,9 @@ func TestMessageUseCase_GetPlayerMessages(t *testing.T) {
 
 // Test MarkMessageAsRead
 func TestMessageUseCase_MarkMessageAsRead(t *testing.T) {
-	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(t)
+	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(
+		t,
+	)
 
 	globalPlayerID := "FATCAT-PLAYER-1"
 	messageID := uint64(1)
@@ -564,14 +682,17 @@ func TestMessageUseCase_MarkMessageAsRead(t *testing.T) {
 
 // Test GetMerchantAutoSettings
 func TestMessageUseCase_GetMerchantAutoSettings(t *testing.T) {
-	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(t)
+	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(
+		t,
+	)
 
 	globalMerchantID := "FATCAT-MERCHANT-1"
 	merchant := createTestMerchant()
 	autoSettings := []*entity.MessageCampaign{createTestMessageCampaign()}
 
 	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(merchant, nil)
-	campaignRepo.On("FindAutoSettingsByMerchantID", mock.Anything, merchant.ID).Return(autoSettings, nil)
+	campaignRepo.On("FindAutoSettingsByMerchantID", mock.Anything, merchant.ID).
+		Return(autoSettings, nil)
 
 	useCase := NewMessageUseCase(campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger)
 
@@ -589,13 +710,16 @@ func TestMessageUseCase_GetMerchantAutoSettings(t *testing.T) {
 
 // Test CreateOrUpdateMerchantAutoSettings
 func TestMessageUseCase_CreateOrUpdateMerchantAutoSettings(t *testing.T) {
-	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(t)
+	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(
+		t,
+	)
 
 	globalMerchantID := "FATCAT-MERCHANT-1"
 	merchant := createTestMerchant()
 
 	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(merchant, nil)
-	campaignRepo.On("UpsertAutoSettings", mock.Anything, mock.AnythingOfType("[]*entity.MessageCampaign")).Return(nil)
+	campaignRepo.On("UpsertAutoSettings", mock.Anything, mock.AnythingOfType("[]*entity.MessageCampaign")).
+		Return(nil)
 
 	useCase := NewMessageUseCase(campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger)
 
@@ -634,7 +758,9 @@ func TestMessageUseCase_CreateOrUpdateMerchantAutoSettings(t *testing.T) {
 
 // Test processPlayerMessages with high activity player
 func TestMessageUseCase_processPlayerMessages_HighActivity(t *testing.T) {
-	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(t)
+	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(
+		t,
+	)
 
 	globalPlayerID := "FATCAT-PLAYER-1"
 	lastActive := time.Now().Add(-15 * 24 * time.Hour) // 15 days ago - high activity
@@ -643,16 +769,21 @@ func TestMessageUseCase_processPlayerMessages_HighActivity(t *testing.T) {
 	activeCampaigns := []*entity.MessageCampaign{createTestMessageCampaign()}
 
 	playerRepo.On("FindByGlobalID", mock.Anything, globalPlayerID).Return(testPlayer, nil)
-	campaignRepo.On("FindActiveByFocus", mock.Anything, consts.TargetHighActivity).Return(activeCampaigns, nil)
-	playerMessageRepo.On("CheckMessageExists", mock.Anything, globalPlayerID, uint64(1)).Return(false, nil)
-	playerMessageRepo.On("CreateBatch", mock.Anything, mock.AnythingOfType("[]*entity.PlayerMessage")).Return(nil)
+	campaignRepo.On("FindActiveByFocus", mock.Anything, consts.TargetHighActivity).
+		Return(activeCampaigns, nil)
+	playerMessageRepo.On("CheckMessageExists", mock.Anything, globalPlayerID, uint64(1)).
+		Return(false, nil)
+	playerMessageRepo.On("CreateBatch", mock.Anything, mock.AnythingOfType("[]*entity.PlayerMessage")).
+		Return(nil)
 
 	useCase := NewMessageUseCase(campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger)
 
 	// Call the private method through reflection or create a test wrapper
 	// For now, we test through GetPlayerMessages which calls processPlayerMessages
-	playerMessageRepo.On("GetPlayerMessageStats", mock.Anything, globalPlayerID).Return(&entity.PlayerMessageStats{TotalCount: 1}, nil)
-	playerMessageRepo.On("FindByPlayerID", mock.Anything, globalPlayerID, 1, 10).Return([]*entity.PlayerMessage{}, 0, nil)
+	playerMessageRepo.On("GetPlayerMessageStats", mock.Anything, globalPlayerID).
+		Return(&entity.PlayerMessageStats{TotalCount: 1}, nil)
+	playerMessageRepo.On("FindByPlayerID", mock.Anything, globalPlayerID, 1, 10).
+		Return([]*entity.PlayerMessage{}, 0, nil)
 
 	_, err := useCase.GetPlayerMessages(context.Background(), globalPlayerID, 1, 10)
 
@@ -664,7 +795,9 @@ func TestMessageUseCase_processPlayerMessages_HighActivity(t *testing.T) {
 
 // Test processPlayerMessages with no activity player
 func TestMessageUseCase_processPlayerMessages_NoActivity(t *testing.T) {
-	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(t)
+	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(
+		t,
+	)
 
 	globalPlayerID := "FATCAT-PLAYER-1"
 	testPlayer := createTestPlayer(nil) // No last active time
@@ -672,14 +805,19 @@ func TestMessageUseCase_processPlayerMessages_NoActivity(t *testing.T) {
 	activeCampaigns := []*entity.MessageCampaign{createTestMessageCampaign()}
 
 	playerRepo.On("FindByGlobalID", mock.Anything, globalPlayerID).Return(testPlayer, nil)
-	campaignRepo.On("FindActiveByFocus", mock.Anything, consts.TargetNotActivity).Return(activeCampaigns, nil)
-	playerMessageRepo.On("CheckMessageExists", mock.Anything, globalPlayerID, uint64(1)).Return(false, nil)
-	playerMessageRepo.On("CreateBatch", mock.Anything, mock.AnythingOfType("[]*entity.PlayerMessage")).Return(nil)
+	campaignRepo.On("FindActiveByFocus", mock.Anything, consts.TargetNotActivity).
+		Return(activeCampaigns, nil)
+	playerMessageRepo.On("CheckMessageExists", mock.Anything, globalPlayerID, uint64(1)).
+		Return(false, nil)
+	playerMessageRepo.On("CreateBatch", mock.Anything, mock.AnythingOfType("[]*entity.PlayerMessage")).
+		Return(nil)
 
 	useCase := NewMessageUseCase(campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger)
 
-	playerMessageRepo.On("GetPlayerMessageStats", mock.Anything, globalPlayerID).Return(&entity.PlayerMessageStats{TotalCount: 1}, nil)
-	playerMessageRepo.On("FindByPlayerID", mock.Anything, globalPlayerID, 1, 10).Return([]*entity.PlayerMessage{}, 0, nil)
+	playerMessageRepo.On("GetPlayerMessageStats", mock.Anything, globalPlayerID).
+		Return(&entity.PlayerMessageStats{TotalCount: 1}, nil)
+	playerMessageRepo.On("FindByPlayerID", mock.Anything, globalPlayerID, 1, 10).
+		Return([]*entity.PlayerMessage{}, 0, nil)
 
 	_, err := useCase.GetPlayerMessages(context.Background(), globalPlayerID, 1, 10)
 
@@ -691,11 +829,14 @@ func TestMessageUseCase_processPlayerMessages_NoActivity(t *testing.T) {
 
 // Test error cases
 func TestMessageUseCase_CreateMessageCampaign_RepositoryError(t *testing.T) {
-	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(t)
+	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(
+		t,
+	)
 
 	merchant := createTestMerchant()
 	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").Return(merchant, nil)
-	campaignRepo.On("Create", mock.Anything, mock.AnythingOfType("*entity.MessageCampaign")).Return(errors.New("database error"))
+	campaignRepo.On("Create", mock.Anything, mock.AnythingOfType("*entity.MessageCampaign")).
+		Return(errors.New("database error"))
 
 	useCase := NewMessageUseCase(campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger)
 
@@ -718,9 +859,12 @@ func TestMessageUseCase_CreateMessageCampaign_RepositoryError(t *testing.T) {
 }
 
 func TestMessageUseCase_GetMessageCampaign_NotFound(t *testing.T) {
-	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(t)
+	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(
+		t,
+	)
 
-	campaignRepo.On("FindByGlobalID", mock.Anything, "non-existent-id").Return(nil, errors.New("campaign not found"))
+	campaignRepo.On("FindByGlobalID", mock.Anything, "non-existent-id").
+		Return(nil, errors.New("campaign not found"))
 
 	useCase := NewMessageUseCase(campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger)
 
@@ -732,12 +876,15 @@ func TestMessageUseCase_GetMessageCampaign_NotFound(t *testing.T) {
 }
 
 func TestMessageUseCase_MarkMessageAsRead_Error(t *testing.T) {
-	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(t)
+	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(
+		t,
+	)
 
 	globalPlayerID := "FATCAT-PLAYER-1"
 	messageID := uint64(1)
 
-	playerMessageRepo.On("MarkAsRead", mock.Anything, globalPlayerID, messageID).Return(errors.New("database error"))
+	playerMessageRepo.On("MarkAsRead", mock.Anything, globalPlayerID, messageID).
+		Return(errors.New("database error"))
 
 	useCase := NewMessageUseCase(campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger)
 

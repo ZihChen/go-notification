@@ -11,7 +11,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/cmd"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler/scheduler"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/di"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/database/mysql"
@@ -113,7 +113,7 @@ func runScheduler(cobraCmd *cobra.Command, args []string) {
 func initializeServices(
 	ctx context.Context,
 	cfg *config.Config,
-	logger infraport.Logger,
+	logger infrastructure.Logger,
 ) (*services, error) {
 	// 初始化追踪器
 	tracer, err := tracing.NewTracer(cfg)
@@ -160,7 +160,7 @@ func initializeServices(
 	}, nil
 }
 
-func (s *services) cleanup(ctx context.Context, logger infraport.Logger) {
+func (s *services) cleanup(ctx context.Context, logger infrastructure.Logger) {
 	// 關閉追蹤器
 	if err := s.tracer.Shutdown(ctx); err != nil {
 		logger.ErrorLog("Failed to shutdown tracer", logger.Error("err", err))

@@ -1,48 +1,10 @@
-package repositoryport
+package repository
 
 import (
 	"context"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 )
-
-// MerchantRepository 商戶資料庫接口
-type MerchantRepository interface {
-	FindByID(ctx context.Context, id uint64) (*entity.Merchant, error)
-	FindByGlobalID(ctx context.Context, globalID string) (*entity.Merchant, error)
-	FirstOrCreate(ctx context.Context, merchant *entity.Merchant) error
-	Create(ctx context.Context, merchant *entity.Merchant) error
-	Update(ctx context.Context, merchant *entity.Merchant) error
-	Delete(ctx context.Context, id uint64) error
-	Upsert(ctx context.Context, merchant *entity.Merchant) error
-}
-
-// PlayerRepository 玩家資料庫接口
-type PlayerRepository interface {
-	FindByID(ctx context.Context, id uint64) (*entity.Player, error)
-	FindByGlobalID(ctx context.Context, globalID string) (*entity.Player, error)
-	FindByTargetType(
-		ctx context.Context,
-		targetType uint8,
-		offset, limit int,
-	) ([]*entity.Player, error)
-	FirstOrCreate(ctx context.Context, player *entity.Player) error
-	Create(ctx context.Context, player *entity.Player) error
-	Update(ctx context.Context, player *entity.Player) error
-	Delete(ctx context.Context, id uint64) error
-	Upsert(ctx context.Context, player *entity.Player) error
-}
-
-// ManagerRepository 管理員資料庫接口
-type ManagerRepository interface {
-	FindByID(ctx context.Context, id uint64) (*entity.Manager, error)
-	FindByGlobalID(ctx context.Context, globalID string) (*entity.Manager, error)
-	FirstOrCreate(ctx context.Context, manager *entity.Manager) error
-	Create(ctx context.Context, manager *entity.Manager) error
-	Update(ctx context.Context, manager *entity.Manager) error
-	Delete(ctx context.Context, id uint64) error
-	Upsert(ctx context.Context, manager *entity.Manager) error
-}
 
 // MessageCampaignRepository 會員訊息活動資料庫接口
 type MessageCampaignRepository interface {
@@ -101,19 +63,4 @@ type PlayerMessageRepository interface {
 		playerIDs []uint64,
 		campaignID uint64,
 	) (map[uint64]bool, error)
-}
-
-type LevelRepository interface {
-	Upsert(ctx context.Context, level *entity.Level) error
-	FindByGlobalID(ctx context.Context, globalID string) (*entity.Level, error)
-}
-
-type TagRepository interface {
-	Upsert(ctx context.Context, tag *entity.Tag) error
-	BatchUpsert(ctx context.Context, tags []*entity.Tag) error
-	FindByGlobalIDs(ctx context.Context, globalIDs []string) ([]*entity.Tag, error)
-}
-
-type PlayerTagRepository interface {
-	BatchUpdate(ctx context.Context, playerID uint64, tagIDs []uint64) error
 }

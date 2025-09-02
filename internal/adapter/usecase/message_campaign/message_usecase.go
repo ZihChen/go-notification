@@ -13,30 +13,30 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
 )
 
 // MessageUseCase 訊息用例
 type MessageUseCase struct {
-	campaignRepo      repositoryport.MessageCampaignRepository
-	merchantRepo      repositoryport.MerchantRepository
-	playerMessageRepo repositoryport.PlayerMessageRepository
-	playerRepo        repositoryport.PlayerRepository
-	logger            infraport.Logger
+	campaignRepo      repository.MessageCampaignRepository
+	merchantRepo      repository.MerchantRepository
+	playerMessageRepo repository.PlayerMessageRepository
+	playerRepo        repository.PlayerRepository
+	logger            infrastructure.Logger
 }
 
 // NewMessageUseCase 創建訊息用例
 func NewMessageUseCase(
-	campaignRepo repositoryport.MessageCampaignRepository,
-	merchantRepo repositoryport.MerchantRepository,
-	playerMessageRepo repositoryport.PlayerMessageRepository,
-	playerRepo repositoryport.PlayerRepository,
-	logger infraport.Logger,
-) usecaseport.MessageUseCase {
+	campaignRepo repository.MessageCampaignRepository,
+	merchantRepo repository.MerchantRepository,
+	playerMessageRepo repository.PlayerMessageRepository,
+	playerRepo repository.PlayerRepository,
+	logger infrastructure.Logger,
+) inbound.MessageUseCase {
 	return &MessageUseCase{
 		campaignRepo:      campaignRepo,
 		merchantRepo:      merchantRepo,

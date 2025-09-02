@@ -8,25 +8,25 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/serviceport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 )
 
 type LevelUseCase struct {
-	levelRepo     repositoryport.LevelRepository
-	merchantRepo  repositoryport.MerchantRepository
-	eventProducer serviceport.EventProducer
-	logger        infraport.Logger
+	levelRepo     repository.LevelRepository
+	merchantRepo  repository.MerchantRepository
+	eventProducer service.EventProducer
+	logger        infrastructure.Logger
 }
 
 func NewLevelUseCase(
-	levelRepo repositoryport.LevelRepository,
-	merchantRepo repositoryport.MerchantRepository,
-	logger infraport.Logger,
-) usecaseport.PlayerLevelUseCase {
+	levelRepo repository.LevelRepository,
+	merchantRepo repository.MerchantRepository,
+	logger infrastructure.Logger,
+) inbound.PlayerLevelUseCase {
 	return &LevelUseCase{
 		levelRepo:    levelRepo,
 		merchantRepo: merchantRepo,

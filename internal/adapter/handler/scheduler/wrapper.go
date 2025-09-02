@@ -6,15 +6,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/jobport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
+	jobport "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/job"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 )
 
 // JobWrapper 包裝job執行邏輯，添加追蹤和日誌
 type JobWrapper struct {
 	job    jobport.ScheduledJob
-	logger infraport.Logger
+	logger infrastructure.Logger
 }
 
 // run JobWrapper的執行方法

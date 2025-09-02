@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/serviceport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/kds"
 	"go.uber.org/zap"
 )
@@ -18,7 +18,7 @@ type EventService struct {
 }
 
 // NewEventService 創建事件服務
-func NewEventService(kdsService *kds.KDSService, logger *zap.Logger) serviceport.EventProducer {
+func NewEventService(kdsService *kds.KDSService, logger *zap.Logger) service.EventProducer {
 	return &EventService{
 		kdsService: kdsService,
 		logger:     logger,

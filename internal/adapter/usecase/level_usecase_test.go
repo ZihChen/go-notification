@@ -24,7 +24,10 @@ func (m *MockLevelRepositoryLevel) Upsert(ctx context.Context, level *entity.Lev
 	return args.Error(0)
 }
 
-func (m *MockLevelRepositoryLevel) FindByGlobalID(ctx context.Context, globalID string) (*entity.Level, error) {
+func (m *MockLevelRepositoryLevel) FindByGlobalID(
+	ctx context.Context,
+	globalID string,
+) (*entity.Level, error) {
 	args := m.Called(ctx, globalID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -97,13 +100,18 @@ func TestLevelUseCase_SyncPlayerLevel(t *testing.T) {
 	levelRepo.AssertExpectations(t)
 
 	// Verify the level was created with correct data
-	levelRepo.AssertCalled(t, "Upsert", mock.Anything, mock.MatchedBy(func(level *entity.Level) bool {
-		return level.GlobalPlayerLevelID == event.GlobalPlayerLevelID &&
-			level.Name == event.Name &&
-			level.MerchantID == merchant.ID &&
-			level.CreatedAt.Equal(event.UpdatedAt) &&
-			level.UpdatedAt.Equal(event.UpdatedAt)
-	}))
+	levelRepo.AssertCalled(
+		t,
+		"Upsert",
+		mock.Anything,
+		mock.MatchedBy(func(level *entity.Level) bool {
+			return level.GlobalPlayerLevelID == event.GlobalPlayerLevelID &&
+				level.Name == event.Name &&
+				level.MerchantID == merchant.ID &&
+				level.CreatedAt.Equal(event.UpdatedAt) &&
+				level.UpdatedAt.Equal(event.UpdatedAt)
+		}),
+	)
 }
 
 // Test SyncPlayerLevel - merchant not found (this reveals a bug in the original code)
@@ -111,7 +119,8 @@ func TestLevelUseCase_SyncPlayerLevel_MerchantNotFound_PanicExpected(t *testing.
 	levelRepo, merchantRepo, logger := createLevelMockDependencies(t)
 
 	// Mock merchant not found error (which should be ignored per the logic, but causes panic)
-	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").Return(nil, errmsg.ErrRepoMerchantNotFound)
+	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").
+		Return(nil, errmsg.ErrRepoMerchantNotFound)
 
 	useCase := NewLevelUseCase(levelRepo, merchantRepo, logger)
 
@@ -130,7 +139,8 @@ func TestLevelUseCase_SyncPlayerLevel_MerchantNotFound_PanicExpected(t *testing.
 func TestLevelUseCase_SyncPlayerLevel_MerchantRepositoryError(t *testing.T) {
 	levelRepo, merchantRepo, logger := createLevelMockDependencies(t)
 
-	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").Return(nil, errors.New("database connection error"))
+	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").
+		Return(nil, errors.New("database connection error"))
 
 	useCase := NewLevelUseCase(levelRepo, merchantRepo, logger)
 
@@ -149,7 +159,8 @@ func TestLevelUseCase_SyncPlayerLevel_LevelUpsertError(t *testing.T) {
 
 	merchant := createTestMerchantForLevel()
 	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").Return(merchant, nil)
-	levelRepo.On("Upsert", mock.Anything, mock.AnythingOfType("*entity.Level")).Return(errors.New("database upsert error"))
+	levelRepo.On("Upsert", mock.Anything, mock.AnythingOfType("*entity.Level")).
+		Return(errors.New("database upsert error"))
 
 	useCase := NewLevelUseCase(levelRepo, merchantRepo, logger)
 
@@ -237,10 +248,16 @@ func TestLevelUseCase_SyncPlayerLevel_TracingAndLogging(t *testing.T) {
 	err := useCase.SyncPlayerLevel(context.Background(), event)
 
 	assert.NoError(t, err)
-	
+
 	// Verify logger was called for success case
-	logger.AssertCalled(t, "InfoWithContext", mock.Anything, "Upsert player level completed", mock.Anything)
-	
+	logger.AssertCalled(
+		t,
+		"InfoWithContext",
+		mock.Anything,
+		"Upsert player level completed",
+		mock.Anything,
+	)
+
 	merchantRepo.AssertExpectations(t)
 	levelRepo.AssertExpectations(t)
 }
@@ -255,7 +272,8 @@ func TestLevelUseCase_SyncPlayerLevel_ContextCancellation(t *testing.T) {
 
 	merchant := createTestMerchantForLevel()
 	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").Return(merchant, nil)
-	levelRepo.On("Upsert", mock.Anything, mock.AnythingOfType("*entity.Level")).Return(context.Canceled)
+	levelRepo.On("Upsert", mock.Anything, mock.AnythingOfType("*entity.Level")).
+		Return(context.Canceled)
 
 	useCase := NewLevelUseCase(levelRepo, merchantRepo, logger)
 

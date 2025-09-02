@@ -10,8 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/http/response"
 )
 
@@ -34,20 +34,20 @@ type SuccessResponse struct {
 
 // HTTPHandler HTTP接口處理器
 type HTTPHandler struct {
-	merchantUseCase usecaseport.MerchantUseCase
-	playerUseCase   usecaseport.PlayerUseCase
-	managerUseCase  usecaseport.ManagerUseCase
-	messageUseCase  usecaseport.MessageUseCase
-	logger          infraport.Logger
+	merchantUseCase inbound.MerchantUseCase
+	playerUseCase   inbound.PlayerUseCase
+	managerUseCase  inbound.ManagerUseCase
+	messageUseCase  inbound.MessageUseCase
+	logger          infrastructure.Logger
 }
 
 // NewHTTPHandler 創建HTTP處理器
 func NewHTTPHandler(
-	merchantUseCase usecaseport.MerchantUseCase,
-	playerUseCase usecaseport.PlayerUseCase,
-	managerUseCase usecaseport.ManagerUseCase,
-	messageUseCase usecaseport.MessageUseCase,
-	logger infraport.Logger,
+	merchantUseCase inbound.MerchantUseCase,
+	playerUseCase inbound.PlayerUseCase,
+	managerUseCase inbound.ManagerUseCase,
+	messageUseCase inbound.MessageUseCase,
+	logger infrastructure.Logger,
 ) *HTTPHandler {
 	return &HTTPHandler{
 		merchantUseCase: merchantUseCase,

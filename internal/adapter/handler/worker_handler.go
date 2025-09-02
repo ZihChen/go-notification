@@ -8,8 +8,8 @@ import (
 	"github.com/hibiken/asynq"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
@@ -29,22 +29,22 @@ func getTaskID(task *asynq.Task) string {
 
 // WorkerHandler Worker Handler
 type WorkerHandler struct {
-	merchantUseCase  usecaseport.MerchantUseCase
-	playerUseCase    usecaseport.PlayerUseCase
-	managerUseCase   usecaseport.ManagerUseCase
-	levelUseCase     usecaseport.PlayerLevelUseCase
-	playerTagUseCase usecaseport.PlayerTagUseCase
-	logger           infraport.Logger
+	merchantUseCase  inbound.MerchantUseCase
+	playerUseCase    inbound.PlayerUseCase
+	managerUseCase   inbound.ManagerUseCase
+	levelUseCase     inbound.PlayerLevelUseCase
+	playerTagUseCase inbound.PlayerTagUseCase
+	logger           infrastructure.Logger
 }
 
 // NewWorkerHandler 創建Worker Handler
 func NewWorkerHandler(
-	merchantUseCase usecaseport.MerchantUseCase,
-	playerUseCase usecaseport.PlayerUseCase,
-	managerUseCase usecaseport.ManagerUseCase,
-	levelUseCase usecaseport.PlayerLevelUseCase,
-	playerTagUseCase usecaseport.PlayerTagUseCase,
-	logger infraport.Logger,
+	merchantUseCase inbound.MerchantUseCase,
+	playerUseCase inbound.PlayerUseCase,
+	managerUseCase inbound.ManagerUseCase,
+	levelUseCase inbound.PlayerLevelUseCase,
+	playerTagUseCase inbound.PlayerTagUseCase,
+	logger infrastructure.Logger,
 ) *WorkerHandler {
 	return &WorkerHandler{
 		merchantUseCase:  merchantUseCase,

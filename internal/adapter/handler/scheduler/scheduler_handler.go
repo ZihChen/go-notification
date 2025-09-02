@@ -4,14 +4,14 @@ import (
 	"fmt"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/job"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/jobport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
+	jobport "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/job"
 	"github.com/robfig/cron/v3"
 )
 
 // Handler 排程處理器
 type Handler struct {
-	logger infraport.Logger
+	logger infrastructure.Logger
 	jobs   []ScheduledJobConfig
 }
 
@@ -24,7 +24,7 @@ type ScheduledJobConfig struct {
 
 // NewSchedulerHandler 創建排程處理器
 func NewSchedulerHandler(
-	logger infraport.Logger,
+	logger infrastructure.Logger,
 	jobRegistry *job.Registry) *Handler {
 	h := &Handler{
 		logger: logger,

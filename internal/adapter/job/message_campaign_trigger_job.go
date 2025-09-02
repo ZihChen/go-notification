@@ -4,22 +4,22 @@ import (
 	"context"
 	"time"
 
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/jobport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
+	jobport "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/job"
 )
 
 // 確保 MessageCampaignTriggerJob 實現了 jobport.ScheduledJob 介面
 var _ jobport.ScheduledJob = (*MessageCampaignTriggerJob)(nil)
 
 type MessageCampaignTriggerJob struct {
-	messageUseCase usecaseport.MessageUseCase
-	logger         infraport.Logger
+	messageUseCase inbound.MessageUseCase
+	logger         infrastructure.Logger
 }
 
 func NewMessageCampaignTriggerJob(
-	messageUseCase usecaseport.MessageUseCase,
-	logger infraport.Logger) *MessageCampaignTriggerJob {
+	messageUseCase inbound.MessageUseCase,
+	logger infrastructure.Logger) *MessageCampaignTriggerJob {
 	return &MessageCampaignTriggerJob{
 		messageUseCase: messageUseCase,
 		logger:         logger,

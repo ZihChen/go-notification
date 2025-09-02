@@ -10,10 +10,10 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/serviceport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -21,21 +21,21 @@ import (
 
 // PlayerUseCase 玩家用例
 type PlayerUseCase struct {
-	playerRepo    repositoryport.PlayerRepository
-	merchantRepo  repositoryport.MerchantRepository
-	levelRepo     repositoryport.LevelRepository
-	eventProducer serviceport.EventProducer
-	logger        infraport.Logger
+	playerRepo    repository.PlayerRepository
+	merchantRepo  repository.MerchantRepository
+	levelRepo     repository.LevelRepository
+	eventProducer service.EventProducer
+	logger        infrastructure.Logger
 }
 
 // NewPlayerUseCase 創建玩家用例
 func NewPlayerUseCase(
-	playerRepo repositoryport.PlayerRepository,
-	merchantRepo repositoryport.MerchantRepository,
-	levelRepo repositoryport.LevelRepository,
-	eventProducer serviceport.EventProducer,
-	logger infraport.Logger,
-) usecaseport.PlayerUseCase {
+	playerRepo repository.PlayerRepository,
+	merchantRepo repository.MerchantRepository,
+	levelRepo repository.LevelRepository,
+	eventProducer service.EventProducer,
+	logger infrastructure.Logger,
+) inbound.PlayerUseCase {
 	return &PlayerUseCase{
 		playerRepo:    playerRepo,
 		merchantRepo:  merchantRepo,

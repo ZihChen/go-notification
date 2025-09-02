@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -18,7 +18,7 @@ type PlayerMessageRepository struct {
 }
 
 // NewPlayerMessageRepository 創建會員訊息資料庫
-func NewPlayerMessageRepository(db *gorm.DB) repositoryport.PlayerMessageRepository {
+func NewPlayerMessageRepository(db *gorm.DB) repository.PlayerMessageRepository {
 	return &PlayerMessageRepository{db: db}
 }
 

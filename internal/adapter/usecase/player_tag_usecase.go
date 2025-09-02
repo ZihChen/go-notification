@@ -11,30 +11,30 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 )
 
 type PlayerTagUseCase struct {
-	tagRepo       repositoryport.TagRepository
-	merchantRepo  repositoryport.MerchantRepository
-	playerRepo    repositoryport.PlayerRepository
-	playerTagRepo repositoryport.PlayerTagRepository
-	logger        infraport.Logger
+	tagRepo       repository.TagRepository
+	merchantRepo  repository.MerchantRepository
+	playerRepo    repository.PlayerRepository
+	playerTagRepo repository.PlayerTagRepository
+	logger        infrastructure.Logger
 	redisManager  *redisCache.Manager
 }
 
 func NewTagUseCase(
-	tagRepo repositoryport.TagRepository,
-	merchantRepo repositoryport.MerchantRepository,
-	playerRepo repositoryport.PlayerRepository,
-	playerTagRepo repositoryport.PlayerTagRepository,
-	logger infraport.Logger,
+	tagRepo repository.TagRepository,
+	merchantRepo repository.MerchantRepository,
+	playerRepo repository.PlayerRepository,
+	playerTagRepo repository.PlayerTagRepository,
+	logger infrastructure.Logger,
 	redisManager *redisCache.Manager,
-) usecaseport.PlayerTagUseCase {
+) inbound.PlayerTagUseCase {
 	return &PlayerTagUseCase{
 		tagRepo:       tagRepo,
 		merchantRepo:  merchantRepo,

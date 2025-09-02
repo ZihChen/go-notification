@@ -14,7 +14,7 @@ import (
 
 	"github.com/jvdiamondtech/ms-notification-cat/cmd"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/di"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/kds"
@@ -120,7 +120,7 @@ func runConsumer(cobraCmd *cobra.Command, args []string) {
 func initializeServices(
 	ctx context.Context,
 	cfg *config.Config,
-	logger infraport.Logger,
+	logger infrastructure.Logger,
 ) (*services, error) {
 	// 初始化追踪器
 	tracer, err := tracing.NewTracer(cfg)
@@ -150,7 +150,7 @@ func initializeServices(
 	}, nil
 }
 
-func (s *services) cleanup(ctx context.Context, logger infraport.Logger) {
+func (s *services) cleanup(ctx context.Context, logger infrastructure.Logger) {
 	// 關閉追蹤器
 	if err := s.tracer.Shutdown(ctx); err != nil {
 		logger.ErrorLog("Failed to shutdown tracer", logger.Error("err", err))
@@ -164,7 +164,11 @@ func (s *services) cleanup(ctx context.Context, logger infraport.Logger) {
 	}
 }
 
-func runConsumerLoop(rootCtx context.Context, kdsService *kds.KDSService, logger infraport.Logger) {
+func runConsumerLoop(
+	rootCtx context.Context,
+	kdsService *kds.KDSService,
+	logger infrastructure.Logger,
+) {
 	logger.InfoWithContext(rootCtx, "Starting Consumer for all event listening")
 
 	for {
@@ -191,7 +195,7 @@ func runConsumerLoop(rootCtx context.Context, kdsService *kds.KDSService, logger
 func runConsumerWithRetry(
 	consumerCtx context.Context,
 	kdsService *kds.KDSService,
-	logger infraport.Logger,
+	logger infrastructure.Logger,
 ) bool {
 	var lastError error
 
@@ -227,7 +231,7 @@ func runConsumerWithRetry(
 func executeConsumerWithRecovery(
 	consumerCtx context.Context,
 	kdsService *kds.KDSService,
-	logger infraport.Logger,
+	logger infrastructure.Logger,
 	attempt int,
 ) (bool, error) {
 	var lastError error

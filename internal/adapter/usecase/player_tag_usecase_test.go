@@ -30,7 +30,10 @@ func (m *MockTagRepositoryTag) BatchUpsert(ctx context.Context, tags []*entity.T
 	return args.Error(0)
 }
 
-func (m *MockTagRepositoryTag) FindByGlobalIDs(ctx context.Context, globalIDs []string) ([]*entity.Tag, error) {
+func (m *MockTagRepositoryTag) FindByGlobalIDs(
+	ctx context.Context,
+	globalIDs []string,
+) ([]*entity.Tag, error) {
 	args := m.Called(ctx, globalIDs)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -42,7 +45,11 @@ type MockPlayerTagRepositoryTag struct {
 	mock.Mock
 }
 
-func (m *MockPlayerTagRepositoryTag) BatchUpdate(ctx context.Context, playerID uint64, tagIDs []uint64) error {
+func (m *MockPlayerTagRepositoryTag) BatchUpdate(
+	ctx context.Context,
+	playerID uint64,
+	tagIDs []uint64,
+) error {
 	args := m.Called(ctx, playerID, tagIDs)
 	return args.Error(0)
 }
@@ -66,7 +73,10 @@ func (m *MockMutex) Unlock() (bool, error) {
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockRedisManager) GetMutexWithOption(key string, options ...redsync.Option) (*redsync.Mutex, error) {
+func (m *MockRedisManager) GetMutexWithOption(
+	key string,
+	options ...redsync.Option,
+) (*redsync.Mutex, error) {
 	args := m.Called(key, options)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -198,7 +208,9 @@ func createMockRedisManagerWithMutex() *redisCache.Manager {
 // Test SyncPlayerTags - successful sync (skipped due to Redis dependency complexity)
 // This test would require proper Redis mocking or interface injection
 func TestPlayerTagUseCase_SyncPlayerTags_Skipped(t *testing.T) {
-	t.Skip("Skipping SyncPlayerTags test due to Redis mutex dependency complexity. In production, this would require proper dependency injection.")
+	t.Skip(
+		"Skipping SyncPlayerTags test due to Redis mutex dependency complexity. In production, this would require proper dependency injection.",
+	)
 }
 
 // Test SyncPlayerTags - merchant repository error (skipped due to Redis dependency)
@@ -208,12 +220,16 @@ func TestPlayerTagUseCase_SyncPlayerTags_MerchantRepositoryError(t *testing.T) {
 
 // Test SyncPlayerTags methods - skipped due to Redis mutex dependency complexity
 func TestPlayerTagUseCase_SyncPlayerTags_AllVariants_Skipped(t *testing.T) {
-	t.Skip("All SyncPlayerTags test variants skipped due to Redis mutex complexity. These would require proper dependency injection or Redis interface abstraction.")
+	t.Skip(
+		"All SyncPlayerTags test variants skipped due to Redis mutex complexity. These would require proper dependency injection or Redis interface abstraction.",
+	)
 }
 
 // Test SyncTag - successful sync
 func TestPlayerTagUseCase_SyncTag(t *testing.T) {
-	tagRepo, merchantRepo, playerRepo, playerTagRepo, logger, _ := createPlayerTagMockDependencies(t)
+	tagRepo, merchantRepo, playerRepo, playerTagRepo, logger, _ := createPlayerTagMockDependencies(
+		t,
+	)
 
 	merchant := createTestMerchantForTag()
 	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").Return(merchant, nil)
@@ -242,11 +258,13 @@ func TestPlayerTagUseCase_SyncTag(t *testing.T) {
 
 // Test SyncTag - with deleted tag
 func TestPlayerTagUseCase_SyncTag_WithDeletedTag(t *testing.T) {
-	tagRepo, merchantRepo, playerRepo, playerTagRepo, logger, _ := createPlayerTagMockDependencies(t)
+	tagRepo, merchantRepo, playerRepo, playerTagRepo, logger, _ := createPlayerTagMockDependencies(
+		t,
+	)
 
 	merchant := createTestMerchantForTag()
 	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").Return(merchant, nil)
-	
+
 	var capturedTag *entity.Tag
 	tagRepo.On("Upsert", mock.Anything, mock.AnythingOfType("*entity.Tag")).
 		Run(func(args mock.Arguments) {
@@ -264,16 +282,19 @@ func TestPlayerTagUseCase_SyncTag_WithDeletedTag(t *testing.T) {
 	assert.NotNil(t, capturedTag)
 	assert.NotNil(t, capturedTag.DeletedAt)
 	assert.Equal(t, event.Tag.UpdatedAt, *capturedTag.DeletedAt)
-	
+
 	merchantRepo.AssertExpectations(t)
 	tagRepo.AssertExpectations(t)
 }
 
 // Test SyncTag - merchant repository error
 func TestPlayerTagUseCase_SyncTag_MerchantRepositoryError(t *testing.T) {
-	tagRepo, merchantRepo, playerRepo, playerTagRepo, logger, _ := createPlayerTagMockDependencies(t)
+	tagRepo, merchantRepo, playerRepo, playerTagRepo, logger, _ := createPlayerTagMockDependencies(
+		t,
+	)
 
-	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").Return(nil, errors.New("database connection error"))
+	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").
+		Return(nil, errors.New("database connection error"))
 
 	useCase := NewTagUseCase(tagRepo, merchantRepo, playerRepo, playerTagRepo, logger, nil)
 
@@ -288,11 +309,14 @@ func TestPlayerTagUseCase_SyncTag_MerchantRepositoryError(t *testing.T) {
 
 // Test SyncTag - tag upsert error
 func TestPlayerTagUseCase_SyncTag_UpsertError(t *testing.T) {
-	tagRepo, merchantRepo, playerRepo, playerTagRepo, logger, _ := createPlayerTagMockDependencies(t)
+	tagRepo, merchantRepo, playerRepo, playerTagRepo, logger, _ := createPlayerTagMockDependencies(
+		t,
+	)
 
 	merchant := createTestMerchantForTag()
 	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").Return(merchant, nil)
-	tagRepo.On("Upsert", mock.Anything, mock.AnythingOfType("*entity.Tag")).Return(errors.New("upsert failed"))
+	tagRepo.On("Upsert", mock.Anything, mock.AnythingOfType("*entity.Tag")).
+		Return(errors.New("upsert failed"))
 
 	useCase := NewTagUseCase(tagRepo, merchantRepo, playerRepo, playerTagRepo, logger, nil)
 
@@ -310,7 +334,9 @@ func TestPlayerTagUseCase_SyncTag_UpsertError(t *testing.T) {
 
 // Test SyncTag - verify tracing and logging calls
 func TestPlayerTagUseCase_SyncTag_TracingAndLogging(t *testing.T) {
-	tagRepo, merchantRepo, playerRepo, playerTagRepo, logger, _ := createPlayerTagMockDependencies(t)
+	tagRepo, merchantRepo, playerRepo, playerTagRepo, logger, _ := createPlayerTagMockDependencies(
+		t,
+	)
 
 	merchant := createTestMerchantForTag()
 	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").Return(merchant, nil)
@@ -323,10 +349,10 @@ func TestPlayerTagUseCase_SyncTag_TracingAndLogging(t *testing.T) {
 	err := useCase.SyncTag(context.Background(), event)
 
 	assert.NoError(t, err)
-	
+
 	// Verify logger was called for success case
 	logger.AssertCalled(t, "InfoWithContext", mock.Anything, "Upsert tag completed", mock.Anything)
-	
+
 	merchantRepo.AssertExpectations(t)
 	tagRepo.AssertExpectations(t)
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -21,7 +21,7 @@ type PlayerRepository struct {
 }
 
 // NewPlayerRepository 創建玩家資料庫
-func NewPlayerRepository(db *gorm.DB) repositoryport.PlayerRepository {
+func NewPlayerRepository(db *gorm.DB) repository.PlayerRepository {
 	return &PlayerRepository{db: db}
 }
 

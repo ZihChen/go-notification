@@ -8,7 +8,7 @@ import (
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"gorm.io/gorm"
 )
@@ -19,7 +19,7 @@ type MessageCampaignRepository struct {
 }
 
 // NewMessageCampaignRepository 創建會員訊息活動資料庫
-func NewMessageCampaignRepository(db *gorm.DB) repositoryport.MessageCampaignRepository {
+func NewMessageCampaignRepository(db *gorm.DB) repository.MessageCampaignRepository {
 	return &MessageCampaignRepository{db: db}
 }
 

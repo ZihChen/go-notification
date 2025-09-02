@@ -1,6 +1,6 @@
 package job
 
-import "github.com/jvdiamondtech/ms-notification-cat/internal/domain/jobport"
+import jobport "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/job"
 
 // Registry Job註冊表
 type Registry struct {

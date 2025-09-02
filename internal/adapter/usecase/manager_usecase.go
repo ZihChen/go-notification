@@ -10,10 +10,10 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/infraport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/repositoryport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/serviceport"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/usecaseport"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -21,19 +21,19 @@ import (
 
 // ManagerUseCase 管理員用例
 type ManagerUseCase struct {
-	managerRepo   repositoryport.ManagerRepository
-	merchantRepo  repositoryport.MerchantRepository
-	eventProducer serviceport.EventProducer
-	logger        infraport.Logger
+	managerRepo   repository.ManagerRepository
+	merchantRepo  repository.MerchantRepository
+	eventProducer service.EventProducer
+	logger        infrastructure.Logger
 }
 
 // NewManagerUseCase 創建管理員用例
 func NewManagerUseCase(
-	managerRepo repositoryport.ManagerRepository,
-	merchantRepo repositoryport.MerchantRepository,
-	eventProducer serviceport.EventProducer,
-	logger infraport.Logger,
-) usecaseport.ManagerUseCase {
+	managerRepo repository.ManagerRepository,
+	merchantRepo repository.MerchantRepository,
+	eventProducer service.EventProducer,
+	logger infrastructure.Logger,
+) inbound.ManagerUseCase {
 	return &ManagerUseCase{
 		managerRepo:   managerRepo,
 		merchantRepo:  merchantRepo,
