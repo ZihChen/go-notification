@@ -461,7 +461,7 @@ func (h *HTTPHandler) ListMessageCampaigns(c *gin.Context) {
 		req.PageSize = 10
 	}
 
-	campaigns, total, err := h.messageUseCase.ListMessageCampaigns(
+	campaignsResponse, err := h.messageUseCase.ListMessageCampaigns(
 		c.Request.Context(),
 		&req,
 	)
@@ -470,8 +470,8 @@ func (h *HTTPHandler) ListMessageCampaigns(c *gin.Context) {
 	}
 
 	response.OK(c).
-		Data(campaigns).
-		Pagination(req.Page, req.PageSize, total).
+		Data(campaignsResponse.Campaigns).
+		Pagination(campaignsResponse.Page, campaignsResponse.PageSize, campaignsResponse.Total).
 		Return()
 }
 
@@ -484,7 +484,7 @@ func (h *HTTPHandler) ListMessageCampaigns(c *gin.Context) {
 // @Param global_player_id path string true "全域玩家ID"
 // @Param page query int false "頁碼" default(1)
 // @Param page_size query int false "每頁數量" default(10)
-// @Success 200 {object} entity.MessageListResponse
+// @Success 200 {object} dto.MessageListResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Security ApiKeyAuth
@@ -701,7 +701,7 @@ func (h *HTTPHandler) SSEHandler(c *gin.Context) {
 
 	// 用於檢測客戶端斷線
 	clientGone := c.Writer.CloseNotify()
-	var lastUnreadCount = 0
+	var lastUnreadCount int64 = 0
 	if response != nil {
 		lastUnreadCount = response.Stats.UnreadCount
 	}
@@ -742,7 +742,7 @@ func (h *HTTPHandler) SSEHandler(c *gin.Context) {
 
 				h.logger.DebugLog("SSE stats update sent",
 					h.logger.String("global_player_id", globalPlayerID),
-					h.logger.Int("unread_count", lastUnreadCount))
+					h.logger.Int64("unread_count", lastUnreadCount))
 			}
 
 			// 發送心跳

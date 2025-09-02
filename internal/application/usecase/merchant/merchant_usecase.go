@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
@@ -138,7 +139,7 @@ func (u *MerchantUseCase) publishMerchantSyncEvent(
 func (u *MerchantUseCase) GetMerchantByID(
 	ctx context.Context,
 	id uint64,
-) (*entity.Merchant, error) {
+) (*dto.MerchantResponse, error) {
 	// 創建 span 並跟踪此操作
 	ctx, span := tracing.StartSpan(ctx, "MerchantUseCase.GetMerchantByID")
 	defer tracing.SpanEnd(span)
@@ -157,13 +158,22 @@ func (u *MerchantUseCase) GetMerchantByID(
 		attribute.String("merchant.name", merchant.Name),
 	)
 
-	return merchant, nil
+	// 轉換為 DTO
+	response := &dto.MerchantResponse{
+		ID:            merchant.ID,
+		GlobalID:      merchant.GlobalMerchantID,
+		Name:          merchant.Name,
+		Status:        "active",
+		Configuration: "",
+	}
+
+	return response, nil
 }
 
 func (u *MerchantUseCase) GetMerchantByGlobalID(
 	ctx context.Context,
 	globalID string,
-) (*entity.Merchant, error) {
+) (*dto.MerchantResponse, error) {
 	// 創建 span 並跟踪此操作
 	ctx, span := tracing.StartSpan(ctx, "MerchantUseCase.GetMerchantByGlobalID")
 	defer tracing.SpanEnd(span)
@@ -182,5 +192,14 @@ func (u *MerchantUseCase) GetMerchantByGlobalID(
 		attribute.String("merchant.name", merchant.Name),
 	)
 
-	return merchant, nil
+	// 轉換為 DTO
+	response := &dto.MerchantResponse{
+		ID:            merchant.ID,
+		GlobalID:      merchant.GlobalMerchantID,
+		Name:          merchant.Name,
+		Status:        "active",
+		Configuration: "",
+	}
+
+	return response, nil
 }

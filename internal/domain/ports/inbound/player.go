@@ -3,14 +3,14 @@ package inbound
 import (
 	"context"
 
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 )
 
 type PlayerUseCase interface {
 	SyncPlayer(ctx context.Context, data *event.PlayerEvent) error
-	GetPlayerByID(ctx context.Context, id uint64) (*entity.Player, error)
-	GetPlayerByGlobalID(ctx context.Context, globalID string) (*entity.Player, error)
+	GetPlayerByID(ctx context.Context, id uint64) (*dto.PlayerResponse, error)
+	GetPlayerByGlobalID(ctx context.Context, globalID string) (*dto.PlayerResponse, error)
 	UpdatePlayerLastActive(ctx context.Context, id uint64) error
 }
 

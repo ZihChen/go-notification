@@ -4,18 +4,17 @@ import (
 	"context"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 )
 
 type MessageUseCase interface {
 	CreateMessageCampaign(ctx context.Context, campaign *dto.CreateMessageCampaignRequest) error
 	UpdateMessageCampaign(ctx context.Context, campaign *dto.UpdateMessageCampaignRequest) error
 	DeleteMessageCampaign(ctx context.Context, globalID string) error
-	GetMessageCampaign(ctx context.Context, globalID string) (*entity.MessageCampaign, error)
+	GetMessageCampaign(ctx context.Context, globalID string) (*dto.MessageCampaignResponse, error)
 	ListMessageCampaigns(
 		ctx context.Context,
 		req *dto.ListMessageCampaignsRequest,
-	) ([]*entity.MessageCampaign, int, error)
+	) (*dto.MessageCampaignListResponse, error)
 	GetMerchantAutoSettings(
 		ctx context.Context,
 		globalMerchantID string,
@@ -28,7 +27,7 @@ type MessageUseCase interface {
 		ctx context.Context,
 		globalPlayerID string,
 		page, pageSize int,
-	) (*entity.MessageListResponse, error)
+	) (*dto.MessageListResponse, error)
 	MarkMessageAsRead(ctx context.Context, globalPlayerID string, messageID uint64) error
 	ProcessScheduledCampaigns(ctx context.Context) error
 	SendCampaignToPlayers(ctx context.Context, campaignID uint64) error

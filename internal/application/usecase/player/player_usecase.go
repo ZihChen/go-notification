@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
@@ -232,7 +233,7 @@ func (u *PlayerUseCase) publishPlayerSyncEvent(
 }
 
 // GetPlayerByID 通過ID獲取玩家
-func (u *PlayerUseCase) GetPlayerByID(ctx context.Context, id uint64) (*entity.Player, error) {
+func (u *PlayerUseCase) GetPlayerByID(ctx context.Context, id uint64) (*dto.PlayerResponse, error) {
 	// 創建 span 並跟踪此操作
 	ctx, span := tracing.StartSpan(ctx, "PlayerUseCase.GetPlayerByID")
 	defer tracing.SpanEnd(span)
@@ -251,14 +252,27 @@ func (u *PlayerUseCase) GetPlayerByID(ctx context.Context, id uint64) (*entity.P
 		attribute.String("player.account", player.Account),
 		attribute.Int64("merchant.id", int64(player.MerchantID)))
 
-	return player, nil
+	// 轉換為 DTO
+	response := &dto.PlayerResponse{
+		ID:           player.ID,
+		GlobalID:     player.GlobalPlayerID,
+		MerchantID:   player.MerchantID,
+		Username:     player.Account,
+		Level:        0, // TODO: 取得玩家等級
+		Tags:         []string{}, // TODO: 取得玩家標籤
+		LastActiveAt: player.LastActiveAt,
+		CreatedAt:    player.CreatedAt,
+		UpdatedAt:    player.UpdatedAt,
+	}
+
+	return response, nil
 }
 
 // GetPlayerByGlobalID 通過全局ID獲取玩家
 func (u *PlayerUseCase) GetPlayerByGlobalID(
 	ctx context.Context,
 	globalID string,
-) (*entity.Player, error) {
+) (*dto.PlayerResponse, error) {
 	// 創建 span 並跟踪此操作
 	ctx, span := tracing.StartSpan(ctx, "PlayerUseCase.GetPlayerByGlobalID")
 	defer tracing.SpanEnd(span)
@@ -277,7 +291,20 @@ func (u *PlayerUseCase) GetPlayerByGlobalID(
 		attribute.String("player.account", player.Account),
 		attribute.Int64("merchant.id", int64(player.MerchantID)))
 
-	return player, nil
+	// 轉換為 DTO
+	response := &dto.PlayerResponse{
+		ID:           player.ID,
+		GlobalID:     player.GlobalPlayerID,
+		MerchantID:   player.MerchantID,
+		Username:     player.Account,
+		Level:        0, // TODO: 取得玩家等級
+		Tags:         []string{}, // TODO: 取得玩家標籤
+		LastActiveAt: player.LastActiveAt,
+		CreatedAt:    player.CreatedAt,
+		UpdatedAt:    player.UpdatedAt,
+	}
+
+	return response, nil
 }
 
 // UpdatePlayerLastActive 更新玩家最後活躍時間

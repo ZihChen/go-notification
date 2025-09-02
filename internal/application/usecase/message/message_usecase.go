@@ -192,7 +192,7 @@ func (u *MessageUseCase) DeleteMessageCampaign(ctx context.Context, globalID str
 func (u *MessageUseCase) GetMessageCampaign(
 	ctx context.Context,
 	globalID string,
-) (*entity.MessageCampaign, error) {
+) (*dto.MessageCampaignResponse, error) {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.GetMessageCampaign")
 	defer tracing.SpanEnd(span)
 
@@ -206,14 +206,33 @@ func (u *MessageUseCase) GetMessageCampaign(
 
 	tracing.RecordSpanAttributes(span, attribute.String("campaign.title", campaign.Title))
 
-	return campaign, nil
+	// 轉換為 DTO
+	response := &dto.MessageCampaignResponse{
+		ID:             campaign.ID,
+		GlobalID:       campaign.GlobalID,
+		MerchantID:     campaign.MerchantID,
+		Title:          campaign.Title,
+		Content:        campaign.Content,
+		TargetType:     fmt.Sprintf("%d", campaign.Target),
+		TargetCriteria: "", // TODO: 根據业务需要定义
+		ScheduledAt:    campaign.SendStartTime,
+		Status:         fmt.Sprintf("%d", campaign.Status),
+		SentCount:      int(campaign.RealSentCount),
+		ReadCount:      0,                    // TODO: 计算读取数
+		IsScheduled:    campaign.Status == 2, // 2=scheduled
+		ProcessedAt:    campaign.SendEndTime,
+		CreatedAt:      campaign.CreatedAt,
+		UpdatedAt:      campaign.UpdatedAt,
+	}
+
+	return response, nil
 }
 
 // ListMessageCampaigns 列出會員訊息活動
 func (u *MessageUseCase) ListMessageCampaigns(
 	ctx context.Context,
 	req *dto.ListMessageCampaignsRequest,
-) ([]*entity.MessageCampaign, int, error) {
+) (*dto.MessageCampaignListResponse, error) {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.ListMessageCampaigns")
 	defer tracing.SpanEnd(span)
 
@@ -229,20 +248,47 @@ func (u *MessageUseCase) ListMessageCampaigns(
 	err := copier.Copy(query, req)
 	if err != nil {
 		tracing.RecordSpanError(span, err)
-		return nil, 0, fmt.Errorf("copy query failed: %w", err)
+		return nil, fmt.Errorf("copy query failed: %w", err)
 	}
 
 	campaigns, total, err := u.campaignRepo.FindAllWithOptions(ctx, query)
 	if err != nil {
 		tracing.RecordSpanError(span, err)
-		return nil, 0, fmt.Errorf("list campaigns with options: %w", err)
+		return nil, fmt.Errorf("list campaigns with options: %w", err)
 	}
 
 	tracing.RecordSpanAttributes(span,
 		attribute.Int("total_campaigns", total),
 		attribute.Int("returned_campaigns", len(campaigns)),
 	)
-	return campaigns, total, nil
+
+	// 轉換為 DTO
+	campaignResponses := make([]dto.MessageCampaignResponse, len(campaigns))
+	for i, campaign := range campaigns {
+		campaignResponses[i] = dto.MessageCampaignResponse{
+			ID:          campaign.ID,
+			GlobalID:    campaign.GlobalID,
+			MerchantID:  campaign.MerchantID,
+			Title:       campaign.Title,
+			Content:     campaign.Content,
+			TargetType:  fmt.Sprintf("%d", campaign.Target),
+			ScheduledAt: campaign.SendStartTime,
+			Status:      fmt.Sprintf("%d", campaign.Status),
+			SentCount:   int(campaign.RealSentCount),
+			IsScheduled: campaign.Status == 2, // 2=scheduled
+			ProcessedAt: campaign.SendEndTime,
+			CreatedAt:   campaign.CreatedAt,
+			UpdatedAt:   campaign.UpdatedAt,
+		}
+	}
+
+	response := &dto.MessageCampaignListResponse{
+		Campaigns: campaignResponses,
+		Total:     total,
+		Page:      req.Page,
+		PageSize:  req.PageSize,
+	}
+	return response, nil
 }
 
 // GetPlayerMessages 獲取玩家訊息列表
@@ -250,7 +296,7 @@ func (u *MessageUseCase) GetPlayerMessages(
 	ctx context.Context,
 	globalPlayerID string,
 	page, pageSize int,
-) (*entity.MessageListResponse, error) {
+) (*dto.MessageListResponse, error) {
 	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.GetPlayerMessages")
 	defer tracing.SpanEnd(span)
 
@@ -282,24 +328,34 @@ func (u *MessageUseCase) GetPlayerMessages(
 	}
 
 	// 轉換為摘要格式
-	summaries := make([]entity.MessageSummary, len(messages))
+	summaries := make([]dto.MessageSummary, len(messages))
 	for i, message := range messages {
-		summaries[i] = entity.MessageSummary{
+		// TODO: 需要從 campaign 中获取 title 和 content
+		summaries[i] = dto.MessageSummary{
 			ID:        message.ID,
+			Title:     "Message",         // TODO: 从 campaign 获取标题
+			Summary:   "Message content", // TODO: 从 campaign 获取内容
 			IsRead:    message.IsRead,
 			CreatedAt: message.CreatedAt,
 		}
 	}
 
 	tracing.RecordSpanAttributes(span,
-		attribute.Int("stats.total_count", stats.TotalCount),
-		attribute.Int("stats.read_count", stats.ReadCount),
-		attribute.Int("stats.unread_count", stats.UnreadCount),
+		attribute.Int("stats.total_count", int(stats.TotalCount)),
+		attribute.Int("stats.read_count", int(stats.ReadCount)),
+		attribute.Int("stats.unread_count", int(stats.UnreadCount)),
 		attribute.Int("returned_messages", len(summaries)),
 	)
 
-	response := &entity.MessageListResponse{
-		Stats:    *stats,
+	// 轉換 stats 為 DTO
+	dtoStats := dto.PlayerMessageStats{
+		ReadCount:   int64(stats.ReadCount),
+		UnreadCount: int64(stats.UnreadCount),
+		TotalCount:  int64(stats.TotalCount),
+	}
+
+	response := &dto.MessageListResponse{
+		Stats:    dtoStats,
 		Messages: summaries,
 		Page:     page,
 		PageSize: pageSize,

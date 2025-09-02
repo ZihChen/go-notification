@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
@@ -159,7 +160,7 @@ func (u *ManagerUseCase) publishManagerSyncEvent(
 }
 
 // GetManagerByID 通過ID獲取管理員
-func (u *ManagerUseCase) GetManagerByID(ctx context.Context, id uint64) (*entity.Manager, error) {
+func (u *ManagerUseCase) GetManagerByID(ctx context.Context, id uint64) (*dto.ManagerResponse, error) {
 	// 創建 span 並跟踪此操作
 	ctx, span := tracing.StartSpan(ctx, "ManagerUseCase.GetManagerByID")
 	defer tracing.SpanEnd(span)
@@ -179,14 +180,26 @@ func (u *ManagerUseCase) GetManagerByID(ctx context.Context, id uint64) (*entity
 		attribute.Int64("merchant.id", int64(manager.MerchantID)),
 	)
 
-	return manager, nil
+	// 轉換為 DTO
+	response := &dto.ManagerResponse{
+		ID:       manager.ID,
+		GlobalID: manager.GlobalManagerID,
+		Name:     manager.Account,
+		Email:    "",
+		Role:     "manager",
+	}
+	if manager.Email != nil {
+		response.Email = *manager.Email
+	}
+
+	return response, nil
 }
 
 // GetManagerByGlobalID 通過全局ID獲取管理員
 func (u *ManagerUseCase) GetManagerByGlobalID(
 	ctx context.Context,
 	globalID string,
-) (*entity.Manager, error) {
+) (*dto.ManagerResponse, error) {
 	// 創建 span 並跟踪此操作
 	ctx, span := tracing.StartSpan(ctx, "ManagerUseCase.GetManagerByGlobalID")
 	defer tracing.SpanEnd(span)
@@ -206,5 +219,17 @@ func (u *ManagerUseCase) GetManagerByGlobalID(
 		attribute.Int64("merchant.id", int64(manager.MerchantID)),
 	)
 
-	return manager, nil
+	// 轉換為 DTO
+	response := &dto.ManagerResponse{
+		ID:       manager.ID,
+		GlobalID: manager.GlobalManagerID,
+		Name:     manager.Account,
+		Email:    "",
+		Role:     "manager",
+	}
+	if manager.Email != nil {
+		response.Email = *manager.Email
+	}
+
+	return response, nil
 }

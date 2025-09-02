@@ -56,13 +56,6 @@ type SuccessResponse struct {
 	Status string `json:"status"`
 }
 
-// MessageCampaignListResponse 活動列表響應
-type MessageCampaignListResponse struct {
-	Data     []*entity.MessageCampaign `json:"data"`
-	Page     int                       `json:"page"`
-	PageSize int                       `json:"page_size"`
-	Total    int                       `json:"total"`
-}
 
 // AutoSettingItem 自動設定項目
 type AutoSettingItem struct {
