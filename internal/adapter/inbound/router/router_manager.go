@@ -1,7 +1,6 @@
 package router
 
 import (
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/api"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/middleware"
@@ -31,32 +30,9 @@ func NewRouterManager(handler *api.HTTPHandler) *Manager {
 
 // SetupRoutersWithMiddleware 配置所有中間件並註冊路由
 func (rm *Manager) SetupRoutersWithMiddleware(router *gin.Engine, cfg *config.Config) {
-	// 配置CORS中間件 - 為開發環境和Swagger提供寬鬆設定
-	corsConfig := cors.DefaultConfig()
-
-	// 開發環境使用寬鬆的CORS設定
-	// 在生產環境中應該限制為具體的域名
-	corsConfig.AllowAllOrigins = true
-	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"}
-	corsConfig.AllowHeaders = []string{
-		"Origin",
-		"Content-Length",
-		"Content-Type",
-		"Authorization",
-		"API-Key",
-		"X-Requested-With",
-		"Accept",
-		"Cache-Control",
-		"X-File-Name",
-	}
-	corsConfig.ExposeHeaders = []string{"Content-Length", "Content-Type"}
-	// 對於開發環境，暫時禁用credentials以避免CORS衝突
-	corsConfig.AllowCredentials = false
-	corsConfig.MaxAge = 12 * 60 * 60 // 12小時
-
 	// 加入全局Middleware
 	router.Use(
-		cors.New(corsConfig),
+		middleware.CorsMiddleware(), // 使用預設的 CORS 配置
 		middleware.ErrorHandler(),
 	)
 
