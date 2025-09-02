@@ -5,13 +5,27 @@ stages:
 
 # 定義一個通用的清理腳本
 .cleanup_script: &cleanup_script |
-  docker system prune -af
+  echo "開始清理系統資源..."
+  # 清理 Docker 資源
+  docker system prune -af --volumes || true
+  docker builder prune -af || true
+  docker buildx prune -af || true
+  # 清理系統快取
   rm -rf /tmp/* || true
-  rm -rf /var/lib/apt/lists/*
-  rm -rf /root/.cache
-  rm -rf $(go env GOCACHE) || true
-  go clean -cache || true
-  go clean -testcache || true
+  rm -rf /var/lib/apt/lists/* || true
+  rm -rf /var/cache/apt/archives/* || true
+  rm -rf /root/.cache/* || true
+  # 清理 Go 快取
+  if command -v go >/dev/null 2>&1; then
+    rm -rf $(go env GOCACHE) || true
+    rm -rf $(go env GOMODCACHE) || true
+    go clean -cache -testcache -modcache || true
+  fi
+  # 強制清理剩餘空間
+  find /var/log -type f -name "*.log" -delete || true
+  find /tmp -type f -mtime +1 -delete || true
+  df -h
+  echo "清理完成"
 
 variables:
   AWS_REGION: "ap-northeast-1"
@@ -23,12 +37,14 @@ lint:
   image: golangci/golangci-lint:latest
   before_script:
     - df -h
-    - apt-get update
-    - apt-get install -y docker.io
+    - apt-get update && apt-get clean
+    - apt-get install -y docker.io && apt-get clean
     - *cleanup_script
     - df -h
   script:
     - golangci-lint run
+  after_script:
+    - *cleanup_script
   only:
     - dev
     - merge_requests
@@ -38,8 +54,8 @@ unit-tests:
   image: golang:1.24
   before_script:
     - df -h
-    - apt-get update
-    - apt-get install -y docker.io
+    - apt-get update && apt-get clean
+    - apt-get install -y docker.io && apt-get clean
     - *cleanup_script
     - df -h
   script:
@@ -53,6 +69,9 @@ unit-tests:
       echo "No coverage report generated"
       exit 1
       fi
+  after_script:
+    - rm -f coverage.out || true
+    - *cleanup_script
   only:
     - dev
 # 建構 Docker 映像
@@ -87,8 +106,9 @@ build:
 
   script:
     - |
-      # 設置 Docker Buildx
-      docker buildx create --use
+      # 設置 Docker Buildx 並限制快取大小
+      docker buildx create --use --driver-opt env.BUILDKIT_STEP_LOG_MAX_SIZE=10485760
+      docker buildx inspect --bootstrap
 
       # 輸出當前的 Git 信息，用於調試
       echo "Current commit SHA: ${CI_COMMIT_SHA}"
@@ -113,14 +133,23 @@ build:
       fi
 
 
-      # 執行構建和推送
+      # 執行構建和推送（限制快取大小）
       docker buildx build --push \
         --platform linux/amd64 \
         --build-arg TARGETOS=linux \
         --build-arg TARGETARCH=amd64 \
         --build-arg CI_COMMIT_SHA=${CI_COMMIT_SHA} \
+        --cache-from type=gha \
+        --cache-to type=gha,mode=min \
         ${TAGS} \
         .
+  after_script:
+    - |
+      # 清理 Docker buildx 實例和快取
+      docker buildx ls || true
+      docker buildx rm --all-inactive || true
+      docker buildx prune -af || true
+    - *cleanup_script
   only:
     - dev
 
