@@ -12,7 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/worker"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/di"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
@@ -36,7 +36,7 @@ func (f *fakeResultWriter) TaskID() string           { return "test-task-id" }
 
 func processTaskDirectly(
 	t *testing.T,
-	handler *handler.WorkerHandler,
+	handler *worker.WorkerHandler,
 	taskType string,
 	payload []byte,
 ) error {

@@ -9,13 +9,19 @@ package di
 import (
 	"github.com/google/wire"
 	"github.com/hibiken/asynq"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler/api"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler/scheduler"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/job"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/repository"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase/message_campaign"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/api"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/scheduler"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/worker"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/job"
+	repository3 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/manager"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/merchant"
+	repository4 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/message"
+	repository2 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/player"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/level"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/manager"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/merchant"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/message"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/player"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
@@ -40,21 +46,21 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, redis
 		return nil, err
 	}
 	eventProducer := provideEventProducer(kdsService, logger)
-	merchantUseCase := usecase.NewMerchantUseCase(merchantRepository, eventProducer, logger)
-	playerRepository := repository.NewPlayerRepository(db)
-	levelRepository := repository.NewLevelRepository(db)
-	playerUseCase := usecase.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger)
-	managerRepository := repository.NewManagerRepository(db)
-	managerUseCase := usecase.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger)
-	messageCampaignRepository := repository.NewMessageCampaignRepository(db)
-	playerMessageRepository := repository.NewPlayerMessageRepository(db)
-	messageUseCase := message_campaign.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, logger)
+	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger)
+	playerRepository := repository2.NewPlayerRepository(db)
+	levelRepository := repository2.NewLevelRepository(db)
+	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger)
+	managerRepository := repository3.NewManagerRepository(db)
+	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger)
+	messageCampaignRepository := repository4.NewMessageCampaignRepository(db)
+	playerMessageRepository := repository4.NewPlayerMessageRepository(db)
+	messageUseCase := message.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, logger)
 	httpHandler := api.NewHTTPHandler(merchantUseCase, playerUseCase, managerUseCase, messageUseCase, logger)
 	return httpHandler, nil
 }
 
 // InitializeWorkerServer 初始化 Worker 服務的處理器
-func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager, db *gorm.DB) (*handler.WorkerHandler, error) {
+func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager, db *gorm.DB) (*worker.WorkerHandler, error) {
 	merchantRepository := repository.NewMerchantRepository(db)
 	queueService, err := queue.NewQueueService(cfg, logger)
 	if err != nil {
@@ -65,17 +71,17 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, re
 		return nil, err
 	}
 	eventProducer := provideEventProducer(kdsService, logger)
-	merchantUseCase := usecase.NewMerchantUseCase(merchantRepository, eventProducer, logger)
-	playerRepository := repository.NewPlayerRepository(db)
-	levelRepository := repository.NewLevelRepository(db)
-	playerUseCase := usecase.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger)
-	managerRepository := repository.NewManagerRepository(db)
-	managerUseCase := usecase.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger)
-	playerLevelUseCase := usecase.NewLevelUseCase(levelRepository, merchantRepository, logger)
-	tagRepository := repository.NewTagRepository(db)
-	playerTagRepository := repository.NewPlayerTagRepository(db)
-	playerTagUseCase := usecase.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager)
-	workerHandler := handler.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, logger)
+	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger)
+	playerRepository := repository2.NewPlayerRepository(db)
+	levelRepository := repository2.NewLevelRepository(db)
+	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger)
+	managerRepository := repository3.NewManagerRepository(db)
+	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger)
+	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger)
+	tagRepository := repository2.NewTagRepository(db)
+	playerTagRepository := repository2.NewPlayerTagRepository(db)
+	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager)
+	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, logger)
 	return workerHandler, nil
 }
 
@@ -91,17 +97,17 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 		return nil, err
 	}
 	eventProducer := provideEventProducer(kdsService, logger)
-	merchantUseCase := usecase.NewMerchantUseCase(merchantRepository, eventProducer, logger)
-	playerRepository := repository.NewPlayerRepository(db)
-	levelRepository := repository.NewLevelRepository(db)
-	playerUseCase := usecase.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger)
-	managerRepository := repository.NewManagerRepository(db)
-	managerUseCase := usecase.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger)
-	playerLevelUseCase := usecase.NewLevelUseCase(levelRepository, merchantRepository, logger)
-	tagRepository := repository.NewTagRepository(db)
-	playerTagRepository := repository.NewPlayerTagRepository(db)
-	playerTagUseCase := usecase.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager)
-	workerHandler := handler.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, logger)
+	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger)
+	playerRepository := repository2.NewPlayerRepository(db)
+	levelRepository := repository2.NewLevelRepository(db)
+	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger)
+	managerRepository := repository3.NewManagerRepository(db)
+	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger)
+	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger)
+	tagRepository := repository2.NewTagRepository(db)
+	playerTagRepository := repository2.NewPlayerTagRepository(db)
+	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager)
+	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, logger)
 	server, err := provideWorkerServer(cfg, logger)
 	if err != nil {
 		return nil, err
@@ -128,26 +134,26 @@ func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, redisM
 
 // InitializeSchedulerComponents 初始化 Scheduler 服務的處理器
 func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager, db *gorm.DB) (*scheduler.Handler, error) {
-	messageCampaignRepository := repository.NewMessageCampaignRepository(db)
+	messageCampaignRepository := repository4.NewMessageCampaignRepository(db)
 	merchantRepository := repository.NewMerchantRepository(db)
-	playerMessageRepository := repository.NewPlayerMessageRepository(db)
-	playerRepository := repository.NewPlayerRepository(db)
-	messageUseCase := message_campaign.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, logger)
+	playerMessageRepository := repository4.NewPlayerMessageRepository(db)
+	playerRepository := repository2.NewPlayerRepository(db)
+	messageUseCase := message.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, logger)
 	messageCampaignTriggerJob := job.NewMessageCampaignTriggerJob(messageUseCase, logger)
 	registry := job.NewRegistry(messageCampaignTriggerJob)
-	schedulerHandler := scheduler.NewSchedulerHandler(logger, registry)
-	return schedulerHandler, nil
+	handler := scheduler.NewSchedulerHandler(logger, registry)
+	return handler, nil
 }
 
 // wire.go:
 
 // WorkerComponents 包含 worker 所需的所有組件
 type WorkerComponents struct {
-	Handler *handler.WorkerHandler
+	Handler *worker.WorkerHandler
 	Server  *asynq.Server
 }
 
-var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient, repository.NewMerchantRepository, repository.NewPlayerRepository, repository.NewManagerRepository, repository.NewMessageCampaignRepository, repository.NewPlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, provideEventProducer, usecase.NewMerchantUseCase, usecase.NewPlayerUseCase, usecase.NewManagerUseCase, message_campaign.NewMessageUseCase, usecase.NewLevelUseCase, usecase.NewTagUseCase)
+var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient, repository.NewMerchantRepository, repository2.NewPlayerRepository, repository3.NewManagerRepository, repository4.NewMessageCampaignRepository, repository4.NewPlayerMessageRepository, repository2.NewLevelRepository, repository2.NewTagRepository, repository2.NewPlayerTagRepository, provideEventProducer, merchant.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message.NewMessageUseCase, level.NewLevelUseCase, player.NewTagUseCase)
 
 // 事件生產者提供者
 func provideEventProducer(kdsService *kds.KDSService, logger infrastructure.Logger) service.EventProducer {
@@ -159,8 +165,8 @@ func provideWorkerServer(cfg *config.Config, logger infrastructure.Logger) (*asy
 	return queue.NewWorkerServer(cfg, logger)
 }
 
-func provideRedisClient(manager *redis.Manager) (*redis2.Client, error) {
-	redisInstance, err := manager.GetClient()
+func provideRedisClient(manager2 *redis.Manager) (*redis2.Client, error) {
+	redisInstance, err := manager2.GetClient()
 	if err != nil {
 		return nil, err
 	}

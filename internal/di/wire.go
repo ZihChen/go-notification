@@ -6,13 +6,19 @@ package di
 import (
 	"github.com/google/wire"
 	"github.com/hibiken/asynq"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler/api"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler/scheduler"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/job"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/repository"
-	usecase2 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/usecase/message_campaign"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/api"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/worker"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/scheduler"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/job"
+	managerRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/manager"
+	merchantRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/merchant"
+	messageRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/message"
+	playerRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/player"
+	levelUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/level"
+	managerUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/manager"
+	merchantUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/merchant"
+	messageUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/message"
+	playerUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/player"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
@@ -25,7 +31,7 @@ import (
 
 // WorkerComponents 包含 worker 所需的所有組件
 type WorkerComponents struct {
-	Handler *handler.WorkerHandler
+	Handler *worker.WorkerHandler
 	Server  *asynq.Server
 }
 
@@ -35,25 +41,25 @@ var baseSet = wire.NewSet(
 	provideRedisClient,
 
 	// 資料庫
-	repository.NewMerchantRepository,
-	repository.NewPlayerRepository,
-	repository.NewManagerRepository,
-	repository.NewMessageCampaignRepository,
-	repository.NewPlayerMessageRepository,
-	repository.NewLevelRepository,
-	repository.NewTagRepository,
-	repository.NewPlayerTagRepository,
+	merchantRepo.NewMerchantRepository,
+	playerRepo.NewPlayerRepository,
+	managerRepo.NewManagerRepository,
+	messageRepo.NewMessageCampaignRepository,
+	messageRepo.NewPlayerMessageRepository,
+	playerRepo.NewLevelRepository,
+	playerRepo.NewTagRepository,
+	playerRepo.NewPlayerTagRepository,
 
 	// 服務
 	provideEventProducer,
 
 	// 用例層
-	usecase2.NewMerchantUseCase,
-	usecase2.NewPlayerUseCase,
-	usecase2.NewManagerUseCase,
-	message_campaign.NewMessageUseCase,
-	usecase2.NewLevelUseCase,
-	usecase2.NewTagUseCase,
+	merchantUseCase.NewMerchantUseCase,
+	playerUseCase.NewPlayerUseCase,
+	managerUseCase.NewManagerUseCase,
+	messageUseCase.NewMessageUseCase,
+	levelUseCase.NewLevelUseCase,
+	playerUseCase.NewTagUseCase,
 )
 
 // 事件生產者提供者
@@ -72,11 +78,11 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, redis
 }
 
 // InitializeWorkerServer 初始化 Worker 服務的處理器
-func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, redisManager *redisCache.Manager, db *gorm.DB) (*handler.WorkerHandler, error) {
+func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, redisManager *redisCache.Manager, db *gorm.DB) (*worker.WorkerHandler, error) {
 	wire.Build(
 		baseSet,
 		kds.NewKDSService,
-		handler.NewWorkerHandler,
+		worker.NewWorkerHandler,
 	)
 	return nil, nil
 }
@@ -87,7 +93,7 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 		wire.Struct(new(WorkerComponents), "*"),
 		baseSet,
 		kds.NewKDSService,
-		handler.NewWorkerHandler,
+		worker.NewWorkerHandler,
 		provideWorkerServer,
 	)
 	return nil, nil

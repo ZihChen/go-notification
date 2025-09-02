@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/cmd"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler/scheduler"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/scheduler"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/di"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"

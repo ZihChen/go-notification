@@ -12,8 +12,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jvdiamondtech/ms-notification-cat/cmd"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler/api"
-	routermgr "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/router"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/api"
+	routermgr "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/router"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/di"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"

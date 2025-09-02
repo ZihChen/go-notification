@@ -11,7 +11,7 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/jvdiamondtech/ms-notification-cat/cmd"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/handler"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/worker"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/di"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
@@ -45,7 +45,7 @@ type services struct {
 	tracer        *tracing.Tracer
 	db            *mysql.Database
 	redisManager  *redis.Manager
-	workerHandler *handler.WorkerHandler
+	workerHandler *worker.WorkerHandler
 	workerServer  *asynq.Server
 }
 
