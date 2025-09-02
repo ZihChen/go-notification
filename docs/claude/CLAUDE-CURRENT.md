@@ -1,9 +1,28 @@
 # CLAUDE-CURRENT.md
 
-## 當前任務階段：架構優化與測試驗證
-路由架構重構完成，系統進入穩定性測試階段
+## 當前任務階段：六角架構實作完成與測試驗證
+六角架構重構完成，系統進入穩定性測試階段
 
 ### 最新完成任務
+- [x] ✅ **v1.3 六角架構重構** (2025-09-02)
+  - [x] 完整 Ports & Adapters 模式實作
+  - [x] Inbound/Outbound Adapters 分離
+  - [x] Repository 按業務邏輯重新組織
+    - [x] merchant/ - 商戶相關 Repository
+    - [x] player/ - 玩家相關 Repository
+    - [x] manager/ - 管理員相關 Repository
+    - [x] message/ - 訊息相關 Repository
+  - [x] 應用層重構
+    - [x] DTO 搬遷至 application/dto/
+    - [x] Event Service 搬遷至 application/service/
+    - [x] Use Cases 組織優化
+  - [x] 基礎設施工具模組化
+    - [x] HTTP Response 工具搬遷至 infrastructure/utils/httpresponse/
+  - [x] Wire 依賴注入重新配置
+    - [x] 解決 package 命名衝突
+    - [x] 更新所有 import 路徑
+    - [x] 重新產生 wire_gen.go
+
 - [x] ✅ **v1.2 路由架構重構** (2025-09-01)
   - [x] 模組化路由管理系統實作
   - [x] 獨立中間件配置管理  
@@ -15,12 +34,34 @@
   - [x] 完成 docs/claude/features/message-campaign/CLAUDE-2025-08-28-v1.2.md 功能需求
 
 ### 當前重點
-1. **路由架構驗證**: 測試新的模組化路由系統穩定性
-2. **API 調用優化**: 確保 Swagger UI 和 API 調用正常運作  
-3. **系統整合測試**: 驗證重構後的系統整體功能
-4. **性能監控**: 利用新增的 pprof 路由進行性能分析
+1. **六角架構驗證**: 測試新的 Hexagonal Architecture 架構穩定性
+2. **Repository 分層測試**: 驗證按業務邏輯組織的 Repository 正常運作
+3. **應用層整合測試**: 測試 DTO、Use Cases、Services 的整合
+4. **API 調用優化**: 確保 Swagger UI 和 API 調用正常運作  
+5. **系統整合測試**: 驗證重構後的系統整體功能
+6. **性能監控**: 利用新增的 pprof 路由進行性能分析
 
 ### 進行中任務
+
+#### 六角架構驗證測試
+- [ ] **Repository 層測試**
+  - [x] merchant repository 按業務邏輯組織
+  - [x] player repository 按業務邏輯組織
+  - [x] manager repository 按業務邏輯組織
+  - [x] message repository 按業務邏輯組織
+  - [ ] Repository 介面一致性測試
+  - [ ] 跨 Repository 依賴測試
+
+- [ ] **應用層整合測試**
+  - [x] DTO 搬遷完成
+  - [x] Event Service 搬遷完成
+  - [ ] Use Case 與 Repository 整合測試
+  - [ ] Application Service 功能驗證
+
+- [ ] **Inbound/Outbound Adapters 測試**
+  - [ ] HTTP Handler 與 Use Case 整合
+  - [ ] Repository 與 Infrastructure 整合
+  - [ ] 依賴注入流程驗證
 
 #### 路由系統測試驗證
 - [ ] **Swagger API 調用測試**

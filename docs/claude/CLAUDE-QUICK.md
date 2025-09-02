@@ -3,9 +3,10 @@
 ## 快速開發指南
 
 ### 當前狀態
+- **v1.3**: 六角架構重構 ✅ 已完成 (2025-09-02)
 - **v1.2**: 路由架構重構 ✅ 已完成 (2025-09-01)
 - **v1.1**: 會員訊息排程發送系統 ✅ 已完成 (2025-08-28)
-- **當前階段**: 架構優化與測試驗證 🔄 進行中
+- **當前階段**: 六角架構驗證與測試 🔄 進行中
 - **下一里程碑**: 系統穩定性驗證與性能優化
 
 ### 快速命令
@@ -37,7 +38,8 @@ go test ./...
 go test -cover ./...
 
 # 運行特定模組測試
-go test ./internal/adapter/usecase/message_campaign/...
+go test ./internal/application/usecase/message/...
+go test ./internal/adapter/outbound/repository/message/...
 ```
 
 #### 資料庫操作
@@ -63,28 +65,53 @@ wire ./internal/di
 
 ### 重要檔案位置
 
-#### 路由系統 ✨ **NEW**
-- `internal/adapter/router/router_manager.go` - 路由管理器
-- `internal/adapter/router/api_router.go` - API路由組件
-- `internal/adapter/router/swagger_router.go` - Swagger路由組件
-- `internal/adapter/router/health_router.go` - 健康檢查路由
-- `internal/adapter/router/pprof_router.go` - 性能分析路由
+#### 六角架構組織 ✨ **NEW v1.3**
 
-#### 核心業務邏輯
-- `internal/adapter/usecase/message_campaign/` - 訊息活動用例
-- `internal/adapter/repository/message_campaign_repository.go` - 資料存取
-- `internal/infrastructure/models/message_campaign.go` - 資料模型
+##### Domain Layer (核心領域)
+- `internal/domain/entity/` - 領域實體
+- `internal/domain/ports/inbound/` - 入站介面 (Use Case 介面)
+- `internal/domain/ports/outbound/` - 出站介面 (Repository, Service 介面)
+- `internal/domain/consts/` - 領域常數
+- `internal/domain/errmsg/` - 錯誤定義
 
-#### API處理
-- `internal/adapter/handler/api/http_handler.go` - HTTP端點處理器
-- `internal/infrastructure/http/middleware/auth.go` - 認證中間件
+##### Application Layer (應用層)
+- `internal/application/dto/` - 資料傳輸物件
+- `internal/application/service/` - 應用服務 (如 Event Service)
+- `internal/application/usecase/` - 業務用例實作
+  - `message/` - 訊息相關用例
+  - `player/` - 玩家相關用例
+  - `merchant/` - 商戶相關用例
 
-#### 排程系統
-- `internal/adapter/job/message_campaign_trigger_job.go` - 排程任務
-- `internal/adapter/usecase/message_campaign/scheduler.go` - 排程邏輯
+##### Adapter Layer (適配器層)
+**Inbound Adapters (入站適配器)**
+- `internal/adapter/inbound/handler/api/` - HTTP API 處理器
+- `internal/adapter/inbound/handler/worker/` - Worker 處理器
+- `internal/adapter/inbound/handler/scheduler/` - Scheduler 處理器
+- `internal/adapter/inbound/router/` - 路由管理系統
+  - `router_manager.go` - 路由管理器
+  - `api_router.go` - API路由組件
+  - `swagger_router.go` - Swagger路由組件
+  - `health_router.go` - 健康檢查路由
+  - `pprof_router.go` - 性能分析路由
+- `internal/adapter/inbound/middleware/` - HTTP 中間件
+- `internal/adapter/inbound/job/` - 排程任務實作
+
+**Outbound Adapters (出站適配器)**
+- `internal/adapter/outbound/repository/` - 資料庫操作 (按業務分組)
+  - `merchant/` - 商戶相關 Repository
+  - `player/` - 玩家相關 Repository
+  - `manager/` - 管理員相關 Repository
+  - `message/` - 訊息相關 Repository
+
+##### Infrastructure Layer (基礎設施層)
+- `internal/infrastructure/database/` - 資料庫連接
+- `internal/infrastructure/cache/` - 快取管理
+- `internal/infrastructure/utils/httpresponse/` - HTTP 響應工具
+- `internal/infrastructure/tracing/` - 分散式追蹤
+- `internal/infrastructure/config/` - 系統配置
 
 #### 配置檔案
-- `internal/infrastructure/config/config.go` - 系統配置
+- `internal/di/wire.go` - 依賴注入配置
 - `docker-compose.yml` - 本地開發環境
 - `CLAUDE.md` - 專案指引文件
 
@@ -192,7 +219,37 @@ sleep 10  # 等待服務啟動
 go test ./...
 ```
 
-### 路由架構新功能 ✨
+### 六角架構新功能 ✨ v1.3
+
+#### Clean Architecture 實現
+```go
+// 使用 Ports & Adapters 模式
+// Domain -> Application -> Adapters -> Infrastructure
+
+// Use Case 介面定義在 domain/ports/inbound/
+type MessageUseCase interface {
+    CreateMessageCampaign(ctx context.Context, req *dto.CreateMessageCampaignRequest) error
+    // ...
+}
+
+// Repository 介面定義在 domain/ports/outbound/
+type MessageCampaignRepository interface {
+    Create(ctx context.Context, campaign *entity.MessageCampaign) error
+    // ...
+}
+```
+
+#### Repository 組織優化
+- **按業務邏輯分組**: merchant/, player/, manager/, message/
+- **清晰的依賴方向**: Domain <- Application <- Adapters <- Infrastructure
+- **Wire 依賴注入**: 使用 import aliases 解決命名衝突
+
+#### 應用層重構
+- **DTO 統一管理**: application/dto/ 包含所有資料傳輸物件
+- **Use Cases 實作**: application/usecase/ 實現 domain ports
+- **應用服務**: application/service/ 協調不同用例
+
+### 路由架構功能 ✨ v1.2
 
 #### 模組化路由管理
 ```go
@@ -213,6 +270,6 @@ routerManager.SetupRoutersWithMiddleware(ginEngine, config)
 - 支援所有必要的HTTP方法和headers
 
 ---
-**更新日期**: 2025-09-01  
-**版本**: v1.2 (路由架構重構)  
+**更新日期**: 2025-09-02  
+**版本**: v1.3 (六角架構重構)  
 **用途**: 日常開發快速參考

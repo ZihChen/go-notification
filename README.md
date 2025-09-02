@@ -29,7 +29,7 @@
 ### 領域實體
 
 - **Merchant** - 商戶實體
-- **Player** - 終端用戶/客戶
+- **Player** - 終端用戶/客戶  
 - **Manager** - 管理員用戶
 - **Message Campaign** - 通知活動和訊息推送
 - **Tags/Levels** - 用戶分類和層級管理
@@ -52,43 +52,54 @@
 ├── internal/
 │   ├── domain/         # 核心業務邏輯、介面定義（Ports）
 │   │   ├── entity/     # 領域實體
-│   │   ├── dto/        # 資料傳輸物件
 │   │   ├── event/      # 事件定義
 │   │   ├── consts/     # 常數定義
 │   │   ├── errmsg/     # 自定義錯誤類型
-│   │   ├── repositoryport/ # Repository 介面
-│   │   ├── usecaseport/    # Use Case 介面
-│   │   ├── serviceport/    # Service 介面
-│   │   ├── jobport/        # 排程任務介面
-│   │   └── infraport/      # 基礎設施介面
-│   ├── adapter/        # 領域介面實作（Adapters）
-│   │   ├── handler/    # HTTP/Worker/Scheduler 處理器
-│   │   │   ├── api/    # HTTP API 處理器
-│   │   │   └── scheduler/ # 排程處理器元件
-│   │   ├── router/     # 路由管理器（新增）
-│   │   │   ├── router_manager.go # 路由管理器
-│   │   │   ├── api_router.go     # API 路由
-│   │   │   ├── swagger_router.go # Swagger 路由
-│   │   │   ├── health_router.go  # 健康檢查路由
-│   │   │   └── pprof_router.go   # 性能分析路由
-│   │   ├── repository/ # 資料庫操作實作
-│   │   ├── usecase/    # 業務用例
-│   │   │   └── message_campaign/ # 訊息活動用例
-│   │   ├── job/        # 排程任務實作
-│   │   └── service/    # 外部服務整合
-│   ├── infrastructure/ # 外部依賴
+│   │   └── ports/      # 接口定義 (Ports)
+│   │       ├── inbound/  # 入站接口（Use Case 接口）
+│   │       └── outbound/ # 出站接口（Repository、Service 等）
+│   │           ├── infrastructure/ # 基礎設施接口
+│   │           ├── job/           # 排程任務接口
+│   │           ├── repository/    # Repository 接口
+│   │           └── service/       # 外部服務接口
+│   ├── application/    # 應用層（Use Cases、Services）
+│   │   ├── dto/        # 資料傳輸物件
+│   │   ├── service/    # 應用服務
+│   │   └── usecase/    # 業務用例實作
+│   │       ├── level/      # 等級管理用例
+│   │       ├── manager/    # 管理員管理用例
+│   │       ├── merchant/   # 商戶管理用例
+│   │       ├── message/    # 訊息活動用例
+│   │       ├── player/     # 玩家管理用例
+│   │       └── testutil/   # 測試工具
+│   ├── adapter/        # 適配器層（Adapters）
+│   │   ├── inbound/    # 入站適配器
+│   │   │   ├── handler/    # HTTP/Worker/Scheduler 處理器
+│   │   │   │   ├── api/        # HTTP API 處理器
+│   │   │   │   ├── scheduler/  # 排程處理器
+│   │   │   │   └── worker/     # 工作者處理器
+│   │   │   ├── job/        # 排程任務實作
+│   │   │   ├── middleware/ # HTTP 中間件
+│   │   │   └── router/     # 路由管理器
+│   │   └── outbound/   # 出站適配器
+│   │       └── repository/ # 資料庫操作實作
+│   │           ├── manager/    # 管理員資料庫
+│   │           ├── merchant/   # 商戶資料庫
+│   │           ├── message/    # 訊息資料庫
+│   │           └── player/     # 玩家資料庫
+│   ├── infrastructure/ # 基礎設施層
+│   │   ├── cache/      # 快取管理
+│   │   │   └── redis/  # Redis 實作
+│   │   ├── config/     # 配置管理
 │   │   ├── database/   # 資料庫連線管理
 │   │   │   └── mysql/  # MySQL 實作
-│   │   ├── cache/      
-│   │   │   └── redis/  # Redis 快取管理
-│   │   ├── http/      
-│   │   │   ├── response/    # API響應元件
-│   │   │   └── middleware/  # API中間件
 │   │   ├── kds/        # AWS Kinesis 整合
-│   │   ├── queue/      # Asynq 任務佇列
 │   │   ├── logger/     # 日誌服務
 │   │   ├── models/     # 資料庫模型
-│   │   └── tracing/    # OpenTelemetry 追蹤
+│   │   ├── queue/      # Asynq 任務佇列
+│   │   ├── tracing/    # OpenTelemetry 追蹤
+│   │   └── utils/      # 工具類
+│   │       └── response/   # HTTP 響應工具
 │   └── di/             # 依賴注入（Wire）
 │       ├── wire.go     # Wire 配置
 │       └── wire_gen.go # Wire 產生的程式碼
@@ -293,13 +304,13 @@ swag init
 ## 設計模式
 
 ### Repository Pattern
-所有資料庫操作都通過定義在 `internal/domain/repositoryport/` 的 repository 介面進行
+所有資料庫操作都通過定義在 `internal/domain/ports/outbound/repository/` 的 repository 介面進行
 
 ### Use Case Pattern
 業務邏輯封裝在 use case 中，協調 repositories 和 services
 
 ### Job Pattern
-所有排程任務實作 `jobport.ScheduledJob` 介面，統一在 `internal/adapter/job/` 管理
+所有排程任務實作 `ScheduledJob` 介面，統一在 `internal/adapter/inbound/job/` 管理
 - Job Registry 模式進行集中管理
 - 使用 Wire 進行依賴注入
 - 編譯時檢查確保介面實作
@@ -309,6 +320,11 @@ swag init
 
 ### Error Handling
 在 `internal/domain/errmsg/` 定義自定義錯誤類型，確保整個應用程式的錯誤處理一致性
+
+### Hexagonal Architecture Pattern
+遵循六角架構原則，將適配器分為：
+- **Inbound Adapters** (`internal/adapter/inbound/`) - 處理外部請求（HTTP、Jobs、Events）
+- **Outbound Adapters** (`internal/adapter/outbound/`) - 處理外部依賴（資料庫、緩存、第三方服務）
 
 ## 監控與追蹤
 
@@ -393,7 +409,24 @@ kubectl get pods -l app=fat-notification-cat
 
 ## 最新功能更新
 
-### v1.2 路由架構重構 ✨
+### v1.3 架構重構完成 ✨
+
+- **六角架構實現**
+  - 完整的 Ports & Adapters 模式
+  - Inbound/Outbound Adapters 分離
+  - 清晰的關注點分離與依賴方向
+
+- **應用層重組**
+  - DTO 搬遷至 Application 層
+  - 業務服務與 Use Cases 的清晰分界
+  - 測試工具的統一管理
+
+- **基礎設施優化**
+  - HTTP Response 工具模組化
+  - Repository 按業務邏輯分組
+  - Event Service 架構優化
+
+### v1.2 路由架構重構 ✅
 
 - **模組化路由管理系統**
   - 全新的路由管理器（Router Manager）架構
@@ -404,11 +437,6 @@ kubectl get pods -l app=fat-notification-cat
   - 優化 CORS 配置，解決 Swagger API 呼叫問題
   - 統一的中間件配置管理
   - 支援開發和生產環境的不同配置策略
-
-- **增強的開發工具支援**
-  - 內建 pprof 性能分析路由
-  - 改進的 Swagger 文檔配置
-  - 增強的請求日誌和調試功能
 
 ### v1.1 會員訊息排程發送系統 ✅
 
@@ -429,29 +457,30 @@ kubectl get pods -l app=fat-notification-cat
 
 ### 技術改進
 
-- **路由架構重構**
+- **架構重組（v1.3）**
+  - 完整的六角架構實現
+  - Inbound/Outbound Adapters 分離
+  - Application 層與 Domain 層的清晰分界
+  - Repository 按業務邏輯分組管理
+
+- **工具與公用組件**
+  - HTTP Response 工具模組化至 utils 目錄
+  - DTO 搬遷至 Application 層
+  - Event Service 架構優化
+
+- **路由架構重構（v1.2）**
   - 模組化路由管理器設計
   - 獨立的路由組件與中間件配置
   - 支援性能分析和調試工具
 
-- **資料庫架構重構**
-  - 優化資料表結構
-  - 改善測試檔案組織
-  - 新增軟刪除支援
-
-- **響應處理機制**
+- **品質與可維護性**
   - 統一 HTTP 響應格式
   - 改善錯誤處理機制
-  - 新增響應構建器
-
-- **CORS 和 API 調用優化**
-  - 修復 Swagger UI 的 CORS 問題
-  - 優化開發環境的 API 調用體驗
-  - 改進的 API 文檔配置
+  - 優化 CORS 和 API 調用體驗
 
 ## 專案狀態
 
-專案目前處於積極開發階段，最新完成了路由架構重構（v1.2），並實現了完整的會員訊息排程發送系統（v1.1）。目前進入測試驗證階段，focus on 系統穩定性和性能優化。
+專案目前處於積極開發階段，最新完成了六角架構完整重構（v1.3），實現了 Clean Architecture 的所有核心原則。先前完成了路由架構重構（v1.2）和會員訊息排程發送系統（v1.1）。目前進入測試驗證階段，專注於系統穩定性和性能優化。
 
 ## 聯絡資訊
 
