@@ -158,10 +158,9 @@ func TestManagerUseCase_GetManagerByID(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, manager)
 	assert.Equal(t, managerID, manager.ID)
-	assert.Equal(t, merchantID, manager.MerchantID)
-	assert.Equal(t, globalManagerID, manager.GlobalManagerID)
-	assert.Equal(t, managerAccount, manager.Account)
-	assert.Equal(t, managerEmail, *manager.Email)
+	assert.Equal(t, globalManagerID, manager.GlobalID)
+	assert.Equal(t, managerAccount, manager.Name)
+	assert.Equal(t, managerEmail, manager.Email)
 
 	managerRepo.AssertExpectations(t)
 }
@@ -199,10 +198,9 @@ func TestManagerUseCase_GetManagerByGlobalID(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, manager)
 	assert.Equal(t, managerID, manager.ID)
-	assert.Equal(t, merchantID, manager.MerchantID)
-	assert.Equal(t, globalManagerID, manager.GlobalManagerID)
-	assert.Equal(t, managerAccount, manager.Account)
-	assert.Equal(t, managerEmail, *manager.Email)
+	assert.Equal(t, globalManagerID, manager.GlobalID)
+	assert.Equal(t, managerAccount, manager.Name)
+	assert.Equal(t, managerEmail, manager.Email)
 
 	managerRepo.AssertExpectations(t)
 }

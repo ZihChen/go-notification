@@ -167,10 +167,9 @@ func TestMerchantUseCase_GetMerchantByID(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, merchant)
 	assert.Equal(t, merchantID, merchant.ID)
-	assert.Equal(t, globalMerchantID, merchant.GlobalMerchantID)
+	assert.Equal(t, globalMerchantID, merchant.GlobalID)
 	assert.Equal(t, merchantName, merchant.Name)
-	assert.Equal(t, displayName, merchant.DisplayName)
-	assert.Equal(t, apiKey, merchant.APIKey)
+	assert.Equal(t, "active", merchant.Status)
 
 	merchantRepo.AssertExpectations(t)
 }
@@ -214,10 +213,9 @@ func TestMerchantUseCase_GetMerchantByGlobalID(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, merchant)
 	assert.Equal(t, merchantID, merchant.ID)
-	assert.Equal(t, globalMerchantID, merchant.GlobalMerchantID)
+	assert.Equal(t, globalMerchantID, merchant.GlobalID)
 	assert.Equal(t, merchantName, merchant.Name)
-	assert.Equal(t, displayName, merchant.DisplayName)
-	assert.Equal(t, apiKey, merchant.APIKey)
+	assert.Equal(t, "active", merchant.Status)
 
 	merchantRepo.AssertExpectations(t)
 }

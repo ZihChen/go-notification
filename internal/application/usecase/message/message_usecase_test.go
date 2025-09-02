@@ -588,12 +588,12 @@ func TestMessageUseCase_ListMessageCampaigns(t *testing.T) {
 		Category: 1,
 	}
 
-	campaigns, total, err := useCase.ListMessageCampaigns(context.Background(), request)
+	response, err := useCase.ListMessageCampaigns(context.Background(), request)
 
 	assert.NoError(t, err)
-	assert.Equal(t, expectedTotal, total)
-	assert.Len(t, campaigns, 1)
-	assert.Equal(t, expectedCampaigns[0].ID, campaigns[0].ID)
+	assert.Equal(t, expectedTotal, response.Total)
+	assert.Len(t, response.Campaigns, 1)
+	assert.Equal(t, expectedCampaigns[0].ID, response.Campaigns[0].ID)
 	campaignRepo.AssertExpectations(t)
 }
 
@@ -648,9 +648,9 @@ func TestMessageUseCase_GetPlayerMessages(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, response)
-	assert.Equal(t, stats.TotalCount, response.Stats.TotalCount)
-	assert.Equal(t, stats.ReadCount, response.Stats.ReadCount)
-	assert.Equal(t, stats.UnreadCount, response.Stats.UnreadCount)
+	assert.Equal(t, int64(stats.TotalCount), response.Stats.TotalCount)
+	assert.Equal(t, int64(stats.ReadCount), response.Stats.ReadCount)
+	assert.Equal(t, int64(stats.UnreadCount), response.Stats.UnreadCount)
 	assert.Len(t, response.Messages, 2)
 	assert.Equal(t, 1, response.Page)
 	assert.Equal(t, 10, response.PageSize)

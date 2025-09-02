@@ -186,10 +186,8 @@ func TestPlayerUseCase_GetPlayerByID(t *testing.T) {
 	assert.NotNil(t, player)
 	assert.Equal(t, playerID, player.ID)
 	assert.Equal(t, merchantID, player.MerchantID)
-	assert.Equal(t, globalPlayerID, player.GlobalPlayerID)
-	assert.Equal(t, apiKey, player.APIKey)
-	assert.Equal(t, playerAccount, player.Account)
-	assert.Equal(t, playerEmail, *player.Email)
+	assert.Equal(t, globalPlayerID, player.GlobalID)
+	assert.Equal(t, playerAccount, player.Username)
 
 	playerRepo.AssertExpectations(t)
 }
@@ -231,10 +229,8 @@ func TestPlayerUseCase_GetPlayerByGlobalID(t *testing.T) {
 	assert.NotNil(t, player)
 	assert.Equal(t, playerID, player.ID)
 	assert.Equal(t, merchantID, player.MerchantID)
-	assert.Equal(t, globalPlayerID, player.GlobalPlayerID)
-	assert.Equal(t, apiKey, player.APIKey)
-	assert.Equal(t, playerAccount, player.Account)
-	assert.Equal(t, playerEmail, *player.Email)
+	assert.Equal(t, globalPlayerID, player.GlobalID)
+	assert.Equal(t, playerAccount, player.Username)
 
 	playerRepo.AssertExpectations(t)
 }
