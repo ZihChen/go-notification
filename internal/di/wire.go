@@ -14,13 +14,14 @@ import (
 	merchantRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/merchant"
 	messageRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/message"
 	playerRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/player"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/service"
 	levelUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/level"
 	managerUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/manager"
 	merchantUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/merchant"
 	messageUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/message"
 	playerUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/player"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
+	servicePort "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/kds"
@@ -51,7 +52,7 @@ var baseSet = wire.NewSet(
 	playerRepo.NewPlayerTagRepository,
 
 	// 服務
-	provideEventProducer,
+	service.NewEventService,
 
 	// 用例層
 	merchantUseCase.NewMerchantUseCase,
@@ -62,9 +63,9 @@ var baseSet = wire.NewSet(
 	playerUseCase.NewTagUseCase,
 )
 
-// 事件生產者提供者
-func provideEventProducer(kdsService *kds.KDSService, logger infrastructure.Logger) service.EventProducer {
-	return kdsService
+// 事件生產者提供者 (保留作為別名)
+func provideEventProducer(kdsService *kds.KDSService, logger infrastructure.Logger) servicePort.EventProducer {
+	return service.NewEventService(kdsService, logger)
 }
 
 // InitializeWebServer 初始化 Web 服務的 HTTP 處理器

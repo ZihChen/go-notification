@@ -55,7 +55,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.Manager"
+                            "$ref": "#/definitions/entity.Manager"
                         }
                     },
                     "400": {
@@ -110,7 +110,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.Merchant"
+                            "$ref": "#/definitions/entity.Merchant"
                         }
                     },
                     "400": {
@@ -166,7 +166,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.Merchant"
+                            "$ref": "#/definitions/entity.Merchant"
                         }
                     },
                     "400": {
@@ -239,7 +239,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.MessageCampaignListResponse"
+                            "$ref": "#/definitions/dto.MessageCampaignListResponse"
                         }
                     },
                     "500": {
@@ -823,7 +823,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.Player"
+                            "$ref": "#/definitions/entity.Player"
                         }
                     },
                     "400": {
@@ -879,7 +879,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.Player"
+                            "$ref": "#/definitions/entity.Player"
                         }
                     },
                     "400": {
@@ -987,122 +987,6 @@ const docTemplate = `{
                 "error": {
                     "type": "string",
                     "example": "An error occurred"
-                }
-            }
-        },
-        "api.Manager": {
-            "type": "object",
-            "properties": {
-                "account": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "deleted_at": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "global_manager_id": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "merchant_id": {
-                    "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "api.Merchant": {
-            "type": "object",
-            "properties": {
-                "api_key": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "deleted_at": {
-                    "type": "string"
-                },
-                "display_name": {
-                    "type": "string"
-                },
-                "global_merchant_id": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "api.MessageCampaignListResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/entity.MessageCampaign"
-                    }
-                },
-                "page": {
-                    "type": "integer"
-                },
-                "page_size": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
-        "api.Player": {
-            "type": "object",
-            "properties": {
-                "account": {
-                    "type": "string"
-                },
-                "api_key": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "deleted_at": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "global_player_id": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "last_active_at": {
-                    "type": "string"
-                },
-                "level_id": {
-                    "type": "integer"
-                },
-                "merchant_id": {
-                    "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
                 }
             }
         },
@@ -1263,6 +1147,26 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.MessageCampaignListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.MessageCampaign"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "dto.UpdateMessageCampaignRequest": {
             "type": "object",
             "required": [
@@ -1316,6 +1220,64 @@ const docTemplate = `{
                 "updated_by": {
                     "type": "string",
                     "maxLength": 100
+                }
+            }
+        },
+        "entity.Manager": {
+            "type": "object",
+            "properties": {
+                "account": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "global_manager_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "merchant_id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.Merchant": {
+            "type": "object",
+            "properties": {
+                "api_key": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "global_merchant_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },
@@ -1435,6 +1397,44 @@ const docTemplate = `{
                 }
             }
         },
+        "entity.Player": {
+            "type": "object",
+            "properties": {
+                "account": {
+                    "type": "string"
+                },
+                "api_key": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "global_player_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "last_active_at": {
+                    "type": "string"
+                },
+                "level_id": {
+                    "type": "integer"
+                },
+                "merchant_id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "entity.PlayerMessageStats": {
             "type": "object",
             "properties": {
@@ -1462,8 +1462,8 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8080",
-	BasePath:         "/api/v1",
+	Host:             "localhost:8081",
+	BasePath:         "",
 	Schemes:          []string{},
 	Title:            "Notification Service API",
 	Description:      "用於管理商戶、玩家和管理員的身份服務",

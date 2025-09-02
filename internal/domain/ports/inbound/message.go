@@ -3,7 +3,7 @@ package inbound
 import (
 	"context"
 
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/dto"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 )
 

@@ -9,7 +9,7 @@ import (
 	jobport "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/job"
 )
 
-// 確保 MessageCampaignTriggerJob 實現了 jobport.ScheduledJob 介面
+// 確保 MessageCampaignTriggerJob 實現了 ScheduledJob 介面
 var _ jobport.ScheduledJob = (*MessageCampaignTriggerJob)(nil)
 
 type MessageCampaignTriggerJob struct {

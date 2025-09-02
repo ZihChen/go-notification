@@ -5,10 +5,11 @@
 ## 目錄結構
 
 ```
-internal/infrastructure/http/response/
+internal/infrastructure/utils/response/
 ├── builder.go      # 響應建構器主要實現
 ├── errors.go       # 標準錯誤碼定義
 ├── types.go        # 通用響應類型定義
+├── quick_method.go # 快速方法
 └── README.md       # 本文件
 ```
 
@@ -26,7 +27,7 @@ internal/infrastructure/http/response/
 ### Import
 
 ```go
-import "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/http/response"
+import "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/utils/response"
 ```
 
 ### 基本使用

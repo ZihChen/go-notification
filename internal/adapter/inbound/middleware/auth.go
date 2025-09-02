@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/http/response"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/utils/response"
 )
 
 type AuthConfig struct {

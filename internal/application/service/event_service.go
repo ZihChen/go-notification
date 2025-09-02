@@ -6,19 +6,19 @@ import (
 	"fmt"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/kds"
-	"go.uber.org/zap"
 )
 
 // EventService 事件服務實現
 type EventService struct {
 	kdsService *kds.KDSService
-	logger     *zap.Logger
+	logger     infrastructure.Logger
 }
 
 // NewEventService 創建事件服務
-func NewEventService(kdsService *kds.KDSService, logger *zap.Logger) service.EventProducer {
+func NewEventService(kdsService *kds.KDSService, logger infrastructure.Logger) service.EventProducer {
 	return &EventService{
 		kdsService: kdsService,
 		logger:     logger,
@@ -27,27 +27,27 @@ func NewEventService(kdsService *kds.KDSService, logger *zap.Logger) service.Eve
 
 // PublishMerchantSync 發布商戶同步事件
 func (s *EventService) PublishMerchantSync(ctx context.Context, event *event.CloudEvent) error {
-	s.logger.Info("Publishing merchant sync event",
-		zap.String("event_id", event.ID),
-		zap.String("global_merchant_id", extractGlobalMerchantID(event)))
+	s.logger.InfoLog("Publishing merchant sync event",
+		s.logger.String("event_id", event.ID),
+		s.logger.String("global_merchant_id", extractGlobalMerchantID(event)))
 
 	return s.publishEvent(ctx, event)
 }
 
 // PublishPlayerSync 發布玩家同步事件
 func (s *EventService) PublishPlayerSync(ctx context.Context, event *event.CloudEvent) error {
-	s.logger.Info("Publishing player sync event",
-		zap.String("event_id", event.ID),
-		zap.String("global_merchant_id", extractGlobalMerchantID(event)))
+	s.logger.InfoLog("Publishing player sync event",
+		s.logger.String("event_id", event.ID),
+		s.logger.String("global_merchant_id", extractGlobalMerchantID(event)))
 
 	return s.publishEvent(ctx, event)
 }
 
 // PublishManagerSync 發布管理員同步事件
 func (s *EventService) PublishManagerSync(ctx context.Context, event *event.CloudEvent) error {
-	s.logger.Info("Publishing manager sync event",
-		zap.String("event_id", event.ID),
-		zap.String("global_merchant_id", extractGlobalMerchantID(event)))
+	s.logger.InfoLog("Publishing manager sync event",
+		s.logger.String("event_id", event.ID),
+		s.logger.String("global_merchant_id", extractGlobalMerchantID(event)))
 
 	return s.publishEvent(ctx, event)
 }
@@ -69,9 +69,9 @@ func (s *EventService) publishEvent(ctx context.Context, event *event.CloudEvent
 		return fmt.Errorf("failed to send event to KDS: %w", err)
 	}
 
-	s.logger.Debug("Event published successfully",
-		zap.String("event_id", event.ID),
-		zap.String("event_type", event.Type))
+	s.logger.DebugLog("Event published successfully",
+		s.logger.String("event_id", event.ID),
+		s.logger.String("event_type", event.Type))
 
 	return nil
 }

@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/dto"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/http/response"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/utils/response"
 )
 
 // ErrorResponse 錯誤響應模型
@@ -442,7 +442,7 @@ func (h *HTTPHandler) GetMessageCampaign(c *gin.Context) {
 // @Param page_size query int false "每頁數量" default(10)
 // @Param include_deleted query bool false "是否包含已刪除的活動" default(false)
 // @Param status query []int false "狀態篩選 (1=草稿, 2=已排程, 3=已發送, 4=已取消)"
-// @Success 200 {object} MessageCampaignListResponse
+// @Success 200 {object} dto.MessageCampaignListResponse
 // @Failure 500 {object} ErrorResponse
 // @Security ApiKeyAuth
 // @Router /api/v1/message-campaigns [get]

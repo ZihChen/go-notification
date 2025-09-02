@@ -17,13 +17,14 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/merchant"
 	repository4 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/message"
 	repository2 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/player"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/level"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/manager"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/merchant"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/message"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/player"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
+	service2 "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/kds"
@@ -45,7 +46,7 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, redis
 	if err != nil {
 		return nil, err
 	}
-	eventProducer := provideEventProducer(kdsService, logger)
+	eventProducer := service.NewEventService(kdsService, logger)
 	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger)
 	playerRepository := repository2.NewPlayerRepository(db)
 	levelRepository := repository2.NewLevelRepository(db)
@@ -70,7 +71,7 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, re
 	if err != nil {
 		return nil, err
 	}
-	eventProducer := provideEventProducer(kdsService, logger)
+	eventProducer := service.NewEventService(kdsService, logger)
 	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger)
 	playerRepository := repository2.NewPlayerRepository(db)
 	levelRepository := repository2.NewLevelRepository(db)
@@ -96,7 +97,7 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 	if err != nil {
 		return nil, err
 	}
-	eventProducer := provideEventProducer(kdsService, logger)
+	eventProducer := service.NewEventService(kdsService, logger)
 	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger)
 	playerRepository := repository2.NewPlayerRepository(db)
 	levelRepository := repository2.NewLevelRepository(db)
@@ -153,11 +154,11 @@ type WorkerComponents struct {
 	Server  *asynq.Server
 }
 
-var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient, repository.NewMerchantRepository, repository2.NewPlayerRepository, repository3.NewManagerRepository, repository4.NewMessageCampaignRepository, repository4.NewPlayerMessageRepository, repository2.NewLevelRepository, repository2.NewTagRepository, repository2.NewPlayerTagRepository, provideEventProducer, merchant.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message.NewMessageUseCase, level.NewLevelUseCase, player.NewTagUseCase)
+var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient, repository.NewMerchantRepository, repository2.NewPlayerRepository, repository3.NewManagerRepository, repository4.NewMessageCampaignRepository, repository4.NewPlayerMessageRepository, repository2.NewLevelRepository, repository2.NewTagRepository, repository2.NewPlayerTagRepository, service.NewEventService, merchant.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message.NewMessageUseCase, level.NewLevelUseCase, player.NewTagUseCase)
 
-// 事件生產者提供者
-func provideEventProducer(kdsService *kds.KDSService, logger infrastructure.Logger) service.EventProducer {
-	return kdsService
+// 事件生產者提供者 (保留作為別名)
+func provideEventProducer(kdsService *kds.KDSService, logger infrastructure.Logger) service2.EventProducer {
+	return service.NewEventService(kdsService, logger)
 }
 
 // 提供 worker 服務器

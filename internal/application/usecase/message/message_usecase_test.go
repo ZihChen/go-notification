@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/dto"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
 	"github.com/stretchr/testify/assert"

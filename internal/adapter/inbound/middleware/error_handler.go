@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/http/response"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/utils/response"
 )
 
 // ErrorHandler 全局錯誤處理中間件
