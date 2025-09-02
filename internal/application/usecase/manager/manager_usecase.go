@@ -160,7 +160,10 @@ func (u *ManagerUseCase) publishManagerSyncEvent(
 }
 
 // GetManagerByID 通過ID獲取管理員
-func (u *ManagerUseCase) GetManagerByID(ctx context.Context, id uint64) (*dto.ManagerResponse, error) {
+func (u *ManagerUseCase) GetManagerByID(
+	ctx context.Context,
+	id uint64,
+) (*dto.ManagerResponse, error) {
 	// 創建 span 並跟踪此操作
 	ctx, span := tracing.StartSpan(ctx, "ManagerUseCase.GetManagerByID")
 	defer tracing.SpanEnd(span)

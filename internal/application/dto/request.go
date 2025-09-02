@@ -56,7 +56,6 @@ type SuccessResponse struct {
 	Status string `json:"status"`
 }
 
-
 // AutoSettingItem 自動設定項目
 type AutoSettingItem struct {
 	Category    uint8  `json:"category"     binding:"required,min=1,max=3"`

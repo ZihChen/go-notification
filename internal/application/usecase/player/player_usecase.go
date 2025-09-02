@@ -258,7 +258,7 @@ func (u *PlayerUseCase) GetPlayerByID(ctx context.Context, id uint64) (*dto.Play
 		GlobalID:     player.GlobalPlayerID,
 		MerchantID:   player.MerchantID,
 		Username:     player.Account,
-		Level:        0, // TODO: 取得玩家等級
+		Level:        0,          // TODO: 取得玩家等級
 		Tags:         []string{}, // TODO: 取得玩家標籤
 		LastActiveAt: player.LastActiveAt,
 		CreatedAt:    player.CreatedAt,
@@ -297,7 +297,7 @@ func (u *PlayerUseCase) GetPlayerByGlobalID(
 		GlobalID:     player.GlobalPlayerID,
 		MerchantID:   player.MerchantID,
 		Username:     player.Account,
-		Level:        0, // TODO: 取得玩家等級
+		Level:        0,          // TODO: 取得玩家等級
 		Tags:         []string{}, // TODO: 取得玩家標籤
 		LastActiveAt: player.LastActiveAt,
 		CreatedAt:    player.CreatedAt,
