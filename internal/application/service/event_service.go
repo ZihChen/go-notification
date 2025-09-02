@@ -18,7 +18,10 @@ type EventService struct {
 }
 
 // NewEventService 創建事件服務
-func NewEventService(kdsService *kds.KDSService, logger infrastructure.Logger) service.EventProducer {
+func NewEventService(
+	kdsService *kds.KDSService,
+	logger infrastructure.Logger,
+) service.EventProducer {
 	return &EventService{
 		kdsService: kdsService,
 		logger:     logger,

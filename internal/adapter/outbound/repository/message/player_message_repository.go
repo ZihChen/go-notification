@@ -47,13 +47,12 @@ func (r *PlayerMessageRepository) FindByPlayerID(
 ) ([]*entity.PlayerMessage, int, error) {
 	var messages []models.PlayerMessage
 	var total int64
-	domainMessages := make([]*entity.PlayerMessage, len(messages))
 
 	// 計算總數
 	if err := r.db.WithContext(ctx).Model(&models.PlayerMessage{}).
 		Where("global_player_id = ?", globalPlayerID).
 		Count(&total).Error; err != nil {
-		return domainMessages, 0, err
+		return nil, 0, err
 	}
 
 	// 查詢分頁數據
@@ -66,9 +65,11 @@ func (r *PlayerMessageRepository) FindByPlayerID(
 		Find(&messages)
 
 	if result.Error != nil {
-		return domainMessages, 0, result.Error
+		return nil, 0, result.Error
 	}
 
+	// 初始化 domainMessages 並轉換資料
+	domainMessages := make([]*entity.PlayerMessage, len(messages))
 	for i, message := range messages {
 		domainMessages[i] = mapToDomainPlayerMessage(&message)
 	}
