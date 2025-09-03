@@ -155,6 +155,18 @@ func (m *MockMessageCampaignRepository) Delete(ctx context.Context, id uint64) e
 	return args.Error(0)
 }
 
+func (m *MockMessageCampaignRepository) FindByMerchantID(
+	ctx context.Context,
+	merchantID string,
+	limit, offset int,
+) ([]*entity.MessageCampaign, error) {
+	args := m.Called(ctx, merchantID, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.MessageCampaign), args.Error(1)
+}
+
 type MockMerchantRepository struct {
 	mock.Mock
 }
@@ -364,9 +376,25 @@ func (m *MockPlayerRepository) Delete(ctx context.Context, id uint64) error {
 	return args.Error(0)
 }
 
+func (m *MockPlayerRepository) UpdateLastActive(ctx context.Context, id uint64) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
 func (m *MockPlayerRepository) Upsert(ctx context.Context, player *entity.Player) error {
 	args := m.Called(ctx, player)
 	return args.Error(0)
+}
+
+func (m *MockPlayerRepository) FirstOrCreateByGlobalID(
+	ctx context.Context,
+	globalID string,
+) (*entity.Player, error) {
+	args := m.Called(ctx, globalID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.Player), args.Error(1)
 }
 
 // Helper functions

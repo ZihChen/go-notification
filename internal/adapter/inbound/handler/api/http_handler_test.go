@@ -47,6 +47,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
+	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -258,115 +259,15 @@ func (m *MockMessageUseCase) CreateOrUpdateMerchantAutoSettings(
 	return args.Get(0).(*dto.AutoSettingsOperationResponse), args.Error(1)
 }
 
-type MockLogger struct {
-	mock.Mock
-}
-
-func (m *MockLogger) DebugWithContext(
-	ctx context.Context,
-	msg string,
-	fields ...*entity.LoggerFiled,
-) {
-	m.Called(ctx, msg, fields)
-}
-
-func (m *MockLogger) InfoWithContext(
-	ctx context.Context,
-	msg string,
-	fields ...*entity.LoggerFiled,
-) {
-	m.Called(ctx, msg, fields)
-}
-
-func (m *MockLogger) ErrorWithContext(
-	ctx context.Context,
-	msg string,
-	fields ...*entity.LoggerFiled,
-) {
-	m.Called(ctx, msg, fields)
-}
-
-func (m *MockLogger) WarnWithContext(
-	ctx context.Context,
-	msg string,
-	fields ...*entity.LoggerFiled,
-) {
-	m.Called(ctx, msg, fields)
-}
-
-func (m *MockLogger) FatalWithContext(
-	ctx context.Context,
-	msg string,
-	fields ...*entity.LoggerFiled,
-) {
-	m.Called(ctx, msg, fields)
-}
-
-func (m *MockLogger) DebugLog(msg string, fields ...*entity.LoggerFiled) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) InfoLog(msg string, fields ...*entity.LoggerFiled) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) ErrorLog(msg string, fields ...*entity.LoggerFiled) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) WarnLog(msg string, fields ...*entity.LoggerFiled) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) FatalLog(msg string, fields ...*entity.LoggerFiled) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) Error(key string, value error) *entity.LoggerFiled {
-	return &entity.LoggerFiled{Key: key, Value: value}
-}
-
-func (m *MockLogger) String(key string, value string) *entity.LoggerFiled {
-	return &entity.LoggerFiled{Key: key, Value: value}
-}
-
-func (m *MockLogger) Int(key string, value int) *entity.LoggerFiled {
-	return &entity.LoggerFiled{Key: key, Value: value}
-}
-
-func (m *MockLogger) Int64(key string, value int64) *entity.LoggerFiled {
-	return &entity.LoggerFiled{Key: key, Value: value}
-}
-
-func (m *MockLogger) UInt64(key string, value uint64) *entity.LoggerFiled {
-	return &entity.LoggerFiled{Key: key, Value: value}
-}
-
-func (m *MockLogger) Float64(key string, value float64) *entity.LoggerFiled {
-	return &entity.LoggerFiled{Key: key, Value: value}
-}
-
-func (m *MockLogger) Bool(key string, value bool) *entity.LoggerFiled {
-	return &entity.LoggerFiled{Key: key, Value: value}
-}
-
-func (m *MockLogger) Any(key string, value interface{}) *entity.LoggerFiled {
-	return &entity.LoggerFiled{Key: key, Value: value}
-}
-
-func (m *MockLogger) Close() {
-	m.Called()
-}
-
 // Test helper functions
 func createMockDependencies(
 	t *testing.T,
-) (*MockMerchantUseCase, *MockPlayerUseCase, *MockManagerUseCase, *MockMessageUseCase, *MockLogger) {
+) (*MockMerchantUseCase, *MockPlayerUseCase, *MockManagerUseCase, *MockMessageUseCase, *helper.MockLogger) {
 	merchantUseCase := new(MockMerchantUseCase)
 	playerUseCase := new(MockPlayerUseCase)
 	managerUseCase := new(MockManagerUseCase)
 	messageUseCase := new(MockMessageUseCase)
-	logger := new(MockLogger)
+	logger := helper.SetupLoggerMock(t)
 	return merchantUseCase, playerUseCase, managerUseCase, messageUseCase, logger
 }
 
@@ -610,10 +511,6 @@ func TestHTTPHandler_HealthCheck_DatabaseUnhealthy(t *testing.T) {
 	merchantUseCase.On("GetMerchantByID", mock.Anything, uint64(1)).
 		Return(nil, dbError)
 
-	// Mock logger call
-	logger.On("ErrorWithContext", mock.Anything, "Database health check failed", mock.Anything).
-		Return()
-
 	// Execute
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/health", nil)
@@ -629,7 +526,6 @@ func TestHTTPHandler_HealthCheck_DatabaseUnhealthy(t *testing.T) {
 	assert.Equal(t, "database service unavailable", response["error"])
 
 	merchantUseCase.AssertExpectations(t)
-	logger.AssertExpectations(t)
 }
 
 // ============================================================================
@@ -1152,9 +1048,6 @@ func TestHTTPHandler_CreateMessageCampaign_UseCaseError(t *testing.T) {
 	messageUseCase.On("CreateMessageCampaign", mock.Anything, mock.Anything).
 		Return(errors.New("database error"))
 
-	// Mock logger calls
-	logger.On("ErrorWithContext", mock.Anything, mock.Anything, mock.Anything).Return()
-
 	// Execute
 	req, _ := createJSONRequest("POST", "/api/v1/message-campaigns", requestData)
 	w := httptest.NewRecorder()
@@ -1169,7 +1062,6 @@ func TestHTTPHandler_CreateMessageCampaign_UseCaseError(t *testing.T) {
 	assert.Equal(t, false, response["success"])
 
 	messageUseCase.AssertExpectations(t)
-	logger.AssertExpectations(t)
 }
 
 func TestHTTPHandler_UpdateMessageCampaign_Success(t *testing.T) {

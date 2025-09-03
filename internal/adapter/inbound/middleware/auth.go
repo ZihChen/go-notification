@@ -30,12 +30,14 @@ func AuthMiddleware(config AuthConfig) gin.HandlerFunc {
 		if encryptedKey == "" {
 			response.Unauthorized(c, "Missing API key", "The request is missing the API key").
 				Return()
+			return
 		}
 
 		// 解密API Key
 		decryptedKey, err := decryptAPIKey(encryptedKey, config.EncryptionType)
 		if err != nil {
 			response.Unauthorized(c, "Invalid API key format", err.Error()).Return()
+			return
 		}
 
 		// 驗證API Key並取得對應的merchant ID

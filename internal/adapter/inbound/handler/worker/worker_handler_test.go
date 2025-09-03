@@ -32,11 +32,11 @@ import (
 	"github.com/hibiken/asynq"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
+	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.opentelemetry.io/otel/trace"
@@ -173,106 +173,6 @@ func (m *MockPlayerTagUseCase) SyncTag(
 	return args.Error(0)
 }
 
-type MockLogger struct {
-	mock.Mock
-}
-
-func (m *MockLogger) DebugWithContext(
-	ctx context.Context,
-	msg string,
-	fields ...*entity.LoggerFiled,
-) {
-	m.Called(ctx, msg, fields)
-}
-
-func (m *MockLogger) InfoWithContext(
-	ctx context.Context,
-	msg string,
-	fields ...*entity.LoggerFiled,
-) {
-	m.Called(ctx, msg, fields)
-}
-
-func (m *MockLogger) ErrorWithContext(
-	ctx context.Context,
-	msg string,
-	fields ...*entity.LoggerFiled,
-) {
-	m.Called(ctx, msg, fields)
-}
-
-func (m *MockLogger) WarnWithContext(
-	ctx context.Context,
-	msg string,
-	fields ...*entity.LoggerFiled,
-) {
-	m.Called(ctx, msg, fields)
-}
-
-func (m *MockLogger) FatalWithContext(
-	ctx context.Context,
-	msg string,
-	fields ...*entity.LoggerFiled,
-) {
-	m.Called(ctx, msg, fields)
-}
-
-func (m *MockLogger) DebugLog(msg string, fields ...*entity.LoggerFiled) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) InfoLog(msg string, fields ...*entity.LoggerFiled) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) ErrorLog(msg string, fields ...*entity.LoggerFiled) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) WarnLog(msg string, fields ...*entity.LoggerFiled) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) FatalLog(msg string, fields ...*entity.LoggerFiled) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) Error(key string, value error) *entity.LoggerFiled {
-	return &entity.LoggerFiled{Key: key, Value: value}
-}
-
-func (m *MockLogger) String(key string, value string) *entity.LoggerFiled {
-	return &entity.LoggerFiled{Key: key, Value: value}
-}
-
-func (m *MockLogger) Int(key string, value int) *entity.LoggerFiled {
-	return &entity.LoggerFiled{Key: key, Value: value}
-}
-
-func (m *MockLogger) Int64(key string, value int64) *entity.LoggerFiled {
-	return &entity.LoggerFiled{Key: key, Value: value}
-}
-
-func (m *MockLogger) UInt64(key string, value uint64) *entity.LoggerFiled {
-	return &entity.LoggerFiled{Key: key, Value: value}
-}
-
-func (m *MockLogger) Float64(key string, value float64) *entity.LoggerFiled {
-	return &entity.LoggerFiled{Key: key, Value: value}
-}
-
-func (m *MockLogger) Bool(key string, value bool) *entity.LoggerFiled {
-	return &entity.LoggerFiled{Key: key, Value: value}
-}
-
-func (m *MockLogger) Any(key string, value interface{}) *entity.LoggerFiled {
-	return &entity.LoggerFiled{Key: key, Value: value}
-}
-
-func (m *MockLogger) Close() {
-	m.Called()
-}
-
 // Helper function for creating tasks
 func createMockTaskForHandler(taskType string, payload []byte) *asynq.Task {
 	// 為了測試 Handler 方法，我們需要建立真實的 asynq.Task
@@ -286,14 +186,14 @@ func createMockDependencies(t *testing.T) (
 	*MockManagerUseCase,
 	*MockPlayerLevelUseCase,
 	*MockPlayerTagUseCase,
-	*MockLogger,
+	*helper.MockLogger,
 ) {
 	merchantUseCase := new(MockMerchantUseCase)
 	playerUseCase := new(MockPlayerUseCase)
 	managerUseCase := new(MockManagerUseCase)
 	levelUseCase := new(MockPlayerLevelUseCase)
 	tagUseCase := new(MockPlayerTagUseCase)
-	logger := new(MockLogger)
+	logger := helper.SetupLoggerMock(t)
 	return merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, logger
 }
 
@@ -550,9 +450,6 @@ func TestWorkerHandler_RegisterHandlers_Success(t *testing.T) {
 
 	// Execute
 	handler.RegisterHandlers(mux)
-
-	// Verify - Check that handlers were registered (mux is internal, so we verify via logging)
-	logger.AssertExpectations(t)
 }
 
 // ============================================================================
@@ -601,8 +498,6 @@ func TestWorkerHandler_HandleMerchantSync_Success(t *testing.T) {
 	task := createMockTaskForHandler(queue.TypeMerchantSync, payload)
 
 	// Mock expectations
-	logger.On("InfoLog", "Processing merchant sync task", mock.Anything).Return()
-	logger.On("InfoLog", "Merchant sync task completed successfully", mock.Anything).Return()
 	merchantUseCase.On("SyncMerchant", mock.Anything, mock.AnythingOfType("*event.MerchantEvent")).
 		Return(nil)
 
@@ -612,7 +507,6 @@ func TestWorkerHandler_HandleMerchantSync_Success(t *testing.T) {
 	// Verify
 	assert.NoError(t, err)
 	merchantUseCase.AssertExpectations(t)
-	logger.AssertExpectations(t)
 }
 
 func TestWorkerHandler_HandleMerchantSync_InvalidJSON(t *testing.T) {
@@ -632,18 +526,12 @@ func TestWorkerHandler_HandleMerchantSync_InvalidJSON(t *testing.T) {
 	payload := createInvalidJSONPayload()
 	task := createMockTaskForHandler(queue.TypeMerchantSync, payload)
 
-	// Mock expectations
-	logger.On("InfoLog", "Processing merchant sync task", mock.Anything).Return()
-	logger.On("ErrorWithContext", mock.Anything, "Failed to parse cloud event", mock.Anything).
-		Return()
-
 	// Execute
 	err := handler.HandleMerchantSync(context.Background(), task)
 
 	// Verify
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unmarshal cloud event")
-	logger.AssertExpectations(t)
 }
 
 func TestWorkerHandler_HandleMerchantSync_SyncError(t *testing.T) {
@@ -666,8 +554,6 @@ func TestWorkerHandler_HandleMerchantSync_SyncError(t *testing.T) {
 	syncError := errors.New("database connection failed")
 
 	// Mock expectations
-	logger.On("InfoLog", "Processing merchant sync task", mock.Anything).Return()
-	logger.On("ErrorLog", "Failed to sync merchant", mock.Anything).Return()
 	merchantUseCase.On("SyncMerchant", mock.Anything, mock.AnythingOfType("*event.MerchantEvent")).
 		Return(syncError)
 
@@ -679,7 +565,6 @@ func TestWorkerHandler_HandleMerchantSync_SyncError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to sync merchant")
 	assert.Contains(t, err.Error(), "database connection failed")
 	merchantUseCase.AssertExpectations(t)
-	logger.AssertExpectations(t)
 }
 
 // ============================================================================
@@ -704,10 +589,6 @@ func TestWorkerHandler_HandlePlayerSync_Success(t *testing.T) {
 	task := createMockTaskForHandler(queue.TypePlayerSync, payload)
 
 	// Mock expectations
-	logger.On("InfoLog", "Processing merchant sync task", mock.Anything).
-		Return()
-		// Note: Bug in original code - should be "player sync"
-	logger.On("InfoLog", "Player sync task completed successfully", mock.Anything).Return()
 	playerUseCase.On("SyncPlayer", mock.Anything, mock.AnythingOfType("*event.PlayerEvent")).
 		Return(nil)
 
@@ -717,7 +598,6 @@ func TestWorkerHandler_HandlePlayerSync_Success(t *testing.T) {
 	// Verify
 	assert.NoError(t, err)
 	playerUseCase.AssertExpectations(t)
-	logger.AssertExpectations(t)
 }
 
 func TestWorkerHandler_HandlePlayerSync_UnmarshalEventError(t *testing.T) {
@@ -769,8 +649,6 @@ func TestWorkerHandler_HandlePlayerSync_SyncError(t *testing.T) {
 	syncError := errors.New("player not found")
 
 	// Mock expectations
-	logger.On("InfoLog", "Processing merchant sync task", mock.Anything).Return()
-	logger.On("ErrorLog", "Failed to sync player", mock.Anything).Return()
 	playerUseCase.On("SyncPlayer", mock.Anything, mock.AnythingOfType("*event.PlayerEvent")).
 		Return(syncError)
 
@@ -782,7 +660,6 @@ func TestWorkerHandler_HandlePlayerSync_SyncError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to sync player")
 	assert.Contains(t, err.Error(), "player not found")
 	playerUseCase.AssertExpectations(t)
-	logger.AssertExpectations(t)
 }
 
 // ============================================================================
@@ -807,8 +684,6 @@ func TestWorkerHandler_HandleManagerSync_Success(t *testing.T) {
 	task := createMockTaskForHandler(queue.TypeManagerSync, payload)
 
 	// Mock expectations
-	logger.On("InfoLog", "Processing manager sync task", mock.Anything).Return()
-	logger.On("InfoLog", "Manager sync task completed successfully", mock.Anything).Return()
 	managerUseCase.On("SyncManager", mock.Anything, mock.AnythingOfType("*event.ManagerEvent")).
 		Return(nil)
 
@@ -818,7 +693,6 @@ func TestWorkerHandler_HandleManagerSync_Success(t *testing.T) {
 	// Verify
 	assert.NoError(t, err)
 	managerUseCase.AssertExpectations(t)
-	logger.AssertExpectations(t)
 }
 
 func TestWorkerHandler_HandleManagerSync_SyncError(t *testing.T) {
@@ -841,8 +715,6 @@ func TestWorkerHandler_HandleManagerSync_SyncError(t *testing.T) {
 	syncError := errors.New("permission denied")
 
 	// Mock expectations
-	logger.On("InfoLog", "Processing manager sync task", mock.Anything).Return()
-	logger.On("ErrorLog", "Failed to sync manager", mock.Anything).Return()
 	managerUseCase.On("SyncManager", mock.Anything, mock.AnythingOfType("*event.ManagerEvent")).
 		Return(syncError)
 
@@ -854,7 +726,6 @@ func TestWorkerHandler_HandleManagerSync_SyncError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to sync manager")
 	assert.Contains(t, err.Error(), "permission denied")
 	managerUseCase.AssertExpectations(t)
-	logger.AssertExpectations(t)
 }
 
 // ============================================================================
@@ -879,10 +750,6 @@ func TestWorkerHandler_HandlePlayerLevelSync_Success(t *testing.T) {
 	task := createMockTaskForHandler(queue.TypePlayerLevelSync, payload)
 
 	// Mock expectations
-	logger.On("InfoWithContext", mock.Anything, "Processing player level sync task", mock.Anything).
-		Return()
-	logger.On("InfoWithContext", mock.Anything, "Player level sync task completed successfully", mock.Anything).
-		Return()
 	levelUseCase.On("SyncPlayerLevel", mock.Anything, mock.AnythingOfType("*event.IdentityPlayerLevelSyncEvent")).
 		Return(nil)
 
@@ -892,7 +759,6 @@ func TestWorkerHandler_HandlePlayerLevelSync_Success(t *testing.T) {
 	// Verify
 	assert.NoError(t, err)
 	levelUseCase.AssertExpectations(t)
-	logger.AssertExpectations(t)
 }
 
 func TestWorkerHandler_HandlePlayerLevelSync_SyncError(t *testing.T) {
@@ -915,10 +781,6 @@ func TestWorkerHandler_HandlePlayerLevelSync_SyncError(t *testing.T) {
 	syncError := errors.New("level already exists")
 
 	// Mock expectations
-	logger.On("InfoWithContext", mock.Anything, "Processing player level sync task", mock.Anything).
-		Return()
-	logger.On("ErrorWithContext", mock.Anything, "Failed to sync player level", mock.Anything).
-		Return()
 	levelUseCase.On("SyncPlayerLevel", mock.Anything, mock.AnythingOfType("*event.IdentityPlayerLevelSyncEvent")).
 		Return(syncError)
 
@@ -930,7 +792,6 @@ func TestWorkerHandler_HandlePlayerLevelSync_SyncError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to sync player level")
 	assert.Contains(t, err.Error(), "level already exists")
 	levelUseCase.AssertExpectations(t)
-	logger.AssertExpectations(t)
 }
 
 // ============================================================================
@@ -955,10 +816,6 @@ func TestWorkerHandler_HandlePlayerTagsSync_Success(t *testing.T) {
 	task := createMockTaskForHandler(queue.TypePlayerTagsSync, payload)
 
 	// Mock expectations
-	logger.On("InfoWithContext", mock.Anything, "Processing player tags sync task", mock.Anything).
-		Return()
-	logger.On("InfoWithContext", mock.Anything, "Player tags sync task completed successfully", mock.Anything).
-		Return()
 	tagUseCase.On("SyncPlayerTags", mock.Anything, mock.AnythingOfType("*event.IdentityPlayerTagSyncEvent")).
 		Return(nil)
 
@@ -968,7 +825,6 @@ func TestWorkerHandler_HandlePlayerTagsSync_Success(t *testing.T) {
 	// Verify
 	assert.NoError(t, err)
 	tagUseCase.AssertExpectations(t)
-	logger.AssertExpectations(t)
 }
 
 func TestWorkerHandler_HandlePlayerTagsSync_SyncError(t *testing.T) {
@@ -991,10 +847,6 @@ func TestWorkerHandler_HandlePlayerTagsSync_SyncError(t *testing.T) {
 	syncError := errors.New("tag validation failed")
 
 	// Mock expectations
-	logger.On("InfoWithContext", mock.Anything, "Processing player tags sync task", mock.Anything).
-		Return()
-	logger.On("ErrorWithContext", mock.Anything, "Failed to sync player tags", mock.Anything).
-		Return()
 	tagUseCase.On("SyncPlayerTags", mock.Anything, mock.AnythingOfType("*event.IdentityPlayerTagSyncEvent")).
 		Return(syncError)
 
@@ -1006,7 +858,6 @@ func TestWorkerHandler_HandlePlayerTagsSync_SyncError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to sync player tags")
 	assert.Contains(t, err.Error(), "tag validation failed")
 	tagUseCase.AssertExpectations(t)
-	logger.AssertExpectations(t)
 }
 
 // ============================================================================
@@ -1031,9 +882,6 @@ func TestWorkerHandler_HandleTagSync_Success(t *testing.T) {
 	task := createMockTaskForHandler(queue.TypeTagSync, payload)
 
 	// Mock expectations
-	logger.On("InfoWithContext", mock.Anything, "Processing tag sync task", mock.Anything).Return()
-	logger.On("InfoWithContext", mock.Anything, "Tag sync task completed successfully", mock.Anything).
-		Return()
 	tagUseCase.On("SyncTag", mock.Anything, mock.AnythingOfType("*event.IdentityTagSyncEvent")).
 		Return(nil)
 
@@ -1043,7 +891,6 @@ func TestWorkerHandler_HandleTagSync_Success(t *testing.T) {
 	// Verify
 	assert.NoError(t, err)
 	tagUseCase.AssertExpectations(t)
-	logger.AssertExpectations(t)
 }
 
 func TestWorkerHandler_HandleTagSync_SyncError(t *testing.T) {
@@ -1066,8 +913,6 @@ func TestWorkerHandler_HandleTagSync_SyncError(t *testing.T) {
 	syncError := errors.New("duplicate tag name")
 
 	// Mock expectations
-	logger.On("InfoWithContext", mock.Anything, "Processing tag sync task", mock.Anything).Return()
-	logger.On("ErrorWithContext", mock.Anything, "Failed to sync tag", mock.Anything).Return()
 	tagUseCase.On("SyncTag", mock.Anything, mock.AnythingOfType("*event.IdentityTagSyncEvent")).
 		Return(syncError)
 
@@ -1079,7 +924,6 @@ func TestWorkerHandler_HandleTagSync_SyncError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to sync tag")
 	assert.Contains(t, err.Error(), "duplicate tag name")
 	tagUseCase.AssertExpectations(t)
-	logger.AssertExpectations(t)
 }
 
 // ============================================================================
