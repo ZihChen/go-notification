@@ -11,20 +11,39 @@ data:
   APP_PORT: "8080"
   APP_DEBUG: "true"
 
+  # HTTP Server 設置
+  SERVER_READ_TIMEOUT: 30s
+  SERVER_WRITE_TIMEOUT: 30s
+  SERVER_IDLE_TIMEOUT: 120s
+
   # 資料庫設置
   DB_HOST: REDACTED_DB_HOST
   DB_PORT: "3306"
   DB_USER: REDACTED_DB_USER_PROD
   # DB_PASSWORD: <secret>
   DB_NAME: ms_fatnotificationcat
-  DB_MAX_IDLE: "10"
-  DB_MAX_OPEN: "50"
-  DB_TIMEOUT: 5s
+
+  # 資料庫連線池設置
+  DB_MAX_IDLE: 25
+  DB_MAX_OPEN: 100
+  DB_MAX_LIFETIME: 1h
+  DB_MAX_IDLE_TIME: 30m
 
   # Redis設置
   REDIS_DOMAIN: {{  include "fatnotificationcat.redis-name" . }}
   REDIS_PORT: "6379"
   REDIS_DB: "0"
+
+  # Redis Pool 設置
+  REDIS_POOL_SIZE: 20
+  REDIS_MIN_IDLE_CONNS: 5
+  REDIS_MAX_RETRIES: 3
+  REDIS_DIAL_TIMEOUT: 5s
+  REDIS_READ_TIMEOUT: 3s
+  REDIS_WRITE_TIMEOUT: 3s
+  REDIS_POOL_TIMEOUT: 4s
+  REDIS_IDLE_TIMEOUT: 5m
+  REDIS_MAX_CONN_AGE: 30m
 
   # AWS KDS設置
   AWS_REGION: ap-northeast-1
@@ -52,3 +71,9 @@ data:
   EVENT_IDENTITY_TAG_SYNC: tw.jvd.fatidentitycat.tag.sync.v1
   EVENT_IDENTITY_PLAYER_LEVEL_SYNC: tw.jvd.fatidentitycat.playerlevel.sync.v1
   EVENT_IDENTITY_PLAYER_TAGS_SYNC: tw.jvd.fatidentitycat.playertags.sync.v1
+
+  # API AUTH 設置
+  AUTH_ENABLED: "true"
+  AUTH_API_KEYS: 'REDACTED_API_KEYS'
+  AUTH_HEADER_KEY: "API-Key"
+  AUTH_ENCRYPTION_TYPE: "base64"
