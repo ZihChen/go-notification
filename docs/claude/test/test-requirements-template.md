@@ -9,6 +9,64 @@
 
 ## 測試架構
 
+### Logger Mock 標準規則
+
+**統一使用 `helper.SetupLoggerMock(t)` 創建 Logger Mock**
+
+```go
+// ✅ 正確做法
+func createMockDependencies(t *testing.T) (*MockRepository, *helper.MockLogger) {
+    repo := new(MockRepository)
+    logger := helper.SetupLoggerMock(t)  // 統一使用此函數
+    return repo, logger
+}
+```
+
+**重要規則：**
+1. **統一調用**: 所有測試都必須使用 `helper.SetupLoggerMock(t)` 創建 Logger Mock
+2. **無需驗證**: **不要** 使用 `logger.AssertExpectations(t)` 進行驗證
+3. **獨立 Mock**: 每個 logger 方法都已獨立 mock，支援所有日誌級別和字段方法
+4. **自動設置**: 函數已預設所有必要的 Mock 期望值
+
+**支援的方法：**
+- **日誌方法**: `DebugLog`, `InfoLog`, `ErrorLog`, `WarnLog`, `FatalLog`
+- **Context 方法**: `DebugWithContext`, `InfoWithContext`, `ErrorWithContext`, `WarnWithContext`, `FatalWithContext`
+- **字段方法**: `Error()`, `String()`, `Int()`, `Int64()`, `UInt64()`, `Float64()`, `Bool()`, `Any()`
+- **生命週期**: `Close()`
+
+```go
+// ❌ 錯誤做法 - 不要手動創建 Logger Mock
+logger := new(helper.MockLogger)
+logger.On("InfoLog", mock.Anything, mock.Anything).Return()  // 不需要
+
+// ❌ 錯誤做法 - 不要驗證 Logger Mock
+logger.AssertExpectations(t)  // 不需要驗證
+
+// ✅ 正確做法 - 只需要創建和使用
+logger := helper.SetupLoggerMock(t)
+// 直接在測試中使用，不需要額外設置期望值
+
+// 使用示例
+func TestSomeFeature(t *testing.T) {
+    // Setup
+    repo := new(MockRepository)
+    logger := helper.SetupLoggerMock(t)  // 自動配置所有 Logger 方法
+    
+    useCase := NewSomeUseCase(repo, logger)
+    
+    // 測試中 logger 的所有方法都可以直接調用，無需手動 Mock
+    // logger.InfoLog(), logger.ErrorLog(), logger.String() 等都已準備就緒
+    
+    // Execute
+    result, err := useCase.DoSomething()
+    
+    // Verify
+    assert.NoError(t, err)
+    repo.AssertExpectations(t)
+    // 不需要: logger.AssertExpectations(t)
+}
+```
+
 ### Repository 層測試
 使用 SQL Mock 進行資料庫操作測試
 
@@ -56,7 +114,7 @@ func (m *Mock[Module]Repository) [Method](ctx context.Context, params...) (*enti
 }
 
 // 依賴創建函數
-func createMockDependencies(t *testing.T) (*Mock[Module]Repository, *MockLogger, *redis.Client) {
+func createMockDependencies(t *testing.T) (*Mock[Module]Repository, *helper.MockLogger, *redis.Client) {
     repo := new(Mock[Module]Repository)
     logger := helper.SetupLoggerMock(t)
     redisClient, _ := redismock.NewClientMock()
@@ -91,14 +149,14 @@ func setupTestRouter() *gin.Engine {
 }
 
 // 創建 Mock 依賴
-func createMockDependencies(t *testing.T) (*Mock[Module]UseCase, *MockLogger) {
+func createMockDependencies(t *testing.T) (*Mock[Module]UseCase, *helper.MockLogger) {
     useCase := new(Mock[Module]UseCase)
-    logger := new(MockLogger)
+    logger := helper.SetupLoggerMock(t)
     return useCase, logger
 }
 
 // 創建測試 Handler
-func createTestHandler(useCase *Mock[Module]UseCase, logger *MockLogger) *HTTPHandler {
+func createTestHandler(useCase *Mock[Module]UseCase, logger *helper.MockLogger) *HTTPHandler {
     return NewHTTPHandler(useCase, logger)
 }
 
@@ -244,6 +302,7 @@ func Test[Module]UseCase_[Method](t *testing.T) {
     
     // 驗證 Mock 調用
     repo.AssertExpectations(t)
+    // 注意：不需要驗證 logger.AssertExpectations(t)
 }
 ```
 
@@ -266,6 +325,7 @@ func Test[Module]UseCase_[Method]_Error(t *testing.T) {
     assert.ErrorIs(t, err, errmsg.ErrRepo[Module]NotFound)
     
     repo.AssertExpectations(t)
+    // 注意：不需要驗證 logger.AssertExpectations(t)
 }
 ```
 
@@ -305,6 +365,7 @@ func TestHTTPHandler_Get[Entity]ByID_Success(t *testing.T) {
     assert.Equal(t, "true", w.Header().Get("X-Response-Sent"))
     
     useCase.AssertExpectations(t)
+    // 注意：不需要驗證 logger.AssertExpectations(t)
 }
 
 func TestHTTPHandler_Get[Entity]ByID_NotFound(t *testing.T) {
@@ -333,6 +394,7 @@ func TestHTTPHandler_Get[Entity]ByID_NotFound(t *testing.T) {
     assert.Contains(t, response, "error")
     
     useCase.AssertExpectations(t)
+    // 注意：不需要驗證 logger.AssertExpectations(t)
 }
 ```
 
@@ -372,6 +434,7 @@ func TestHTTPHandler_Create[Entity]_Success(t *testing.T) {
     assert.Equal(t, true, response["success"])
     
     useCase.AssertExpectations(t)
+    // 注意：不需要驗證 logger.AssertExpectations(t)
 }
 
 func TestHTTPHandler_Create[Entity]_InvalidJSON(t *testing.T) {
@@ -588,6 +651,12 @@ func createUpdate[Entity]Request() *dto.Update[Entity]Request {
 - [ ] SQL Mock 期望完全滿足 (`ExpectationsWereMet`)
 - [ ] 錯誤處理測試完整
 
+### Logger Mock 要求
+- [ ] **必須使用** `helper.SetupLoggerMock(t)` 創建 Logger Mock
+- [ ] **禁止使用** `logger.AssertExpectations(t)` 驗證
+- [ ] **禁止手動設置** Logger Mock 期望值
+- [ ] Logger Mock 支援所有必要方法且自動配置
+
 ### 測試命名規範
 - [ ] 測試函數: `Test[Module][Method]_[Scenario]`
 - [ ] 測試案例: 使用描述性 name 字段
@@ -619,7 +688,12 @@ assert.Equal(t, "true", w.Header().Get("X-Response-Sent"))
 
 // Mock 驗證
 repo.AssertExpectations(t)
+useCase.AssertExpectations(t)
 assert.NoError(t, mock.ExpectationsWereMet())
+
+// Logger Mock - 不需要驗證
+// ❌ logger.AssertExpectations(t)  // 不要這樣做
+// ✅ Logger Mock 已自動配置，無需額外驗證
 ```
 
 ---
