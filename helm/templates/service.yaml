@@ -4,6 +4,7 @@ metadata:
   name: {{ include "fatnotificationcat.fullname" . }}
   labels:
     {{- include "fatnotificationcat.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
 spec:
   type: ClusterIP
   ports:
@@ -12,3 +13,4 @@ spec:
       protocol: TCP
   selector:
     {{- include "fatnotificationcat.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
