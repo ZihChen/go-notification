@@ -47,16 +47,20 @@ func (rm *Manager) SetupRoutersWithMiddleware(router *gin.Engine, cfg *config.Co
 	}
 
 	// 註冊所有路由
-	rm.registerRoutes(router, authMiddleware)
+	rm.registerRoutes(router, cfg, authMiddleware)
 }
 
 // registerRoutes 註冊所有路由，每個路由器使用各自的中間件
-func (rm *Manager) registerRoutes(router *gin.Engine, middleware gin.HandlerFunc) {
+func (rm *Manager) registerRoutes(
+	router *gin.Engine,
+	cfg *config.Config,
+	middleware gin.HandlerFunc,
+) {
 	// 註冊 API 路由 (使用認證中間件)
 	rm.apiRouter.RegisterRoutes(router, middleware)
 
 	// 註冊 Swagger 路由 (不使用認證中間件)
-	rm.swaggerRouter.RegisterRoutes(router)
+	rm.swaggerRouter.RegisterRoutes(router, cfg)
 
 	// 註冊健康檢查路由 (不使用認證中間件)
 	rm.healthRouter.RegisterRoutes(router)

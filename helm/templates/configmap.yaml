@@ -12,6 +12,7 @@ data:
   APP_DEBUG: "true"
 
   # HTTP Server 設置
+  SERVER_HTTP_DOMAIN: "fatnotificationcat-internal.micromicro.work"
   SERVER_READ_TIMEOUT: "30s"
   SERVER_WRITE_TIMEOUT: "30s"
   SERVER_IDLE_TIMEOUT: "120s"

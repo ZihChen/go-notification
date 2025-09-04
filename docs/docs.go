@@ -668,7 +668,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/entity.MessageListResponse"
+                            "$ref": "#/definitions/dto.MessageListResponse"
                         }
                     },
                     "400": {
@@ -1150,10 +1150,10 @@ const docTemplate = `{
         "dto.MessageCampaignListResponse": {
             "type": "object",
             "properties": {
-                "data": {
+                "campaigns": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/entity.MessageCampaign"
+                        "$ref": "#/definitions/dto.MessageCampaignResponse"
                     }
                 },
                 "page": {
@@ -1163,6 +1163,113 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.MessageCampaignResponse": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "global_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_scheduled": {
+                    "type": "boolean"
+                },
+                "merchant_id": {
+                    "type": "integer"
+                },
+                "processed_at": {
+                    "type": "string"
+                },
+                "read_count": {
+                    "type": "integer"
+                },
+                "scheduled_at": {
+                    "type": "string"
+                },
+                "sent_count": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "target_criteria": {
+                    "type": "string"
+                },
+                "target_type": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.MessageListResponse": {
+            "type": "object",
+            "properties": {
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.MessageSummary"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "stats": {
+                    "$ref": "#/definitions/dto.PlayerMessageStats"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.MessageSummary": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_read": {
+                    "type": "boolean"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.PlayerMessageStats": {
+            "type": "object",
+            "properties": {
+                "read_count": {
+                    "type": "integer"
+                },
+                "total_count": {
+                    "type": "integer"
+                },
+                "unread_count": {
                     "type": "integer"
                 }
             }
@@ -1353,50 +1460,6 @@ const docTemplate = `{
                 }
             }
         },
-        "entity.MessageListResponse": {
-            "type": "object",
-            "properties": {
-                "messages": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/entity.MessageSummary"
-                    }
-                },
-                "page": {
-                    "type": "integer"
-                },
-                "page_size": {
-                    "type": "integer"
-                },
-                "stats": {
-                    "$ref": "#/definitions/entity.PlayerMessageStats"
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
-        "entity.MessageSummary": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "is_read": {
-                    "type": "boolean"
-                },
-                "summary": {
-                    "description": "內容摘要",
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
         "entity.Player": {
             "type": "object",
             "properties": {
@@ -1434,20 +1497,6 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
-        },
-        "entity.PlayerMessageStats": {
-            "type": "object",
-            "properties": {
-                "read_count": {
-                    "type": "integer"
-                },
-                "total_count": {
-                    "type": "integer"
-                },
-                "unread_count": {
-                    "type": "integer"
-                }
-            }
         }
     },
     "securityDefinitions": {
@@ -1462,11 +1511,11 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8081",
+	Host:             "",
 	BasePath:         "",
 	Schemes:          []string{},
 	Title:            "Notification Service API",
-	Description:      "用於管理商戶、玩家和管理員的身份服務",
+	Description:      "用於管理商戶、玩家和管理員的通知服務",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

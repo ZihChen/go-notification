@@ -34,6 +34,7 @@ type AppConfig struct {
 
 // ServerConfig HTTP服務器配置
 type ServerConfig struct {
+	HttpDomain   string
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 	IdleTimeout  time.Duration
@@ -128,6 +129,7 @@ func LoadConfig() (*Config, error) {
 			Debug: viper.GetBool("APP_DEBUG"),
 		},
 		Server: ServerConfig{
+			HttpDomain:   viper.GetString("SERVER_HTTP_DOMAIN"),
 			ReadTimeout:  getTimeWithDefault("SERVER_READ_TIMEOUT", 30*time.Second),
 			WriteTimeout: getTimeWithDefault("SERVER_WRITE_TIMEOUT", 30*time.Second),
 			IdleTimeout:  getTimeWithDefault("SERVER_IDLE_TIMEOUT", 120*time.Second),
