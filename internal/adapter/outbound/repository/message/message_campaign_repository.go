@@ -167,7 +167,7 @@ func (r *MessageCampaignRepository) FindScheduledCampaigns(
 		Where("auto_send = ?", false).
 		Where("send_start_time IS NOT NULL").
 		Where("send_start_time <= ?", now).
-		Where("(send_end_time IS NULL OR send_end_time >= ?)", now).
+		Where("status = ?", consts.MessageCampaignStatusScheduled).
 		Find(&campaigns)
 
 	if result.Error != nil {
@@ -253,6 +253,28 @@ func (r *MessageCampaignRepository) UpdateSentCount(
 		Model(&models.MessageCampaign{}).
 		Where("id = ?", campaignID).
 		Update("real_sent_count", count)
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("record not found")
+	}
+
+	return nil
+}
+
+// UpdateStatus 更新活動狀態
+func (r *MessageCampaignRepository) UpdateStatus(
+	ctx context.Context,
+	campaignID uint64,
+	status uint8,
+) error {
+	result := r.db.WithContext(ctx).
+		Model(&models.MessageCampaign{}).
+		Where("id = ?", campaignID).
+		Update("status", status)
 
 	if result.Error != nil {
 		return result.Error

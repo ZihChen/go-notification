@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
@@ -26,7 +27,7 @@ func (u *MessageUseCase) ProcessScheduledCampaigns(ctx context.Context) error {
 	tracing.RecordSpanAttributes(span, attribute.Int("scheduled_campaigns", len(campaigns)))
 
 	for _, campaign := range campaigns {
-		if err := u.SendCampaignToPlayersAsync(ctx, campaign.ID); err != nil {
+		if err = u.SendCampaignToPlayersAsync(ctx, campaign.ID); err != nil {
 			u.logger.ErrorLog("Failed to send campaign",
 				u.logger.Int64("campaign_id", int64(campaign.ID)),
 				u.logger.String("title", campaign.Title),
@@ -126,11 +127,24 @@ func (u *MessageUseCase) SendCampaignToPlayers(ctx context.Context, campaignID u
 			u.logger.Error("err", err))
 	}
 
+	// 更新活動狀態為已發送
+	if err := u.campaignRepo.UpdateStatus(ctx, campaignID, consts.MessageCampaignStatusSent); err != nil {
+		u.logger.WarnLog("Failed to update campaign status to sent",
+			u.logger.Int64("campaign_id", int64(campaignID)),
+			u.logger.Int("status", int(consts.MessageCampaignStatusSent)),
+			u.logger.Error("err", err))
+	} else {
+		u.logger.InfoLog("Campaign status updated to sent",
+			u.logger.Int64("campaign_id", int64(campaignID)),
+			u.logger.Int("status", int(consts.MessageCampaignStatusSent)))
+	}
+
 	tracing.RecordSpanAttributes(span,
 		attribute.Int64("total_sent", totalSent),
+		attribute.Int("final_status", int(consts.MessageCampaignStatusSent)),
 	)
 
-	tracing.TraceEvent(span, "Campaign sent to players")
+	tracing.TraceEvent(span, "Campaign sent to players and status updated")
 
 	u.logger.InfoLog("Campaign sent to players",
 		u.logger.Int64("campaign_id", int64(campaignID)),
@@ -241,11 +255,24 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 			u.logger.Error("err", err))
 	}
 
+	// 更新活動狀態為已發送
+	if err := u.campaignRepo.UpdateStatus(ctx, campaignID, consts.MessageCampaignStatusSent); err != nil {
+		u.logger.WarnLog("Failed to update campaign status to sent",
+			u.logger.Int64("campaign_id", int64(campaignID)),
+			u.logger.Int("status", int(consts.MessageCampaignStatusSent)),
+			u.logger.Error("err", err))
+	} else {
+		u.logger.InfoLog("Campaign status updated to sent",
+			u.logger.Int64("campaign_id", int64(campaignID)),
+			u.logger.Int("status", int(consts.MessageCampaignStatusSent)))
+	}
+
 	tracing.RecordSpanAttributes(span,
 		attribute.Int64("total_sent", totalSent),
+		attribute.Int("final_status", int(consts.MessageCampaignStatusSent)),
 	)
 
-	tracing.TraceEvent(span, "Campaign sent to players asynchronously")
+	tracing.TraceEvent(span, "Campaign sent to players asynchronously and status updated")
 
 	u.logger.InfoLog("Campaign sent to players asynchronously",
 		u.logger.Int64("campaign_id", int64(campaignID)),

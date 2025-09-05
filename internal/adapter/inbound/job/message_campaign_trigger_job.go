@@ -49,5 +49,5 @@ func (j *MessageCampaignTriggerJob) GetName() string {
 }
 
 func (j *MessageCampaignTriggerJob) GetCron() string {
-	return "0 */1 * * * *"
+	return "*/10 * * * * *"
 }

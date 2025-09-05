@@ -38,6 +38,7 @@ type MessageCampaignRepository interface {
 		includeDeleted bool,
 	) error
 	UpdateSentCount(ctx context.Context, campaignID uint64, count int64) error
+	UpdateStatus(ctx context.Context, campaignID uint64, status uint8) error
 	Delete(ctx context.Context, id uint64) error
 }
 
