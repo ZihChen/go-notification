@@ -50,7 +50,6 @@ func NewHTTPHandler(
 	}
 }
 
-// HealthCheck 以下是現有的方法（商戶、玩家、管理員）...
 // HealthCheck 健康檢查
 // @Summary 健康檢查
 // @Description 檢查服務是否正常運行，包含基本服務狀態
@@ -106,7 +105,7 @@ func (h *HTTPHandler) HealthCheck(c *gin.Context) {
 // @Tags 商戶
 // @Accept json
 // @Produce json
-// @Param id path uint64 true "商戶ID"
+// @Param id path uint64 true "商戶ID - 系統內部唯一識別碼，必須為正整數" example(12345)
 // @Success 200 {object} entity.Merchant
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
@@ -135,7 +134,7 @@ func (h *HTTPHandler) GetMerchantByID(c *gin.Context) {
 // @Tags 商戶
 // @Accept json
 // @Produce json
-// @Param global_id path string true "商戶全局ID"
+// @Param global_id path string true "商戶全局ID - 跨系統唯一識別符，由系統自動生成的UUID格式" example("550e8400-e29b-41d4-a716-446655440000")
 // @Success 200 {object} entity.Merchant
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
@@ -164,7 +163,7 @@ func (h *HTTPHandler) GetMerchantByGlobalID(c *gin.Context) {
 // @Tags 玩家
 // @Accept json
 // @Produce json
-// @Param id path uint64 true "玩家ID"
+// @Param id path uint64 true "玩家ID - 系統內部唯一識別碼，必須為正整數" example(67890)
 // @Success 200 {object} entity.Player
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
@@ -193,7 +192,7 @@ func (h *HTTPHandler) GetPlayerByID(c *gin.Context) {
 // @Tags 玩家
 // @Accept json
 // @Produce json
-// @Param global_id path string true "玩家全局ID"
+// @Param global_id path string true "玩家全局ID - 跨系統唯一識別符，由系統自動生成的UUID格式" example("123e4567-e89b-12d3-a456-426614174000")
 // @Success 200 {object} entity.Player
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
@@ -223,7 +222,7 @@ func (h *HTTPHandler) GetPlayerByGlobalID(c *gin.Context) {
 // @Tags 玩家
 // @Accept json
 // @Produce json
-// @Param id path uint64 true "玩家ID"
+// @Param id path uint64 true "玩家ID - 系統內部唯一識別碼，必須為正整數" example(67890)
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
@@ -253,8 +252,8 @@ func (h *HTTPHandler) UpdatePlayerLastActive(c *gin.Context) {
 // @Tags 管理員
 // @Accept json
 // @Produce json
-// @Param id path uint64 true "管理員ID"
-// @Success 200 {object} Manager
+// @Param id path uint64 true "管理員ID - 系統內部唯一識別碼，必須為正整數" example(11223)
+// @Success 200 {object} entity.Manager
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
@@ -283,7 +282,7 @@ func (h *HTTPHandler) GetManagerByID(c *gin.Context) {
 // @Tags 管理員
 // @Accept json
 // @Produce json
-// @Param global_id path string true "管理員全局ID"
+// @Param global_id path string true "管理員全局ID - 跨系統唯一識別符，由系統自動生成的UUID格式" example("987fcdeb-51a2-43d1-9c4b-123456789abc")
 // @Success 200 {object} entity.Manager
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
@@ -306,7 +305,7 @@ func (h *HTTPHandler) GetManagerByGlobalID(c *gin.Context) {
 	response.OK(c).Data(manager).Return()
 }
 
-// 以下是新增的訊息相關方法
+// ========== 訊息活動管理 API ==========
 
 // CreateMessageCampaign 創建會員訊息活動
 // @Summary 創建會員訊息活動
@@ -314,7 +313,7 @@ func (h *HTTPHandler) GetManagerByGlobalID(c *gin.Context) {
 // @Tags 會員訊息活動
 // @Accept json
 // @Produce json
-// @Param request body dto.CreateMessageCampaignRequest true "創建請求"
+// @Param request body dto.CreateMessageCampaignRequest true "創建消息活動請求 - 包含消息標題、內容、類型等完整資訊"
 // @Success 201 {object} entity.MessageCampaign
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
@@ -346,7 +345,7 @@ func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path string true "Campaign Global ID"
-// @Param request body dto.UpdateMessageCampaignRequest true "Update message campaign request"
+// @Param request body dto.UpdateMessageCampaignRequest true "更新消息活動請求 - 包含需要更新的消息標題、內容、類型等資訊"
 // @Success 200 {object} entity.MessageCampaign
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
@@ -382,7 +381,7 @@ func (h *HTTPHandler) UpdateMessageCampaign(c *gin.Context) {
 // @Summary 刪除會員訊息活動
 // @Description 刪除指定GlobalID的會員訊息活動
 // @Tags 會員訊息活動
-// @Param global_id path string true "Campaign Global ID"
+// @Param global_id path string true "訊息活動全局ID - 跨系統唯一識別符，用於標識特定訊息活動" example("msg-550e8400-e29b-41d4-a716-446655440000")
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
@@ -409,7 +408,7 @@ func (h *HTTPHandler) DeleteMessageCampaign(c *gin.Context) {
 // @Summary 獲取會員訊息活動
 // @Description 根據GlobalID獲取會員訊息活動詳情
 // @Tags 會員訊息活動
-// @Param global_id path string true "Campaign Global ID"
+// @Param global_id path string true "訊息活動全局ID - 跨系統唯一識別符，用於標識特定訊息活動" example("msg-550e8400-e29b-41d4-a716-446655440000")
 // @Success 200 {object} entity.MessageCampaign
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
@@ -438,10 +437,10 @@ func (h *HTTPHandler) GetMessageCampaign(c *gin.Context) {
 // @Summary 列出會員訊息活動
 // @Description 分頁列出會員訊息活動
 // @Tags 會員訊息活動
-// @Param page query int false "頁碼" default(1)
-// @Param page_size query int false "每頁數量" default(10)
-// @Param include_deleted query bool false "是否包含已刪除的活動" default(false)
-// @Param status query []int false "狀態篩選 (1=草稿, 2=已排程, 3=已發送, 4=已取消)"
+// @Param page query int false "頁碼 - 分頁查詢的第几頁，必須大於0" minimum(1) default(1) example(1)
+// @Param page_size query int false "每頁數量 - 每頁返回的記錄數，範圍1-100" minimum(1) maximum(100) default(10) example(10)
+// @Param include_deleted query bool false "是否包含已刪除的活動 - true:包含已刪除的記錄，false:僅顯示正常記錄" default(false) example(false)
+// @Param status query []int false "狀態篩選 - 活動狀態篩選條件，可多選：1=草稿，2=已排程，3=已發送，4=已取消" enums(1,2,3,4) example(1,2)
 // @Success 200 {object} dto.MessageCampaignListResponse
 // @Failure 500 {object} ErrorResponse
 // @Security ApiKeyAuth
@@ -481,9 +480,9 @@ func (h *HTTPHandler) ListMessageCampaigns(c *gin.Context) {
 // @Tags 玩家訊息
 // @Accept json
 // @Produce json
-// @Param global_player_id path string true "全域玩家ID"
-// @Param page query int false "頁碼" default(1)
-// @Param page_size query int false "每頁數量" default(10)
+// @Param global_player_id path string true "全域玩家ID - 跨系統玩家唯一識別符，用於標識特定玩家" example("player-123e4567-e89b-12d3-a456-426614174000")
+// @Param page query int false "頁碼 - 分頁查詢的第几頁，必須大於0" minimum(1) default(1) example(1)
+// @Param page_size query int false "每頁數量 - 每頁返回的記錄數，範圍1-50" minimum(1) maximum(50) default(10) example(10)
 // @Success 200 {object} dto.MessageListResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
@@ -523,8 +522,8 @@ func (h *HTTPHandler) GetPlayerMessages(c *gin.Context) {
 // @Tags 玩家訊息
 // @Accept json
 // @Produce json
-// @Param global_player_id path string true "全域玩家ID"
-// @Param message_id path uint64 true "訊息ID"
+// @Param global_player_id path string true "全域玩家ID - 跨系統玩家唯一識別符，用於標識特定玩家" example("player-123e4567-e89b-12d3-a456-426614174000")
+// @Param message_id path uint64 true "訊息ID - 系統內部訊息唯一識別碼，必須為正整數" example(98765)
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
@@ -592,7 +591,7 @@ func (h *HTTPHandler) GetMerchantAutoSettings(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param merchant_id path string true "商戶ID"
-// @Param request body dto.MerchantAutoSettingsRequest true "自動設定請求"
+// @Param request body dto.MerchantAutoSettingsRequest true "商戶自動設定請求 - 包含多個自動設定項目，最多10個設定"
 // @Success 200 {object} dto.AutoSettingsOperationResponse "更新成功"
 // @Success 201 {object} dto.AutoSettingsOperationResponse "建立成功"
 // @Failure 400 {object} ErrorResponse
@@ -652,7 +651,7 @@ func (h *HTTPHandler) CreateOrUpdateMerchantAutoSettings(c *gin.Context) {
 // @Tags 玩家訊息
 // @Accept json
 // @Produce text/event-stream
-// @Param global_player_id path string true "全域玩家ID"
+// @Param global_player_id path string true "全域玩家ID - 跨系統玩家唯一識別符，用於標識特定玩家" example("player-123e4567-e89b-12d3-a456-426614174000")
 // @Success 200 {string} string "SSE stream"
 // @Failure 400 {object} ErrorResponse
 // @Security ApiKeyAuth

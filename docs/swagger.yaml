@@ -14,22 +14,43 @@ definitions:
   dto.AutoSettingItem:
     properties:
       category:
+        description: 消息类型：1=会员消息，2=红利消息，3=其他消息
+        enum:
+        - 1
+        - 2
+        - 3
+        example: 1
         maximum: 3
         minimum: 1
         type: integer
       content:
+        description: 消息内容，必填
+        example: 恭喜您成功注册成为我们的会员！
         type: string
       item:
+        description: 消息项目：1=注册，2=实名认证，3=存款，4=提款，5=投注，6=全部
+        enum:
+        - 1
+        - 2
+        - 3
+        - 4
+        - 5
+        - 6
+        example: 1
         maximum: 6
         minimum: 1
         type: integer
       title:
+        description: 消息标题，最大255个字符
+        example: 欢迎新用户
         maxLength: 255
         type: string
       trigger_type:
+        description: 触发类型：success=成功，failure=失败
         enum:
         - success
         - failure
+        example: success
         type: string
     required:
     - category
@@ -53,33 +74,62 @@ definitions:
   dto.CreateMessageCampaignRequest:
     properties:
       category:
+        description: 消息类型：1=会员消息，2=红利消息，3=其他消息
+        enum:
+        - 1
+        - 2
+        - 3
+        example: 1
         maximum: 3
         minimum: 1
         type: integer
       content:
+        description: 消息内容，必填
+        example: 恭喜您成功注册成为我们的会员！
         type: string
       created_by:
+        description: 创建者，最大100个字符
+        example: admin@example.com
         maxLength: 100
         type: string
-      global_merchant_id:
-        type: string
       item:
+        description: 消息项目：1=注册，2=实名认证，3=存款，4=提款，5=投注，6=全部
+        enum:
+        - 1
+        - 2
+        - 3
+        - 4
+        - 5
+        - 6
+        example: 1
         maximum: 6
         minimum: 1
         type: integer
       send_end_time:
+        description: 发送结束时间（可选）
+        example: "2024-01-01T18:00:00Z"
+        format: date-time
         type: string
       send_start_time:
+        description: 发送开始时间（可选）
+        example: "2024-01-01T10:00:00Z"
+        format: date-time
         type: string
       target:
+        description: 目标用户：1=所有用户，2=特定用户组
+        example: 1
         type: integer
       title:
+        description: 消息标题，最大255个字符
+        example: 欢迎新用户
         maxLength: 255
         type: string
       trigger_type:
+        description: 触发类型：success=成功，failure=失败（可选）
         enum:
         - success
         - failure
+        example: success
         type: string
     required:
     - category
@@ -96,9 +146,8 @@ definitions:
     type: object
   dto.MerchantAutoSettingsRequest:
     properties:
-      global_merchant_id:
-        type: string
       settings:
+        description: 自动设置项目列表，最少1个，最多10个
         items:
           $ref: '#/definitions/dto.AutoSettingItem'
         maxItems: 10
@@ -202,34 +251,61 @@ definitions:
   dto.UpdateMessageCampaignRequest:
     properties:
       category:
+        description: 消息类型：1=会员消息，2=红利消息，3=其他消息
+        enum:
+        - 1
+        - 2
+        - 3
+        example: 1
         maximum: 3
         minimum: 1
         type: integer
       content:
-        type: string
-      global_id:
-        type: string
-      global_merchant_id:
+        description: 消息内容，必填
+        example: 恭喜您成功注册成为我们的会员！
         type: string
       item:
+        description: 消息项目：1=注册，2=实名认证，3=存款，4=提款，5=投注，6=全部
+        enum:
+        - 1
+        - 2
+        - 3
+        - 4
+        - 5
+        - 6
+        example: 1
         maximum: 6
         minimum: 1
         type: integer
       send_end_time:
+        description: 发送结束时间（可选）
+        example: "2024-01-01T18:00:00Z"
+        format: date-time
         type: string
       send_start_time:
+        description: 发送开始时间（可选）
+        example: "2024-01-01T10:00:00Z"
+        format: date-time
         type: string
       target:
+        description: 目标用户：1=所有用户，2=特定用户组
+        example: 1
         type: integer
       title:
+        description: 消息标题，最大255个字符
+        example: 欢迎新用户
         maxLength: 255
         type: string
       trigger_type:
+        description: 触发类型：success=成功，failure=失败（可选）
         enum:
         - success
         - failure
+        example: success
         type: string
       updated_by:
+        description: 更新者，最大100个字符
+        example: admin@example.com
         maxLength: 100
         type: string
     required:
@@ -374,7 +450,8 @@ paths:
       - application/json
       description: 根據管理員全局ID獲取管理員信息
       parameters:
-      - description: 管理員全局ID
+      - description: 管理員全局ID - 跨系統唯一識別符，由系統自動生成的UUID格式
+        example: '"987fcdeb-51a2-43d1-9c4b-123456789abc"'
         in: path
         name: global_id
         required: true
@@ -409,7 +486,8 @@ paths:
       - application/json
       description: 根據商戶ID獲取商戶信息
       parameters:
-      - description: 商戶ID
+      - description: 商戶ID - 系統內部唯一識別碼，必須為正整數
+        example: 12345
         format: int64
         in: path
         name: id
@@ -445,7 +523,8 @@ paths:
       - application/json
       description: 根據商戶全局ID獲取商戶信息
       parameters:
-      - description: 商戶全局ID
+      - description: 商戶全局ID - 跨系統唯一識別符，由系統自動生成的UUID格式
+        example: '"550e8400-e29b-41d4-a716-446655440000"'
         in: path
         name: global_id
         required: true
@@ -479,24 +558,35 @@ paths:
       description: 分頁列出會員訊息活動
       parameters:
       - default: 1
-        description: 頁碼
+        description: 頁碼 - 分頁查詢的第几頁，必須大於0
+        example: 1
         in: query
+        minimum: 1
         name: page
         type: integer
       - default: 10
-        description: 每頁數量
+        description: 每頁數量 - 每頁返回的記錄數，範圍1-100
+        example: 10
         in: query
+        maximum: 100
+        minimum: 1
         name: page_size
         type: integer
       - default: false
-        description: 是否包含已刪除的活動
+        description: 是否包含已刪除的活動 - true:包含已刪除的記錄，false:僅顯示正常記錄
+        example: false
         in: query
         name: include_deleted
         type: boolean
       - collectionFormat: csv
-        description: 狀態篩選 (1=草稿, 2=已排程, 3=已發送, 4=已取消)
+        description: 狀態篩選 - 活動狀態篩選條件，可多選：1=草稿，2=已排程，3=已發送，4=已取消
         in: query
         items:
+          enum:
+          - 1
+          - 2
+          - 3
+          - 4
           type: integer
         name: status
         type: array
@@ -519,7 +609,7 @@ paths:
       - application/json
       description: 創建新的會員訊息活動
       parameters:
-      - description: 創建請求
+      - description: 創建消息活動請求 - 包含消息標題、內容、類型等完整資訊
         in: body
         name: request
         required: true
@@ -549,7 +639,8 @@ paths:
     delete:
       description: 刪除指定GlobalID的會員訊息活動
       parameters:
-      - description: Campaign Global ID
+      - description: 訊息活動全局ID - 跨系統唯一識別符，用於標識特定訊息活動
+        example: '"msg-550e8400-e29b-41d4-a716-446655440000"'
         in: path
         name: global_id
         required: true
@@ -579,7 +670,8 @@ paths:
     get:
       description: 根據GlobalID獲取會員訊息活動詳情
       parameters:
-      - description: Campaign Global ID
+      - description: 訊息活動全局ID - 跨系統唯一識別符，用於標識特定訊息活動
+        example: '"msg-550e8400-e29b-41d4-a716-446655440000"'
         in: path
         name: global_id
         required: true
@@ -616,7 +708,7 @@ paths:
         name: id
         required: true
         type: string
-      - description: Update message campaign request
+      - description: 更新消息活動請求 - 包含需要更新的消息標題、內容、類型等資訊
         in: body
         name: request
         required: true
@@ -686,7 +778,7 @@ paths:
       - application/json
       description: 為特定商戶建立或更新會員訊息自動派發設定
       parameters:
-      - description: 自動設定請求
+      - description: 商戶自動設定請求 - 包含多個自動設定項目，最多10個設定
         in: body
         name: request
         required: true
@@ -721,7 +813,7 @@ paths:
       - application/json
       description: 為特定商戶建立或更新會員訊息自動派發設定
       parameters:
-      - description: 自動設定請求
+      - description: 商戶自動設定請求 - 包含多個自動設定項目，最多10個設定
         in: body
         name: request
         required: true
@@ -757,19 +849,25 @@ paths:
       - application/json
       description: 分頁獲取指定玩家的訊息列表
       parameters:
-      - description: 全域玩家ID
+      - description: 全域玩家ID - 跨系統玩家唯一識別符，用於標識特定玩家
+        example: '"player-123e4567-e89b-12d3-a456-426614174000"'
         in: path
         name: global_player_id
         required: true
         type: string
       - default: 1
-        description: 頁碼
+        description: 頁碼 - 分頁查詢的第几頁，必須大於0
+        example: 1
         in: query
+        minimum: 1
         name: page
         type: integer
       - default: 10
-        description: 每頁數量
+        description: 每頁數量 - 每頁返回的記錄數，範圍1-50
+        example: 10
         in: query
+        maximum: 50
+        minimum: 1
         name: page_size
         type: integer
       produces:
@@ -798,12 +896,14 @@ paths:
       - application/json
       description: 將指定玩家的指定訊息標記為已讀
       parameters:
-      - description: 全域玩家ID
+      - description: 全域玩家ID - 跨系統玩家唯一識別符，用於標識特定玩家
+        example: '"player-123e4567-e89b-12d3-a456-426614174000"'
         in: path
         name: global_player_id
         required: true
         type: string
-      - description: 訊息ID
+      - description: 訊息ID - 系統內部訊息唯一識別碼，必須為正整數
+        example: 98765
         format: int64
         in: path
         name: message_id
@@ -839,7 +939,8 @@ paths:
       - application/json
       description: 為指定玩家建立SSE連接，即時推送訊息更新
       parameters:
-      - description: 全域玩家ID
+      - description: 全域玩家ID - 跨系統玩家唯一識別符，用於標識特定玩家
+        example: '"player-123e4567-e89b-12d3-a456-426614174000"'
         in: path
         name: global_player_id
         required: true
@@ -866,7 +967,8 @@ paths:
       - application/json
       description: 根據玩家ID獲取玩家信息
       parameters:
-      - description: 玩家ID
+      - description: 玩家ID - 系統內部唯一識別碼，必須為正整數
+        example: 67890
         format: int64
         in: path
         name: id
@@ -902,7 +1004,8 @@ paths:
       - application/json
       description: 將玩家的最後活躍時間更新為當前時間
       parameters:
-      - description: 玩家ID
+      - description: 玩家ID - 系統內部唯一識別碼，必須為正整數
+        example: 67890
         format: int64
         in: path
         name: id
@@ -938,7 +1041,8 @@ paths:
       - application/json
       description: 根據玩家全局ID獲取玩家信息
       parameters:
-      - description: 玩家全局ID
+      - description: 玩家全局ID - 跨系統唯一識別符，由系統自動生成的UUID格式
+        example: '"123e4567-e89b-12d3-a456-426614174000"'
         in: path
         name: global_id
         required: true

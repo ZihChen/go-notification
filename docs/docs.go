@@ -45,7 +45,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "管理員全局ID",
+                        "example": "\"987fcdeb-51a2-43d1-9c4b-123456789abc\"",
+                        "description": "管理員全局ID - 跨系統唯一識別符，由系統自動生成的UUID格式",
                         "name": "global_id",
                         "in": "path",
                         "required": true
@@ -100,7 +101,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "商戶全局ID",
+                        "example": "\"550e8400-e29b-41d4-a716-446655440000\"",
+                        "description": "商戶全局ID - 跨系統唯一識別符，由系統自動生成的UUID格式",
                         "name": "global_id",
                         "in": "path",
                         "required": true
@@ -156,7 +158,8 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "format": "int64",
-                        "description": "商戶ID",
+                        "example": 12345,
+                        "description": "商戶ID - 系統內部唯一識別碼，必須為正整數",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -204,33 +207,45 @@ const docTemplate = `{
                 "summary": "列出會員訊息活動",
                 "parameters": [
                     {
+                        "minimum": 1,
                         "type": "integer",
                         "default": 1,
-                        "description": "頁碼",
+                        "example": 1,
+                        "description": "頁碼 - 分頁查詢的第几頁，必須大於0",
                         "name": "page",
                         "in": "query"
                     },
                     {
+                        "maximum": 100,
+                        "minimum": 1,
                         "type": "integer",
                         "default": 10,
-                        "description": "每頁數量",
+                        "example": 10,
+                        "description": "每頁數量 - 每頁返回的記錄數，範圍1-100",
                         "name": "page_size",
                         "in": "query"
                     },
                     {
                         "type": "boolean",
                         "default": false,
-                        "description": "是否包含已刪除的活動",
+                        "example": false,
+                        "description": "是否包含已刪除的活動 - true:包含已刪除的記錄，false:僅顯示正常記錄",
                         "name": "include_deleted",
                         "in": "query"
                     },
                     {
                         "type": "array",
                         "items": {
+                            "enum": [
+                                1,
+                                2,
+                                3,
+                                4
+                            ],
                             "type": "integer"
                         },
                         "collectionFormat": "csv",
-                        "description": "狀態篩選 (1=草稿, 2=已排程, 3=已發送, 4=已取消)",
+                        "description": "狀態篩選 - 活動狀態篩選條件，可多選：1=草稿，2=已排程，3=已發送，4=已取消",
                         "name": "status",
                         "in": "query"
                     }
@@ -269,7 +284,7 @@ const docTemplate = `{
                 "summary": "創建會員訊息活動",
                 "parameters": [
                     {
-                        "description": "創建請求",
+                        "description": "創建消息活動請求 - 包含消息標題、內容、類型等完整資訊",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -373,7 +388,7 @@ const docTemplate = `{
                 "summary": "新增或更新商戶自動設定",
                 "parameters": [
                     {
-                        "description": "自動設定請求",
+                        "description": "商戶自動設定請求 - 包含多個自動設定項目，最多10個設定",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -428,7 +443,7 @@ const docTemplate = `{
                 "summary": "新增或更新商戶自動設定",
                 "parameters": [
                     {
-                        "description": "自動設定請求",
+                        "description": "商戶自動設定請求 - 包含多個自動設定項目，最多10個設定",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -480,7 +495,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Campaign Global ID",
+                        "example": "\"msg-550e8400-e29b-41d4-a716-446655440000\"",
+                        "description": "訊息活動全局ID - 跨系統唯一識別符，用於標識特定訊息活動",
                         "name": "global_id",
                         "in": "path",
                         "required": true
@@ -539,7 +555,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Update message campaign request",
+                        "description": "更新消息活動請求 - 包含需要更新的消息標題、內容、類型等資訊",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -589,7 +605,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Campaign Global ID",
+                        "example": "\"msg-550e8400-e29b-41d4-a716-446655440000\"",
+                        "description": "訊息活動全局ID - 跨系統唯一識別符，用於標識特定訊息活動",
                         "name": "global_id",
                         "in": "path",
                         "required": true
@@ -644,22 +661,28 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "全域玩家ID",
+                        "example": "\"player-123e4567-e89b-12d3-a456-426614174000\"",
+                        "description": "全域玩家ID - 跨系統玩家唯一識別符，用於標識特定玩家",
                         "name": "global_player_id",
                         "in": "path",
                         "required": true
                     },
                     {
+                        "minimum": 1,
                         "type": "integer",
                         "default": 1,
-                        "description": "頁碼",
+                        "example": 1,
+                        "description": "頁碼 - 分頁查詢的第几頁，必須大於0",
                         "name": "page",
                         "in": "query"
                     },
                     {
+                        "maximum": 50,
+                        "minimum": 1,
                         "type": "integer",
                         "default": 10,
-                        "description": "每頁數量",
+                        "example": 10,
+                        "description": "每頁數量 - 每頁返回的記錄數，範圍1-50",
                         "name": "page_size",
                         "in": "query"
                     }
@@ -707,7 +730,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "全域玩家ID",
+                        "example": "\"player-123e4567-e89b-12d3-a456-426614174000\"",
+                        "description": "全域玩家ID - 跨系統玩家唯一識別符，用於標識特定玩家",
                         "name": "global_player_id",
                         "in": "path",
                         "required": true
@@ -750,7 +774,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "全域玩家ID",
+                        "example": "\"player-123e4567-e89b-12d3-a456-426614174000\"",
+                        "description": "全域玩家ID - 跨系統玩家唯一識別符，用於標識特定玩家",
                         "name": "global_player_id",
                         "in": "path",
                         "required": true
@@ -758,7 +783,8 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "format": "int64",
-                        "description": "訊息ID",
+                        "example": 98765,
+                        "description": "訊息ID - 系統內部訊息唯一識別碼，必須為正整數",
                         "name": "message_id",
                         "in": "path",
                         "required": true
@@ -813,7 +839,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "玩家全局ID",
+                        "example": "\"123e4567-e89b-12d3-a456-426614174000\"",
+                        "description": "玩家全局ID - 跨系統唯一識別符，由系統自動生成的UUID格式",
                         "name": "global_id",
                         "in": "path",
                         "required": true
@@ -869,7 +896,8 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "format": "int64",
-                        "description": "玩家ID",
+                        "example": 67890,
+                        "description": "玩家ID - 系統內部唯一識別碼，必須為正整數",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -925,7 +953,8 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "format": "int64",
-                        "description": "玩家ID",
+                        "example": 67890,
+                        "description": "玩家ID - 系統內部唯一識別碼，必須為正整數",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -1010,28 +1039,51 @@ const docTemplate = `{
             ],
             "properties": {
                 "category": {
+                    "description": "消息类型：1=会员消息，2=红利消息，3=其他消息",
                     "type": "integer",
                     "maximum": 3,
-                    "minimum": 1
+                    "minimum": 1,
+                    "enum": [
+                        1,
+                        2,
+                        3
+                    ],
+                    "example": 1
                 },
                 "content": {
-                    "type": "string"
+                    "description": "消息内容，必填",
+                    "type": "string",
+                    "example": "恭喜您成功注册成为我们的会员！"
                 },
                 "item": {
+                    "description": "消息项目：1=注册，2=实名认证，3=存款，4=提款，5=投注，6=全部",
                     "type": "integer",
                     "maximum": 6,
-                    "minimum": 1
+                    "minimum": 1,
+                    "enum": [
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6
+                    ],
+                    "example": 1
                 },
                 "title": {
+                    "description": "消息标题，最大255个字符",
                     "type": "string",
-                    "maxLength": 255
+                    "maxLength": 255,
+                    "example": "欢迎新用户"
                 },
                 "trigger_type": {
+                    "description": "触发类型：success=成功，failure=失败",
                     "type": "string",
                     "enum": [
                         "success",
                         "failure"
-                    ]
+                    ],
+                    "example": "success"
                 }
             }
         },
@@ -1065,44 +1117,74 @@ const docTemplate = `{
             ],
             "properties": {
                 "category": {
+                    "description": "消息类型：1=会员消息，2=红利消息，3=其他消息",
                     "type": "integer",
                     "maximum": 3,
-                    "minimum": 1
+                    "minimum": 1,
+                    "enum": [
+                        1,
+                        2,
+                        3
+                    ],
+                    "example": 1
                 },
                 "content": {
-                    "type": "string"
+                    "description": "消息内容，必填",
+                    "type": "string",
+                    "example": "恭喜您成功注册成为我们的会员！"
                 },
                 "created_by": {
+                    "description": "创建者，最大100个字符",
                     "type": "string",
-                    "maxLength": 100
-                },
-                "global_merchant_id": {
-                    "type": "string"
+                    "maxLength": 100,
+                    "example": "admin@example.com"
                 },
                 "item": {
+                    "description": "消息项目：1=注册，2=实名认证，3=存款，4=提款，5=投注，6=全部",
                     "type": "integer",
                     "maximum": 6,
-                    "minimum": 1
+                    "minimum": 1,
+                    "enum": [
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6
+                    ],
+                    "example": 1
                 },
                 "send_end_time": {
-                    "type": "string"
+                    "description": "发送结束时间（可选）",
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2024-01-01T18:00:00Z"
                 },
                 "send_start_time": {
-                    "type": "string"
+                    "description": "发送开始时间（可选）",
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2024-01-01T10:00:00Z"
                 },
                 "target": {
-                    "type": "integer"
+                    "description": "目标用户：1=所有用户，2=特定用户组",
+                    "type": "integer",
+                    "example": 1
                 },
                 "title": {
+                    "description": "消息标题，最大255个字符",
                     "type": "string",
-                    "maxLength": 255
+                    "maxLength": 255,
+                    "example": "欢迎新用户"
                 },
                 "trigger_type": {
+                    "description": "触发类型：success=成功，failure=失败（可选）",
                     "type": "string",
                     "enum": [
                         "success",
                         "failure"
-                    ]
+                    ],
+                    "example": "success"
                 }
             }
         },
@@ -1120,10 +1202,8 @@ const docTemplate = `{
                 "settings"
             ],
             "properties": {
-                "global_merchant_id": {
-                    "type": "string"
-                },
                 "settings": {
+                    "description": "自动设置项目列表，最少1个，最多10个",
                     "type": "array",
                     "maxItems": 10,
                     "minItems": 1,
@@ -1286,47 +1366,74 @@ const docTemplate = `{
             ],
             "properties": {
                 "category": {
+                    "description": "消息类型：1=会员消息，2=红利消息，3=其他消息",
                     "type": "integer",
                     "maximum": 3,
-                    "minimum": 1
+                    "minimum": 1,
+                    "enum": [
+                        1,
+                        2,
+                        3
+                    ],
+                    "example": 1
                 },
                 "content": {
-                    "type": "string"
-                },
-                "global_id": {
-                    "type": "string"
-                },
-                "global_merchant_id": {
-                    "type": "string"
+                    "description": "消息内容，必填",
+                    "type": "string",
+                    "example": "恭喜您成功注册成为我们的会员！"
                 },
                 "item": {
+                    "description": "消息项目：1=注册，2=实名认证，3=存款，4=提款，5=投注，6=全部",
                     "type": "integer",
                     "maximum": 6,
-                    "minimum": 1
+                    "minimum": 1,
+                    "enum": [
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6
+                    ],
+                    "example": 1
                 },
                 "send_end_time": {
-                    "type": "string"
+                    "description": "发送结束时间（可选）",
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2024-01-01T18:00:00Z"
                 },
                 "send_start_time": {
-                    "type": "string"
+                    "description": "发送开始时间（可选）",
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2024-01-01T10:00:00Z"
                 },
                 "target": {
-                    "type": "integer"
+                    "description": "目标用户：1=所有用户，2=特定用户组",
+                    "type": "integer",
+                    "example": 1
                 },
                 "title": {
+                    "description": "消息标题，最大255个字符",
                     "type": "string",
-                    "maxLength": 255
+                    "maxLength": 255,
+                    "example": "欢迎新用户"
                 },
                 "trigger_type": {
+                    "description": "触发类型：success=成功，failure=失败（可选）",
                     "type": "string",
                     "enum": [
                         "success",
                         "failure"
-                    ]
+                    ],
+                    "example": "success"
                 },
                 "updated_by": {
+                    "description": "更新者，最大100个字符",
                     "type": "string",
-                    "maxLength": 100
+                    "maxLength": 100,
+                    "example": "admin@example.com"
                 }
             }
         },
