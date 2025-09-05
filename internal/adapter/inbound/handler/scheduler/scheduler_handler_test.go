@@ -179,7 +179,7 @@ func createTestJobRegistry(t *testing.T, jobs []jobport.ScheduledJob) *job.Regis
 }
 
 func createTestHandler(logger infrastructure.Logger, registry *job.Registry) *Handler {
-	return NewSchedulerHandler(logger, registry)
+	return NewSchedulerHandler(logger, nil, registry)
 }
 
 // Test data helpers
@@ -213,7 +213,7 @@ func TestNewSchedulerHandler_Success(t *testing.T) {
 
 	// Logger expectations for job registration (會有兩個 jobs 被註冊)
 	logger.On("String", "job_name", "message-campaign-trigger").Return(&entity.LoggerFiled{})
-	logger.On("String", "schedule", "0 */1 * * * *").Return(&entity.LoggerFiled{})
+	logger.On("String", "schedule", "*/10 * * * * *").Return(&entity.LoggerFiled{})
 	logger.On("InfoLog", "Registered scheduled job", mock.Anything, mock.Anything).Return()
 
 	logger.On("String", "job_name", "test-job").Return(&entity.LoggerFiled{})
@@ -223,7 +223,7 @@ func TestNewSchedulerHandler_Success(t *testing.T) {
 	registry := createTestJobRegistry(t, []jobport.ScheduledJob{mockJob})
 
 	// Execute
-	handler := NewSchedulerHandler(logger, registry)
+	handler := NewSchedulerHandler(logger, nil, registry)
 
 	// Verify
 	assert.NotNil(t, handler)
@@ -246,7 +246,7 @@ func TestNewSchedulerHandler_MultipleJobs(t *testing.T) {
 	registry := createTestJobRegistry(t, []jobport.ScheduledJob{job1, job2})
 
 	// Execute
-	handler := NewSchedulerHandler(logger, registry)
+	handler := NewSchedulerHandler(logger, nil, registry)
 
 	// Verify
 	assert.NotNil(t, handler)
@@ -281,7 +281,7 @@ func TestNewSchedulerHandler_JobRegistrationError(t *testing.T) {
 		}
 	}()
 
-	handler := NewSchedulerHandler(logger, registry)
+	handler := NewSchedulerHandler(logger, nil, registry)
 
 	// 如果程式沒有 panic，驗證 handler 仍然被創建但只有默認的 message-campaign-trigger job
 	if handler != nil {
@@ -303,7 +303,7 @@ func TestHandler_RegisterJobs_Success(t *testing.T) {
 	// Mock expectations for constructor
 	logger.On("InfoLog", "Registered scheduled job", mock.Anything).Return()
 
-	handler := NewSchedulerHandler(logger, registry)
+	handler := NewSchedulerHandler(logger, nil, registry)
 
 	// Mock expectations for RegisterJobs
 	logger.On("InfoLog", "Successfully registered scheduled job", mock.Anything).Return()
@@ -391,7 +391,7 @@ func TestHandler_RegisterJobs_MultipleJobs(t *testing.T) {
 	job2 := createTestScheduledJob("job-2", "0 */5 * * * *")
 	registry := createTestJobRegistry(t, []jobport.ScheduledJob{job1, job2})
 
-	handler := NewSchedulerHandler(logger, registry)
+	handler := NewSchedulerHandler(logger, nil, registry)
 
 	cronManager := cron.New(cron.WithSeconds())
 
@@ -557,7 +557,7 @@ func TestHandler_GetRegisteredJobs_Success(t *testing.T) {
 	// Mock expectations
 	logger.On("InfoLog", "Registered scheduled job", mock.Anything).Return().Times(2)
 
-	handler := NewSchedulerHandler(logger, registry)
+	handler := NewSchedulerHandler(logger, nil, registry)
 
 	// Execute
 	jobNames := handler.GetRegisteredJobs()
@@ -577,7 +577,7 @@ func TestHandler_GetRegisteredJobs_Empty(t *testing.T) {
 	logger := helper.SetupLoggerMock(t)
 	registry := createTestJobRegistry(t, []jobport.ScheduledJob{})
 
-	handler := NewSchedulerHandler(logger, registry)
+	handler := NewSchedulerHandler(logger, nil, registry)
 
 	// Execute
 	jobNames := handler.GetRegisteredJobs()
@@ -594,14 +594,14 @@ func TestHandler_GetRegisteredJobs_Empty(t *testing.T) {
 func TestHandler_FullWorkflow_Integration(t *testing.T) {
 	// Setup
 	logger := helper.SetupLoggerMock(t)
-	job1 := createTestScheduledJob("message-campaign-trigger", "0 */1 * * * *")
+	job1 := createTestScheduledJob("message-campaign-trigger", "*/10 * * * * *")
 	job2 := createTestScheduledJob("cleanup-job", "0 0 2 * * *")
 	registry := createTestJobRegistry(t, []jobport.ScheduledJob{job1, job2})
 
 	// Mock expectations for constructor
 	logger.On("InfoLog", "Registered scheduled job", mock.Anything).Return().Times(2)
 
-	handler := NewSchedulerHandler(logger, registry)
+	handler := NewSchedulerHandler(logger, nil, registry)
 
 	// Verify jobs were registered during construction
 	assert.Len(t, handler.jobs, 2)

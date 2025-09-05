@@ -58,7 +58,7 @@ var baseSet = wire.NewSet(
 	merchantUseCase.NewMerchantUseCase,
 	playerUseCase.NewPlayerUseCase,
 	managerUseCase.NewManagerUseCase,
-	messageUseCase.NewMessageUseCase,
+	messageUseCase.NewMessageUseCase, // 已移除 redisManager 參數
 	levelUseCase.NewLevelUseCase,
 	playerUseCase.NewTagUseCase,
 )

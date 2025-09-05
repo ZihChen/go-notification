@@ -6,13 +6,15 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/job"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	jobport "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/job"
+	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/robfig/cron/v3"
 )
 
 // Handler 排程處理器
 type Handler struct {
-	logger infrastructure.Logger
-	jobs   []ScheduledJobConfig
+	logger       infrastructure.Logger
+	redisManager *redisCache.Manager
+	jobs         []ScheduledJobConfig
 }
 
 // ScheduledJobConfig 排程任務配置
@@ -25,10 +27,12 @@ type ScheduledJobConfig struct {
 // NewSchedulerHandler 創建排程處理器
 func NewSchedulerHandler(
 	logger infrastructure.Logger,
+	redisManager *redisCache.Manager,
 	jobRegistry *job.Registry) *Handler {
 	h := &Handler{
-		logger: logger,
-		jobs:   make([]ScheduledJobConfig, 0),
+		logger:       logger,
+		redisManager: redisManager,
+		jobs:         make([]ScheduledJobConfig, 0),
 	}
 	for _, j := range jobRegistry.GetAllJobs() {
 		err := h.registerJobWithSchedule(j.GetName(), j, j.GetCron())
@@ -48,8 +52,9 @@ func (h *Handler) RegisterJobs(cronManager *cron.Cron) {
 		}
 
 		wrapper := &JobWrapper{
-			job:    jobConfig.Job,
-			logger: h.logger,
+			job:          jobConfig.Job,
+			logger:       h.logger,
+			redisManager: h.redisManager,
 		}
 
 		_, err := cronManager.AddFunc(scheduleStr, wrapper.run)

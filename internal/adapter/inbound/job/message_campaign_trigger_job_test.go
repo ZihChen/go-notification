@@ -315,7 +315,7 @@ func TestMessageCampaignTriggerJob_GetCron_Success(t *testing.T) {
 	cronExpr := job.GetCron()
 
 	// Verify
-	assert.Equal(t, "0 */1 * * * *", cronExpr)
+	assert.Equal(t, "*/10 * * * * *", cronExpr)
 }
 
 func TestMessageCampaignTriggerJob_GetCron_Consistency(t *testing.T) {
@@ -331,7 +331,7 @@ func TestMessageCampaignTriggerJob_GetCron_Consistency(t *testing.T) {
 	// Verify - Cron 表達式應該保持一致
 	assert.Equal(t, cron1, cron2)
 	assert.Equal(t, cron2, cron3)
-	assert.Equal(t, "0 */1 * * * *", cron1)
+	assert.Equal(t, "*/10 * * * * *", cron1)
 }
 
 func TestMessageCampaignTriggerJob_GetCron_ValidFormat(t *testing.T) {
@@ -396,7 +396,7 @@ func TestMessageCampaignTriggerJob_FullWorkflow(t *testing.T) {
 	cronExpr := job.GetCron()
 
 	assert.Equal(t, "message-campaign-trigger", jobName)
-	assert.Equal(t, "0 */1 * * * *", cronExpr)
+	assert.Equal(t, "*/10 * * * * *", cronExpr)
 
 	// 2. 執行任務
 	start := time.Now()

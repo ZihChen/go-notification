@@ -142,7 +142,7 @@ func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Log
 	messageUseCase := message.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, logger)
 	messageCampaignTriggerJob := job.NewMessageCampaignTriggerJob(messageUseCase, logger)
 	registry := job.NewRegistry(messageCampaignTriggerJob)
-	handler := scheduler.NewSchedulerHandler(logger, registry)
+	handler := scheduler.NewSchedulerHandler(logger, redisManager, registry)
 	return handler, nil
 }
 
