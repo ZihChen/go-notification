@@ -150,6 +150,15 @@ func (m *MockMessageCampaignRepository) UpdateSentCount(
 	return args.Error(0)
 }
 
+func (m *MockMessageCampaignRepository) UpdateStatus(
+	ctx context.Context,
+	campaignID uint64,
+	status uint8,
+) error {
+	args := m.Called(ctx, campaignID, status)
+	return args.Error(0)
+}
+
 func (m *MockMessageCampaignRepository) Delete(ctx context.Context, id uint64) error {
 	args := m.Called(ctx, id)
 	return args.Error(0)
@@ -921,4 +930,162 @@ func TestMessageUseCase_MarkMessageAsRead_Error(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "mark message as read")
 	playerMessageRepo.AssertExpectations(t)
+}
+
+// Test SendCampaignToPlayers
+func TestMessageUseCase_SendCampaignToPlayers(t *testing.T) {
+	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(
+		t,
+	)
+
+	campaignID := uint64(1)
+	campaign := createTestMessageCampaign()
+	players := []*entity.Player{
+		{ID: 1, GlobalPlayerID: "player-1", MerchantID: 1},
+		{ID: 2, GlobalPlayerID: "player-2", MerchantID: 1},
+	}
+
+	// Mock campaign repository calls
+	campaignRepo.On("FindByID", mock.Anything, campaignID).Return(campaign, nil)
+	campaignRepo.On("UpdateSentCount", mock.Anything, campaignID, int64(2)).Return(nil)
+	campaignRepo.On("UpdateStatus", mock.Anything, campaignID, consts.MessageCampaignStatusSent).
+		Return(nil)
+
+	// Mock player repository calls
+	playerRepo.On("FindByTargetType", mock.Anything, campaign.Target, 0, 1000).Return(players, nil)
+	playerRepo.On("FindByTargetType", mock.Anything, campaign.Target, 1000, 1000).
+		Return([]*entity.Player{}, nil).
+		Maybe()
+
+	// Mock player message repository calls
+	playerMessageRepo.On("CheckMessageExists", mock.Anything, "player-1", campaignID).
+		Return(false, nil)
+	playerMessageRepo.On("CheckMessageExists", mock.Anything, "player-2", campaignID).
+		Return(false, nil)
+	playerMessageRepo.On("CreateBatch", mock.Anything, mock.AnythingOfType("[]*entity.PlayerMessage")).
+		Return(nil)
+
+	useCase := NewMessageUseCase(campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger)
+
+	err := useCase.SendCampaignToPlayers(context.Background(), campaignID)
+
+	assert.NoError(t, err)
+	campaignRepo.AssertExpectations(t)
+	playerRepo.AssertExpectations(t)
+	playerMessageRepo.AssertExpectations(t)
+}
+
+// Test SendCampaignToPlayersAsync
+func TestMessageUseCase_SendCampaignToPlayersAsync(t *testing.T) {
+	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(
+		t,
+	)
+
+	campaignID := uint64(1)
+	campaign := createTestMessageCampaign()
+	players := []*entity.Player{
+		{ID: 1, GlobalPlayerID: "player-1", MerchantID: 1},
+		{ID: 2, GlobalPlayerID: "player-2", MerchantID: 1},
+	}
+
+	// Mock campaign repository calls
+	campaignRepo.On("FindByID", mock.Anything, campaignID).Return(campaign, nil)
+	campaignRepo.On("UpdateSentCount", mock.Anything, campaignID, mock.AnythingOfType("int64")).
+		Return(nil)
+	campaignRepo.On("UpdateStatus", mock.Anything, campaignID, consts.MessageCampaignStatusSent).
+		Return(nil)
+
+	// Mock player repository calls
+	playerRepo.On("FindByTargetType", mock.Anything, campaign.Target, mock.AnythingOfType("int"), 5000).
+		Return(players, nil)
+	playerRepo.On("FindByTargetType", mock.Anything, campaign.Target, mock.AnythingOfType("int"), 5000).
+		Return([]*entity.Player{}, nil)
+
+	// Mock player message repository calls
+	playerIDs := []uint64{1, 2}
+	existsMap := map[uint64]bool{1: false, 2: false}
+	playerMessageRepo.On("CheckMessageExistsBatch", mock.Anything, playerIDs, campaignID).
+		Return(existsMap, nil)
+	playerMessageRepo.On("CreateBatchOptimized", mock.Anything, mock.AnythingOfType("[]*entity.PlayerMessage"), 500).
+		Return(nil)
+
+	useCase := NewMessageUseCase(campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger)
+
+	err := useCase.SendCampaignToPlayersAsync(context.Background(), campaignID)
+
+	assert.NoError(t, err)
+	campaignRepo.AssertExpectations(t)
+	playerRepo.AssertExpectations(t)
+	playerMessageRepo.AssertExpectations(t)
+}
+
+// Test ProcessScheduledCampaigns
+func TestMessageUseCase_ProcessScheduledCampaigns(t *testing.T) {
+	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(
+		t,
+	)
+
+	scheduledCampaigns := []*entity.MessageCampaign{
+		createTestMessageCampaign(),
+	}
+	scheduledCampaigns[0].Status = consts.MessageCampaignStatusScheduled
+
+	// Mock finding scheduled campaigns
+	campaignRepo.On("FindScheduledCampaigns", mock.Anything).Return(scheduledCampaigns, nil)
+
+	// Mock SendCampaignToPlayersAsync calls
+	campaignRepo.On("FindByID", mock.Anything, uint64(1)).Return(scheduledCampaigns[0], nil)
+	campaignRepo.On("UpdateSentCount", mock.Anything, uint64(1), mock.AnythingOfType("int64")).
+		Return(nil)
+	campaignRepo.On("UpdateStatus", mock.Anything, uint64(1), consts.MessageCampaignStatusSent).
+		Return(nil)
+
+	playerRepo.On("FindByTargetType", mock.Anything, scheduledCampaigns[0].Target, mock.AnythingOfType("int"), 5000).
+		Return([]*entity.Player{}, nil)
+
+	useCase := NewMessageUseCase(campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger)
+
+	err := useCase.ProcessScheduledCampaigns(context.Background())
+
+	assert.NoError(t, err)
+	campaignRepo.AssertExpectations(t)
+	playerRepo.AssertExpectations(t)
+}
+
+// Test SendCampaignToPlayers - Campaign not found error
+func TestMessageUseCase_SendCampaignToPlayers_CampaignNotFound(t *testing.T) {
+	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(
+		t,
+	)
+
+	campaignID := uint64(999)
+	campaignRepo.On("FindByID", mock.Anything, campaignID).
+		Return(nil, errors.New("record not found"))
+
+	useCase := NewMessageUseCase(campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger)
+
+	err := useCase.SendCampaignToPlayers(context.Background(), campaignID)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "find campaign")
+	campaignRepo.AssertExpectations(t)
+}
+
+// Test SendCampaignToPlayersAsync - Campaign not found error
+func TestMessageUseCase_SendCampaignToPlayersAsync_CampaignNotFound(t *testing.T) {
+	campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger := createMessageMockDependencies(
+		t,
+	)
+
+	campaignID := uint64(999)
+	campaignRepo.On("FindByID", mock.Anything, campaignID).
+		Return(nil, errors.New("record not found"))
+
+	useCase := NewMessageUseCase(campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger)
+
+	err := useCase.SendCampaignToPlayersAsync(context.Background(), campaignID)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "find campaign")
+	campaignRepo.AssertExpectations(t)
 }

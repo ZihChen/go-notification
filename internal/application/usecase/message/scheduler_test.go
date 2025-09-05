@@ -133,6 +133,8 @@ func TestMessageUseCase_ProcessScheduledCampaigns_Success(t *testing.T) {
 		playerRepo.On("FindByTargetType", mock.Anything, campaign.Target, mock.AnythingOfType("int"), mock.AnythingOfType("int")).
 			Return([]*entity.Player{}, nil)
 		campaignRepo.On("UpdateSentCount", mock.Anything, campaign.ID, int64(0)).Return(nil)
+		campaignRepo.On("UpdateStatus", mock.Anything, campaign.ID, consts.MessageCampaignStatusSent).
+			Return(nil)
 	}
 
 	// Execute
