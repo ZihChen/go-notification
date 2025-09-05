@@ -228,22 +228,22 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 	// 收集結果
 	completed := 0
 
-	// 等待所有結果
+	// 等待所有worker完成
 	for completed < maxConcurrency {
 		select {
 		case count := <-results:
-			totalSent += count
+			if count >= 0 {
+				totalSent += count
+			} else {
+				// 收到完成信號(-1)
+				completed++
+			}
 		case err := <-errorsCh:
 			if err != nil {
 				u.logger.ErrorLog("Error in batch processing", u.logger.Error("err", err))
 			}
 		case <-ctx.Done():
 			return ctx.Err()
-		default:
-			// 檢查是否還有活躍的worker
-			if len(playerBatches) == 0 {
-				completed++
-			}
 		}
 	}
 
@@ -292,9 +292,9 @@ func (u *MessageUseCase) processPlayerBatch(
 	dbBatchSize int,
 ) {
 	defer func() {
-		// 發送完成信號
+		// 發送完成信號(使用-1表示完成)
 		select {
-		case results <- 0:
+		case results <- -1:
 		case <-ctx.Done():
 		}
 	}()
