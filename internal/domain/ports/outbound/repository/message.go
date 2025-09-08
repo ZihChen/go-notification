@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 )
 
@@ -12,7 +13,7 @@ type MessageCampaignRepository interface {
 	FindByGlobalID(ctx context.Context, globalID string) (*entity.MessageCampaign, error)
 	FindAllWithOptions(
 		ctx context.Context,
-		query *entity.MessageCampaignsQuery,
+		query *dto.MessageCampaignsQuery,
 	) ([]*entity.MessageCampaign, int, error)
 	FindActiveByFocus(ctx context.Context, focus uint8) ([]*entity.MessageCampaign, error)
 	FindScheduledCampaigns(ctx context.Context) ([]*entity.MessageCampaign, error)
@@ -53,7 +54,7 @@ type PlayerMessageRepository interface {
 	GetPlayerMessageStats(
 		ctx context.Context,
 		globalPlayerID string,
-	) (*entity.PlayerMessageStats, error)
+	) (*dto.PlayerMessageStats, error)
 	Create(ctx context.Context, message *entity.PlayerMessage) error
 	CreateBatch(ctx context.Context, messages []*entity.PlayerMessage) error
 	CreateBatchOptimized(ctx context.Context, messages []*entity.PlayerMessage, batchSize int) error

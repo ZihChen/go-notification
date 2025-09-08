@@ -700,7 +700,7 @@ func (h *HTTPHandler) SSEHandler(c *gin.Context) {
 
 	// 用於檢測客戶端斷線
 	clientGone := c.Writer.CloseNotify()
-	var lastUnreadCount int64 = 0
+	var lastUnreadCount = 0
 	if response != nil {
 		lastUnreadCount = response.Stats.UnreadCount
 	}
@@ -741,7 +741,7 @@ func (h *HTTPHandler) SSEHandler(c *gin.Context) {
 
 				h.logger.DebugLog("SSE stats update sent",
 					h.logger.String("global_player_id", globalPlayerID),
-					h.logger.Int64("unread_count", lastUnreadCount))
+					h.logger.Int("unread_count", lastUnreadCount))
 			}
 
 			// 發送心跳

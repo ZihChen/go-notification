@@ -25,3 +25,4 @@ rollout:
 	kubectl rollout restart deployment/fatnotificationcat-web -n bonuscat
 	kubectl rollout restart deployment/fatnotificationcat-consumer -n bonuscat
 	kubectl rollout restart deployment/fatnotificationcat-worker -n bonuscat
+	kubectl rollout restart deployment/fatnotificationcat-scheduler -n bonuscat

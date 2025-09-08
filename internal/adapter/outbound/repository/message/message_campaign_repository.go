@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
@@ -60,7 +61,7 @@ func (r *MessageCampaignRepository) FindByGlobalID(
 // FindAllWithOptions 根據篩選條件查找會員訊息活動
 func (r *MessageCampaignRepository) FindAllWithOptions(
 	ctx context.Context,
-	query *entity.MessageCampaignsQuery,
+	query *dto.MessageCampaignsQuery,
 ) ([]*entity.MessageCampaign, int, error) {
 	var campaigns []models.MessageCampaign
 	var total int64

@@ -15,9 +15,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/go-redsync/redsync/v4"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/constants"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -69,7 +69,7 @@ func (k *KDSService) ConsumeAllEvents(ctx context.Context) error {
 		)
 
 		// 為每個 shard 建立分布式鎖
-		mutexKey := fmt.Sprintf(consts.ShardMutexRedisKey, k.streamName, shardId)
+		mutexKey := fmt.Sprintf(constants.ShardMutexRedisKey, k.streamName, shardId)
 		mutex, mutexErr := k.redisManager.GetMutex(mutexKey, consumerProcessedTTL)
 		if mutexErr != nil {
 			// Redis連線異常仍執行後面程序
@@ -263,7 +263,7 @@ func (k *KDSService) ConsumeAllEvents(ctx context.Context) error {
 						}
 
 						// 將事件ID添加到上下文中，避免隊列服務重複解析JSON
-						msgCtxWithID := context.WithValue(eventCtx, consts.EventIDKey, eventID)
+						msgCtxWithID := context.WithValue(eventCtx, constants.EventIDKey, eventID)
 
 						// 根據事件類型選擇合適的處理函數
 						enqueueErr := k.eventEnqueueProcess(msgCtxWithID, eventType, record.Data)

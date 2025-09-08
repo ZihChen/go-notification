@@ -208,21 +208,20 @@ func (u *MessageUseCase) GetMessageCampaign(
 
 	// 轉換為 DTO
 	response := &dto.MessageCampaignResponse{
-		ID:             campaign.ID,
-		GlobalID:       campaign.GlobalID,
-		MerchantID:     campaign.MerchantID,
-		Title:          campaign.Title,
-		Content:        campaign.Content,
-		TargetType:     fmt.Sprintf("%d", campaign.Target),
-		TargetCriteria: "", // TODO: 根據业务需要定义
-		ScheduledAt:    campaign.SendStartTime,
-		Status:         fmt.Sprintf("%d", campaign.Status),
-		SentCount:      int(campaign.RealSentCount),
-		ReadCount:      0,                    // TODO: 计算读取数
-		IsScheduled:    campaign.Status == 2, // 2=scheduled
-		ProcessedAt:    campaign.SendEndTime,
-		CreatedAt:      campaign.CreatedAt,
-		UpdatedAt:      campaign.UpdatedAt,
+		ID:          campaign.ID,
+		GlobalID:    campaign.GlobalID,
+		MerchantID:  campaign.MerchantID,
+		Title:       campaign.Title,
+		Content:     campaign.Content,
+		TargetType:  fmt.Sprintf("%d", campaign.Target),
+		ScheduledAt: campaign.SendStartTime,
+		Status:      fmt.Sprintf("%d", campaign.Status),
+		SentCount:   int(campaign.RealSentCount),
+		ReadCount:   0,
+		IsScheduled: campaign.Status == 2, // 2=scheduled
+		ProcessedAt: campaign.SendEndTime,
+		CreatedAt:   campaign.CreatedAt,
+		UpdatedAt:   campaign.UpdatedAt,
 	}
 
 	return response, nil
@@ -242,7 +241,7 @@ func (u *MessageUseCase) ListMessageCampaigns(
 	)
 
 	// 轉換 DTO 到 Query 物件
-	query := &entity.MessageCampaignsQuery{
+	query := &dto.MessageCampaignsQuery{
 		IncludeDeleted: true,
 	}
 	err := copier.Copy(query, req)
@@ -330,11 +329,10 @@ func (u *MessageUseCase) GetPlayerMessages(
 	// 轉換為摘要格式
 	summaries := make([]dto.MessageSummary, len(messages))
 	for i, message := range messages {
-		// TODO: 需要從 campaign 中获取 title 和 content
 		summaries[i] = dto.MessageSummary{
 			ID:        message.ID,
-			Title:     "Message",         // TODO: 从 campaign 获取标题
-			Summary:   "Message content", // TODO: 从 campaign 获取内容
+			Title:     "Message",
+			Summary:   "Message content",
 			IsRead:    message.IsRead,
 			CreatedAt: message.CreatedAt,
 		}
@@ -347,12 +345,8 @@ func (u *MessageUseCase) GetPlayerMessages(
 		attribute.Int("returned_messages", len(summaries)),
 	)
 
-	// 轉換 stats 為 DTO
-	dtoStats := dto.PlayerMessageStats{
-		ReadCount:   int64(stats.ReadCount),
-		UnreadCount: int64(stats.UnreadCount),
-		TotalCount:  int64(stats.TotalCount),
-	}
+	// stats 已經是 DTO 類型，直接使用
+	dtoStats := *stats
 
 	response := &dto.MessageListResponse{
 		Stats:    dtoStats,

@@ -1,18 +1,5 @@
 package consts
 
-type contextKey string
-
-const (
-	ShardMutexRedisKey    = "kds:shard:mutex:%s:%s"
-	SyncPlayerTagRedisKey = "worker:sync:play_tag:%d"
-)
-
-const (
-	TraceIDKey contextKey = "trace_id"
-	SpanIDKey  contextKey = "span_id"
-	EventIDKey contextKey = "event_id"
-)
-
 // MessageCampaign TargetType 傳送目標類型常數
 const (
 	TargetHighActivity uint8 = 1  // 30天內活躍

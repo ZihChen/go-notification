@@ -1,10 +1,8 @@
-package entity
-
-// 這個文件提供 Swagger 文檔所需的示例和註解
+package docs
 
 // 商戶示例
 // @name MerchantExample
-type SwaggerMerchantExample struct {
+type MerchantExample struct {
 	ID               uint64  `json:"id"                   example:"1"`
 	GlobalMerchantID string  `json:"global_merchant_id"   example:"FATCAT-MERCHANT-1"`
 	Name             string  `json:"name"                 example:"JV Diamond"`
@@ -17,7 +15,7 @@ type SwaggerMerchantExample struct {
 
 // 玩家示例
 // @name PlayerExample
-type SwaggerPlayerExample struct {
+type PlayerExample struct {
 	ID             uint64  `json:"id"                       example:"1"`
 	MerchantID     uint64  `json:"merchant_id"              example:"1"`
 	GlobalPlayerID string  `json:"global_player_id"         example:"FATCAT-PLAYER-7241"`
@@ -32,7 +30,7 @@ type SwaggerPlayerExample struct {
 
 // 管理員示例
 // @name ManagerExample
-type SwaggerManagerExample struct {
+type ManagerExample struct {
 	ID              uint64  `json:"id"                   example:"1"`
 	MerchantID      uint64  `json:"merchant_id"          example:"1"`
 	GlobalManagerID string  `json:"global_manager_id"    example:"FATCAT-MANAGER-231"`

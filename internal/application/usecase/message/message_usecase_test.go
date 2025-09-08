@@ -43,7 +43,7 @@ func (m *MockMessageCampaignRepository) FindByGlobalID(
 
 func (m *MockMessageCampaignRepository) FindAllWithOptions(
 	ctx context.Context,
-	query *entity.MessageCampaignsQuery,
+	query *dto.MessageCampaignsQuery,
 ) ([]*entity.MessageCampaign, int, error) {
 	args := m.Called(ctx, query)
 	if args.Get(0) == nil {
@@ -262,12 +262,12 @@ func (m *MockPlayerMessageRepository) FindByPlayerID(
 func (m *MockPlayerMessageRepository) GetPlayerMessageStats(
 	ctx context.Context,
 	globalPlayerID string,
-) (*entity.PlayerMessageStats, error) {
+) (*dto.PlayerMessageStats, error) {
 	args := m.Called(ctx, globalPlayerID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*entity.PlayerMessageStats), args.Error(1)
+	return args.Get(0).(*dto.PlayerMessageStats), args.Error(1)
 }
 
 func (m *MockPlayerMessageRepository) Create(
@@ -614,7 +614,7 @@ func TestMessageUseCase_ListMessageCampaigns(t *testing.T) {
 	expectedCampaigns := []*entity.MessageCampaign{createTestMessageCampaign()}
 	expectedTotal := 1
 
-	campaignRepo.On("FindAllWithOptions", mock.Anything, mock.AnythingOfType("*entity.MessageCampaignsQuery")).
+	campaignRepo.On("FindAllWithOptions", mock.Anything, mock.AnythingOfType("*dto.MessageCampaignsQuery")).
 		Return(expectedCampaigns, expectedTotal, nil)
 
 	useCase := NewMessageUseCase(campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger)
@@ -653,7 +653,7 @@ func TestMessageUseCase_GetPlayerMessages(t *testing.T) {
 		Maybe()
 
 	// Mock stats and messages
-	stats := &entity.PlayerMessageStats{
+	stats := &dto.PlayerMessageStats{
 		TotalCount:  5,
 		ReadCount:   2,
 		UnreadCount: 3,
@@ -685,9 +685,9 @@ func TestMessageUseCase_GetPlayerMessages(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, response)
-	assert.Equal(t, int64(stats.TotalCount), response.Stats.TotalCount)
-	assert.Equal(t, int64(stats.ReadCount), response.Stats.ReadCount)
-	assert.Equal(t, int64(stats.UnreadCount), response.Stats.UnreadCount)
+	assert.Equal(t, stats.TotalCount, response.Stats.TotalCount)
+	assert.Equal(t, stats.ReadCount, response.Stats.ReadCount)
+	assert.Equal(t, stats.UnreadCount, response.Stats.UnreadCount)
 	assert.Len(t, response.Messages, 2)
 	assert.Equal(t, 1, response.Page)
 	assert.Equal(t, 10, response.PageSize)
@@ -818,7 +818,7 @@ func TestMessageUseCase_processPlayerMessages_HighActivity(t *testing.T) {
 	// Call the private method through reflection or create a test wrapper
 	// For now, we test through GetPlayerMessages which calls processPlayerMessages
 	playerMessageRepo.On("GetPlayerMessageStats", mock.Anything, globalPlayerID).
-		Return(&entity.PlayerMessageStats{TotalCount: 1}, nil)
+		Return(&dto.PlayerMessageStats{TotalCount: 1}, nil)
 	playerMessageRepo.On("FindByPlayerID", mock.Anything, globalPlayerID, 1, 10).
 		Return([]*entity.PlayerMessage{}, 0, nil)
 
@@ -852,7 +852,7 @@ func TestMessageUseCase_processPlayerMessages_NoActivity(t *testing.T) {
 	useCase := NewMessageUseCase(campaignRepo, merchantRepo, playerMessageRepo, playerRepo, logger)
 
 	playerMessageRepo.On("GetPlayerMessageStats", mock.Anything, globalPlayerID).
-		Return(&entity.PlayerMessageStats{TotalCount: 1}, nil)
+		Return(&dto.PlayerMessageStats{TotalCount: 1}, nil)
 	playerMessageRepo.On("FindByPlayerID", mock.Anything, globalPlayerID, 1, 10).
 		Return([]*entity.PlayerMessage{}, 0, nil)
 

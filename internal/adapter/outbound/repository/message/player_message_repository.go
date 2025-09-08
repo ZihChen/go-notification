@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
@@ -81,7 +82,7 @@ func (r *PlayerMessageRepository) FindByPlayerID(
 func (r *PlayerMessageRepository) GetPlayerMessageStats(
 	ctx context.Context,
 	globalPlayerID string,
-) (*entity.PlayerMessageStats, error) {
+) (*dto.PlayerMessageStats, error) {
 	var totalCount int64
 	var readCount int64
 
@@ -102,7 +103,7 @@ func (r *PlayerMessageRepository) GetPlayerMessageStats(
 	// 計算未讀數量
 	unreadCount := totalCount - readCount
 
-	stats := &entity.PlayerMessageStats{
+	stats := &dto.PlayerMessageStats{
 		TotalCount:  int(totalCount),  // 轉換為 int
 		ReadCount:   int(readCount),   // 轉換為 int
 		UnreadCount: int(unreadCount), // 轉換為 int

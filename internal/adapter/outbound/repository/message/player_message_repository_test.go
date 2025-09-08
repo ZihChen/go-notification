@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,7 +23,7 @@ type PlayerMessageTestCase struct {
 	setupMock        func(sqlmock.Sqlmock)
 	expectedMessage  *entity.PlayerMessage
 	expectedMessages []*entity.PlayerMessage
-	expectedStats    *entity.PlayerMessageStats
+	expectedStats    *dto.PlayerMessageStats
 	expectedError    error
 	expectedTotal    int
 }
@@ -225,7 +226,7 @@ func TestPlayerMessageRepository_GetPlayerMessageStats(t *testing.T) {
 				mock.ExpectQuery("SELECT count\\(\\*\\) FROM `player_message`").
 					WillReturnRows(readRows)
 			},
-			expectedStats: &entity.PlayerMessageStats{
+			expectedStats: &dto.PlayerMessageStats{
 				TotalCount:  10,
 				ReadCount:   6,
 				UnreadCount: 4,
@@ -245,7 +246,7 @@ func TestPlayerMessageRepository_GetPlayerMessageStats(t *testing.T) {
 				mock.ExpectQuery("SELECT count\\(\\*\\) FROM `player_message`").
 					WillReturnRows(readRows)
 			},
-			expectedStats: &entity.PlayerMessageStats{
+			expectedStats: &dto.PlayerMessageStats{
 				TotalCount:  0,
 				ReadCount:   0,
 				UnreadCount: 0,

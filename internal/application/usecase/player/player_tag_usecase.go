@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/go-redsync/redsync/v4"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
@@ -15,6 +14,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/constants"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 )
 
@@ -171,7 +171,7 @@ func (u *PlayerTagUseCase) executeLocked(
 	playerID uint64,
 	fn func() error,
 ) error {
-	mutexKey := fmt.Sprintf(consts.SyncPlayerTagRedisKey, playerID)
+	mutexKey := fmt.Sprintf(constants.SyncPlayerTagRedisKey, playerID)
 
 	mutex, err := u.redisManager.GetMutexWithOption(mutexKey,
 		redsync.WithExpiry(5*time.Second),            // 鎖的過期時間
