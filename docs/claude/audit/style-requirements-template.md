@@ -1,4 +1,7 @@
 ## Claude 稽核代理規格（Go / Clean Architecture × Hexagonal）
+
+**版本**: v1.4 (更新日期: 2025-09-08)  
+**更新說明**: 基於 Fat Notification Cat v1.3 實際稽核經驗，新增針對 **併發控制**、**CORS 安全**、**認證機制**、**領域污染** 等關鍵問題的檢查規則和優先級判斷。
  
 **目標（Objectives)**
 - 找出 coding style / idiomatic Go 問題（含 err/變數遮蔽、命名、包設計、context 傳遞、defer 資源釋放、錯誤包裝）。
@@ -122,3 +125,56 @@ Clean Architecture / Hexagonal
 - Medium：設計味道、錯誤處理與可觀測性不足、測試覆蓋缺口。
 
 - Low：風格、命名、註解/文件不足。
+
+---
+
+## 重點特別檢查項目 （基於實際稽核經驗）
+
+### 1. 認證機制安全性
+- **MD5/SHA1 實現檢查**: 確保正確的哈希比較邏輯
+- **時間安全性**: 使用 `crypto/subtle.ConstantTimeCompare`
+- **認證繞過風險**: 檢查是否直接返回加密密鑰
+
+### 2. CORS 安全設定
+- **生產環境檢查**: `AllowAllOrigins: true` 應被禁止
+- **來源白名單**: 要求明確指定 `AllowOrigins`
+- **憑證設定**: `AllowCredentials` 與 `AllowAllOrigins` 的衝突
+
+### 3. 併發控制機制
+- **Goroutine 管理**: 推薦使用 `sync.WaitGroup`
+- **Context 取消**: 確保 goroutines 能正確回應 context.Done()
+- **分布式鎖**: 排程任務的多實例保護
+- **事務邊界**: 多個資料庫操作的原子性
+
+### 4. 敏感資訊洩漏
+- **DSN 遮蔽**: 資料庫連接字符串中的密碼
+- **API Key 保護**: 日誌和追蹤中的 API Key
+- **JWT Token**: 避免在日誌中記錄完整 token
+
+### 5. 架構分層純潔性
+- **Swagger 污染**: 禁止在 domain 層放置 API 文檔模型
+- **Repository 組織**: 按業務領域分類管理
+- **DTO 位置**: 應在 application 層而非 domain
+- **依賴倒置**: UseCase 不可直接依賴具體實現
+
+### 6. DDD 實踐品質
+- **貧血模型**: 實體應具有業務方法和行為
+- **值對象**: 重要業務概念不應使用原始類型
+- **領域服務**: 複雜業務邏輯應有專用服務載體
+
+### 7. 測試覆蓋品質
+- **Infrastructure 層**: 資料庫、Redis、KDS 等必須有測試
+- **Mock 一致性**: 避免使用多種 Mock 策略
+- **併發測試**: 使用 race detector 檢查 goroutine 安全
+
+---
+
+## 最佳實踐範例
+
+基於 Fat Notification Cat 成功的優化經驗，提供以下最佳實踐範例：
+
+1. **模組化路由管理**: Router Manager 模式
+2. **分布式鎖機制**: Redsync 防止多實例併發
+3. **CORS 環境分離**: 開發/生產配置分離
+4. **Repository 業務分類**: merchant/, player/, message/ 組織
+5. **併發批次處理**: WaitGroup + Context 取消機制
