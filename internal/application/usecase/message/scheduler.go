@@ -3,6 +3,7 @@ package message
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
@@ -177,32 +178,54 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 		batchSize         = 5000 // 加大批次大小
 		dbBatchSize       = 500  // DB操作批次大小
 		maxConcurrency    = 10   // 最大並發goroutine數量
-		channelBufferSize = 100  // channel緩衝區大小
+		channelBufferSize = 200  // 增加channel緩衝區大小防止阻塞
 	)
 
-	var totalSent int64
-	offset := 0
+	var (
+		totalSent int64
+		offset    int
+		wg        sync.WaitGroup
+		mu        sync.RWMutex
+	)
 
-	// 創建工作channel和結果channel
+	// 創建工作channel和結果channel，使用更大的緩衝區
 	playerBatches := make(chan []*entity.Player, channelBufferSize)
-	results := make(chan int64, channelBufferSize)
-	errorsCh := make(chan error, channelBufferSize)
+	results := make(chan int64, maxConcurrency*3) // 確保足夠的緩衝空間
+	errorsCh := make(chan error, maxConcurrency*3)
+
+	// 創建可取消的子context
+	workerCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	// 啟動worker goroutines
+	wg.Add(maxConcurrency)
 	for i := 0; i < maxConcurrency; i++ {
-		go u.processPlayerBatch(ctx, campaignID, playerBatches, results, errorsCh, dbBatchSize)
+		go func() {
+			defer wg.Done()
+			u.processPlayerBatch(workerCtx, campaignID, playerBatches, results, errorsCh, dbBatchSize)
+		}()
 	}
 
 	// 啟動數據提供者goroutine
+	wg.Add(1)
 	go func() {
-		defer close(playerBatches)
+		defer func() {
+			close(playerBatches)
+			wg.Done()
+		}()
 
 		for {
-			players, err := u.playerRepo.FindByTargetType(ctx, campaign.Target, offset, batchSize)
+			select {
+			case <-workerCtx.Done():
+				return
+			default:
+			}
+
+			players, err := u.playerRepo.FindByTargetType(workerCtx, campaign.Target, offset, batchSize)
 			if err != nil {
 				select {
 				case errorsCh <- fmt.Errorf("find players: %w", err):
-				case <-ctx.Done():
+				case <-workerCtx.Done():
 				}
 				return
 			}
@@ -213,7 +236,7 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 
 			select {
 			case playerBatches <- players:
-			case <-ctx.Done():
+			case <-workerCtx.Done():
 				return
 			}
 
@@ -225,33 +248,53 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 		}
 	}()
 
-	// 收集結果
-	completed := 0
-
-	// 等待所有worker完成
-	for completed < maxConcurrency {
-		select {
-		case count := <-results:
-			if count >= 0 {
+	// 啟動結果收集goroutine
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case count := <-results:
+				mu.Lock()
 				totalSent += count
-			} else {
-				// 收到完成信號(-1)
-				completed++
+				mu.Unlock()
+			case err := <-errorsCh:
+				if err != nil {
+					u.logger.ErrorLog("Error in batch processing", u.logger.Error("err", err))
+				}
+			case <-workerCtx.Done():
+				return
 			}
-		case err := <-errorsCh:
-			if err != nil {
-				u.logger.ErrorLog("Error in batch processing", u.logger.Error("err", err))
-			}
-		case <-ctx.Done():
-			return ctx.Err()
 		}
+	}()
+
+	// 創建一個channel來等待WaitGroup完成
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	// 等待所有goroutines完成或context取消
+	select {
+	case <-done:
+		// 所有goroutines正常完成
+	case <-ctx.Done():
+		cancel() // 取消所有worker goroutines
+		<-done   // 等待所有goroutines清理完成
+		return ctx.Err()
 	}
 
+	// 確保獲取最終結果
+	mu.RLock()
+	finalTotalSent := totalSent
+	mu.RUnlock()
+
 	// 更新發送統計
-	if err := u.campaignRepo.UpdateSentCount(ctx, campaignID, totalSent); err != nil {
+	if err := u.campaignRepo.UpdateSentCount(ctx, campaignID, finalTotalSent); err != nil {
 		u.logger.WarnLog("Failed to update sent count",
 			u.logger.Int64("campaign_id", int64(campaignID)),
-			u.logger.Int64("sent_count", totalSent),
+			u.logger.Int64("sent_count", finalTotalSent),
 			u.logger.Error("err", err))
 	}
 
@@ -268,7 +311,7 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 	}
 
 	tracing.RecordSpanAttributes(span,
-		attribute.Int64("total_sent", totalSent),
+		attribute.Int64("total_sent", finalTotalSent),
 		attribute.Int("final_status", int(consts.MessageCampaignStatusSent)),
 	)
 
@@ -277,7 +320,7 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 	u.logger.InfoLog("Campaign sent to players asynchronously",
 		u.logger.Int64("campaign_id", int64(campaignID)),
 		u.logger.String("title", campaign.Title),
-		u.logger.Int64("total_sent", totalSent))
+		u.logger.Int64("total_sent", finalTotalSent))
 
 	return nil
 }
@@ -291,27 +334,29 @@ func (u *MessageUseCase) processPlayerBatch(
 	errorsCh chan<- error,
 	dbBatchSize int,
 ) {
-	defer func() {
-		// 發送完成信號(使用-1表示完成)
+	for {
 		select {
-		case results <- -1:
-		case <-ctx.Done():
-		}
-	}()
+		case players, ok := <-playerBatches:
+			if !ok {
+				// channel已關閉，退出
+				return
+			}
+			
+			count, err := u.processSingleBatch(ctx, campaignID, players, dbBatchSize)
+			if err != nil {
+				select {
+				case errorsCh <- err:
+				case <-ctx.Done():
+					return
+				}
+				continue
+			}
 
-	for players := range playerBatches {
-		count, err := u.processSingleBatch(ctx, campaignID, players, dbBatchSize)
-		if err != nil {
 			select {
-			case errorsCh <- err:
+			case results <- count:
 			case <-ctx.Done():
 				return
 			}
-			continue
-		}
-
-		select {
-		case results <- count:
 		case <-ctx.Done():
 			return
 		}
