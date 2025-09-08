@@ -134,10 +134,129 @@ func TestManagerRepository_FindByID(t *testing.T) {
 
 // TestManagerRepository_FirstOrCreate tests the FirstOrCreate method
 func TestManagerRepository_FirstOrCreate(t *testing.T) {
-	// Skip this test as it's difficult to mock GORM's FirstOrCreate behavior with go-sqlmock
-	t.Skip(
-		"Skipping TestManagerRepository_FirstOrCreate as it's difficult to mock GORM's FirstOrCreate behavior with go-sqlmock",
-	)
+	// Setup test data
+	now := time.Now()
+	email := "test@example.com"
+
+	testCases := []struct {
+		name          string
+		setupMock     func(sqlmock.Sqlmock)
+		manager       *entity.Manager
+		expectedError error
+		expectedID    uint64
+	}{
+		{
+			name: "create new manager - record not found",
+			setupMock: func(mock sqlmock.Sqlmock) {
+				// GORM FirstOrCreate: First SELECT query returns empty result (no error)
+				emptyRows := sqlmock.NewRows([]string{"id", "merchant_id", "global_manager_id", "account", "email", "created_at", "updated_at", "deleted_at"})
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `managers`")).
+					WithArgs("FATCAT-MANAGER-001", 1).
+					WillReturnRows(emptyRows)
+				
+				// Then create with transaction
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `managers`")).
+					WithArgs(
+						sqlmock.AnyArg(), // merchant_id
+						"FATCAT-MANAGER-001", // global_manager_id
+						"test@example.com",  // account
+						&email,              // email
+						sqlmock.AnyArg(),    // created_at
+						sqlmock.AnyArg(),    // updated_at
+						sqlmock.AnyArg(),    // deleted_at
+					).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
+			},
+			manager: &entity.Manager{
+				MerchantID:      1,
+				GlobalManagerID: "FATCAT-MANAGER-001",
+				Account:         "test@example.com",
+				Email:           &email,
+				CreatedAt:       now,
+				UpdatedAt:       now,
+			},
+			expectedError: nil,
+			expectedID:    1,
+		},
+		{
+			name: "find existing manager - record found",
+			setupMock: func(mock sqlmock.Sqlmock) {
+				// Record found, no insert needed
+				rows := sqlmock.NewRows([]string{"id", "merchant_id", "global_manager_id", "account", "email", "created_at", "updated_at", "deleted_at"}).
+					AddRow(2, 1, "FATCAT-MANAGER-002", "existing@example.com", &email, now, now, nil)
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `managers`")).
+					WithArgs("FATCAT-MANAGER-002", 1).
+					WillReturnRows(rows)
+			},
+			manager: &entity.Manager{
+				MerchantID:      1,
+				GlobalManagerID: "FATCAT-MANAGER-002",
+				Account:         "existing@example.com",
+				Email:           &email,
+				CreatedAt:       now,
+				UpdatedAt:       now,
+			},
+			expectedError: nil,
+			expectedID:    2,
+		},
+		{
+			name: "database error during create",
+			setupMock: func(mock sqlmock.Sqlmock) {
+				// GORM FirstOrCreate: First SELECT query returns empty result
+				emptyRows := sqlmock.NewRows([]string{"id", "merchant_id", "global_manager_id", "account", "email", "created_at", "updated_at", "deleted_at"})
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `managers`")).
+					WithArgs("FATCAT-MANAGER-003", 1).
+					WillReturnRows(emptyRows)
+				
+				// Create fails
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `managers`")).
+					WillReturnError(errors.New("database connection error"))
+				mock.ExpectRollback()
+			},
+			manager: &entity.Manager{
+				MerchantID:      1,
+				GlobalManagerID: "FATCAT-MANAGER-003",
+				Account:         "error@example.com",
+				Email:           &email,
+				CreatedAt:       now,
+				UpdatedAt:       now,
+			},
+			expectedError: errors.New("database connection error"),
+			expectedID:    0,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			db, mock, sqlDB := setupManagerMockDB(t)
+			defer sqlDB.Close()
+
+			// Setup mock expectations
+			tc.setupMock(mock)
+
+			// Create repository
+			repo := NewManagerRepository(db)
+
+			// Execute
+			err := repo.FirstOrCreate(context.Background(), tc.manager)
+
+			// Verify
+			if tc.expectedError != nil {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedError.Error())
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectedID, tc.manager.ID)
+			}
+
+			// Verify all expectations were met
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
 }
 
 // TestManagerRepository_Create tests the Create method

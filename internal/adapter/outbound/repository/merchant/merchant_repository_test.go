@@ -159,6 +159,129 @@ func TestMerchantRepository_FindByGlobalID(t *testing.T) {
 	}
 }
 
+func TestMerchantRepository_FirstOrCreate(t *testing.T) {
+	now := time.Now()
+	testCases := []struct {
+		name          string
+		setupMock     func(sqlmock.Sqlmock)
+		merchant      *entity.Merchant
+		expectedError error
+		expectedID    uint64
+	}{
+		{
+			name: "create new merchant - record not found",
+			setupMock: func(mock sqlmock.Sqlmock) {
+				// GORM FirstOrCreate: First SELECT query returns empty result
+				emptyRows := sqlmock.NewRows([]string{"id", "global_merchant_id", "name", "display_name", "api_key", "created_at", "updated_at", "deleted_at"})
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `merchants`")).
+					WithArgs("FATCAT-MERCHANT-001", 1).
+					WillReturnRows(emptyRows)
+				
+				// Then create with transaction
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `merchants`")).
+					WithArgs(
+						sqlmock.AnyArg(), // global_merchant_id
+						sqlmock.AnyArg(), // name
+						sqlmock.AnyArg(), // display_name
+						sqlmock.AnyArg(), // api_key
+						sqlmock.AnyArg(), // created_at
+						sqlmock.AnyArg(), // updated_at
+						sqlmock.AnyArg(), // deleted_at
+					).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
+			},
+			merchant: &entity.Merchant{
+				GlobalMerchantID: "FATCAT-MERCHANT-001",
+				Name:             "Test Merchant",
+				DisplayName:      "Test Display Name",
+				APIKey:           "test-api-key",
+				CreatedAt:        now,
+				UpdatedAt:        now,
+			},
+			expectedError: nil,
+			expectedID:    1,
+		},
+		{
+			name: "find existing merchant - record found",
+			setupMock: func(mock sqlmock.Sqlmock) {
+				// Record found, no insert needed
+				rows := sqlmock.NewRows([]string{"id", "global_merchant_id", "name", "display_name", "api_key", "created_at", "updated_at", "deleted_at"}).
+					AddRow(2, "FATCAT-MERCHANT-002", "Existing Merchant", "Existing Display", "existing-api-key", now, now, nil)
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `merchants`")).
+					WithArgs("FATCAT-MERCHANT-002", 1).
+					WillReturnRows(rows)
+			},
+			merchant: &entity.Merchant{
+				GlobalMerchantID: "FATCAT-MERCHANT-002",
+				Name:             "Existing Merchant",
+				DisplayName:      "Existing Display",
+				APIKey:           "existing-api-key",
+				CreatedAt:        now,
+				UpdatedAt:        now,
+			},
+			expectedError: nil,
+			expectedID:    2,
+		},
+		{
+			name: "database error during create",
+			setupMock: func(mock sqlmock.Sqlmock) {
+				// GORM FirstOrCreate: First SELECT query returns empty result
+				emptyRows := sqlmock.NewRows([]string{"id", "global_merchant_id", "name", "display_name", "api_key", "created_at", "updated_at", "deleted_at"})
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `merchants`")).
+					WithArgs("FATCAT-MERCHANT-003", 1).
+					WillReturnRows(emptyRows)
+				
+				// Create fails
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `merchants`")).
+					WillReturnError(errors.New("database connection error"))
+				mock.ExpectRollback()
+			},
+			merchant: &entity.Merchant{
+				GlobalMerchantID: "FATCAT-MERCHANT-003",
+				Name:             "Error Merchant",
+				DisplayName:      "Error Display",
+				APIKey:           "error-api-key",
+				CreatedAt:        now,
+				UpdatedAt:        now,
+			},
+			expectedError: errors.New("database connection error"),
+			expectedID:    0,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			db, mock, sqlDB := setupMerchantMockDB(t)
+			defer sqlDB.Close()
+
+			// Setup mock expectations
+			tc.setupMock(mock)
+
+			// Create repository
+			repo := NewMerchantRepository(db)
+
+			// Execute
+			err := repo.FirstOrCreate(context.Background(), tc.merchant)
+
+			// Verify
+			if tc.expectedError != nil {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedError.Error())
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectedID, tc.merchant.ID)
+			}
+
+			// Verify all expectations were met
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
 func TestMerchantRepository_Create(t *testing.T) {
 	now := time.Now()
 	testCases := []MerchantTestCase{
