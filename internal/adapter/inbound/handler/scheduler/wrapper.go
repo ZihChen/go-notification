@@ -36,7 +36,7 @@ func (w *JobWrapper) run() {
 	if w.redisManager != nil {
 		// 獲取分布式鎖
 		mutex, err := w.redisManager.GetMutexWithOption(mutexKey,
-			redsync.WithExpiry(5*time.Second),            // 鎖的過期時間 5 分鐘
+			redsync.WithExpiry(30*time.Second),           // 鎖的過期時間 30 秒
 			redsync.WithTries(1),                         // 只試一次，不重試
 			redsync.WithRetryDelay(100*time.Millisecond), // 重試間隔
 		)

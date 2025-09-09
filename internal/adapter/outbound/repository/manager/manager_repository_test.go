@@ -149,22 +149,33 @@ func TestManagerRepository_FirstOrCreate(t *testing.T) {
 			name: "create new manager - record not found",
 			setupMock: func(mock sqlmock.Sqlmock) {
 				// GORM FirstOrCreate: First SELECT query returns empty result (no error)
-				emptyRows := sqlmock.NewRows([]string{"id", "merchant_id", "global_manager_id", "account", "email", "created_at", "updated_at", "deleted_at"})
+				emptyRows := sqlmock.NewRows(
+					[]string{
+						"id",
+						"merchant_id",
+						"global_manager_id",
+						"account",
+						"email",
+						"created_at",
+						"updated_at",
+						"deleted_at",
+					},
+				)
 				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `managers`")).
 					WithArgs("FATCAT-MANAGER-001", 1).
 					WillReturnRows(emptyRows)
-				
+
 				// Then create with transaction
 				mock.ExpectBegin()
 				mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `managers`")).
 					WithArgs(
-						sqlmock.AnyArg(), // merchant_id
+						sqlmock.AnyArg(),     // merchant_id
 						"FATCAT-MANAGER-001", // global_manager_id
-						"test@example.com",  // account
-						&email,              // email
-						sqlmock.AnyArg(),    // created_at
-						sqlmock.AnyArg(),    // updated_at
-						sqlmock.AnyArg(),    // deleted_at
+						"test@example.com",   // account
+						&email,               // email
+						sqlmock.AnyArg(),     // created_at
+						sqlmock.AnyArg(),     // updated_at
+						sqlmock.AnyArg(),     // deleted_at
 					).
 					WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectCommit()
@@ -205,11 +216,22 @@ func TestManagerRepository_FirstOrCreate(t *testing.T) {
 			name: "database error during create",
 			setupMock: func(mock sqlmock.Sqlmock) {
 				// GORM FirstOrCreate: First SELECT query returns empty result
-				emptyRows := sqlmock.NewRows([]string{"id", "merchant_id", "global_manager_id", "account", "email", "created_at", "updated_at", "deleted_at"})
+				emptyRows := sqlmock.NewRows(
+					[]string{
+						"id",
+						"merchant_id",
+						"global_manager_id",
+						"account",
+						"email",
+						"created_at",
+						"updated_at",
+						"deleted_at",
+					},
+				)
 				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `managers`")).
 					WithArgs("FATCAT-MANAGER-003", 1).
 					WillReturnRows(emptyRows)
-				
+
 				// Create fails
 				mock.ExpectBegin()
 				mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `managers`")).
@@ -233,7 +255,9 @@ func TestManagerRepository_FirstOrCreate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			db, mock, sqlDB := setupManagerMockDB(t)
-			defer sqlDB.Close()
+			defer func() {
+				_ = sqlDB.Close()
+			}()
 
 			// Setup mock expectations
 			tc.setupMock(mock)

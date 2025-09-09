@@ -34,4 +34,5 @@ const (
 	MessageCampaignStatusScheduled uint8 = 2 // 已排程
 	MessageCampaignStatusSent      uint8 = 3 // 已發送
 	MessageCampaignStatusCancelled uint8 = 4 // 已取消
+	MessageCampaignStatusFailed    uint8 = 5 // 處理失敗
 )

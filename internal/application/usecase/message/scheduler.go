@@ -3,13 +3,14 @@ package message
 import (
 	"context"
 	"fmt"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
+	"golang.org/x/sync/errgroup"
 )
 
 // ProcessScheduledCampaigns 處理排程的活動
@@ -175,135 +176,97 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 
 	// 配置參數
 	const (
-		batchSize         = 5000 // 加大批次大小
-		dbBatchSize       = 500  // DB操作批次大小
-		maxConcurrency    = 10   // 最大並發goroutine數量
-		channelBufferSize = 200  // 增加channel緩衝區大小防止阻塞
+		operationTimeout = 30 * time.Second // 操作時長為 30 秒
+		batchSize        = 5000             // 每批處理的玩家數量
+		dbBatchSize      = 500              // DB操作批次大小
+		maxConcurrency   = 10               // 最大並發goroutine數量
 	)
 
-	var (
-		totalSent int64
-		offset    int
-		wg        sync.WaitGroup
-		mu        sync.RWMutex
-	)
+	// 使用 atomic 操作統計發送數量，避免 mutex 開銷
+	var totalSent int64
 
-	// 創建工作channel和結果channel，使用更大的緩衝區
-	playerBatches := make(chan []*entity.Player, channelBufferSize)
-	results := make(chan int64, maxConcurrency*3) // 確保足夠的緩衝空間
-	errorsCh := make(chan error, maxConcurrency*3)
-
-	// 創建可取消的子context
-	workerCtx, cancel := context.WithCancel(ctx)
+	// 創建 errgroup 統一管理 goroutines 和錯誤處理
+	timeoutCtx, cancel := context.WithTimeout(ctx, operationTimeout)
 	defer cancel()
+	g, ctx := errgroup.WithContext(timeoutCtx)
+	g.SetLimit(maxConcurrency) // 限制並發數量
 
-	// 啟動worker goroutines
-	wg.Add(maxConcurrency)
+	// 創建工作 channel，簡化為單一 channel
+	playerBatches := make(chan []*entity.Player, maxConcurrency*2)
+
+	// 數據生產者：分頁讀取玩家並發送到 channel
+	g.Go(func() error {
+		defer close(playerBatches)
+		return u.producePlayerBatches(ctx, campaign, batchSize, playerBatches)
+	})
+
+	// 數據消費者：並發處理玩家批次
 	for i := 0; i < maxConcurrency; i++ {
-		go func() {
-			defer wg.Done()
-			u.processPlayerBatch(workerCtx, campaignID, playerBatches, results, errorsCh, dbBatchSize)
-		}()
+		g.Go(func() error {
+			return u.consumePlayerBatches(ctx, campaignID, playerBatches, dbBatchSize, &totalSent)
+		})
 	}
 
-	// 啟動數據提供者goroutine
-	wg.Add(1)
-	go func() {
-		defer func() {
-			close(playerBatches)
-			wg.Done()
-		}()
+	// 獲取處理過程中已發送的數量
+	finalTotalSent := atomic.LoadInt64(&totalSent)
 
-		for {
-			select {
-			case <-workerCtx.Done():
-				return
-			default:
-			}
+	// 等待所有 goroutines 完成，任何錯誤都會導致其他 goroutines 被取消
+	if waitErr := g.Wait(); waitErr != nil {
+		tracing.RecordSpanError(span, waitErr)
 
-			players, err := u.playerRepo.FindByTargetType(workerCtx, campaign.Target, offset, batchSize)
-			if err != nil {
-				select {
-				case errorsCh <- fmt.Errorf("find players: %w", err):
-				case <-workerCtx.Done():
-				}
-				return
-			}
+		// 發生錯誤時的回滾策略：保留已處理數據，更新統計並標記為失敗
+		u.logger.ErrorLog("Campaign processing failed, performing partial rollback",
+			u.logger.Int64("campaign_id", int64(campaignID)),
+			u.logger.Int64("partial_sent_count", finalTotalSent),
+			u.logger.Error("error", waitErr))
 
-			if len(players) == 0 {
-				break
-			}
-
-			select {
-			case playerBatches <- players:
-			case <-workerCtx.Done():
-				return
-			}
-
-			offset += batchSize
-
-			if len(players) < batchSize {
-				break
-			}
+		// 更新已發送的數量統計（即使失敗也要記錄已處理的數據）
+		if updateSentErr := u.campaignRepo.UpdateSentCount(ctx, campaignID, finalTotalSent); updateSentErr != nil {
+			u.logger.ErrorLog("Failed to update sent count during rollback",
+				u.logger.Int64("campaign_id", int64(campaignID)),
+				u.logger.Int64("sent_count", finalTotalSent),
+				u.logger.Error("err", updateSentErr))
 		}
-	}()
 
-	// 啟動結果收集goroutine
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case count := <-results:
-				mu.Lock()
-				totalSent += count
-				mu.Unlock()
-			case err := <-errorsCh:
-				if err != nil {
-					u.logger.ErrorLog("Error in batch processing", u.logger.Error("err", err))
-				}
-			case <-workerCtx.Done():
-				return
-			}
+		// 將活動狀態標記為失敗
+		if updateStatusErr := u.campaignRepo.UpdateStatus(ctx, campaignID, consts.MessageCampaignStatusFailed); updateStatusErr != nil {
+			u.logger.ErrorLog("Failed to update campaign status to failed during rollback",
+				u.logger.Int64("campaign_id", int64(campaignID)),
+				u.logger.Error("err", updateStatusErr))
+		} else {
+			u.logger.InfoLog("Campaign status updated to failed",
+				u.logger.Int64("campaign_id", int64(campaignID)),
+				u.logger.Int64("partial_sent_count", finalTotalSent))
 		}
-	}()
 
-	// 創建一個channel來等待WaitGroup完成
-	done := make(chan struct{})
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
+		// 記錄部分成功的追蹤信息
+		tracing.RecordSpanAttributes(span,
+			attribute.Int64("partial_sent", finalTotalSent),
+			attribute.Int("final_status", int(consts.MessageCampaignStatusFailed)),
+			attribute.Bool("partial_success", finalTotalSent > 0),
+		)
 
-	// 等待所有goroutines完成或context取消
-	select {
-	case <-done:
-		// 所有goroutines正常完成
-	case <-ctx.Done():
-		cancel() // 取消所有worker goroutines
-		<-done   // 等待所有goroutines清理完成
-		return ctx.Err()
+		return fmt.Errorf(
+			"campaign processing failed after sending %d messages: %w",
+			finalTotalSent,
+			waitErr,
+		)
 	}
 
-	// 確保獲取最終結果
-	mu.RLock()
-	finalTotalSent := totalSent
-	mu.RUnlock()
-
-	// 更新發送統計
-	if err := u.campaignRepo.UpdateSentCount(ctx, campaignID, finalTotalSent); err != nil {
+	// 正常完成：更新發送統計
+	if updateSentErr := u.campaignRepo.UpdateSentCount(ctx, campaignID, finalTotalSent); updateSentErr != nil {
 		u.logger.WarnLog("Failed to update sent count",
 			u.logger.Int64("campaign_id", int64(campaignID)),
 			u.logger.Int64("sent_count", finalTotalSent),
-			u.logger.Error("err", err))
+			u.logger.Error("err", updateSentErr))
 	}
 
-	// 更新活動狀態為已發送
-	if err := u.campaignRepo.UpdateStatus(ctx, campaignID, consts.MessageCampaignStatusSent); err != nil {
+	// 正常完成：更新活動狀態為已發送
+	if updateStatusErr := u.campaignRepo.UpdateStatus(ctx, campaignID, consts.MessageCampaignStatusSent); updateStatusErr != nil {
 		u.logger.WarnLog("Failed to update campaign status to sent",
 			u.logger.Int64("campaign_id", int64(campaignID)),
 			u.logger.Int("status", int(consts.MessageCampaignStatusSent)),
-			u.logger.Error("err", err))
+			u.logger.Error("err", updateStatusErr))
 	} else {
 		u.logger.InfoLog("Campaign status updated to sent",
 			u.logger.Int64("campaign_id", int64(campaignID)),
@@ -325,40 +288,74 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 	return nil
 }
 
-// processPlayerBatch 處理玩家批次的工作函數
-func (u *MessageUseCase) processPlayerBatch(
+// producePlayerBatches 生產者：分頁讀取玩家數據並發送到 channel
+func (u *MessageUseCase) producePlayerBatches(
+	ctx context.Context,
+	campaign *entity.MessageCampaign,
+	batchSize int,
+	playerBatches chan<- []*entity.Player,
+) error {
+	offset := 0
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		players, err := u.playerRepo.FindByTargetType(ctx, campaign.Target, offset, batchSize)
+		if err != nil {
+			return fmt.Errorf("find players at offset %d: %w", offset, err)
+		}
+
+		// 沒有更多數據，正常結束
+		if len(players) == 0 {
+			return nil
+		}
+
+		// 發送數據批次
+		select {
+		case playerBatches <- players:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+
+		offset += batchSize
+
+		// 如果這批數據少於預期大小，說明已經到了最後一批
+		if len(players) < batchSize {
+			return nil
+		}
+	}
+}
+
+// consumePlayerBatches 消費者：處理玩家批次並更新統計
+func (u *MessageUseCase) consumePlayerBatches(
 	ctx context.Context,
 	campaignID uint64,
 	playerBatches <-chan []*entity.Player,
-	results chan<- int64,
-	errorsCh chan<- error,
 	dbBatchSize int,
-) {
+	totalSent *int64,
+) error {
 	for {
 		select {
 		case players, ok := <-playerBatches:
 			if !ok {
-				// channel已關閉，退出
-				return
-			}
-			
-			count, err := u.processSingleBatch(ctx, campaignID, players, dbBatchSize)
-			if err != nil {
-				select {
-				case errorsCh <- err:
-				case <-ctx.Done():
-					return
-				}
-				continue
+				// channel 已關閉，正常結束
+				return nil
 			}
 
-			select {
-			case results <- count:
-			case <-ctx.Done():
-				return
+			count, err := u.processSingleBatch(ctx, campaignID, players, dbBatchSize)
+			if err != nil {
+				return fmt.Errorf("process batch: %w", err)
 			}
+
+			// 原子操作更新總數
+			atomic.AddInt64(totalSent, count)
+
 		case <-ctx.Done():
-			return
+			return ctx.Err()
 		}
 	}
 }

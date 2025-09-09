@@ -172,11 +172,22 @@ func TestMerchantRepository_FirstOrCreate(t *testing.T) {
 			name: "create new merchant - record not found",
 			setupMock: func(mock sqlmock.Sqlmock) {
 				// GORM FirstOrCreate: First SELECT query returns empty result
-				emptyRows := sqlmock.NewRows([]string{"id", "global_merchant_id", "name", "display_name", "api_key", "created_at", "updated_at", "deleted_at"})
+				emptyRows := sqlmock.NewRows(
+					[]string{
+						"id",
+						"global_merchant_id",
+						"name",
+						"display_name",
+						"api_key",
+						"created_at",
+						"updated_at",
+						"deleted_at",
+					},
+				)
 				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `merchants`")).
 					WithArgs("FATCAT-MERCHANT-001", 1).
 					WillReturnRows(emptyRows)
-				
+
 				// Then create with transaction
 				mock.ExpectBegin()
 				mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `merchants`")).
@@ -228,11 +239,22 @@ func TestMerchantRepository_FirstOrCreate(t *testing.T) {
 			name: "database error during create",
 			setupMock: func(mock sqlmock.Sqlmock) {
 				// GORM FirstOrCreate: First SELECT query returns empty result
-				emptyRows := sqlmock.NewRows([]string{"id", "global_merchant_id", "name", "display_name", "api_key", "created_at", "updated_at", "deleted_at"})
+				emptyRows := sqlmock.NewRows(
+					[]string{
+						"id",
+						"global_merchant_id",
+						"name",
+						"display_name",
+						"api_key",
+						"created_at",
+						"updated_at",
+						"deleted_at",
+					},
+				)
 				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `merchants`")).
 					WithArgs("FATCAT-MERCHANT-003", 1).
 					WillReturnRows(emptyRows)
-				
+
 				// Create fails
 				mock.ExpectBegin()
 				mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `merchants`")).
@@ -256,7 +278,9 @@ func TestMerchantRepository_FirstOrCreate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			db, mock, sqlDB := setupMerchantMockDB(t)
-			defer sqlDB.Close()
+			defer func() {
+				_ = sqlDB.Close()
+			}()
 
 			// Setup mock expectations
 			tc.setupMock(mock)
