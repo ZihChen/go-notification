@@ -895,8 +895,8 @@ API 文檔可以進一步完善和標準化。
 3. **整合測試超時**: 長時間運行的測試存在穩定性問題
 
 #### High Priority 測試問題
-1. **Mock 架構不統一**: 使用多種 Mock 框架和策略
-2. **併發安全測試缺失**: 缺少 goroutine 安全性測試
+1. **Mock 架構不~~統一**: 使用多種 Mock 框架和策略
+2. **併發安全測試缺失**: 缺少 goroutine 安全性測試~~
 3. ✅ ~~**Repository 測試跳過**: 8+ 個測試被標記為跳過~~ **已修復** (2025-09-08)
    - 修復 `TestManagerRepository_FirstOrCreate` 測試實現
    - 補充 `TestMerchantRepository_FirstOrCreate` 測試
