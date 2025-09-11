@@ -172,6 +172,14 @@ Modular router architecture with separated concerns:
 ### Event-Driven Architecture
 System uses events for inter-service communication via KDS and Redis queues
 
+### Testing Architecture Pattern ✨ **NEW**
+Unified testing infrastructure with improved maintainability:
+- **Unified Mock Framework** - All repository mocks use consistent BaseMock pattern in `test/mocks/`
+- **Test Data Factory** - Builder pattern for creating test entities in `test/factories/`
+- **Edge Case Testing** - Comprehensive edge case scenarios and error simulation
+- **Context Leak Prevention** - Proper context management in test utilities
+- **Centralized Mock Management** - Single source of truth for all mock definitions
+
 ### Error Handling
 Custom error types defined in `internal/domain/errmsg/` for consistent error handling across the application
 
@@ -186,15 +194,19 @@ The project maintains structured documentation for development guidance:
 - **docs/claude/archive/** - Completed feature archives
 
 ### Current Status
+**v1.4 測試架構統一完成**: 統一Mock框架與測試數據工廠實現，提升測試品質與維護性  
 **v1.3 六角架構重構完成**: Clean Architecture 完整實現，Ports & Adapters 模式完成  
 **v1.2 路由架構重構完成**: 模組化路由管理系統已完成開發與整合  
 **v1.1 主要功能完成**: 會員訊息排程發送系統已完成核心開發，現進入測試驗證階段
 
 ## Development Specifications
 
-### Current Focus: Hexagonal Architecture Implementation Complete (2025-09-02)
+### Current Focus: Testing Infrastructure Optimization Complete (2025-09-11)
 
 **Recently Completed:**
+- ✅ Unified Mock architecture implementation (v1.4)
+- ✅ Test data factory with builder pattern
+- ✅ Edge case testing infrastructure
 - ✅ Complete hexagonal architecture migration (v1.3)
 - ✅ Repository reorganization by business domains
 - ✅ Application layer restructuring with DTO migration
@@ -204,13 +216,23 @@ The project maintains structured documentation for development guidance:
 - ✅ CORS configuration optimization for Swagger integration
 
 **Current Phase:**
-- Testing and validation of the refactored hexagonal architecture
-- Performance optimization and system stability improvements
-- Comprehensive testing of message campaign system
+- System stability monitoring and optimization
+- Performance baseline establishment using pprof integration
+- Production readiness assessment and deployment preparation
 
 For detailed current tasks, see `docs/claude/CLAUDE-CURRENT.md`.
 
 ### Completed Features
+
+#### 測試架構統一 v1.4 ✅
+- **Status**: Completed (2025-09-11)
+- **Key Components**:
+  - Unified Mock architecture with BaseMock pattern
+  - Centralized repository mocks (`test/mocks/repository_mocks.go`)
+  - Test data factory with builder pattern (`test/factories/`)
+  - Edge case testing infrastructure
+  - Logger mock standardization (`helper.NewMockLogger()`)
+  - Comprehensive test coverage across all use cases
 
 #### 六角架構重構 v1.3 ✅
 - **Status**: Completed (2025-09-02)

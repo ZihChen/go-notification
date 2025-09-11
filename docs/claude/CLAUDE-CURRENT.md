@@ -1,9 +1,18 @@
 # CLAUDE-CURRENT.md
 
-## 當前任務階段：六角架構實作完成與測試驗證
-六角架構重構完成，系統進入穩定性測試階段
+## 當前任務階段：測試架構優化完成與系統穩定化
+測試架構統一完成，系統進入生產準備階段
 
 ### 最新完成任務
+- [x] ✅ **v1.4 測試架構統一** (2025-09-11)
+  - [x] 統一Mock架構實現 (BaseMock模式)
+  - [x] 集中化Repository Mock管理 (`test/mocks/repository_mocks.go`)
+  - [x] 測試數據工廠與Builder模式 (`test/factories/`)
+  - [x] 邊界條件測試基礎設施
+  - [x] Logger Mock標準化 (`helper.NewMockLogger()`)
+  - [x] 所有Use Case測試覆蓋與驗證
+  - [x] Context洩漏修復 (govet linter問題解決)
+
 - [x] ✅ **v1.3 六角架構重構** (2025-09-02)
   - [x] 完整 Ports & Adapters 模式實作
   - [x] Inbound/Outbound Adapters 分離
@@ -34,59 +43,59 @@
   - [x] 完成 docs/claude/features/message-campaign/CLAUDE-2025-08-28-v1.2.md 功能需求
 
 ### 當前重點
-1. **六角架構驗證**: 測試新的 Hexagonal Architecture 架構穩定性
-2. **Repository 分層測試**: 驗證按業務邏輯組織的 Repository 正常運作
-3. **應用層整合測試**: 測試 DTO、Use Cases、Services 的整合
-4. **API 調用優化**: 確保 Swagger UI 和 API 調用正常運作  
-5. **系統整合測試**: 驗證重構後的系統整體功能
-6. **性能監控**: 利用新增的 pprof 路由進行性能分析
+1. **系統穩定性監控**: 持續監控重構後系統的運行狀態
+2. **性能基準建立**: 利用 pprof 路由建立性能基準線
+3. **生產環境準備**: 準備生產部署相關配置和文檔
+4. **持續集成優化**: 改進 CI/CD 流程和自動化測試
+5. **監控告警設定**: 建立生產環境監控和告警機制
+6. **運維文檔完善**: 準備運維手冊和故障排除指南
 
 ### 進行中任務
 
-#### 六角架構驗證測試
-- [ ] **Repository 層測試**
-  - [x] merchant repository 按業務邏輯組織
-  - [x] player repository 按業務邏輯組織
-  - [x] manager repository 按業務邏輯組織
-  - [x] message repository 按業務邏輯組織
-  - [ ] Repository 介面一致性測試
-  - [ ] 跨 Repository 依賴測試
+#### 生產環境準備
+- [ ] **部署配置優化**
+  - [ ] Kubernetes Helm Charts 更新
+  - [ ] 環境變數管理改進
+  - [ ] 資源配置調優
+  - [ ] 安全配置檢查
 
-- [ ] **應用層整合測試**
-  - [x] DTO 搬遷完成
-  - [x] Event Service 搬遷完成
-  - [ ] Use Case 與 Repository 整合測試
-  - [ ] Application Service 功能驗證
+- [ ] **監控系統建立**
+  - [ ] OpenTelemetry 生產配置
+  - [ ] Prometheus 指標採集
+  - [ ] Grafana 儀表板設計
+  - [ ] 告警規則定義
 
-- [ ] **Inbound/Outbound Adapters 測試**
-  - [ ] HTTP Handler 與 Use Case 整合
-  - [ ] Repository 與 Infrastructure 整合
-  - [ ] 依賴注入流程驗證
+- [ ] **CI/CD 流程優化**
+  - [ ] GitHub Actions 工作流程改進
+  - [ ] 自動化測試流程優化
+  - [ ] 部署流程自動化
+  - [ ] 回滾機制建立
 
-#### 路由系統測試驗證
-- [ ] **Swagger API 調用測試**
-  - [x] 修復 CORS 配置問題
-  - [x] 修復 Swagger BasePath 配置
-  - [ ] 驗證所有 API 端點在 Swagger UI 中正常調用
-  - [ ] 測試認證中間件與 Swagger 的整合
-
-- [ ] **路由組件獨立性驗證**
-  - [x] API 路由組件測試
-  - [x] Swagger 路由組件測試  
-  - [x] 健康檢查路由組件測試
-  - [x] pprof 路由組件測試
-  - [ ] 中間件隔離性測試
-
-#### 系統穩定性測試
-- [ ] **服務啟動穩定性**
-  - [ ] Web 服務完整啟動流程測試
-  - [ ] 依賴服務（Redis/MySQL）連接測試
-  - [ ] 錯誤恢復機制驗證
+#### 系統穩定性監控
+- [x] **測試架構完成**
+  - [x] Repository 層測試全面覆蓋
+  - [x] Use Case 層測試全面覆蓋
+  - [x] Mock 架構統一完成
+  - [x] 測試數據工廠建立
 
 - [ ] **性能基準測試**
   - [ ] 使用 pprof 路由進行性能分析
   - [ ] HTTP 請求響應時間測量
-  - [ ] 路由切換開銷分析
+  - [ ] 併發處理能力測試
+  - [ ] 記憶體使用優化
+
+#### 文檔與運維準備
+- [ ] **技術文檔更新**
+  - [x] 架構文檔更新 (CLAUDE.md)
+  - [x] 當前狀態文檔更新 (CLAUDE-CURRENT.md)
+  - [ ] API 文檔完善
+  - [ ] 部署手冊編寫
+
+- [ ] **運維手冊建立**
+  - [ ] 故障排除指南
+  - [ ] 性能調優指南
+  - [ ] 備份恢復程序
+  - [ ] 安全檢查清單
 
 [//]: # (### 測試階段任務清單)
 

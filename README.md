@@ -104,8 +104,17 @@
 │       ├── wire.go     # Wire 配置
 │       └── wire_gen.go # Wire 產生的程式碼
 ├── migrations/         # 資料庫遷移檔案
-├── test/              # 整合測試
+├── test/              # 測試基礎設施
+│   ├── mocks/         # 統一Mock框架
+│   │   ├── base_mock.go       # BaseMock模式基礎
+│   │   ├── repository_mocks.go # Repository層Mock
+│   │   └── service_mocks.go    # Service層Mock
+│   ├── factories/     # 測試數據工廠
+│   │   ├── test_data_factory.go # 主要數據工廠
+│   │   └── edge_case_factory.go # 邊界條件數據工廠
 │   └── helper/        # 測試輔助工具
+│       ├── logger_mock.go      # Logger Mock
+│       └── test_utils.go       # 測試工具函數
 └── helm/              # Kubernetes Helm Charts
     └── templates/     # K8s 資源模板
 ```
@@ -175,6 +184,8 @@ docker-compose up -d --build
 
 ### 測試
 
+專案採用統一的測試架構，包含Mock框架和測試數據工廠：
+
 ```bash
 # 執行所有測試
 go test ./...
@@ -182,12 +193,16 @@ go test ./...
 # 執行測試並產生覆蓋率報告
 go test -cover ./...
 
-# 執行組件測試
-go test -v ./internal/adapter/...
+# 執行特定層級測試
+go test -v ./internal/application/usecase/...  # Use Case 層測試
+go test -v ./internal/adapter/repository/...   # Repository 層測試
 
 # 執行測試並產生 HTML 覆蓋率報告
-go test -coverprofile=coverage.out ./internal/adapter/...
-go tool cover -func=coverage.out 
+go test -coverprofile=coverage.out ./internal/...
+go tool cover -html=coverage.out -o coverage.html
+
+# 檢查程式碼品質（linter）
+go vet ./...
 ```
 
 ### 程式碼品質
@@ -318,6 +333,14 @@ swag init
 ### Event-Driven Architecture
 系統使用事件進行服務間通訊，通過 KDS 和 Redis 佇列實現
 
+### Testing Architecture Pattern ✨ **NEW**
+統一的測試基礎設施，提升測試品質與維護性：
+- **統一Mock框架** - 所有Repository Mock使用一致的BaseMock模式
+- **測試數據工廠** - 使用Builder模式創建測試實體
+- **邊界條件測試** - 全面的邊界條件場景和錯誤模擬
+- **Context洩漏防護** - 適當的context管理預防資源洩漏
+- **集中化Mock管理** - 統一的Mock定義與管理
+
 ### Error Handling
 在 `internal/domain/errmsg/` 定義自定義錯誤類型，確保整個應用程式的錯誤處理一致性
 
@@ -409,7 +432,27 @@ kubectl get pods -l app=fat-notification-cat
 
 ## 最新功能更新
 
-### v1.3 架構重構完成 ✨
+### v1.4 測試架構統一完成 ✨ **NEW**
+
+- **統一Mock架構實現**
+  - 採用BaseMock模式的一致性Mock框架
+  - 集中化Repository Mock管理 (`test/mocks/repository_mocks.go`)
+  - Service層Mock標準化
+  - Logger Mock統一化 (`helper.NewMockLogger()`)
+
+- **測試數據工廠建立**
+  - Builder模式的測試數據創建 (`test/factories/`)
+  - 邊界條件測試基礎設施
+  - 高覆蓋率的Use Case測試
+  - Context洩漏修復與預防
+
+- **測試品質提升**
+  - 所有Use Case層測試遷移至統一框架
+  - 全面的邊界條件和錯誤場景測試
+  - 一致的測試結構和斷言模式
+  - Linter問題修復（govet context leak）
+
+### v1.3 架構重構完成 ✅
 
 - **六角架構實現**
   - 完整的 Ports & Adapters 模式
@@ -480,7 +523,7 @@ kubectl get pods -l app=fat-notification-cat
 
 ## 專案狀態
 
-專案目前處於積極開發階段，最新完成了六角架構完整重構（v1.3），實現了 Clean Architecture 的所有核心原則。先前完成了路由架構重構（v1.2）和會員訊息排程發送系統（v1.1）。目前進入測試驗證階段，專注於系統穩定性和性能優化。
+專案目前處於積極開發階段，最新完成了測試架構統一優化（v1.4），建立了完整的Mock框架和測試數據工廠。先前完成了六角架構重構（v1.3）、路由架構重構（v1.2）和會員訊息排程發送系統（v1.1）。目前進入生產準備階段，專注於系統穩定性監控、性能基準建立和部署流程優化。
 
 ## 聯絡資訊
 
