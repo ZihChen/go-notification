@@ -24,10 +24,10 @@ func NewEdgeCaseFactory() *EdgeCaseFactory {
 
 // Edge Case 錯誤定義
 var (
-	ErrDatabaseConnection = errors.New("database connection failed")
-	ErrTimeout           = errors.New("operation timeout")
-	ErrInvalidData       = errors.New("invalid data format")
-	ErrConstraintViolation = errors.New("constraint violation")
+	ErrDatabaseConnection     = errors.New("database connection failed")
+	ErrTimeout                = errors.New("operation timeout")
+	ErrInvalidData            = errors.New("invalid data format")
+	ErrConstraintViolation    = errors.New("constraint violation")
 	ErrConcurrentModification = errors.New("concurrent modification detected")
 )
 
@@ -48,9 +48,9 @@ func (f *EdgeCaseFactory) CancelledContext() context.Context {
 }
 
 // NormalContext 創建正常的 context（帶超時）
-func (f *EdgeCaseFactory) NormalContext() context.Context {
-	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
-	return ctx
+func (f *EdgeCaseFactory) NormalContext() (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	return ctx, cancel
 }
 
 // Campaign 邊界條件數據
@@ -142,18 +142,20 @@ func (f *EdgeCaseFactory) MaxBatchSizePlayers() []*entity.Player {
 // MixedValidityPlayers 創建混合有效性的玩家批次
 func (f *EdgeCaseFactory) MixedValidityPlayers() []*entity.Player {
 	players := []*entity.Player{
-		f.CreatePlayer().Build(),                    // 正常玩家
-		f.EmptyGlobalIDPlayer(),                     // 空 GlobalID
-		f.NilLastActivityPlayer(),                   // 無活動記錄
-		f.CreatePlayer().WithID(0).Build(),         // ID 為 0
-		f.CreatePlayer().Build(),                    // 正常玩家
+		f.CreatePlayer().Build(),           // 正常玩家
+		f.EmptyGlobalIDPlayer(),            // 空 GlobalID
+		f.NilLastActivityPlayer(),          // 無活動記錄
+		f.CreatePlayer().WithID(0).Build(), // ID 為 0
+		f.CreatePlayer().Build(),           // 正常玩家
 	}
 	return players
 }
 
 // 併發邊界條件
 // ConcurrentPlayerBatches 創建多個並發批次
-func (f *EdgeCaseFactory) ConcurrentPlayerBatches(batchCount, playersPerBatch int) [][]*entity.Player {
+func (f *EdgeCaseFactory) ConcurrentPlayerBatches(
+	batchCount, playersPerBatch int,
+) [][]*entity.Player {
 	batches := make([][]*entity.Player, batchCount)
 	for i := 0; i < batchCount; i++ {
 		batches[i] = f.CreateMultiplePlayers(playersPerBatch)

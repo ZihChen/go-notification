@@ -148,7 +148,7 @@ func (m *MockMessageUseCase) SendCampaignToPlayersAsync(
 // Test helper functions
 func createMockDependencies(t *testing.T) (*MockMessageUseCase, *helper.MockLogger) {
 	messageUseCase := new(MockMessageUseCase)
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 	return messageUseCase, logger
 }
 

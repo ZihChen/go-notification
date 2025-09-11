@@ -16,7 +16,7 @@ func TestDBConnection(t *testing.T) {
 	cfg, err := config.LoadConfig()
 	require.NoError(t, err, "Should load config without error")
 
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 	// 初始化資料庫連接
 	db, err := mysql.NewDatabase(cfg, logger)
 	if err != nil {

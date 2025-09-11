@@ -6,96 +6,14 @@ import (
 	"time"
 
 	"github.com/go-redis/redismock/v9"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/testutil"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
+	"github.com/jvdiamondtech/ms-notification-cat/test/mocks"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
-
-// 資料庫模擬
-type MockPlayerRepository struct {
-	mock.Mock
-}
-
-func (m *MockPlayerRepository) FindByID(ctx context.Context, id uint64) (*entity.Player, error) {
-	args := m.Called(ctx, id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*entity.Player), args.Error(1)
-}
-
-func (m *MockPlayerRepository) FindByGlobalID(
-	ctx context.Context,
-	globalID string,
-) (*entity.Player, error) {
-	args := m.Called(ctx, globalID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*entity.Player), args.Error(1)
-}
-
-func (m *MockPlayerRepository) FindByTargetType(
-	ctx context.Context,
-	targetType uint8,
-	offset, limit int,
-) ([]*entity.Player, error) {
-	args := m.Called(ctx, targetType, offset, limit)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]*entity.Player), args.Error(1)
-}
-
-func (m *MockPlayerRepository) FirstOrCreate(ctx context.Context, player *entity.Player) error {
-	args := m.Called(ctx, player)
-	return args.Error(0)
-}
-
-func (m *MockPlayerRepository) Create(ctx context.Context, player *entity.Player) error {
-	args := m.Called(ctx, player)
-	player.ID = 1 // 為新創建的玩家設置 ID
-	return args.Error(0)
-}
-
-func (m *MockPlayerRepository) Update(ctx context.Context, player *entity.Player) error {
-	args := m.Called(ctx, player)
-	return args.Error(0)
-}
-
-func (m *MockPlayerRepository) Delete(ctx context.Context, id uint64) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-
-func (m *MockPlayerRepository) Upsert(ctx context.Context, player *entity.Player) error {
-	args := m.Called(ctx, player)
-	return args.Error(0)
-}
-
-type MockLevelRepository struct {
-	mock.Mock
-}
-
-func (m *MockLevelRepository) Upsert(ctx context.Context, level *entity.Level) error {
-	args := m.Called(ctx, level)
-	return args.Error(0)
-}
-
-func (m *MockLevelRepository) FindByGlobalID(
-	ctx context.Context,
-	globalID string,
-) (*entity.Level, error) {
-	args := m.Called(ctx, globalID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*entity.Level), args.Error(1)
-}
 
 func createPlayerEvent() *event.PlayerEvent {
 	return &event.PlayerEvent{
@@ -108,12 +26,12 @@ func createPlayerEvent() *event.PlayerEvent {
 
 func createMockDependencies(
 	t *testing.T,
-) (*MockPlayerRepository, *testutil.MockMerchantRepository, *MockLevelRepository, *testutil.MockEventProducer, *helper.MockLogger, *redis.Client) {
-	playerRepo := new(MockPlayerRepository)
-	merchantRepo := new(testutil.MockMerchantRepository)
-	levelRepo := new(MockLevelRepository)
-	eventProducer := new(testutil.MockEventProducer)
-	logger := helper.SetupLoggerMock(t)
+) (*mocks.PlayerRepositoryMock, *mocks.MerchantRepositoryMock, *mocks.LevelRepositoryMock, *mocks.EventProducerMock, *helper.MockLogger, *redis.Client) {
+	playerRepo := mocks.NewPlayerRepositoryMock(t)
+	merchantRepo := mocks.NewMerchantRepositoryMock(t)
+	levelRepo := mocks.NewLevelRepositoryMock(t)
+	eventProducer := mocks.NewEventProducerMock(t)
+	logger := helper.NewMockLogger()
 	redisClient, _ := redismock.NewClientMock()
 	return playerRepo, merchantRepo, levelRepo, eventProducer, logger, redisClient
 }
@@ -144,9 +62,9 @@ func TestPlayerUseCase_SyncPlayer(t *testing.T) {
 
 	// 驗證結果
 	assert.NoError(t, err)
-	playerRepo.AssertExpectations(t)
-	merchantRepo.AssertExpectations(t)
-	eventProducer.AssertExpectations(t)
+	playerRepo.AssertExpectations()
+	merchantRepo.AssertExpectations()
+	eventProducer.AssertExpectations()
 }
 
 // 測試 GetPlayerByID 方法
@@ -189,7 +107,7 @@ func TestPlayerUseCase_GetPlayerByID(t *testing.T) {
 	assert.Equal(t, globalPlayerID, player.GlobalID)
 	assert.Equal(t, playerAccount, player.Username)
 
-	playerRepo.AssertExpectations(t)
+	playerRepo.AssertExpectations()
 }
 
 // 測試 GetPlayerByGlobalID 方法
@@ -232,7 +150,7 @@ func TestPlayerUseCase_GetPlayerByGlobalID(t *testing.T) {
 	assert.Equal(t, globalPlayerID, player.GlobalID)
 	assert.Equal(t, playerAccount, player.Username)
 
-	playerRepo.AssertExpectations(t)
+	playerRepo.AssertExpectations()
 }
 
 // 測試 UpdatePlayerLastActive 方法
@@ -276,5 +194,5 @@ func TestPlayerUseCase_UpdatePlayerLastActive(t *testing.T) {
 	updated := playerRepo.Calls[1].Arguments.Get(1).(*entity.Player)
 	assert.NotNil(t, updated.LastActiveAt)
 
-	playerRepo.AssertExpectations(t)
+	playerRepo.AssertExpectations()
 }

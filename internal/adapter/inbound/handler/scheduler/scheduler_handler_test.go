@@ -240,7 +240,7 @@ func TestNewSchedulerHandler_Success(t *testing.T) {
 
 func TestNewSchedulerHandler_MultipleJobs(t *testing.T) {
 	// Setup
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 	job1 := createTestScheduledJob("job-1", "0 */1 * * * *")
 	job2 := createTestScheduledJob("job-2", "0 */5 * * * *")
 	registry := createTestJobRegistry(t, []jobport.ScheduledJob{job1, job2})
@@ -264,7 +264,7 @@ func TestNewSchedulerHandler_MultipleJobs(t *testing.T) {
 
 func TestNewSchedulerHandler_JobRegistrationError(t *testing.T) {
 	// Setup
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 	job := new(MockScheduledJob)
 	job.On("GetName").Return("") // 空名稱會導致註冊失敗
 	job.On("GetCron").Return("0 */1 * * * *")
@@ -296,7 +296,7 @@ func TestNewSchedulerHandler_JobRegistrationError(t *testing.T) {
 
 func TestHandler_RegisterJobs_Success(t *testing.T) {
 	// Setup
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 	job := createTestScheduledJob("test-job", "0 */1 * * * *")
 	registry := createTestJobRegistry(t, []jobport.ScheduledJob{job})
 
@@ -322,7 +322,7 @@ func TestHandler_RegisterJobs_Success(t *testing.T) {
 
 func TestHandler_RegisterJobs_EmptySchedule(t *testing.T) {
 	// Setup
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 	job := new(MockScheduledJob)
 	job.On("GetName").Return("test-job")
 	job.On("GetCron").Return("") // 空的排程表達式
@@ -356,7 +356,7 @@ func TestHandler_RegisterJobs_EmptySchedule(t *testing.T) {
 
 func TestHandler_RegisterJobs_InvalidCronExpression(t *testing.T) {
 	// Setup
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 	job := createTestScheduledJob("test-job", "invalid-cron")
 
 	// 手動創建 handler
@@ -386,7 +386,7 @@ func TestHandler_RegisterJobs_InvalidCronExpression(t *testing.T) {
 
 func TestHandler_RegisterJobs_MultipleJobs(t *testing.T) {
 	// Setup
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 	job1 := createTestScheduledJob("job-1", "0 */1 * * * *")
 	job2 := createTestScheduledJob("job-2", "0 */5 * * * *")
 	registry := createTestJobRegistry(t, []jobport.ScheduledJob{job1, job2})
@@ -412,7 +412,7 @@ func TestHandler_RegisterJobs_MultipleJobs(t *testing.T) {
 
 func TestHandler_RegisterJob_Success(t *testing.T) {
 	// Setup
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 	handler := &Handler{
 		logger: logger,
 		jobs:   make([]ScheduledJobConfig, 0),
@@ -434,7 +434,7 @@ func TestHandler_RegisterJob_Success(t *testing.T) {
 
 func TestHandler_RegisterJob_EmptyName(t *testing.T) {
 	// Setup
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 	handler := &Handler{
 		logger: logger,
 		jobs:   make([]ScheduledJobConfig, 0),
@@ -454,7 +454,7 @@ func TestHandler_RegisterJob_EmptyName(t *testing.T) {
 
 func TestHandler_RegisterJob_NilJob(t *testing.T) {
 	// Setup
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 	handler := &Handler{
 		logger: logger,
 		jobs:   make([]ScheduledJobConfig, 0),
@@ -474,7 +474,7 @@ func TestHandler_RegisterJob_NilJob(t *testing.T) {
 
 func TestHandler_RegisterJob_EmptySchedule(t *testing.T) {
 	// Setup
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 	handler := &Handler{
 		logger: logger,
 		jobs:   make([]ScheduledJobConfig, 0),
@@ -498,7 +498,7 @@ func TestHandler_RegisterJob_EmptySchedule(t *testing.T) {
 
 func TestHandler_RegisterJobWithSchedule_Success(t *testing.T) {
 	// Setup
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 	handler := &Handler{
 		logger: logger,
 		jobs:   make([]ScheduledJobConfig, 0),
@@ -524,7 +524,7 @@ func TestHandler_RegisterJobWithSchedule_Success(t *testing.T) {
 
 func TestHandler_RegisterJobWithSchedule_Error(t *testing.T) {
 	// Setup
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 	handler := &Handler{
 		logger: logger,
 		jobs:   make([]ScheduledJobConfig, 0),
@@ -549,7 +549,7 @@ func TestHandler_RegisterJobWithSchedule_Error(t *testing.T) {
 
 func TestHandler_GetRegisteredJobs_Success(t *testing.T) {
 	// Setup
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 	job1 := createTestScheduledJob("job-1", "0 */1 * * * *")
 	job2 := createTestScheduledJob("job-2", "0 */5 * * * *")
 	registry := createTestJobRegistry(t, []jobport.ScheduledJob{job1, job2})
@@ -574,7 +574,7 @@ func TestHandler_GetRegisteredJobs_Success(t *testing.T) {
 
 func TestHandler_GetRegisteredJobs_Empty(t *testing.T) {
 	// Setup
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 	registry := createTestJobRegistry(t, []jobport.ScheduledJob{})
 
 	handler := NewSchedulerHandler(logger, nil, registry)
@@ -593,7 +593,7 @@ func TestHandler_GetRegisteredJobs_Empty(t *testing.T) {
 
 func TestHandler_FullWorkflow_Integration(t *testing.T) {
 	// Setup
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 	job1 := createTestScheduledJob("message-campaign-trigger", "*/10 * * * * *")
 	job2 := createTestScheduledJob("cleanup-job", "0 0 2 * * *")
 	registry := createTestJobRegistry(t, []jobport.ScheduledJob{job1, job2})

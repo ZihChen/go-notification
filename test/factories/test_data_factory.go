@@ -34,26 +34,26 @@ type MessageCampaignBuilder struct {
 func (f *TestDataFactory) CreateMessageCampaign() *MessageCampaignBuilder {
 	id := f.nextID()
 	now := time.Now()
-	
+
 	campaign := &entity.MessageCampaign{
-		ID:              id,
-		GlobalID:        fmt.Sprintf("campaign_%d", id),
-		MerchantID:      1,
-		Title:           fmt.Sprintf("Test Campaign %d", id),
-		Content:         fmt.Sprintf("Test content for campaign %d", id),
-		Target:          consts.TargetAll,
-		Category:        consts.CategoryMember,
-		Item:            consts.ItemOther,
-		Status:          consts.MessageCampaignStatusScheduled,
-		SendStartTime:   &now,
-		RealSentCount:   0,
-		AutoSend:        false,
-		TriggerType:     "manual",
-		CreatedBy:       "test",
-		CreatedAt:       now,
-		UpdatedAt:       now,
+		ID:            id,
+		GlobalID:      fmt.Sprintf("campaign_%d", id),
+		MerchantID:    1,
+		Title:         fmt.Sprintf("Test Campaign %d", id),
+		Content:       fmt.Sprintf("Test content for campaign %d", id),
+		Target:        consts.TargetAll,
+		Category:      consts.CategoryMember,
+		Item:          consts.ItemOther,
+		Status:        consts.MessageCampaignStatusScheduled,
+		SendStartTime: &now,
+		RealSentCount: 0,
+		AutoSend:      false,
+		TriggerType:   "manual",
+		CreatedBy:     "test",
+		CreatedAt:     now,
+		UpdatedAt:     now,
 	}
-	
+
 	return &MessageCampaignBuilder{campaign: campaign}
 }
 
@@ -97,7 +97,9 @@ func (b *MessageCampaignBuilder) WithSentCount(count int64) *MessageCampaignBuil
 	return b
 }
 
-func (b *MessageCampaignBuilder) WithSendStartTime(sendStartTime *time.Time) *MessageCampaignBuilder {
+func (b *MessageCampaignBuilder) WithSendStartTime(
+	sendStartTime *time.Time,
+) *MessageCampaignBuilder {
 	b.campaign.SendStartTime = sendStartTime
 	return b
 }
@@ -117,7 +119,7 @@ type PlayerBuilder struct {
 func (f *TestDataFactory) CreatePlayer() *PlayerBuilder {
 	id := f.nextID()
 	now := time.Now()
-	
+
 	player := &entity.Player{
 		ID:             id,
 		GlobalPlayerID: fmt.Sprintf("player_%d", id),
@@ -129,7 +131,7 @@ func (f *TestDataFactory) CreatePlayer() *PlayerBuilder {
 		CreatedAt:      now,
 		UpdatedAt:      now,
 	}
-	
+
 	return &PlayerBuilder{player: player}
 }
 
@@ -172,7 +174,7 @@ type PlayerMessageBuilder struct {
 func (f *TestDataFactory) CreatePlayerMessage() *PlayerMessageBuilder {
 	id := f.nextID()
 	now := time.Now()
-	
+
 	message := &entity.PlayerMessage{
 		ID:             id,
 		GlobalPlayerID: fmt.Sprintf("player_%d", id),
@@ -182,7 +184,7 @@ func (f *TestDataFactory) CreatePlayerMessage() *PlayerMessageBuilder {
 		CreatedAt:      now,
 		UpdatedAt:      now,
 	}
-	
+
 	return &PlayerMessageBuilder{message: message}
 }
 
@@ -227,7 +229,10 @@ func (f *TestDataFactory) CreateMultiplePlayers(count int) []*entity.Player {
 }
 
 // CreateMultiplePlayerMessages 批次創建玩家消息
-func (f *TestDataFactory) CreateMultiplePlayerMessages(count int, campaignID uint64) []*entity.PlayerMessage {
+func (f *TestDataFactory) CreateMultiplePlayerMessages(
+	count int,
+	campaignID uint64,
+) []*entity.PlayerMessage {
 	messages := make([]*entity.PlayerMessage, count)
 	for i := 0; i < count; i++ {
 		messages[i] = f.CreatePlayerMessage().

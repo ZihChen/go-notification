@@ -43,16 +43,17 @@ func TestProcessScheduledCampaigns_Simple(t *testing.T) {
 	campaign := scheduledCampaigns[0]
 	campaignRepo.On("FindByID", mocks.ContextMatcher(), campaign.ID).
 		Return(campaign, nil).Once()
-	
+
 	// 模擬空玩家列表（快速完成）
 	playerRepo.On("FindByTargetType", mocks.ContextMatcher(), campaign.Target, 0, 5000).
 		Return([]*entity.Player{}, nil).Once()
-	
+
 	// 更新統計和狀態
 	campaignRepo.On("UpdateSentCount", mocks.ContextMatcher(), campaign.ID, int64(0)).
 		Return(nil).Once()
 	campaignRepo.On("UpdateStatus", mocks.ContextMatcher(), campaign.ID, consts.MessageCampaignStatusSent).
-		Return(nil).Once()
+		Return(nil).
+		Once()
 
 	// 執行測試
 	ctx := context.Background()
@@ -121,25 +122,26 @@ func TestSendCampaignToPlayersAsync_Simple(t *testing.T) {
 
 	// 使用工廠創建測試數據
 	campaign := factory.CreateScheduledCampaign()
-	
+
 	// 設定Mock期望
 	campaignRepo.On("FindByID", mocks.ContextMatcher(), campaign.ID).
 		Return(campaign, nil).Once()
-	
+
 	// 模擬空玩家列表
 	playerRepo.On("FindByTargetType", mocks.ContextMatcher(), campaign.Target, 0, 5000).
 		Return([]*entity.Player{}, nil).Once()
-	
+
 	// 更新統計和狀態
 	campaignRepo.On("UpdateSentCount", mocks.ContextMatcher(), campaign.ID, int64(0)).
 		Return(nil).Once()
 	campaignRepo.On("UpdateStatus", mocks.ContextMatcher(), campaign.ID, consts.MessageCampaignStatusSent).
-		Return(nil).Once()
-	
+		Return(nil).
+		Once()
+
 	// 執行測試
 	ctx := context.Background()
 	err := useCase.SendCampaignToPlayersAsync(ctx, campaign.ID)
-	
+
 	// 驗證結果
 	require.NoError(t, err)
 	campaignRepo.AssertExpectations()
@@ -170,39 +172,40 @@ func TestSendCampaignToPlayersAsync_WithPlayers(t *testing.T) {
 	// 使用工廠創建測試數據
 	campaign := factory.CreateScheduledCampaign()
 	players := factory.CreateMultiplePlayers(100)
-	
+
 	// 設定Mock期望
 	campaignRepo.On("FindByID", mocks.ContextMatcher(), campaign.ID).
 		Return(campaign, nil).Once()
-	
+
 	// 模擬分頁查詢 - 第一次查詢返回所有玩家
 	playerRepo.On("FindByTargetType", mocks.ContextMatcher(), campaign.Target, 0, 5000).
 		Return(players, nil).Once()
 	// 第二次查詢返回空（表示沒有更多數據）- 只有當第一批數據達到限制時才會調用
 	playerRepo.On("FindByTargetType", mocks.ContextMatcher(), campaign.Target, 100, 5000).
 		Return([]*entity.Player{}, nil).Maybe()
-	
+
 	// 模擬批次消息檢查 - 創建結果映射
 	expectedResult := make(map[uint64]bool)
 	for _, player := range players {
 		expectedResult[player.ID] = false // 都不存在，需要創建
 	}
-	playerMessageRepo.On("CheckMessageExistsBatch", mocks.ContextMatcher(), 
+	playerMessageRepo.On("CheckMessageExistsBatch", mocks.ContextMatcher(),
 		mocks.AnySlice(), campaign.ID).Return(expectedResult, nil).Once()
-	
-	playerMessageRepo.On("CreateBatchOptimized", mocks.ContextMatcher(), 
+
+	playerMessageRepo.On("CreateBatchOptimized", mocks.ContextMatcher(),
 		mocks.AnySlice(), mocks.AnyInt()).Return(nil).Once()
-	
+
 	// 更新統計和狀態 - 使用 mocks.AnyInt64 因為實際發送數量可能為0（如果所有消息都已存在）
 	campaignRepo.On("UpdateSentCount", mocks.ContextMatcher(), campaign.ID, mocks.AnyInt64()).
 		Return(nil).Once()
 	campaignRepo.On("UpdateStatus", mocks.ContextMatcher(), campaign.ID, consts.MessageCampaignStatusSent).
-		Return(nil).Once()
-	
+		Return(nil).
+		Once()
+
 	// 執行測試
 	ctx := context.Background()
 	err := useCase.SendCampaignToPlayersAsync(ctx, campaign.ID)
-	
+
 	// 驗證結果
 	require.NoError(t, err)
 	campaignRepo.AssertExpectations()

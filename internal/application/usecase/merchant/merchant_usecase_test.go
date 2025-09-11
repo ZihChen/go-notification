@@ -8,89 +8,10 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
+	"github.com/jvdiamondtech/ms-notification-cat/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
-
-// 資料庫模擬
-type MockMerchantRepository struct {
-	mock.Mock
-}
-
-func (m *MockMerchantRepository) FindByID(
-	ctx context.Context,
-	id uint64,
-) (*entity.Merchant, error) {
-	args := m.Called(ctx, id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*entity.Merchant), args.Error(1)
-}
-
-func (m *MockMerchantRepository) FindByGlobalID(
-	ctx context.Context,
-	globalID string,
-) (*entity.Merchant, error) {
-	args := m.Called(ctx, globalID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*entity.Merchant), args.Error(1)
-}
-
-func (m *MockMerchantRepository) FirstOrCreate(
-	ctx context.Context,
-	merchant *entity.Merchant,
-) error {
-	args := m.Called(ctx, merchant)
-	merchant.ID = 1 // 為新創建的商戶設置 ID
-	return args.Error(0)
-}
-
-func (m *MockMerchantRepository) Create(ctx context.Context, merchant *entity.Merchant) error {
-	args := m.Called(ctx, merchant)
-	merchant.ID = 1 // 為新創建的商戶設置 ID
-	return args.Error(0)
-}
-
-func (m *MockMerchantRepository) Update(ctx context.Context, merchant *entity.Merchant) error {
-	args := m.Called(ctx, merchant)
-	return args.Error(0)
-}
-
-func (m *MockMerchantRepository) Delete(ctx context.Context, id uint64) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-
-func (m *MockMerchantRepository) Upsert(ctx context.Context, merchant *entity.Merchant) error {
-	args := m.Called(ctx, merchant)
-	return args.Error(0)
-}
-
-// 事件生產者模擬
-type MockEventProducer struct {
-	mock.Mock
-}
-
-func (m *MockEventProducer) PublishMerchantSync(
-	ctx context.Context,
-	event *event.CloudEvent,
-) error {
-	args := m.Called(ctx, event)
-	return args.Error(0)
-}
-
-func (m *MockEventProducer) PublishPlayerSync(ctx context.Context, event *event.CloudEvent) error {
-	args := m.Called(ctx, event)
-	return args.Error(0)
-}
-
-func (m *MockEventProducer) PublishManagerSync(ctx context.Context, event *event.CloudEvent) error {
-	args := m.Called(ctx, event)
-	return args.Error(0)
-}
 
 func createMerchantEvent() *event.MerchantEvent {
 	return &event.MerchantEvent{
@@ -103,15 +24,15 @@ func createMerchantEvent() *event.MerchantEvent {
 
 func TestMerchantUseCase_SyncMerchant(t *testing.T) {
 	// 創建模擬資料庫
-	merchantRepo := new(MockMerchantRepository)
+	merchantRepo := mocks.NewMerchantRepositoryMock(t)
 	merchantRepo.On("Upsert", mock.Anything, mock.Anything).
 		Return(nil)
 
 	// 創建模擬事件生產者
-	eventProducer := new(MockEventProducer)
+	eventProducer := mocks.NewEventProducerMock(t)
 
 	// 創建記錄器
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 
 	// 創建用例
 	useCase := NewMerchantUseCase(merchantRepo, eventProducer, logger)
@@ -124,8 +45,8 @@ func TestMerchantUseCase_SyncMerchant(t *testing.T) {
 
 	// 驗證結果
 	assert.NoError(t, err)
-	merchantRepo.AssertExpectations(t)
-	eventProducer.AssertExpectations(t)
+	merchantRepo.AssertExpectations()
+	eventProducer.AssertExpectations()
 }
 
 func TestMerchantUseCase_GetMerchantByID(t *testing.T) {
@@ -148,14 +69,14 @@ func TestMerchantUseCase_GetMerchantByID(t *testing.T) {
 	}
 
 	// 創建模擬資料庫
-	merchantRepo := new(MockMerchantRepository)
+	merchantRepo := mocks.NewMerchantRepositoryMock(t)
 	merchantRepo.On("FindByID", mock.Anything, merchantID).Return(existingMerchant, nil)
 
 	// 創建模擬事件生產者
-	eventProducer := new(MockEventProducer)
+	eventProducer := mocks.NewEventProducerMock(t)
 
 	// 創建記錄器
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 
 	// 創建用例
 	useCase := NewMerchantUseCase(merchantRepo, eventProducer, logger)
@@ -171,7 +92,7 @@ func TestMerchantUseCase_GetMerchantByID(t *testing.T) {
 	assert.Equal(t, merchantName, merchant.Name)
 	assert.Equal(t, "active", merchant.Status)
 
-	merchantRepo.AssertExpectations(t)
+	merchantRepo.AssertExpectations()
 }
 
 func TestMerchantUseCase_GetMerchantByGlobalID(t *testing.T) {
@@ -194,14 +115,14 @@ func TestMerchantUseCase_GetMerchantByGlobalID(t *testing.T) {
 	}
 
 	// 創建模擬資料庫
-	merchantRepo := new(MockMerchantRepository)
+	merchantRepo := mocks.NewMerchantRepositoryMock(t)
 	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(existingMerchant, nil)
 
 	// 創建模擬事件生產者
-	eventProducer := new(MockEventProducer)
+	eventProducer := mocks.NewEventProducerMock(t)
 
 	// 創建記錄器
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 
 	// 創建用例
 	useCase := NewMerchantUseCase(merchantRepo, eventProducer, logger)
@@ -217,5 +138,5 @@ func TestMerchantUseCase_GetMerchantByGlobalID(t *testing.T) {
 	assert.Equal(t, merchantName, merchant.Name)
 	assert.Equal(t, "active", merchant.Status)
 
-	merchantRepo.AssertExpectations(t)
+	merchantRepo.AssertExpectations()
 }

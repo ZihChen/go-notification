@@ -6,45 +6,24 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/testutil"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
+	"github.com/jvdiamondtech/ms-notification-cat/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-// Mock LevelRepository for level_usecase_test
-type MockLevelRepositoryLevel struct {
-	mock.Mock
-}
-
-func (m *MockLevelRepositoryLevel) Upsert(ctx context.Context, level *entity.Level) error {
-	args := m.Called(ctx, level)
-	return args.Error(0)
-}
-
-func (m *MockLevelRepositoryLevel) FindByGlobalID(
-	ctx context.Context,
-	globalID string,
-) (*entity.Level, error) {
-	args := m.Called(ctx, globalID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*entity.Level), args.Error(1)
-}
-
 // Helper functions
 func createLevelMockDependencies(t *testing.T) (
-	*MockLevelRepositoryLevel,
-	*testutil.MockMerchantRepository,
+	*mocks.LevelRepositoryMock,
+	*mocks.MerchantRepositoryMock,
 	*helper.MockLogger,
 ) {
-	levelRepo := new(MockLevelRepositoryLevel)
-	merchantRepo := new(testutil.MockMerchantRepository)
-	logger := helper.SetupLoggerMock(t)
+	levelRepo := mocks.NewLevelRepositoryMock(t)
+	merchantRepo := mocks.NewMerchantRepositoryMock(t)
+	logger := helper.NewMockLogger()
 
 	return levelRepo, merchantRepo, logger
 }
@@ -97,8 +76,8 @@ func TestLevelUseCase_SyncPlayerLevel(t *testing.T) {
 	err := useCase.SyncPlayerLevel(context.Background(), event)
 
 	assert.NoError(t, err)
-	merchantRepo.AssertExpectations(t)
-	levelRepo.AssertExpectations(t)
+	merchantRepo.AssertExpectations()
+	levelRepo.AssertExpectations()
 
 	// Verify the level was created with correct data
 	levelRepo.AssertCalled(
@@ -133,7 +112,7 @@ func TestLevelUseCase_SyncPlayerLevel_MerchantNotFound_PanicExpected(t *testing.
 		_ = useCase.SyncPlayerLevel(context.Background(), event)
 	})
 
-	merchantRepo.AssertExpectations(t)
+	merchantRepo.AssertExpectations()
 }
 
 // Test SyncPlayerLevel - merchant repository error (not ErrRepoMerchantNotFound)
@@ -151,7 +130,7 @@ func TestLevelUseCase_SyncPlayerLevel_MerchantRepositoryError(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "find merchant")
-	merchantRepo.AssertExpectations(t)
+	merchantRepo.AssertExpectations()
 }
 
 // Test SyncPlayerLevel - level repository upsert error
@@ -171,8 +150,8 @@ func TestLevelUseCase_SyncPlayerLevel_LevelUpsertError(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "upsert player level")
-	merchantRepo.AssertExpectations(t)
-	levelRepo.AssertExpectations(t)
+	merchantRepo.AssertExpectations()
+	levelRepo.AssertExpectations()
 }
 
 // Test SyncPlayerLevel - verify level data mapping
@@ -208,8 +187,8 @@ func TestLevelUseCase_SyncPlayerLevel_DataMapping(t *testing.T) {
 	assert.Equal(t, event.UpdatedAt, capturedLevel.CreatedAt)
 	assert.Equal(t, event.UpdatedAt, capturedLevel.UpdatedAt)
 
-	merchantRepo.AssertExpectations(t)
-	levelRepo.AssertExpectations(t)
+	merchantRepo.AssertExpectations()
+	levelRepo.AssertExpectations()
 }
 
 // Test SyncPlayerLevel - empty level name
@@ -230,8 +209,8 @@ func TestLevelUseCase_SyncPlayerLevel_EmptyLevelName(t *testing.T) {
 	err := useCase.SyncPlayerLevel(context.Background(), event)
 
 	assert.NoError(t, err)
-	merchantRepo.AssertExpectations(t)
-	levelRepo.AssertExpectations(t)
+	merchantRepo.AssertExpectations()
+	levelRepo.AssertExpectations()
 }
 
 // Test SyncPlayerLevel - verify tracing and logging calls
@@ -259,8 +238,8 @@ func TestLevelUseCase_SyncPlayerLevel_TracingAndLogging(t *testing.T) {
 		mock.Anything,
 	)
 
-	merchantRepo.AssertExpectations(t)
-	levelRepo.AssertExpectations(t)
+	merchantRepo.AssertExpectations()
+	levelRepo.AssertExpectations()
 }
 
 // Test SyncPlayerLevel - context cancellation handling
@@ -284,6 +263,6 @@ func TestLevelUseCase_SyncPlayerLevel_ContextCancellation(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "upsert player level")
-	merchantRepo.AssertExpectations(t)
-	levelRepo.AssertExpectations(t)
+	merchantRepo.AssertExpectations()
+	levelRepo.AssertExpectations()
 }

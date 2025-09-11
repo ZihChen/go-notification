@@ -24,7 +24,7 @@ func TestKDSToRedisManagerSync(t *testing.T) {
 	require.NoError(t, err, "Should load config without error")
 
 	// 創建日誌
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 
 	// 獲取AWS配置
 	awsConfig, err := cfg.LoadAWSConfig(context.Background())
@@ -128,7 +128,7 @@ func TestKDSToRedisPlayerSync(t *testing.T) {
 	require.NoError(t, err, "Should load config without error")
 
 	// 創建日誌
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 
 	// 獲取AWS配置
 	awsConfig, err := cfg.LoadAWSConfig(context.Background())
@@ -227,7 +227,7 @@ func TestKDSToRedisMerchantSync(t *testing.T) {
 	require.NoError(t, err, "Should load config without error")
 
 	// 創建日誌
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 
 	// 獲取AWS配置
 	awsConfig, err := cfg.LoadAWSConfig(context.Background())

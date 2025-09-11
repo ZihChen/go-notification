@@ -21,13 +21,17 @@ func NewTestUtils(t *testing.T) *TestUtils {
 }
 
 // AssertTimeout 斷言操作在指定時間內完成
-func (u *TestUtils) AssertTimeout(timeout time.Duration, operation func() error, msgAndArgs ...interface{}) {
+func (u *TestUtils) AssertTimeout(
+	timeout time.Duration,
+	operation func() error,
+	msgAndArgs ...interface{},
+) {
 	done := make(chan error, 1)
-	
+
 	go func() {
 		done <- operation()
 	}()
-	
+
 	select {
 	case err := <-done:
 		assert.NoError(u.t, err, msgAndArgs...)
@@ -40,16 +44,21 @@ func (u *TestUtils) AssertTimeout(timeout time.Duration, operation func() error,
 }
 
 // AssertEventuallyTrue 斷言條件最終為真
-func (u *TestUtils) AssertEventuallyTrue(condition func() bool, timeout time.Duration, interval time.Duration, msgAndArgs ...interface{}) {
+func (u *TestUtils) AssertEventuallyTrue(
+	condition func() bool,
+	timeout time.Duration,
+	interval time.Duration,
+	msgAndArgs ...interface{},
+) {
 	deadline := time.Now().Add(timeout)
-	
+
 	for time.Now().Before(deadline) {
 		if condition() {
 			return // 條件滿足
 		}
 		time.Sleep(interval)
 	}
-	
+
 	u.t.Errorf("Condition never became true within %v", timeout)
 	if len(msgAndArgs) > 0 {
 		u.t.Errorf("Additional info: %v", msgAndArgs)
@@ -62,15 +71,18 @@ func (u *TestUtils) WithTimeout(timeout time.Duration) (context.Context, context
 }
 
 // AssertConcurrentSafety 測試併發安全性
-func (u *TestUtils) AssertConcurrentSafety(goroutineCount int, operation func(goroutineID int) error) {
+func (u *TestUtils) AssertConcurrentSafety(
+	goroutineCount int,
+	operation func(goroutineID int) error,
+) {
 	errors := make(chan error, goroutineCount)
-	
+
 	for i := 0; i < goroutineCount; i++ {
 		go func(id int) {
 			errors <- operation(id)
 		}(i)
 	}
-	
+
 	// 收集所有結果
 	for i := 0; i < goroutineCount; i++ {
 		err := <-errors
@@ -82,10 +94,10 @@ func (u *TestUtils) AssertConcurrentSafety(goroutineCount int, operation func(go
 func BenchmarkWithSetup(b *testing.B, setup func() interface{}, operation func(interface{}) error) {
 	// Setup phase
 	data := setup()
-	
+
 	b.ResetTimer()
 	b.ReportAllocs()
-	
+
 	for i := 0; i < b.N; i++ {
 		err := operation(data)
 		require.NoError(b, err)
@@ -102,7 +114,7 @@ type MemoryProfiler struct {
 func StartMemoryProfiling() *MemoryProfiler {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	
+
 	return &MemoryProfiler{
 		initialAllocs: m.Mallocs,
 		initialBytes:  m.TotalAlloc,
@@ -113,18 +125,18 @@ func StartMemoryProfiling() *MemoryProfiler {
 func (p *MemoryProfiler) StopAndReport(t *testing.T, operationName string) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	
+
 	allocsDiff := m.Mallocs - p.initialAllocs
 	bytesDiff := m.TotalAlloc - p.initialBytes
-	
+
 	t.Logf("%s Memory Usage: %d allocs, %d bytes", operationName, allocsDiff, bytesDiff)
 }
 
 // PerformanceAssertion 效能斷言
 type PerformanceAssertion struct {
-	t        *testing.T
-	name     string
-	maxTime  time.Duration
+	t         *testing.T
+	name      string
+	maxTime   time.Duration
 	maxAllocs uint64
 	maxBytes  uint64
 }
@@ -159,29 +171,29 @@ func (p *PerformanceAssertion) WithMaxBytes(maxBytes uint64) *PerformanceAsserti
 func (p *PerformanceAssertion) Assert(operation func() error) {
 	profiler := StartMemoryProfiling()
 	start := time.Now()
-	
+
 	err := operation()
-	
+
 	duration := time.Since(start)
 	require.NoError(p.t, err)
-	
+
 	if p.maxTime > 0 {
-		assert.LessOrEqual(p.t, duration, p.maxTime, 
+		assert.LessOrEqual(p.t, duration, p.maxTime,
 			"%s took %v, expected <= %v", p.name, duration, p.maxTime)
 	}
-	
+
 	if p.maxAllocs > 0 || p.maxBytes > 0 {
 		var m runtime.MemStats
 		runtime.ReadMemStats(&m)
-		
+
 		allocsDiff := m.Mallocs - profiler.initialAllocs
 		bytesDiff := m.TotalAlloc - profiler.initialBytes
-		
+
 		if p.maxAllocs > 0 {
 			assert.LessOrEqual(p.t, allocsDiff, p.maxAllocs,
 				"%s used %d allocs, expected <= %d", p.name, allocsDiff, p.maxAllocs)
 		}
-		
+
 		if p.maxBytes > 0 {
 			assert.LessOrEqual(p.t, bytesDiff, p.maxBytes,
 				"%s used %d bytes, expected <= %d", p.name, bytesDiff, p.maxBytes)
@@ -192,7 +204,7 @@ func (p *PerformanceAssertion) Assert(operation func() error) {
 // RetryOperation 重試操作工具
 func RetryOperation(maxRetries int, delay time.Duration, operation func() error) error {
 	var lastErr error
-	
+
 	for i := 0; i < maxRetries; i++ {
 		if err := operation(); err != nil {
 			lastErr = err
@@ -203,7 +215,7 @@ func RetryOperation(maxRetries int, delay time.Duration, operation func() error)
 		}
 		return nil
 	}
-	
+
 	return lastErr
 }
 

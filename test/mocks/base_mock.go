@@ -32,7 +32,11 @@ type MockCallBuilder struct {
 }
 
 // NewMockCallBuilder 創建新的調用建構器
-func NewMockCallBuilder(mockObj *mock.Mock, methodName string, args ...interface{}) *MockCallBuilder {
+func NewMockCallBuilder(
+	mockObj *mock.Mock,
+	methodName string,
+	args ...interface{},
+) *MockCallBuilder {
 	call := mockObj.On(methodName, args...)
 	return &MockCallBuilder{
 		mock: mockObj,

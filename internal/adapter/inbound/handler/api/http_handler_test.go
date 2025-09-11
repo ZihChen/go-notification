@@ -267,7 +267,7 @@ func createMockDependencies(
 	playerUseCase := new(MockPlayerUseCase)
 	managerUseCase := new(MockManagerUseCase)
 	messageUseCase := new(MockMessageUseCase)
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 	return merchantUseCase, playerUseCase, managerUseCase, messageUseCase, logger
 }
 

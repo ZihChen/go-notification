@@ -64,7 +64,7 @@ func setupWorkerComponents(
 	require.NoError(t, err, "Should load config without error")
 
 	// 建立 Logger
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 
 	// 建立 Redis Manager
 	redisManager := redis.NewRedisManager(cfg)
@@ -177,7 +177,7 @@ func TestMerchantRedisToWorker(t *testing.T) {
 	defer cleanupKinesis()
 
 	// 建立 Logger
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 
 	// 建立商戶唯一標識
 	testID := time.Now().Format("20060102150405")
@@ -340,7 +340,7 @@ func TestPlayerRedisToWorker(t *testing.T) {
 	defer cleanupKinesis()
 
 	// 建立 Logger
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 
 	// 建立資料庫連接
 	db, err := database.NewDatabase(cfg, logger)
@@ -519,7 +519,7 @@ func TestManagerRedisToWorker(t *testing.T) {
 	defer cleanupKinesis()
 
 	// 建立 Logger
-	logger := helper.SetupLoggerMock(t)
+	logger := helper.NewMockLogger()
 
 	// 建立資料庫連接
 	db, err := database.NewDatabase(cfg, logger)

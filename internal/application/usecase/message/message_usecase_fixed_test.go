@@ -81,7 +81,7 @@ func TestCreateMessageCampaign_Success(t *testing.T) {
 
 	// 使用工廠創建測試數據
 	merchant := suite.factory.CreateMerchant()
-	
+
 	createDTO := &dto.CreateMessageCampaignRequest{
 		GlobalMerchantID: merchant.GlobalMerchantID,
 		Category:         1,
@@ -95,8 +95,8 @@ func TestCreateMessageCampaign_Success(t *testing.T) {
 	// 設定Mock期望
 	suite.merchantRepo.On("FindByGlobalID", mocks.ContextMatcher(), merchant.GlobalMerchantID).
 		Return(merchant, nil).Once()
-	
-	suite.campaignRepo.On("Create", mocks.ContextMatcher(), 
+
+	suite.campaignRepo.On("Create", mocks.ContextMatcher(),
 		mock.AnythingOfType("*entity.MessageCampaign")).
 		Return(nil).Once()
 
@@ -126,7 +126,7 @@ func TestCreateMessageCampaign_MerchantNotFound(t *testing.T) {
 	}
 
 	// 設定Mock期望
-	suite.merchantRepo.On("FindByGlobalID", mocks.ContextMatcher(), 
+	suite.merchantRepo.On("FindByGlobalID", mocks.ContextMatcher(),
 		"non-existent-merchant").
 		Return(nil, errors.New("merchant not found")).Once()
 
@@ -150,7 +150,7 @@ func TestGetMessageCampaign_Success(t *testing.T) {
 		Build()
 
 	// 設定Mock期望
-	suite.campaignRepo.On("FindByGlobalID", mocks.ContextMatcher(), 
+	suite.campaignRepo.On("FindByGlobalID", mocks.ContextMatcher(),
 		campaign.GlobalID).
 		Return(campaign, nil).Once()
 
@@ -173,7 +173,7 @@ func TestGetMessageCampaign_NotFound(t *testing.T) {
 	nonExistentID := "non-existent-id"
 
 	// 設定Mock期望
-	suite.campaignRepo.On("FindByGlobalID", mocks.ContextMatcher(), 
+	suite.campaignRepo.On("FindByGlobalID", mocks.ContextMatcher(),
 		nonExistentID).
 		Return(nil, errors.New("campaign not found")).Once()
 
@@ -197,7 +197,7 @@ func TestUpdateMessageCampaign_Success(t *testing.T) {
 	campaign := suite.factory.CreateMessageCampaign().
 		WithStatus(consts.MessageCampaignStatusDraft).
 		Build()
-	
+
 	updateDTO := &dto.UpdateMessageCampaignRequest{
 		GlobalID:         campaign.GlobalID,
 		GlobalMerchantID: merchant.GlobalMerchantID,
@@ -210,11 +210,11 @@ func TestUpdateMessageCampaign_Success(t *testing.T) {
 	}
 
 	// 設定Mock期望
-	suite.campaignRepo.On("FindByGlobalID", mocks.ContextMatcher(), 
+	suite.campaignRepo.On("FindByGlobalID", mocks.ContextMatcher(),
 		campaign.GlobalID).
 		Return(campaign, nil).Once()
-	
-	suite.campaignRepo.On("Update", mocks.ContextMatcher(), 
+
+	suite.campaignRepo.On("Update", mocks.ContextMatcher(),
 		mock.AnythingOfType("*entity.MessageCampaign")).
 		Return(nil).Once()
 

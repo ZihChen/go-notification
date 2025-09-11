@@ -29,7 +29,7 @@ func TestOpenObserveLogging(t *testing.T) {
 	logger := cmd.GetLogger()
 	if logger == nil {
 		// 如果 cmd.GetLogger() 返回 nil，則手動初始化
-		logger = helper.SetupLoggerMock(t)
+		logger = helper.NewMockLogger()
 	}
 
 	// 測試日誌輸出
