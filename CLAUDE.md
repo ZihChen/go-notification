@@ -201,9 +201,13 @@ The project maintains structured documentation for development guidance:
 
 ## Development Specifications
 
-### Current Focus: Testing Infrastructure Optimization Complete (2025-09-11)
+### Current Focus: System Optimization and Data Architecture Unification (2025-09-15)
 
 **Recently Completed:**
+- ✅ System optimization and data architecture unification (v1.5)
+- ✅ Message campaign object type standardization
+- ✅ Database field type optimization for enhanced stability
+- ✅ Elimination of hard-coded values in favor of constants
 - ✅ Unified Mock architecture implementation (v1.4)
 - ✅ Test data factory with builder pattern
 - ✅ Edge case testing infrastructure
@@ -219,10 +223,21 @@ The project maintains structured documentation for development guidance:
 - System stability monitoring and optimization
 - Performance baseline establishment using pprof integration
 - Production readiness assessment and deployment preparation
+- Continuous testing infrastructure enhancement
 
 For detailed current tasks, see `docs/claude/CLAUDE-CURRENT.md`.
 
 ### Completed Features
+
+#### 系統優化與資料架構統一 v1.5 ✅
+- **Status**: Completed (2025-09-15)
+- **Key Components**:
+  - Message campaign object type standardization
+  - Database field type optimization for system stability
+  - Elimination of hard-coded values with constant-based approach
+  - Standardized object type processing workflow
+  - Enhanced test data factory functionality
+  - Improved test maintainability and extensibility
 
 #### 測試架構統一 v1.4 ✅
 - **Status**: Completed (2025-09-11)
@@ -257,6 +272,11 @@ For detailed current tasks, see `docs/claude/CLAUDE-CURRENT.md`.
 - **Status**: Core development completed (2025-08-28)
 - **Archive**: `docs/claude/archive/2025-08/message-campaign-v1.1/CLAUDE-2025-08-28-v1.1-COMPLETED.md`
 - **Specification**: `docs/claude/features/message-campaign/spec.md`
+
+#### 會員訊息資料結構優化 v1.5 ✅
+- **Status**: Completed (2025-09-15)
+- **Archive**: `docs/claude/archive/2025-09/data-structure-optimization-v1.5/CLAUDE-2025-09-15-v1.5-COMPLETED.md`
+- **Original Spec**: `docs/claude/archive/2025-09/data-structure-optimization-v1.5/CLAUDE-2025-09-15-v1.3.md`
 
 **Key Achievements:**
 - ✅ Message Campaign CRUD APIs
