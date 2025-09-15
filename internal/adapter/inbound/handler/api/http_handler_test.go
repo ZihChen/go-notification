@@ -43,6 +43,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/middleware"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
@@ -369,12 +370,13 @@ func createMessageCampaignTestData() *dto.MessageCampaignResponse {
 func createCreateMessageCampaignRequest() *dto.CreateMessageCampaignRequest {
 	return &dto.CreateMessageCampaignRequest{
 		GlobalMerchantID: "FATCAT-MERCHANT-001",
-		Category:         1,
-		Item:             1,
+		Category:         consts.CategoryMember,
+		Item:             consts.ItemRegistration,
 		TriggerType:      "success",
 		Title:            "Test Campaign",
 		Content:          "Test message content",
-		Target:           1,
+		Target:           consts.TargetHighActivity,
+		Status:           consts.MessageCampaignStatusDraft,
 		CreatedBy:        "test-user",
 	}
 }
@@ -383,12 +385,13 @@ func createUpdateMessageCampaignRequest() *dto.UpdateMessageCampaignRequest {
 	return &dto.UpdateMessageCampaignRequest{
 		GlobalID:         "FATCAT-CAMPAIGN-001",
 		GlobalMerchantID: "FATCAT-MERCHANT-001",
-		Category:         1,
-		Item:             1,
+		Category:         consts.CategoryMember,
+		Item:             consts.ItemRegistration,
 		TriggerType:      "success",
 		Title:            "Updated Campaign",
 		Content:          "Updated message content",
-		Target:           1,
+		Target:           consts.TargetHighActivity,
+		Status:           consts.MessageCampaignStatusScheduled,
 		UpdatedBy:        "test-user",
 	}
 }
@@ -433,8 +436,8 @@ func createMerchantAutoSettingsRequest() *dto.MerchantAutoSettingsRequest {
 		GlobalMerchantID: "FATCAT-MERCHANT-001",
 		Settings: []dto.AutoSettingItem{
 			{
-				Category:    1,
-				Item:        1,
+				Category:    consts.CategoryMember,
+				Item:        consts.ItemRegistration,
 				TriggerType: "success",
 				Title:       "Auto Message",
 				Content:     "Auto message content",

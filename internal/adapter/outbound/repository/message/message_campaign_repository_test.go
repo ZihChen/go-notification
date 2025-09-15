@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,15 +47,15 @@ func createTestMessageCampaign() *entity.MessageCampaign {
 	updatedBy := "admin"
 	return &entity.MessageCampaign{
 		ID:            1,
-		Category:      1,
-		Item:          1,
+		Category:      consts.CategoryMember,
+		Item:          consts.ItemRegistration,
 		TriggerType:   "manual",
 		Title:         "Test Campaign",
 		MerchantID:    1,
 		GlobalID:      "TEST-CAMPAIGN-001",
 		Content:       "Test content",
-		Target:        11, // 11=_all
-		Status:        1,
+		Target:        consts.TargetAll,
+		Status:        consts.MessageCampaignStatusDraft,
 		AutoSend:      false,
 		RealSentCount: 100,
 		SendStartTime: &now,
@@ -80,8 +81,8 @@ func TestMessageCampaignRepository_FindByID(t *testing.T) {
 					"send_start_time", "send_end_time", "created_by", "updated_by",
 					"created_at", "updated_at", "deleted_at",
 				}).AddRow(
-					1, 1, 1, "manual", "Test Campaign", 1, "TEST-CAMPAIGN-001",
-					"Test content", 11, 1, false, 100,
+					1, consts.CategoryMember, consts.ItemRegistration, "manual", "Test Campaign", 1, "TEST-CAMPAIGN-001",
+					"Test content", consts.TargetAll, consts.MessageCampaignStatusDraft, false, 100,
 					now, nil, "admin", "admin",
 					now, now, nil,
 				)
@@ -141,8 +142,8 @@ func TestMessageCampaignRepository_FindByGlobalID(t *testing.T) {
 					"send_start_time", "send_end_time", "created_by", "updated_by",
 					"created_at", "updated_at", "deleted_at",
 				}).AddRow(
-					1, 1, 1, "manual", "Test Campaign", 1, "TEST-CAMPAIGN-001",
-					"Test content", 11, 1, false, 100,
+					1, consts.CategoryMember, consts.ItemRegistration, "manual", "Test Campaign", 1, "TEST-CAMPAIGN-001",
+					"Test content", consts.TargetAll, consts.MessageCampaignStatusDraft, false, 100,
 					now, nil, "admin", "admin",
 					now, now, nil,
 				)
@@ -429,7 +430,7 @@ func TestMessageCampaignRepository_UpdateFields(t *testing.T) {
 				updates = map[string]interface{}{}
 			} else {
 				updates = map[string]interface{}{
-					"status": 2,
+					"status": consts.MessageCampaignStatusScheduled,
 					"title":  "Updated Title",
 				}
 			}
