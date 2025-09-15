@@ -56,8 +56,8 @@ func (u *MessageUseCase) CreateMessageCampaign(
 
 	tracing.RecordSpanAttributes(span,
 		attribute.String("campaign.title", campaign.Title),
-		attribute.Int("campaign.category", int(campaign.Category)),
-		attribute.Int("campaign.target", int(campaign.Target)),
+		attribute.String("campaign.category", campaign.Category),
+		attribute.String("campaign.target", campaign.Target),
 	)
 
 	merchant, err := u.merchantRepo.FindByGlobalID(ctx, campaign.GlobalMerchantID)
@@ -213,12 +213,12 @@ func (u *MessageUseCase) GetMessageCampaign(
 		MerchantID:  campaign.MerchantID,
 		Title:       campaign.Title,
 		Content:     campaign.Content,
-		TargetType:  fmt.Sprintf("%d", campaign.Target),
+		TargetType:  campaign.Target,
 		ScheduledAt: campaign.SendStartTime,
-		Status:      fmt.Sprintf("%d", campaign.Status),
+		Status:      campaign.Status,
 		SentCount:   int(campaign.RealSentCount),
 		ReadCount:   0,
-		IsScheduled: campaign.Status == 2, // 2=scheduled
+		IsScheduled: campaign.Status == consts.MessageCampaignStatusScheduled,
 		ProcessedAt: campaign.SendEndTime,
 		CreatedAt:   campaign.CreatedAt,
 		UpdatedAt:   campaign.UpdatedAt,
@@ -270,11 +270,11 @@ func (u *MessageUseCase) ListMessageCampaigns(
 			MerchantID:  campaign.MerchantID,
 			Title:       campaign.Title,
 			Content:     campaign.Content,
-			TargetType:  fmt.Sprintf("%d", campaign.Target),
+			TargetType:  campaign.Target,
 			ScheduledAt: campaign.SendStartTime,
-			Status:      fmt.Sprintf("%d", campaign.Status),
+			Status:      campaign.Status,
 			SentCount:   int(campaign.RealSentCount),
-			IsScheduled: campaign.Status == 2, // 2=scheduled
+			IsScheduled: campaign.Status == consts.MessageCampaignStatusScheduled,
 			ProcessedAt: campaign.SendEndTime,
 			CreatedAt:   campaign.CreatedAt,
 			UpdatedAt:   campaign.UpdatedAt,
@@ -407,7 +407,7 @@ func (u *MessageUseCase) processPlayerMessages(ctx context.Context, globalPlayer
 	focusType := u.determinePlayerFocus(player)
 
 	tracing.RecordSpanAttributes(span,
-		attribute.Int("player.focus_type", int(focusType)),
+		attribute.String("player.focus_type", focusType),
 		attribute.String("player.account", player.Account),
 	)
 
@@ -463,7 +463,7 @@ func (u *MessageUseCase) processPlayerMessages(ctx context.Context, globalPlayer
 }
 
 // determinePlayerFocus 根據玩家最後活躍時間判斷焦點類型
-func (u *MessageUseCase) determinePlayerFocus(player *entity.Player) uint8 {
+func (u *MessageUseCase) determinePlayerFocus(player *entity.Player) string {
 	if player.LastActiveAt == nil {
 		return consts.TargetNotActivity // 沒有活躍記錄視為不活躍
 	}

@@ -54,7 +54,7 @@ func (m *MessageCampaignRepositoryMock) UpdateSentCount(
 func (m *MessageCampaignRepositoryMock) UpdateStatus(
 	ctx context.Context,
 	id uint64,
-	status uint8,
+	status string,
 ) error {
 	args := m.Called(ctx, id, status)
 	return args.Error(0)
@@ -131,7 +131,7 @@ func (m *MessageCampaignRepositoryMock) FindByGlobalID(
 
 func (m *MessageCampaignRepositoryMock) FindActiveByFocus(
 	ctx context.Context,
-	focus uint8,
+	focus string,
 ) ([]*entity.MessageCampaign, error) {
 	args := m.Called(ctx, focus)
 	if args.Get(0) == nil {
@@ -154,8 +154,8 @@ func (m *MessageCampaignRepositoryMock) FindAutoSettingsByMerchantID(
 func (m *MessageCampaignRepositoryMock) FindAutoSettingByCategoryItemTrigger(
 	ctx context.Context,
 	merchantID uint64,
-	category uint8,
-	item uint8,
+	category string,
+	item string,
 	triggerType string,
 ) (*entity.MessageCampaign, error) {
 	args := m.Called(ctx, merchantID, category, item, triggerType)
@@ -195,7 +195,7 @@ func NewPlayerRepositoryMock(t *testing.T) *PlayerRepositoryMock {
 
 func (m *PlayerRepositoryMock) FindByTargetType(
 	ctx context.Context,
-	target uint8,
+	target string,
 	offset, limit int,
 ) ([]*entity.Player, error) {
 	args := m.Called(ctx, target, offset, limit)

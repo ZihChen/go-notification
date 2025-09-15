@@ -43,7 +43,7 @@ func (f *TestDataFactory) CreateMessageCampaign() *MessageCampaignBuilder {
 		Content:       fmt.Sprintf("Test content for campaign %d", id),
 		Target:        consts.TargetAll,
 		Category:      consts.CategoryMember,
-		Item:          consts.ItemOther,
+		Item:          consts.ItemOthers,
 		Status:        consts.MessageCampaignStatusScheduled,
 		SendStartTime: &now,
 		RealSentCount: 0,
@@ -82,12 +82,12 @@ func (b *MessageCampaignBuilder) WithContent(content string) *MessageCampaignBui
 	return b
 }
 
-func (b *MessageCampaignBuilder) WithTarget(target uint8) *MessageCampaignBuilder {
+func (b *MessageCampaignBuilder) WithTarget(target string) *MessageCampaignBuilder {
 	b.campaign.Target = target
 	return b
 }
 
-func (b *MessageCampaignBuilder) WithStatus(status uint8) *MessageCampaignBuilder {
+func (b *MessageCampaignBuilder) WithStatus(status string) *MessageCampaignBuilder {
 	b.campaign.Status = status
 	return b
 }

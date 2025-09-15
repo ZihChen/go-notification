@@ -74,12 +74,12 @@ func (r *MessageCampaignRepository) FindAllWithOptions(
 	}
 
 	// 類別篩選
-	if query.Category > 0 {
+	if query.Category != "" {
 		builder = builder.Where("category = ?", query.Category)
 	}
 
 	// 項目篩選
-	if query.Item > 0 {
+	if query.Item != "" {
 		builder = builder.Where("item = ?", query.Item)
 	}
 
@@ -135,13 +135,13 @@ func (r *MessageCampaignRepository) FindAllWithOptions(
 // FindActiveByFocus 根據焦點類型查找活躍的會員訊息活動
 func (r *MessageCampaignRepository) FindActiveByFocus(
 	ctx context.Context,
-	focus uint8,
+	focus string,
 ) ([]*entity.MessageCampaign, error) {
 	var campaigns []models.MessageCampaign
 
 	now := time.Now()
 	result := r.db.WithContext(ctx).
-		Where("focus = ? OR focus = ?", focus, consts.TargetAll).
+		Where("target = ? OR target = ?", focus, consts.TargetAll).
 		Where("(send_start_time IS NULL OR send_start_time <= ?) AND (send_end_time IS NULL OR send_end_time >= ?)", now, now).
 		Find(&campaigns)
 
@@ -270,7 +270,7 @@ func (r *MessageCampaignRepository) UpdateSentCount(
 func (r *MessageCampaignRepository) UpdateStatus(
 	ctx context.Context,
 	campaignID uint64,
-	status uint8,
+	status string,
 ) error {
 	result := r.db.WithContext(ctx).
 		Model(&models.MessageCampaign{}).
@@ -389,8 +389,8 @@ func (r *MessageCampaignRepository) FindAutoSettingsByMerchantID(
 func (r *MessageCampaignRepository) FindAutoSettingByCategoryItemTrigger(
 	ctx context.Context,
 	merchantID uint64,
-	category uint8,
-	item uint8,
+	category string,
+	item string,
 	triggerType string,
 ) (*entity.MessageCampaign, error) {
 	var campaign models.MessageCampaign

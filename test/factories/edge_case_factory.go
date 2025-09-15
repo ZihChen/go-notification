@@ -65,7 +65,7 @@ func (f *EdgeCaseFactory) EmptyCampaign() *entity.MessageCampaign {
 // InvalidStatusCampaign 創建無效狀態的活動
 func (f *EdgeCaseFactory) InvalidStatusCampaign() *entity.MessageCampaign {
 	return f.CreateMessageCampaign().
-		WithStatus(99). // 無效狀態
+		WithStatus("invalid_status"). // 無效狀態
 		Build()
 }
 

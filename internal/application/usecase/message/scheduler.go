@@ -61,7 +61,7 @@ func (u *MessageUseCase) SendCampaignToPlayers(ctx context.Context, campaignID u
 
 	tracing.RecordSpanAttributes(span,
 		attribute.String("campaign.title", campaign.Title),
-		attribute.Int("campaign.target", int(campaign.Target)),
+		attribute.String("campaign.target", campaign.Target),
 	)
 
 	const batchSize = 1000
@@ -108,11 +108,21 @@ func (u *MessageUseCase) SendCampaignToPlayers(ctx context.Context, campaignID u
 		}
 
 		if len(newMessages) > 0 {
+			u.logger.InfoLog("Creating batch messages",
+				u.logger.Int64("campaign_id", int64(campaignID)),
+				u.logger.Int("batch_size", len(newMessages)),
+				u.logger.Int("offset", offset))
+
 			if err := u.playerMessageRepo.CreateBatch(ctx, newMessages); err != nil {
 				tracing.RecordSpanError(span, err)
 				return fmt.Errorf("create batch messages: %w", err)
 			}
 			totalSent += int64(len(newMessages))
+
+			u.logger.InfoLog("Batch messages created successfully",
+				u.logger.Int64("campaign_id", int64(campaignID)),
+				u.logger.Int("batch_created", len(newMessages)),
+				u.logger.Int64("total_sent_so_far", totalSent))
 		}
 
 		if len(players) < batchSize {
@@ -122,28 +132,37 @@ func (u *MessageUseCase) SendCampaignToPlayers(ctx context.Context, campaignID u
 		offset += batchSize
 	}
 
+	u.logger.InfoLog("Updating sent count for campaign",
+		u.logger.Int64("campaign_id", int64(campaignID)),
+		u.logger.Int64("total_sent", totalSent),
+		u.logger.String("method", "SendCampaignToPlayers_Sync"))
+
 	if err := u.campaignRepo.UpdateSentCount(ctx, campaignID, totalSent); err != nil {
 		u.logger.WarnLog("Failed to update sent count",
 			u.logger.Int64("campaign_id", int64(campaignID)),
 			u.logger.Int64("sent_count", totalSent),
 			u.logger.Error("err", err))
+	} else {
+		u.logger.InfoLog("Successfully updated sent count",
+			u.logger.Int64("campaign_id", int64(campaignID)),
+			u.logger.Int64("sent_count", totalSent))
 	}
 
 	// 更新活動狀態為已發送
 	if err := u.campaignRepo.UpdateStatus(ctx, campaignID, consts.MessageCampaignStatusSent); err != nil {
 		u.logger.WarnLog("Failed to update campaign status to sent",
 			u.logger.Int64("campaign_id", int64(campaignID)),
-			u.logger.Int("status", int(consts.MessageCampaignStatusSent)),
+			u.logger.String("status", consts.MessageCampaignStatusSent),
 			u.logger.Error("err", err))
 	} else {
 		u.logger.InfoLog("Campaign status updated to sent",
 			u.logger.Int64("campaign_id", int64(campaignID)),
-			u.logger.Int("status", int(consts.MessageCampaignStatusSent)))
+			u.logger.String("status", consts.MessageCampaignStatusSent))
 	}
 
 	tracing.RecordSpanAttributes(span,
 		attribute.Int64("total_sent", totalSent),
-		attribute.Int("final_status", int(consts.MessageCampaignStatusSent)),
+		attribute.String("final_status", consts.MessageCampaignStatusSent),
 	)
 
 	tracing.TraceEvent(span, "Campaign sent to players and status updated")
@@ -171,7 +190,7 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 
 	tracing.RecordSpanAttributes(span,
 		attribute.String("campaign.title", campaign.Title),
-		attribute.Int("campaign.target", int(campaign.Target)),
+		attribute.String("campaign.target", campaign.Target),
 	)
 
 	// 配置參數
@@ -184,6 +203,9 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 
 	// 使用 atomic 操作統計發送數量，避免 mutex 開銷
 	var totalSent int64
+
+	// 保存原始 context 用於最終的狀態更新
+	originalCtx := ctx
 
 	// 創建 errgroup 統一管理 goroutines 和錯誤處理
 	timeoutCtx, cancel := context.WithTimeout(ctx, operationTimeout)
@@ -207,11 +229,10 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 		})
 	}
 
-	// 獲取處理過程中已發送的數量
-	finalTotalSent := atomic.LoadInt64(&totalSent)
-
 	// 等待所有 goroutines 完成，任何錯誤都會導致其他 goroutines 被取消
 	if waitErr := g.Wait(); waitErr != nil {
+		// 獲取處理過程中已發送的數量（錯誤情況下）
+		finalTotalSent := atomic.LoadInt64(&totalSent)
 		tracing.RecordSpanError(span, waitErr)
 
 		// 發生錯誤時的回滾策略：保留已處理數據，更新統計並標記為失敗
@@ -221,7 +242,7 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 			u.logger.Error("error", waitErr))
 
 		// 更新已發送的數量統計（即使失敗也要記錄已處理的數據）
-		if updateSentErr := u.campaignRepo.UpdateSentCount(ctx, campaignID, finalTotalSent); updateSentErr != nil {
+		if updateSentErr := u.campaignRepo.UpdateSentCount(originalCtx, campaignID, finalTotalSent); updateSentErr != nil {
 			u.logger.ErrorLog("Failed to update sent count during rollback",
 				u.logger.Int64("campaign_id", int64(campaignID)),
 				u.logger.Int64("sent_count", finalTotalSent),
@@ -229,7 +250,7 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 		}
 
 		// 將活動狀態標記為失敗
-		if updateStatusErr := u.campaignRepo.UpdateStatus(ctx, campaignID, consts.MessageCampaignStatusFailed); updateStatusErr != nil {
+		if updateStatusErr := u.campaignRepo.UpdateStatus(originalCtx, campaignID, consts.MessageCampaignStatusFailed); updateStatusErr != nil {
 			u.logger.ErrorLog("Failed to update campaign status to failed during rollback",
 				u.logger.Int64("campaign_id", int64(campaignID)),
 				u.logger.Error("err", updateStatusErr))
@@ -242,7 +263,7 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 		// 記錄部分成功的追蹤信息
 		tracing.RecordSpanAttributes(span,
 			attribute.Int64("partial_sent", finalTotalSent),
-			attribute.Int("final_status", int(consts.MessageCampaignStatusFailed)),
+			attribute.String("final_status", consts.MessageCampaignStatusFailed),
 			attribute.Bool("partial_success", finalTotalSent > 0),
 		)
 
@@ -253,29 +274,41 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 		)
 	}
 
+	// 獲取最終已發送的數量（成功情況下）
+	finalTotalSent := atomic.LoadInt64(&totalSent)
+
 	// 正常完成：更新發送統計
-	if updateSentErr := u.campaignRepo.UpdateSentCount(ctx, campaignID, finalTotalSent); updateSentErr != nil {
+	u.logger.InfoLog("Updating sent count for campaign",
+		u.logger.Int64("campaign_id", int64(campaignID)),
+		u.logger.Int64("final_total_sent", finalTotalSent),
+		u.logger.String("method", "SendCampaignToPlayersAsync"))
+
+	if updateSentErr := u.campaignRepo.UpdateSentCount(originalCtx, campaignID, finalTotalSent); updateSentErr != nil {
 		u.logger.WarnLog("Failed to update sent count",
 			u.logger.Int64("campaign_id", int64(campaignID)),
 			u.logger.Int64("sent_count", finalTotalSent),
 			u.logger.Error("err", updateSentErr))
+	} else {
+		u.logger.InfoLog("Successfully updated sent count",
+			u.logger.Int64("campaign_id", int64(campaignID)),
+			u.logger.Int64("sent_count", finalTotalSent))
 	}
 
 	// 正常完成：更新活動狀態為已發送
-	if updateStatusErr := u.campaignRepo.UpdateStatus(ctx, campaignID, consts.MessageCampaignStatusSent); updateStatusErr != nil {
+	if updateStatusErr := u.campaignRepo.UpdateStatus(originalCtx, campaignID, consts.MessageCampaignStatusSent); updateStatusErr != nil {
 		u.logger.WarnLog("Failed to update campaign status to sent",
 			u.logger.Int64("campaign_id", int64(campaignID)),
-			u.logger.Int("status", int(consts.MessageCampaignStatusSent)),
+			u.logger.String("status", consts.MessageCampaignStatusSent),
 			u.logger.Error("err", updateStatusErr))
 	} else {
 		u.logger.InfoLog("Campaign status updated to sent",
 			u.logger.Int64("campaign_id", int64(campaignID)),
-			u.logger.Int("status", int(consts.MessageCampaignStatusSent)))
+			u.logger.String("status", consts.MessageCampaignStatusSent))
 	}
 
 	tracing.RecordSpanAttributes(span,
 		attribute.Int64("total_sent", finalTotalSent),
-		attribute.Int("final_status", int(consts.MessageCampaignStatusSent)),
+		attribute.String("final_status", consts.MessageCampaignStatusSent),
 	)
 
 	tracing.TraceEvent(span, "Campaign sent to players asynchronously and status updated")
@@ -352,7 +385,15 @@ func (u *MessageUseCase) consumePlayerBatches(
 			}
 
 			// 原子操作更新總數
+			oldTotal := atomic.LoadInt64(totalSent)
 			atomic.AddInt64(totalSent, count)
+			newTotal := atomic.LoadInt64(totalSent)
+
+			u.logger.InfoLog("Updated total sent count",
+				u.logger.Int64("campaign_id", int64(campaignID)),
+				u.logger.Int64("batch_count", count),
+				u.logger.Int64("old_total", oldTotal),
+				u.logger.Int64("new_total", newTotal))
 
 		case <-ctx.Done():
 			return ctx.Err()
@@ -408,9 +449,18 @@ func (u *MessageUseCase) processSingleBatch(
 
 	// 批次創建新訊息
 	if len(newMessages) > 0 {
+		u.logger.InfoLog("Creating optimized batch messages",
+			u.logger.Int64("campaign_id", int64(campaignID)),
+			u.logger.Int("new_messages_count", len(newMessages)),
+			u.logger.Int("db_batch_size", dbBatchSize))
+
 		if err := u.playerMessageRepo.CreateBatchOptimized(ctx, newMessages, dbBatchSize); err != nil {
 			return 0, fmt.Errorf("create batch messages: %w", err)
 		}
+
+		u.logger.InfoLog("Optimized batch messages created successfully",
+			u.logger.Int64("campaign_id", int64(campaignID)),
+			u.logger.Int("created_count", len(newMessages)))
 	}
 
 	return int64(len(newMessages)), nil

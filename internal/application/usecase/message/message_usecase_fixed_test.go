@@ -84,11 +84,11 @@ func TestCreateMessageCampaign_Success(t *testing.T) {
 
 	createDTO := &dto.CreateMessageCampaignRequest{
 		GlobalMerchantID: merchant.GlobalMerchantID,
-		Category:         1,
-		Item:             1,
+		Category:         consts.CategoryMember,
+		Item:             consts.ItemRegistration,
 		Title:            "測試活動",
 		Content:          "測試內容",
-		Target:           1,
+		Target:           consts.TargetHighActivity,
 		CreatedBy:        "test@example.com",
 	}
 
@@ -117,11 +117,11 @@ func TestCreateMessageCampaign_MerchantNotFound(t *testing.T) {
 
 	createDTO := &dto.CreateMessageCampaignRequest{
 		GlobalMerchantID: "non-existent-merchant",
-		Category:         1,
-		Item:             1,
+		Category:         consts.CategoryMember,
+		Item:             consts.ItemRegistration,
 		Title:            "測試活動",
 		Content:          "測試內容",
-		Target:           1,
+		Target:           consts.TargetHighActivity,
 		CreatedBy:        "test@example.com",
 	}
 

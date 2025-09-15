@@ -72,7 +72,7 @@ func (r *PlayerRepository) FirstOrCreate(ctx context.Context, player *entity.Pla
 // FindByTargetType 根據目標類型查找玩家
 func (r *PlayerRepository) FindByTargetType(
 	ctx context.Context,
-	targetType uint8,
+	targetType string,
 	offset, limit int,
 ) ([]*entity.Player, error) {
 	var players []models.Player
@@ -97,7 +97,7 @@ func (r *PlayerRepository) FindByTargetType(
 		query = query.Where("last_active_at IS NULL OR last_active_at < ?", hundredDaysAgo)
 	case consts.TargetAll:
 	default:
-		return nil, fmt.Errorf("unsupported target type: %d", targetType)
+		return nil, fmt.Errorf("unsupported target type: %s", targetType)
 	}
 
 	result := query.Offset(offset).Limit(limit).Find(&players)

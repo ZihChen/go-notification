@@ -31,16 +31,16 @@ type PlayerMessageStats struct {
 
 // MessageCampaignsQuery 訊息活動查詢參數
 type MessageCampaignsQuery struct {
-	Page           int     `json:"page"`
-	PageSize       int     `json:"page_size"`
-	Category       uint8   `json:"category"`        // 類型：1=member, 2=bonus, 3=others
-	Item           uint8   `json:"item"`            // 項目：1=registration, 2=identity_verification, ..., 6=all
-	Status         []uint8 `json:"status"`          // 狀態：1=草稿 2=已排程 3=已發送 4=已取消 5=已歸檔
-	IncludeDeleted bool    `json:"include_deleted"` // 是否包含已刪除的活動
-	ShowAutoSend   bool    `json:"show_auto_send"`  // 是否顯示站內系統建立
-	CreatedBy      string  `json:"created_by"`      // 建立者
-	StartAt        string  `json:"start_at"`        // 建立起始時間
-	EndAt          string  `json:"end_at"`          // 建立結束時間
+	Page           int      `json:"page"`
+	PageSize       int      `json:"page_size"`
+	Category       string   `json:"category"`        // 類型：member, bonus, others
+	Item           string   `json:"item"`            // 項目：registration, identity_verification, bank_card, others, event, all, mission
+	Status         []string `json:"status"`          // 狀態：draft, scheduled, sent, cancelled, failed
+	IncludeDeleted bool     `json:"include_deleted"` // 是否包含已刪除的活動
+	ShowAutoSend   bool     `json:"show_auto_send"`  // 是否顯示站內系統建立
+	CreatedBy      string   `json:"created_by"`      // 建立者
+	StartAt        string   `json:"start_at"`        // 建立起始時間
+	EndAt          string   `json:"end_at"`          // 建立結束時間
 }
 
 // ManagerResponse 管理員回應 DTO

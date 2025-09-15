@@ -15,7 +15,7 @@ type MessageCampaignRepository interface {
 		ctx context.Context,
 		query *dto.MessageCampaignsQuery,
 	) ([]*entity.MessageCampaign, int, error)
-	FindActiveByFocus(ctx context.Context, focus uint8) ([]*entity.MessageCampaign, error)
+	FindActiveByFocus(ctx context.Context, focus string) ([]*entity.MessageCampaign, error)
 	FindScheduledCampaigns(ctx context.Context) ([]*entity.MessageCampaign, error)
 	FindAutoSettingsByMerchantID(
 		ctx context.Context,
@@ -24,8 +24,8 @@ type MessageCampaignRepository interface {
 	FindAutoSettingByCategoryItemTrigger(
 		ctx context.Context,
 		merchantID uint64,
-		category uint8,
-		item uint8,
+		category string,
+		item string,
 		triggerType string,
 	) (*entity.MessageCampaign, error)
 	UpsertAutoSettings(ctx context.Context, campaigns []*entity.MessageCampaign) error
@@ -39,7 +39,7 @@ type MessageCampaignRepository interface {
 		includeDeleted bool,
 	) error
 	UpdateSentCount(ctx context.Context, campaignID uint64, count int64) error
-	UpdateStatus(ctx context.Context, campaignID uint64, status uint8) error
+	UpdateStatus(ctx context.Context, campaignID uint64, status string) error
 	Delete(ctx context.Context, id uint64) error
 }
 

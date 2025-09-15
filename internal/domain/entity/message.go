@@ -7,15 +7,15 @@ import (
 // MessageCampaign 會員訊息活動模型
 type MessageCampaign struct {
 	ID            uint64     `json:"id"`
-	Category      uint8      `json:"category"`     // 1=member, 2=bonus, 3=others
-	Item          uint8      `json:"item"`         // 1=registration, 2=identity_verification, ..., 6=all
+	Category      string     `json:"category"`     // member, bonus, others
+	Item          string     `json:"item"`         // registration, identity_verification, bank_card, others, event, all, mission
 	TriggerType   string     `json:"trigger_type"` // success, failure (for auto-send settings)
 	Title         string     `json:"title"`
 	MerchantID    uint64     `json:"merchant_id"`
 	GlobalID      string     `json:"global_id"`
 	Content       string     `json:"content"`         // 可包含 HTML Tag
-	Target        uint8      `json:"target"`          // 1=_in_thirty, 2=_low_activity, 3=_not_activity, 8=_one, 9=_level, 10=_tag, 11=_all
-	Status        uint8      `json:"status"`          // 1=draft, 2=scheduled, 3=sent, 4=cancelled, 5=archived
+	Target        string     `json:"target"`          // high_activity, low_activity, not_activity, player, level, tag, all
+	Status        string     `json:"status"`          // draft, scheduled, sent, cancelled, failed
 	AutoSend      bool       `json:"auto_send"`       // 是否為系統自動訊息
 	RealSentCount int64      `json:"real_sent_count"` // 實際成功發送人數
 	SendStartTime *time.Time `json:"send_start_time,omitempty"`

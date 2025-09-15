@@ -12,7 +12,7 @@ type PlayerRepository interface {
 	FindByGlobalID(ctx context.Context, globalID string) (*entity.Player, error)
 	FindByTargetType(
 		ctx context.Context,
-		targetType uint8,
+		targetType string,
 		offset, limit int,
 	) ([]*entity.Player, error)
 	FirstOrCreate(ctx context.Context, player *entity.Player) error
