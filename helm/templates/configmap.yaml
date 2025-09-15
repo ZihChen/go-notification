@@ -24,6 +24,10 @@ data:
   # DB_PASSWORD: <secret>
   DB_NAME: "ms_fatnotificationcat"
 
+  # Atlas 測試資料庫設置
+  ATLAS_DEV_USER: "REDACTED_DB_USER_DEV"
+  # ATLAS_DEV_PASSWORD: <secret>
+
   # 資料庫連線池設置
   DB_MAX_IDLE: "25"
   DB_MAX_OPEN: "100"

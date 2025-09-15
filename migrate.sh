@@ -1,20 +1,56 @@
 #!/bin/bash
 
+# === Environment Configuration ===
+
+# 判斷運行環境：本地開發 vs Kubernetes 部署
+if [ -f ".env" ]; then
+    echo "📋 Loading local development environment from .env"
+    # 安全載入 .env 文件，使用 source 避免複雜值解析問題
+    set -a  # 自動 export 所有變數
+    source ".env"
+    set +a  # 關閉自動 export
+    DEPLOY_ENV="local"
+else
+    echo "📋 Using deployment environment (ConfigMap/Secrets)"
+    DEPLOY_ENV="deployment"
+fi
+
 # === Config ===
 ATLASGO="atlas"
 
-MYSQL_HOST="REDACTED_DB_HOST"
-MYSQL_PORT="3306"
-MYSQL_ROOT_USER="REDACTED_DB_USER_PROD"
-MYSQL_ROOT_PASSWORD="REDACTED_DB_PASSWORD_PROD"
-MYSQL_DATABASE="ms_fatnotificationcat"
-ATLAS_ENV="gorm"
+# 從環境變數讀取 MySQL 配置，提供默認值
+MYSQL_HOST="${DB_HOST:-localhost}"
+MYSQL_PORT="${DB_PORT:-3306}"
+MYSQL_ROOT_USER="${DB_USER:-root}"
+MYSQL_ROOT_PASSWORD="${DB_PASSWORD:-password}"
+MYSQL_DATABASE="${DB_NAME:-fat_notification_cat}"
+
+# Atlas 環境配置：local 或 deployment
+ATLAS_ENV="${ATLAS_ENV:-${DEPLOY_ENV}}"
+
+# 顯示當前配置信息（隱藏密碼）
+echo "🔧 Configuration:"
+echo "   Environment: ${DEPLOY_ENV}"
+echo "   Atlas Environment: ${ATLAS_ENV}"
+echo "   MySQL Host: ${MYSQL_HOST}"
+echo "   MySQL Port: ${MYSQL_PORT}"
+echo "   MySQL User: ${MYSQL_ROOT_USER}"
+echo "   MySQL Database: ${MYSQL_DATABASE}"
+echo "   MySQL Password: [HIDDEN]"
+echo ""
 
 # === Functions ===
 
+# Helper function to build Atlas command with variables
+build_atlas_cmd() {
+  local base_cmd="$1"
+  echo "$base_cmd --var db_host=\"$MYSQL_HOST\" --var db_user=\"$MYSQL_ROOT_USER\" --var db_password=\"$MYSQL_ROOT_PASSWORD\" --var db_name=\"$MYSQL_DATABASE\" --var db_port=\"$MYSQL_PORT\" --var atlas_dev_user=\"${ATLAS_DEV_USER:-dev_user}\" --var atlas_dev_password=\"${ATLAS_DEV_PASSWORD:-dev_password}\""
+}
+
+
 init_migration() {
   echo "📂 \033[1;36mInitialize migrations folder and SQL file...\033[0m"
-  CMD="$ATLASGO migrate diff init --env \"$ATLAS_ENV\""
+  CMD=$(build_atlas_cmd "$ATLASGO migrate diff init --env \"$ATLAS_ENV\"")
   echo -e "👉 \033[1;33mExecuting:\033[0m $CMD"
   eval $CMD
   echo -e "✅ Initialize successfully\n"
@@ -22,7 +58,7 @@ init_migration() {
 
 apply_migration() {
   echo -e "💻 \033[1;36mApplying migrations to remote DB...\033[0m"
-  CMD="$ATLASGO migrate apply --env \"$ATLAS_ENV\""
+  CMD=$(build_atlas_cmd "$ATLASGO migrate apply --env \"$ATLAS_ENV\"")
   echo -e "👉 \033[1;33mExecuting:\033[0m $CMD"
   eval $CMD
   echo -e "✅ Migration applied successfully\n"
@@ -30,7 +66,7 @@ apply_migration() {
 
 dry_run() {
   echo -e "💻 \033[1;36mPreviewing migration changes on remote DB...\033[0m"
-  CMD="$ATLASGO schema apply --dry-run --env \"$ATLAS_ENV\""
+  CMD=$(build_atlas_cmd "$ATLASGO schema apply --dry-run --env \"$ATLAS_ENV\"")
   echo -e "👉 \033[1;33mExecuting:\033[0m $CMD"
   eval $CMD
   echo -e "✅ Dry run completed\n"
@@ -45,25 +81,25 @@ generate_diff() {
   PREFIX_NAME="$1"
   echo -e "💻 \033[1;36mGenerating migration files...\033[0m"
 
-  CMD="$ATLASGO migrate diff \"$PREFIX_NAME\" --env \"$ATLAS_ENV\""
+  CMD=$(build_atlas_cmd "$ATLASGO migrate diff \"$PREFIX_NAME\" --env \"$ATLAS_ENV\"")
   echo -e "👉 \033[1;33mExecuting:\033[0m $CMD"
   eval $CMD
 }
 
 schema_inspect() {
-  CMD="$ATLASGO schema inspect --env \"$ATLAS_ENV\""
+  CMD=$(build_atlas_cmd "$ATLASGO schema inspect --env \"$ATLAS_ENV\"")
   echo -e "👉 \033[1;33mExecuting:\033[0m $CMD"
   eval $CMD
 }
 
 migrate_status() {
-  CMD="$ATLASGO migrate status --env \"$ATLAS_ENV\""
+  CMD=$(build_atlas_cmd "$ATLASGO migrate status --env \"$ATLAS_ENV\"")
   echo -e "👉 \033[1;33mExecuting:\033[0m $CMD"
   eval $CMD
 }
 
 migrate_hash() {
-  CMD="$ATLASGO migrate hash --env \"$ATLAS_ENV\""
+  CMD=$(build_atlas_cmd "$ATLASGO migrate hash --env \"$ATLAS_ENV\"")
   echo -e "👉 \033[1;33mExecuting:\033[0m $CMD"
   eval $CMD
 }
@@ -97,9 +133,9 @@ migrate_down() {
     local cmd=""
 
     if [[ -z "$version" ]]; then
-      cmd="atlas migrate down --env gorm"
+      cmd=$(build_atlas_cmd "atlas migrate down --env \"$ATLAS_ENV\"")
     else
-      cmd="atlas migrate down --env gorm --to-version $version"
+      cmd=$(build_atlas_cmd "atlas migrate down --env \"$ATLAS_ENV\" --to-version $version")
     fi
 
     echo -e "⚠️ \033[1;31mYou are about to execute a rollback:\033[0m"

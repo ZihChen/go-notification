@@ -214,16 +214,36 @@ golangci-lint run --fix
 
 ### 資料庫遷移
 
+專案支援兩種配置方式：
+
+#### 本地開發
+本地開發使用 `.env` 文件配置，migrate.sh 會自動偵測並載入：
+
 ```bash
 # 產生新的遷移檔案
 ./migrate.sh gen <migration_name> 
 
-# 執行遷移
+# 執行遷移 (自動使用 .env 配置)
 ./migrate.sh apply
 
 # 查看遷移狀態
 ./migrate.sh status
 ```
+
+#### Kubernetes 部署
+部署環境使用 ConfigMap 和 Secrets 提供環境變數：
+
+```bash
+# 在 Kubernetes Pod 中執行遷移
+kubectl exec -it <pod-name> -- ./migrate.sh apply
+
+# 或在部署時通過 Init Container 執行
+```
+
+#### 配置管理
+
+- **本地開發**：`.env` 文件
+- **部署環境**：`helm/templates/configmap.yaml` + Kubernetes Secrets
 
 ### Wire 依賴注入
 

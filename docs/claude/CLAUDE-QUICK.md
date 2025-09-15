@@ -3,13 +3,13 @@
 ## 快速開發指南
 
 ### 當前狀態
-- **v1.5**: 系統優化與資料架構統一 ✅ 已完成 (2025-09-15)
+- **v1.5**: 系統優化與環境配置統一 ✅ 已完成 (2025-09-15)
 - **v1.4**: 測試架構統一 ✅ 已完成 (2025-09-11)
 - **v1.3**: 六角架構重構 ✅ 已完成 (2025-09-02)
 - **v1.2**: 路由架構重構 ✅ 已完成 (2025-09-01)
 - **v1.1**: 會員訊息排程發送系統 ✅ 已完成 (2025-08-28)
 - **當前階段**: 生產環境準備與系統穩定性監控 🔄 進行中
-- **下一里程碑**: 正式生產部署
+- **下一里程碁**: 正式生產部署
 
 ### 快速命令
 
@@ -44,16 +44,21 @@ go test ./internal/application/usecase/message/...
 go test ./internal/adapter/outbound/repository/message/...
 ```
 
-#### 資料庫操作
+#### 資料庫操作 ✨ **NEW v1.5**
 ```bash
-# 應用遷移
-./migrate.sh apply
+# 自動環境檢測與遷移管理
+./migrate.sh apply          # 應用遷移
+./migrate.sh status         # 檢查遷移狀態
+./migrate.sh gen <name>     # 生成新遷移 (自動使用 Atlas dev DB)
+./migrate.sh inspect        # 檢查資料庫結構
+./migrate.sh diff          # 比較 schema 差異
+./migrate.sh rollback      # 回滾最新遷移
+./migrate.sh hash          # 重新計算遷移檔案哈希
 
-# 檢查遷移狀態
-./migrate.sh status
-
-# 生成新遷移
-./migrate.sh gen <migration_name>
+# 環境配置說明
+# - 本地開發: 自動讀取 .env 文件
+# - Kubernetes: 使用 ConfigMap/Secrets
+# - Atlas dev DB: 自動使用 ATLAS_DEV_USER/PASSWORD
 ```
 
 #### 代碼生成
@@ -221,6 +226,26 @@ sleep 10  # 等待服務啟動
 go test ./...
 ```
 
+#### 資料庫遷移問題 ✨ **NEW v1.5**
+```bash
+# .env 文件載入問題
+# 檢查 JSON 格式是否正確
+cat .env | grep AUTH_API_KEYS
+
+# Atlas dev DB 連接問題
+# 檢查環境變數配置
+echo $ATLAS_DEV_USER $ATLAS_DEV_PASSWORD
+
+# Rollback assertion 失敗
+# 原因: 要刪除的欄位包含非 NULL 資料
+# 解決: 刪除測試遷移檔案
+rm migrations/<test_migration_file>.sql
+./migrate.sh hash  # 重新計算哈希
+
+# 環境配置檢查
+./migrate.sh status  # 會顯示目前使用的環境配置
+```
+
 ### 六角架構新功能 ✨ v1.3
 
 #### Clean Architecture 實現
@@ -271,7 +296,35 @@ routerManager.SetupRoutersWithMiddleware(ginEngine, config)
 - 解決Swagger UI調用API的CORS問題
 - 支援所有必要的HTTP方法和headers
 
+### 環境配置統一化功能 ✨ v1.5
+
+#### 多環境支援
+- **本地開發**: 使用 `.env` 文件自動設定
+- **Kubernetes 部署**: 使用 ConfigMap/Secrets 環境變數
+- **自動檢測**: `migrate.sh` 自動識別環境類型
+
+#### Atlas 配置優化
+```bash
+# 環境變數化 DSN 配置
+url = format("mysql://%s:%s@%s:%s/%s?tls=true",
+  var.db_user, var.db_password, var.db_host, var.db_port, var.db_name)
+
+# Atlas dev 資料庫變數化
+dev = format("mysql://%s:%s@%s:%s/%s?tls=true",
+  var.atlas_dev_user, var.atlas_dev_password, 
+  var.db_host, var.db_port, "ms_fatidentitycat")
+```
+
+#### 安全的 .env 載入
+```bash
+# 支援 JSON 格式和特殊字符
+AUTH_API_KEYS='{"api-key-1":"MERCHANT-1", "api-key-2":"MERCHANT-2"}'
+
+# 使用 source 替代 export 防止解析錯誤
+set -a; source .env; set +a
+```
+
 ---
 **更新日期**: 2025-09-15  
-**版本**: v1.5 (系統優化與資料架構統一)  
+**版本**: v1.5 (環境配置統一化完成)  
 **用途**: 日常開發快速參考
