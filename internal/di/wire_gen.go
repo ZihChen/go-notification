@@ -7,9 +7,11 @@
 package di
 
 import (
+	"fmt"
 	"github.com/google/wire"
 	"github.com/hibiken/asynq"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/api"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/migrate"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/scheduler"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/worker"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/job"
@@ -22,15 +24,21 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/manager"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/merchant"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/message"
+	migrate2 "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/migrate"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/player"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
+	repository5 "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	service2 "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/kds"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
 	redis2 "github.com/redis/go-redis/v9"
+	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"os"
+	"time"
 )
 
 // Injectors from wire.go:
@@ -146,6 +154,21 @@ func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Log
 	return handler, nil
 }
 
+// InitializeMigrateHandler 初始化 Migrate 服務的處理器
+func InitializeMigrateHandler(cfg *config.Config, logger infrastructure.Logger, db *gorm.DB) (*migrate.MigrateHandler, error) {
+	legacyDB, err := provideLegacyDB(cfg)
+	if err != nil {
+		return nil, err
+	}
+	messageCampaignRepository := repository4.NewMessageCampaignRepository(db)
+	playerRepository := repository2.NewPlayerRepository(db)
+	merchantRepository := repository.NewMerchantRepository(db)
+	playerMessageRepository := repository4.NewPlayerMessageRepository(db)
+	migrateUseCase := provideMigrateUseCase(legacyDB, messageCampaignRepository, playerRepository, merchantRepository, playerMessageRepository, logger)
+	migrateHandler := migrate.NewMigrateHandler(migrateUseCase, logger)
+	return migrateHandler, nil
+}
+
 // wire.go:
 
 // WorkerComponents 包含 worker 所需的所有組件
@@ -172,4 +195,80 @@ func provideRedisClient(manager2 *redis.Manager) (*redis2.Client, error) {
 		return nil, err
 	}
 	return redisInstance, nil
+}
+
+// LegacyDB 是舊系統資料庫連接的類型
+type LegacyDB struct {
+	*gorm.DB
+}
+
+// provideMigrateUseCase 創建 migrate use case，明確區分兩個資料庫連接
+func provideMigrateUseCase(
+	legacyDB *LegacyDB,
+	messageRepo repository5.MessageCampaignRepository,
+	playerRepo repository5.PlayerRepository,
+	merchantRepo repository5.MerchantRepository,
+	playerMessageRepo repository5.PlayerMessageRepository,
+	logger infrastructure.Logger,
+) inbound.MigrateUseCase {
+	return migrate2.NewMigrateUseCase(
+		legacyDB.DB,
+		messageRepo,
+		playerRepo,
+		merchantRepo,
+		playerMessageRepo,
+		logger,
+	)
+}
+
+// provideLegacyDB 提供舊系統資料庫連接（fatcat_staging）
+func provideLegacyDB(cfg *config.Config) (*LegacyDB, error) {
+
+	db, err := connectToLegacyDatabase(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return &LegacyDB{DB: db}, nil
+}
+
+// connectToLegacyDatabase 連接到舊系統資料庫
+func connectToLegacyDatabase(cfg *config.Config) (*gorm.DB, error) {
+
+	legacyHost := getEnvOrDefault("LEGACY_DB_HOST", cfg.Database.Host)
+	legacyPort := getEnvOrDefault("LEGACY_DB_PORT", fmt.Sprintf("%d", cfg.Database.Port))
+	legacyUser := getEnvOrDefault("LEGACY_DB_USER", cfg.Database.User)
+	legacyPassword := getEnvOrDefault("LEGACY_DB_PASSWORD", cfg.Database.Password)
+	legacyDBName := getEnvOrDefault("LEGACY_DB_NAME", "fatcat_staging")
+
+	legacyDSN := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local&tls=true",
+		legacyUser, legacyPassword, legacyHost, legacyPort, legacyDBName)
+
+	gormConfig := &gorm.Config{
+		PrepareStmt:            true,
+		SkipDefaultTransaction: true,
+	}
+
+	db, err := gorm.Open(mysql.Open(legacyDSN), gormConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to legacy database: %w", err)
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get legacy database connection pool: %w", err)
+	}
+
+	sqlDB.SetMaxIdleConns(5)
+	sqlDB.SetMaxOpenConns(10)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+
+	return db, nil
+}
+
+// getEnvOrDefault 獲取環境變數，如果不存在則使用默認值
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }

@@ -304,3 +304,30 @@ func mapToDBPlayerMessage(message *entity.PlayerMessage) *models.PlayerMessage {
 		UpdatedAt:      message.UpdatedAt,
 	}
 }
+
+// GetByPlayerAndCampaign 通過玩家ID和活動ID獲取訊息（用於資料遷移）
+func (r *PlayerMessageRepository) GetByPlayerAndCampaign(
+	ctx context.Context,
+	playerID uint64,
+	campaignID uint64,
+) (*entity.PlayerMessage, error) {
+	var message models.PlayerMessage
+	result := r.db.WithContext(ctx).Where("player_id = ? AND campaign_id = ?", playerID, campaignID).First(&message)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return mapToDomainPlayerMessage(&message), nil
+}
+
+// Update 更新玩家訊息（用於資料遷移）
+func (r *PlayerMessageRepository) Update(
+	ctx context.Context,
+	message *entity.PlayerMessage,
+) error {
+	dbMessage := mapToDBPlayerMessage(message)
+	result := r.db.WithContext(ctx).Save(dbMessage)
+	if result.Error != nil {
+		return fmt.Errorf("failed to update player message: %w", result.Error)
+	}
+	return nil
+}

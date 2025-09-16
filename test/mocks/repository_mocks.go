@@ -129,6 +129,17 @@ func (m *MessageCampaignRepositoryMock) FindByGlobalID(
 	return args.Get(0).(*entity.MessageCampaign), args.Error(1)
 }
 
+func (m *MessageCampaignRepositoryMock) GetByGlobalID(
+	ctx context.Context,
+	globalID string,
+) (*entity.MessageCampaign, error) {
+	args := m.Called(ctx, globalID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.MessageCampaign), args.Error(1)
+}
+
 func (m *MessageCampaignRepositoryMock) FindActiveByFocus(
 	ctx context.Context,
 	focus string,
@@ -223,6 +234,17 @@ func (m *PlayerRepositoryMock) FindByGlobalID(
 	globalID string,
 ) (*entity.Player, error) {
 	args := m.Called(ctx, globalID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.Player), args.Error(1)
+}
+
+func (m *PlayerRepositoryMock) GetByGlobalPlayerID(
+	ctx context.Context,
+	globalPlayerID string,
+) (*entity.Player, error) {
+	args := m.Called(ctx, globalPlayerID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -358,6 +380,26 @@ func (m *PlayerMessageRepositoryMock) MarkAsRead(
 	messageID uint64,
 ) error {
 	args := m.Called(ctx, globalPlayerID, messageID)
+	return args.Error(0)
+}
+
+func (m *PlayerMessageRepositoryMock) GetByPlayerAndCampaign(
+	ctx context.Context,
+	playerID uint64,
+	campaignID uint64,
+) (*entity.PlayerMessage, error) {
+	args := m.Called(ctx, playerID, campaignID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.PlayerMessage), args.Error(1)
+}
+
+func (m *PlayerMessageRepositoryMock) Update(
+	ctx context.Context,
+	message *entity.PlayerMessage,
+) error {
+	args := m.Called(ctx, message)
 	return args.Error(0)
 }
 

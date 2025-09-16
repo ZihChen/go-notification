@@ -10,6 +10,7 @@ import (
 type MerchantRepository interface {
 	FindByID(ctx context.Context, id uint64) (*entity.Merchant, error)
 	FindByGlobalID(ctx context.Context, globalID string) (*entity.Merchant, error)
+	GetByName(ctx context.Context, name string) (*entity.Merchant, error)
 	FirstOrCreate(ctx context.Context, merchant *entity.Merchant) error
 	Create(ctx context.Context, merchant *entity.Merchant) error
 	Update(ctx context.Context, merchant *entity.Merchant) error

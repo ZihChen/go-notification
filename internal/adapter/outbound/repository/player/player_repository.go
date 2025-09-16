@@ -233,3 +233,16 @@ func mapToDBPlayer(player *entity.Player) *models.Player {
 
 	return dbPlayer
 }
+
+// GetByGlobalPlayerID 通過GlobalPlayerID獲取玩家（用於資料遷移）
+func (r *PlayerRepository) GetByGlobalPlayerID(
+	ctx context.Context,
+	globalPlayerID string,
+) (*entity.Player, error) {
+	var player models.Player
+	result := r.db.WithContext(ctx).Where("global_player_id = ?", globalPlayerID).First(&player)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return mapToDomainPlayer(&player), nil
+}

@@ -11,6 +11,7 @@ import (
 type MessageCampaignRepository interface {
 	FindByID(ctx context.Context, id uint64) (*entity.MessageCampaign, error)
 	FindByGlobalID(ctx context.Context, globalID string) (*entity.MessageCampaign, error)
+	GetByGlobalID(ctx context.Context, globalID string) (*entity.MessageCampaign, error)
 	FindAllWithOptions(
 		ctx context.Context,
 		query *dto.MessageCampaignsQuery,
@@ -51,6 +52,8 @@ type PlayerMessageRepository interface {
 		globalPlayerID string,
 		page, pageSize int,
 	) ([]*entity.PlayerMessage, int, error)
+	GetByPlayerAndCampaign(ctx context.Context, playerID uint64, campaignID uint64) (*entity.PlayerMessage, error)
+	Update(ctx context.Context, message *entity.PlayerMessage) error
 	GetPlayerMessageStats(
 		ctx context.Context,
 		globalPlayerID string,

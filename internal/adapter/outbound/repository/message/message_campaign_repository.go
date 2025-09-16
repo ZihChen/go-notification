@@ -469,3 +469,16 @@ func (r *MessageCampaignRepository) DeleteAutoSettingsByMerchantID(
 		Delete(&models.MessageCampaign{}).
 		Error
 }
+
+// GetByGlobalID 通過GlobalID獲取會員訊息活動（用於資料遷移）
+func (r *MessageCampaignRepository) GetByGlobalID(
+	ctx context.Context,
+	globalID string,
+) (*entity.MessageCampaign, error) {
+	var campaign models.MessageCampaign
+	result := r.db.WithContext(ctx).Where("global_id = ?", globalID).First(&campaign)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return mapToDomainMessageCampaign(&campaign), nil
+}

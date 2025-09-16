@@ -172,3 +172,16 @@ func mapToDBMerchant(merchant *entity.Merchant) *models.Merchant {
 
 	return dbMerchant
 }
+
+// GetByName 通過名稱獲取商戶（用於資料遷移）
+func (r *MerchantRepository) GetByName(
+	ctx context.Context,
+	name string,
+) (*entity.Merchant, error) {
+	var merchant models.Merchant
+	result := r.db.WithContext(ctx).Where("name = ?", name).First(&merchant)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return mapToDomainMerchant(&merchant), nil
+}

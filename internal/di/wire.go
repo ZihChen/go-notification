@@ -4,9 +4,14 @@
 package di
 
 import (
+	"fmt"
+	"os"
+	"time"
 	"github.com/google/wire"
 	"github.com/hibiken/asynq"
+	"gorm.io/driver/mysql"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/api"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/migrate"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/worker"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/scheduler"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/job"
@@ -19,8 +24,11 @@ import (
 	managerUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/manager"
 	merchantUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/merchant"
 	messageUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/message"
+	migrateUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/migrate"
 	playerUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/player"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	servicePort "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
@@ -132,3 +140,104 @@ func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Log
 	)
 	return nil, nil
 }
+
+// LegacyDB 是舊系統資料庫連接的類型
+type LegacyDB struct {
+	*gorm.DB
+}
+
+// InitializeMigrateHandler 初始化 Migrate 服務的處理器
+func InitializeMigrateHandler(cfg *config.Config, logger infrastructure.Logger, db *gorm.DB) (*migrate.MigrateHandler, error) {
+	wire.Build(
+		// 需要額外的 legacy DB 連接
+		provideLegacyDB,
+		// 基礎設施層 (使用傳入的 db 作為目標資料庫)
+		merchantRepo.NewMerchantRepository,
+		playerRepo.NewPlayerRepository,
+		messageRepo.NewMessageCampaignRepository,
+		messageRepo.NewPlayerMessageRepository,
+		// Use case 層
+		provideMigrateUseCase,
+		// Handler 層
+		migrate.NewMigrateHandler,
+	)
+	return nil, nil
+}
+
+// provideMigrateUseCase 創建 migrate use case，明確區分兩個資料庫連接
+func provideMigrateUseCase(
+	legacyDB *LegacyDB,
+	messageRepo repository.MessageCampaignRepository,
+	playerRepo repository.PlayerRepository,
+	merchantRepo repository.MerchantRepository,
+	playerMessageRepo repository.PlayerMessageRepository,
+	logger infrastructure.Logger,
+) inbound.MigrateUseCase {
+	return migrateUseCase.NewMigrateUseCase(
+		legacyDB.DB, // 提取底層的 *gorm.DB
+		messageRepo,
+		playerRepo,
+		merchantRepo,
+		playerMessageRepo,
+		logger,
+	)
+}
+
+// provideLegacyDB 提供舊系統資料庫連接（fatcat_staging）
+func provideLegacyDB(cfg *config.Config) (*LegacyDB, error) {
+	// 這裡需要根據配置創建到 fatcat_staging 的連接
+	// 暫時使用相同的連接，實際使用時需要配置不同的 DSN
+	db, err := connectToLegacyDatabase(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return &LegacyDB{DB: db}, nil
+}
+
+// connectToLegacyDatabase 連接到舊系統資料庫
+func connectToLegacyDatabase(cfg *config.Config) (*gorm.DB, error) {
+	// 檢查是否配置了 Legacy DB 環境變數
+	// 如果沒有配置，則使用主資料庫連接作為測試
+	legacyHost := getEnvOrDefault("LEGACY_DB_HOST", cfg.Database.Host)
+	legacyPort := getEnvOrDefault("LEGACY_DB_PORT", fmt.Sprintf("%d", cfg.Database.Port))
+	legacyUser := getEnvOrDefault("LEGACY_DB_USER", cfg.Database.User)
+	legacyPassword := getEnvOrDefault("LEGACY_DB_PASSWORD", cfg.Database.Password)
+	legacyDBName := getEnvOrDefault("LEGACY_DB_NAME", "fatcat_staging")
+	
+	// 構建 Legacy DSN
+	legacyDSN := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local&tls=true",
+		legacyUser, legacyPassword, legacyHost, legacyPort, legacyDBName)
+	
+	// 創建 GORM 配置
+	gormConfig := &gorm.Config{
+		PrepareStmt:            true,
+		SkipDefaultTransaction: true,
+	}
+	
+	// 連接到 Legacy 資料庫
+	db, err := gorm.Open(mysql.Open(legacyDSN), gormConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to legacy database: %w", err)
+	}
+	
+	// 設置連接池參數
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get legacy database connection pool: %w", err)
+	}
+	
+	sqlDB.SetMaxIdleConns(5)
+	sqlDB.SetMaxOpenConns(10)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+	
+	return db, nil
+}
+
+// getEnvOrDefault 獲取環境變數，如果不存在則使用默認值
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
