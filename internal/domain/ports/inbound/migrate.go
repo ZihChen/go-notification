@@ -9,7 +9,7 @@ import (
 type MigrateUseCase interface {
 	// MigrateMessageCampaigns 遷移訊息活動資料
 	MigrateMessageCampaigns(ctx context.Context) (*MigrationStats, error)
-	
+
 	// MigratePlayerMessages 遷移玩家訊息資料
 	MigratePlayerMessages(ctx context.Context) (*MigrationStats, error)
 }
@@ -25,7 +25,7 @@ type MigrationStats struct {
 
 // String 返回統計資訊的字串表示
 func (s *MigrationStats) String() string {
-	return fmt.Sprintf("處理: %d, 成功: %d, 跳過: %d, 錯誤: %d", 
+	return fmt.Sprintf("處理: %d, 成功: %d, 跳過: %d, 錯誤: %d",
 		s.ProcessedCount, s.SuccessCount, s.SkippedCount, s.ErrorCount)
 }
 

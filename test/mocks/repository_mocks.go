@@ -466,6 +466,17 @@ func (m *MerchantRepositoryMock) Delete(ctx context.Context, id uint64) error {
 	return args.Error(0)
 }
 
+func (m *MerchantRepositoryMock) GetByName(
+	ctx context.Context,
+	name string,
+) (*entity.Merchant, error) {
+	args := m.Called(ctx, name)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.Merchant), args.Error(1)
+}
+
 func (m *MerchantRepositoryMock) Upsert(ctx context.Context, merchant *entity.Merchant) error {
 	args := m.Called(ctx, merchant)
 	return args.Error(0)

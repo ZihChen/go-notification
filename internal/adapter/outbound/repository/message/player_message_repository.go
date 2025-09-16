@@ -312,7 +312,9 @@ func (r *PlayerMessageRepository) GetByPlayerAndCampaign(
 	campaignID uint64,
 ) (*entity.PlayerMessage, error) {
 	var message models.PlayerMessage
-	result := r.db.WithContext(ctx).Where("player_id = ? AND campaign_id = ?", playerID, campaignID).First(&message)
+	result := r.db.WithContext(ctx).
+		Where("player_id = ? AND campaign_id = ?", playerID, campaignID).
+		First(&message)
 	if result.Error != nil {
 		return nil, result.Error
 	}

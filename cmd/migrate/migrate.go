@@ -21,7 +21,7 @@ func init() {
 	// 添加 legacy DSN 參數
 	migrateCmd.Flags().StringVar(&legacyDSN, "legacy-dsn", "",
 		"Legacy database DSN (required)\nFormat: user:password@tcp(host:port)/dbname?charset=utf8mb4&parseTime=True&loc=Local")
-	migrateCmd.MarkFlagRequired("legacy-dsn")
+	_ = migrateCmd.MarkFlagRequired("legacy-dsn")
 
 	cmd.AddCommand(migrateCmd)
 }
@@ -38,7 +38,9 @@ func runMigrate(cobraCmd *cobra.Command, args []string) {
 		logger.ErrorLog("Failed to connect to database", logger.Error("error", err))
 		return
 	}
-	defer database.Close()
+	defer func() {
+		_ = database.Close()
+	}()
 
 	db := database.GetDBConnection()
 

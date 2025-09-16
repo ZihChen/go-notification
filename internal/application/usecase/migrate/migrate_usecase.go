@@ -90,7 +90,9 @@ func (LegacyCompany) TableName() string {
 }
 
 // MigrateMessageCampaigns 遷移訊息活動資料
-func (uc *migrateUseCase) MigrateMessageCampaigns(ctx context.Context) (*inbound.MigrationStats, error) {
+func (uc *migrateUseCase) MigrateMessageCampaigns(
+	ctx context.Context,
+) (*inbound.MigrationStats, error) {
 	stats := &inbound.MigrationStats{}
 
 	// 計算三個月前的日期
@@ -108,7 +110,10 @@ func (uc *migrateUseCase) MigrateMessageCampaigns(ctx context.Context) (*inbound
 		return stats, fmt.Errorf("failed to query legacy notifications: %w", err)
 	}
 
-	uc.logger.InfoLog("Found legacy notifications to migrate", uc.logger.Int("count", len(legacyNotifications)))
+	uc.logger.InfoLog(
+		"Found legacy notifications to migrate",
+		uc.logger.Int("count", len(legacyNotifications)),
+	)
 
 	// 批次處理
 	batchSize := 100
@@ -120,7 +125,12 @@ func (uc *migrateUseCase) MigrateMessageCampaigns(ctx context.Context) (*inbound
 
 		batch := legacyNotifications[i:end]
 		if err := uc.processCampaignBatch(ctx, batch, merchant, stats); err != nil {
-			uc.logger.ErrorLog("Failed to process campaign batch", uc.logger.Int("start", i), uc.logger.Int("end", end), uc.logger.Error("error", err))
+			uc.logger.ErrorLog(
+				"Failed to process campaign batch",
+				uc.logger.Int("start", i),
+				uc.logger.Int("end", end),
+				uc.logger.Error("error", err),
+			)
 			stats.AddError(err)
 		}
 	}
@@ -129,7 +139,9 @@ func (uc *migrateUseCase) MigrateMessageCampaigns(ctx context.Context) (*inbound
 }
 
 // MigratePlayerMessages 遷移玩家訊息資料
-func (uc *migrateUseCase) MigratePlayerMessages(ctx context.Context) (*inbound.MigrationStats, error) {
+func (uc *migrateUseCase) MigratePlayerMessages(
+	ctx context.Context,
+) (*inbound.MigrationStats, error) {
 	stats := &inbound.MigrationStats{}
 
 	// 獲取公司資訊用於組成 global_player_id
@@ -150,7 +162,10 @@ func (uc *migrateUseCase) MigratePlayerMessages(ctx context.Context) (*inbound.M
 		return stats, fmt.Errorf("failed to query legacy user notifications: %w", err)
 	}
 
-	uc.logger.InfoLog("Found legacy user notifications to migrate", uc.logger.Int("count", len(userNotifications)))
+	uc.logger.InfoLog(
+		"Found legacy user notifications to migrate",
+		uc.logger.Int("count", len(userNotifications)),
+	)
 
 	// 批次處理
 	batchSize := 100
@@ -162,7 +177,12 @@ func (uc *migrateUseCase) MigratePlayerMessages(ctx context.Context) (*inbound.M
 
 		batch := userNotifications[i:end]
 		if err := uc.processPlayerMessageBatch(ctx, batch, company.Name, stats); err != nil {
-			uc.logger.ErrorLog("Failed to process player message batch", uc.logger.Int("start", i), uc.logger.Int("end", end), uc.logger.Error("error", err))
+			uc.logger.ErrorLog(
+				"Failed to process player message batch",
+				uc.logger.Int("start", i),
+				uc.logger.Int("end", end),
+				uc.logger.Error("error", err),
+			)
 			stats.AddError(err)
 		}
 	}
@@ -188,7 +208,12 @@ func (uc *migrateUseCase) getMerchantInfo(ctx context.Context) (*entity.Merchant
 }
 
 // processCampaignBatch 批次處理 message campaign
-func (uc *migrateUseCase) processCampaignBatch(ctx context.Context, batch []LegacyNotification, merchant *entity.Merchant, stats *inbound.MigrationStats) error {
+func (uc *migrateUseCase) processCampaignBatch(
+	ctx context.Context,
+	batch []LegacyNotification,
+	merchant *entity.Merchant,
+	stats *inbound.MigrationStats,
+) error {
 	for _, legacy := range batch {
 		campaign := uc.mapToCampaign(legacy, merchant)
 
@@ -206,7 +231,10 @@ func (uc *migrateUseCase) processCampaignBatch(ctx context.Context, batch []Lega
 				stats.AddError(fmt.Errorf("failed to update campaign: %w", err))
 				continue
 			}
-			uc.logger.DebugLog("Updated existing campaign", uc.logger.String("global_id", campaign.GlobalID))
+			uc.logger.DebugLog(
+				"Updated existing campaign",
+				uc.logger.String("global_id", campaign.GlobalID),
+			)
 		} else {
 			// 創建新記錄
 			if err := uc.messageRepo.Create(ctx, campaign); err != nil {
@@ -223,7 +251,12 @@ func (uc *migrateUseCase) processCampaignBatch(ctx context.Context, batch []Lega
 }
 
 // processPlayerMessageBatch 批次處理 player message
-func (uc *migrateUseCase) processPlayerMessageBatch(ctx context.Context, batch []LegacyUserNotification, companyName string, stats *inbound.MigrationStats) error {
+func (uc *migrateUseCase) processPlayerMessageBatch(
+	ctx context.Context,
+	batch []LegacyUserNotification,
+	companyName string,
+	stats *inbound.MigrationStats,
+) error {
 	for _, legacy := range batch {
 		// 組成 global_player_id
 		globalPlayerID := fmt.Sprintf("%s-PLAYER-%d", companyName, legacy.UserID)
@@ -232,7 +265,10 @@ func (uc *migrateUseCase) processPlayerMessageBatch(ctx context.Context, batch [
 		player, err := uc.playerRepo.GetByGlobalPlayerID(ctx, globalPlayerID)
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
-				uc.logger.DebugLog("Player not found, skipping", uc.logger.String("global_player_id", globalPlayerID))
+				uc.logger.DebugLog(
+					"Player not found, skipping",
+					uc.logger.String("global_player_id", globalPlayerID),
+				)
 				stats.AddSkipped()
 				continue
 			}
@@ -243,7 +279,13 @@ func (uc *migrateUseCase) processPlayerMessageBatch(ctx context.Context, batch [
 		// 根據 notification_id 查找對應的 campaign
 		campaign, err := uc.findCampaignByLegacyID(ctx, legacy.NotificationID)
 		if err != nil {
-			stats.AddError(fmt.Errorf("failed to find campaign for notification_id %d: %w", legacy.NotificationID, err))
+			stats.AddError(
+				fmt.Errorf(
+					"failed to find campaign for notification_id %d: %w",
+					legacy.NotificationID,
+					err,
+				),
+			)
 			continue
 		}
 
@@ -270,7 +312,11 @@ func (uc *migrateUseCase) processPlayerMessageBatch(ctx context.Context, batch [
 				stats.AddError(fmt.Errorf("failed to update player message: %w", err))
 				continue
 			}
-			uc.logger.DebugLog("Updated player message", uc.logger.UInt64("player_id", player.ID), uc.logger.UInt64("campaign_id", campaign.ID))
+			uc.logger.DebugLog(
+				"Updated player message",
+				uc.logger.UInt64("player_id", player.ID),
+				uc.logger.UInt64("campaign_id", campaign.ID),
+			)
 		} else {
 			// 創建新記錄
 			if err := uc.playerMessageRepo.Create(ctx, playerMessage); err != nil {
@@ -287,7 +333,10 @@ func (uc *migrateUseCase) processPlayerMessageBatch(ctx context.Context, batch [
 }
 
 // findCampaignByLegacyID 根據舊系統的 notification_id 查找對應的 campaign
-func (uc *migrateUseCase) findCampaignByLegacyID(ctx context.Context, legacyID uint) (*entity.MessageCampaign, error) {
+func (uc *migrateUseCase) findCampaignByLegacyID(
+	ctx context.Context,
+	legacyID uint,
+) (*entity.MessageCampaign, error) {
 	// 這裡需要一個方法來關聯舊 ID 和新 ID
 	// 可以通過一個臨時的映射表或者在 campaign 中存儲舊 ID
 	// 暫時使用 global_id 的方式來關聯
@@ -318,7 +367,10 @@ func (uc *migrateUseCase) generateGlobalID(legacy LegacyNotification) string {
 }
 
 // mapToCampaign 將舊系統資料映射為新系統的 MessageCampaign
-func (uc *migrateUseCase) mapToCampaign(legacy LegacyNotification, merchant *entity.Merchant) *entity.MessageCampaign {
+func (uc *migrateUseCase) mapToCampaign(
+	legacy LegacyNotification,
+	merchant *entity.Merchant,
+) *entity.MessageCampaign {
 	campaign := &entity.MessageCampaign{
 		Category:      uc.mapCategory(legacy.Category),
 		Item:          uc.mapItem(legacy.Item),

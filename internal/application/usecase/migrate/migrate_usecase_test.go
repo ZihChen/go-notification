@@ -16,10 +16,10 @@ func TestMigrateUseCase_MapToCampaign(t *testing.T) {
 	// 準備測試數據
 	mockLogger := helper.NewMockLogger()
 	mockLegacyDB := &gorm.DB{} // 簡化的 mock
-	mockMessageRepo := mocks.NewMessageCampaignRepository(t)
-	mockPlayerRepo := mocks.NewPlayerRepository(t)
-	mockMerchantRepo := mocks.NewMerchantRepository(t)
-	mockPlayerMessageRepo := mocks.NewPlayerMessageRepository(t)
+	mockMessageRepo := mocks.NewMessageCampaignRepositoryMock(t)
+	mockPlayerRepo := mocks.NewPlayerRepositoryMock(t)
+	mockMerchantRepo := mocks.NewMerchantRepositoryMock(t)
+	mockPlayerMessageRepo := mocks.NewPlayerMessageRepositoryMock(t)
 
 	// 創建 use case
 	uc := NewMigrateUseCase(
@@ -61,7 +61,7 @@ func TestMigrateUseCase_MapToCampaign(t *testing.T) {
 	assert.Equal(t, "success", result.TriggerType)
 	assert.Equal(t, uint64(1), result.MerchantID)
 	assert.Equal(t, "測試標題", result.Title)
-	assert.Equal(t, "測試內容", *result.Content)
+	assert.Equal(t, "測試內容", result.Content)
 	assert.Equal(t, "sent", result.Status)
 	assert.Equal(t, "player", result.Target)
 	assert.True(t, result.AutoSend)

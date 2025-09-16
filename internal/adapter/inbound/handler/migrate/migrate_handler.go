@@ -3,9 +3,10 @@ package migrate
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
-	"time"
 )
 
 // MigrateHandler 處理資料遷移相關的業務邏輯
@@ -39,7 +40,10 @@ func (h *MigrateHandler) RunMigration() error {
 		h.logger.ErrorLog("Message campaign migration failed", h.logger.Error("error", err))
 		return fmt.Errorf("message campaign migration failed: %w", err)
 	}
-	h.logger.InfoLog("Message campaign migration completed", h.logger.String("stats", campaignStats.String()))
+	h.logger.InfoLog(
+		"Message campaign migration completed",
+		h.logger.String("stats", campaignStats.String()),
+	)
 
 	// 階段 2: 遷移 player_message 資料
 	h.logger.InfoLog("階段 2: 開始遷移 player_message 資料")
@@ -48,7 +52,10 @@ func (h *MigrateHandler) RunMigration() error {
 		h.logger.ErrorLog("Player message migration failed", h.logger.Error("error", err))
 		return fmt.Errorf("player message migration failed: %w", err)
 	}
-	h.logger.InfoLog("Player message migration completed", h.logger.String("stats", playerStats.String()))
+	h.logger.InfoLog(
+		"Player message migration completed",
+		h.logger.String("stats", playerStats.String()),
+	)
 
 	// 完成統計
 	duration := time.Since(startTime)
