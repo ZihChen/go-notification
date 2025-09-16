@@ -194,6 +194,9 @@ The project maintains structured documentation for development guidance:
 - **docs/claude/archive/** - Completed feature archives
 
 ### Current Status
+**v1.6 資料搬遷系統規劃中**: DB資料搬遷系統的設計與實作規劃  
+**v1.5+ 遷移系統強化完成**: 資料庫遷移系統的DSN驗證、確認機制與程式碼品質提升  
+**v1.5 系統優化完成**: 資料架構統一、物件類型標準化與測試基礎設施完善  
 **v1.4 測試架構統一完成**: 統一Mock框架與測試數據工廠實現，提升測試品質與維護性  
 **v1.3 六角架構重構完成**: Clean Architecture 完整實現，Ports & Adapters 模式完成  
 **v1.2 路由架構重構完成**: 模組化路由管理系統已完成開發與整合  
@@ -201,9 +204,12 @@ The project maintains structured documentation for development guidance:
 
 ## Development Specifications
 
-### Current Focus: System Optimization and Data Architecture Unification (2025-09-15)
+### Current Focus: Database Migration System Enhancement (2025-09-16)
 
 **Recently Completed:**
+- ✅ Database migration system enhancement with DSN validation and confirmation mechanism
+- ✅ Migration system code quality improvement and error handling optimization
+- ✅ Database migration parameter processing and data query logic enhancement
 - ✅ System optimization and data architecture unification (v1.5)
 - ✅ Message campaign object type standardization
 - ✅ Database field type optimization for enhanced stability
@@ -219,15 +225,24 @@ The project maintains structured documentation for development guidance:
 - ✅ Router architecture refactoring with modular design (v1.2)
 - ✅ CORS configuration optimization for Swagger integration
 
-**Current Phase:**
+**Current Phase (2025-09-16):**
+- Database migration system continuous enhancement and stability improvement
+- Data migration infrastructure preparation for v1.6 implementation
 - System stability monitoring and optimization
 - Performance baseline establishment using pprof integration
 - Production readiness assessment and deployment preparation
-- Continuous testing infrastructure enhancement
 
 For detailed current tasks, see `docs/claude/CLAUDE-CURRENT.md`.
 
 ### Completed Features
+
+#### 資料庫遷移系統強化 v1.5+ ✅
+- **Status**: Completed (2025-09-16)
+- **Key Components**:
+  - DSN validation and confirmation mechanism implementation
+  - Migration system code quality improvement and comprehensive error handling
+  - Enhanced database migration parameter processing and data query logic
+  - Robust migration system architecture with reliability enhancements
 
 #### 系統優化與資料架構統一 v1.5 ✅
 - **Status**: Completed (2025-09-15)
@@ -273,6 +288,15 @@ For detailed current tasks, see `docs/claude/CLAUDE-CURRENT.md`.
 - **Archive**: `docs/claude/archive/2025-08/message-campaign-v1.1/CLAUDE-2025-08-28-v1.1-COMPLETED.md`
 - **Specification**: `docs/claude/features/message-campaign/spec.md`
 
+#### DB資料搬遷系統 v1.6 🔄
+- **Status**: Planning & Design Phase (2025-09-16)
+- **Specification**: `docs/claude/features/message-campaign/CLAUDE-2025-09-16-v1.6.md`
+- **Key Features**:
+  - Historical data migration from fatcat_staging to microservice database
+  - UpdateOrCreate pattern for reliable data synchronization
+  - Large-scale data handling with performance optimization
+  - Comprehensive field mapping and data transformation logic
+
 #### 會員訊息資料結構優化 v1.5 ✅
 - **Status**: Completed (2025-09-15)
 - **Archive**: `docs/claude/archive/2025-09/data-structure-optimization-v1.5/CLAUDE-2025-09-15-v1.5-COMPLETED.md`
@@ -295,11 +319,11 @@ For detailed current tasks, see `docs/claude/CLAUDE-CURRENT.md`.
 
 ### Active Development Areas
 
-#### Current Phase: Testing & Validation
-- Functional testing of all API endpoints
-- Integration testing between services
+#### Current Phase: System Stability & Migration Preparation
+- Database migration system stability monitoring and continuous optimization
+- Data migration infrastructure preparation (v1.6 planning)
+- System reliability and maintainability enhancement
 - Performance testing and optimization
-- Security testing and vulnerability assessment
-- Reliability and fault tolerance testing
+- Production readiness assessment and deployment preparation
 
-For detailed testing checklist, see `docs/claude/CLAUDE-CURRENT.md`.
+For detailed current tasks, see `docs/claude/CLAUDE-CURRENT.md`.
