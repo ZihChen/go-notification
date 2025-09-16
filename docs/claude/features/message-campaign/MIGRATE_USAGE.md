@@ -52,6 +52,26 @@ go run main.go migrate --legacy-dsn "legacy_user:legacy_pass@tcp(legacy.host:330
 go run main.go migrate --help
 ```
 
+#### 遷移確認畫面
+
+系統會顯示詳細的遷移資訊供確認：
+
+```
+⚠️  即將開始資料遷移:
+   📂 Legacy 來源資料庫:
+      主機: legacy.db.com
+      資料庫: fatcat_staging
+   📦 目標資料庫:
+      主機: REDACTED_DB_HOST
+      資料庫: ms_fatnotificationcat
+   📅 遷移範圍: 過去三個月的資料
+   📊 遷移內容: notifications + user_notifications
+
+確認要繼續嗎? (y/N):
+```
+
+**注意**: 確認功能預設為註解狀態，可在生產環境中啟用以增加安全性。
+
 **DSN 範例：**
 ```bash
 # 本地測試（無 TLS）
