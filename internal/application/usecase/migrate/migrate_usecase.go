@@ -15,12 +15,12 @@ import (
 
 // migrateUseCase 實作 MigrateUseCase 介面
 type migrateUseCase struct {
-	legacyDB              *gorm.DB // fatcat_staging 資料庫
-	messageRepo           repository.MessageCampaignRepository
-	playerRepo            repository.PlayerRepository
-	merchantRepo          repository.MerchantRepository
-	playerMessageRepo     repository.PlayerMessageRepository
-	logger                infrastructure.Logger
+	legacyDB          *gorm.DB // fatcat_staging 資料庫
+	messageRepo       repository.MessageCampaignRepository
+	playerRepo        repository.PlayerRepository
+	merchantRepo      repository.MerchantRepository
+	playerMessageRepo repository.PlayerMessageRepository
+	logger            infrastructure.Logger
 }
 
 // NewMigrateUseCase 創建新的 migrate use case
@@ -33,29 +33,34 @@ func NewMigrateUseCase(
 	logger infrastructure.Logger,
 ) inbound.MigrateUseCase {
 	return &migrateUseCase{
-		legacyDB:              legacyDB,
-		messageRepo:           messageRepo,
-		playerRepo:            playerRepo,
-		merchantRepo:          merchantRepo,
-		playerMessageRepo:     playerMessageRepo,
-		logger:                logger,
+		legacyDB:          legacyDB,
+		messageRepo:       messageRepo,
+		playerRepo:        playerRepo,
+		merchantRepo:      merchantRepo,
+		playerMessageRepo: playerMessageRepo,
+		logger:            logger,
 	}
 }
 
 // LegacyNotification 舊系統的 notification 資料結構
 type LegacyNotification struct {
-	ID          uint       `gorm:"primaryKey"`
-	Category    int        `gorm:"column:category"`
-	Item        int        `gorm:"column:item"`
-	Title       string     `gorm:"column:title"`
-	Content     string     `gorm:"column:content"`
-	Focus       int        `gorm:"column:focus"`
-	AutoSend    bool       `gorm:"column:auto_send"`
-	CreatedAt   time.Time  `gorm:"column:created_at"`
-	UpdatedAt   time.Time  `gorm:"column:updated_at"`
-	CreatedBy   string     `gorm:"column:created_by"`
-	UpdatedBy   *string    `gorm:"column:updated_by"`
-	DeletedAt   *time.Time `gorm:"column:deleted_at"`
+	ID        uint       `gorm:"primaryKey"`
+	Category  int        `gorm:"column:category"`
+	Item      int        `gorm:"column:item"`
+	Title     string     `gorm:"column:title"`
+	Content   string     `gorm:"column:content"`
+	Focus     int        `gorm:"column:focus"`
+	AutoSend  bool       `gorm:"column:auto_send"`
+	CreatedAt time.Time  `gorm:"column:created_at"`
+	UpdatedAt time.Time  `gorm:"column:updated_at"`
+	CreatedBy string     `gorm:"column:created_by"`
+	UpdatedBy *string    `gorm:"column:updated_by"`
+	DeletedAt *time.Time `gorm:"column:deleted_at"`
+}
+
+// TableName 指定 LegacyNotification 的表名
+func (LegacyNotification) TableName() string {
+	return "notifications"
 }
 
 // LegacyUserNotification 舊系統的 user_notification 資料結構
@@ -68,23 +73,18 @@ type LegacyUserNotification struct {
 	UpdatedAt      time.Time `gorm:"column:updated_at"`
 }
 
+// TableName 指定 LegacyUserNotification 的表名
+func (LegacyUserNotification) TableName() string {
+	return "user_notifications"
+}
+
 // LegacyCompany 舊系統的 company 資料結構
 type LegacyCompany struct {
 	ID   uint   `gorm:"primaryKey"`
 	Name string `gorm:"column:name"`
 }
 
-// TableName 設定 LegacyNotification 的表名
-func (LegacyNotification) TableName() string {
-	return "notifications"
-}
-
-// TableName 設定 LegacyUserNotification 的表名
-func (LegacyUserNotification) TableName() string {
-	return "user_notifications"
-}
-
-// TableName 設定 LegacyCompany 的表名
+// TableName 指定 LegacyCompany 的表名
 func (LegacyCompany) TableName() string {
 	return "companies"
 }
@@ -92,24 +92,24 @@ func (LegacyCompany) TableName() string {
 // MigrateMessageCampaigns 遷移訊息活動資料
 func (uc *migrateUseCase) MigrateMessageCampaigns(ctx context.Context) (*inbound.MigrationStats, error) {
 	stats := &inbound.MigrationStats{}
-	
+
 	// 計算三個月前的日期
 	threeMonthsAgo := time.Now().AddDate(0, -3, 0)
-	
+
 	// 首先獲取 merchant 資訊
 	merchant, err := uc.getMerchantInfo(ctx)
 	if err != nil {
 		return stats, fmt.Errorf("failed to get merchant info: %w", err)
 	}
-	
+
 	// 查詢過去三個月的 notifications
 	var legacyNotifications []LegacyNotification
-	if err := uc.legacyDB.Where("created_at >= ?", threeMonthsAgo).Find(&legacyNotifications).Error; err != nil {
+	if err := uc.legacyDB.Where("created_at >= ?", threeMonthsAgo).Where("company_id", 2).Find(&legacyNotifications).Error; err != nil {
 		return stats, fmt.Errorf("failed to query legacy notifications: %w", err)
 	}
-	
+
 	uc.logger.InfoLog("Found legacy notifications to migrate", uc.logger.Int("count", len(legacyNotifications)))
-	
+
 	// 批次處理
 	batchSize := 100
 	for i := 0; i < len(legacyNotifications); i += batchSize {
@@ -117,27 +117,27 @@ func (uc *migrateUseCase) MigrateMessageCampaigns(ctx context.Context) (*inbound
 		if end > len(legacyNotifications) {
 			end = len(legacyNotifications)
 		}
-		
+
 		batch := legacyNotifications[i:end]
 		if err := uc.processCampaignBatch(ctx, batch, merchant, stats); err != nil {
 			uc.logger.ErrorLog("Failed to process campaign batch", uc.logger.Int("start", i), uc.logger.Int("end", end), uc.logger.Error("error", err))
 			stats.AddError(err)
 		}
 	}
-	
+
 	return stats, nil
 }
 
 // MigratePlayerMessages 遷移玩家訊息資料
 func (uc *migrateUseCase) MigratePlayerMessages(ctx context.Context) (*inbound.MigrationStats, error) {
 	stats := &inbound.MigrationStats{}
-	
+
 	// 獲取公司資訊用於組成 global_player_id
 	var company LegacyCompany
 	if err := uc.legacyDB.Where("id = ?", 2).First(&company).Error; err != nil {
 		return stats, fmt.Errorf("failed to get company info: %w", err)
 	}
-	
+
 	// 查詢 user_notifications 和關聯的 notifications
 	threeMonthsAgo := time.Now().AddDate(0, -3, 0)
 	var userNotifications []LegacyUserNotification
@@ -149,9 +149,9 @@ func (uc *migrateUseCase) MigratePlayerMessages(ctx context.Context) (*inbound.M
 	if err := uc.legacyDB.Raw(query, threeMonthsAgo).Scan(&userNotifications).Error; err != nil {
 		return stats, fmt.Errorf("failed to query legacy user notifications: %w", err)
 	}
-	
+
 	uc.logger.InfoLog("Found legacy user notifications to migrate", uc.logger.Int("count", len(userNotifications)))
-	
+
 	// 批次處理
 	batchSize := 100
 	for i := 0; i < len(userNotifications); i += batchSize {
@@ -159,14 +159,14 @@ func (uc *migrateUseCase) MigratePlayerMessages(ctx context.Context) (*inbound.M
 		if end > len(userNotifications) {
 			end = len(userNotifications)
 		}
-		
+
 		batch := userNotifications[i:end]
 		if err := uc.processPlayerMessageBatch(ctx, batch, company.Name, stats); err != nil {
 			uc.logger.ErrorLog("Failed to process player message batch", uc.logger.Int("start", i), uc.logger.Int("end", end), uc.logger.Error("error", err))
 			stats.AddError(err)
 		}
 	}
-	
+
 	return stats, nil
 }
 
@@ -177,13 +177,13 @@ func (uc *migrateUseCase) getMerchantInfo(ctx context.Context) (*entity.Merchant
 	if err := uc.legacyDB.Where("id = ?", 2).First(&company).Error; err != nil {
 		return nil, fmt.Errorf("failed to find company with id=2: %w", err)
 	}
-	
+
 	// 在新系統中查找對應的 merchant
 	merchant, err := uc.merchantRepo.GetByName(ctx, company.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find merchant with name=%s: %w", company.Name, err)
 	}
-	
+
 	return merchant, nil
 }
 
@@ -191,14 +191,14 @@ func (uc *migrateUseCase) getMerchantInfo(ctx context.Context) (*entity.Merchant
 func (uc *migrateUseCase) processCampaignBatch(ctx context.Context, batch []LegacyNotification, merchant *entity.Merchant, stats *inbound.MigrationStats) error {
 	for _, legacy := range batch {
 		campaign := uc.mapToCampaign(legacy, merchant)
-		
+
 		// 使用 UpdateOrCreate 邏輯
 		existing, err := uc.messageRepo.GetByGlobalID(ctx, campaign.GlobalID)
 		if err != nil && err != gorm.ErrRecordNotFound {
 			stats.AddError(fmt.Errorf("failed to check existing campaign: %w", err))
 			continue
 		}
-		
+
 		if existing != nil {
 			// 更新現有記錄
 			campaign.ID = existing.ID
@@ -215,10 +215,10 @@ func (uc *migrateUseCase) processCampaignBatch(ctx context.Context, batch []Lega
 			}
 			uc.logger.DebugLog("Created new campaign", uc.logger.String("global_id", campaign.GlobalID))
 		}
-		
+
 		stats.AddSuccess()
 	}
-	
+
 	return nil
 }
 
@@ -227,7 +227,7 @@ func (uc *migrateUseCase) processPlayerMessageBatch(ctx context.Context, batch [
 	for _, legacy := range batch {
 		// 組成 global_player_id
 		globalPlayerID := fmt.Sprintf("%s-PLAYER-%d", companyName, legacy.UserID)
-		
+
 		// 檢查玩家是否存在
 		player, err := uc.playerRepo.GetByGlobalPlayerID(ctx, globalPlayerID)
 		if err != nil {
@@ -239,14 +239,14 @@ func (uc *migrateUseCase) processPlayerMessageBatch(ctx context.Context, batch [
 			stats.AddError(fmt.Errorf("failed to check player: %w", err))
 			continue
 		}
-		
+
 		// 根據 notification_id 查找對應的 campaign
 		campaign, err := uc.findCampaignByLegacyID(ctx, legacy.NotificationID)
 		if err != nil {
 			stats.AddError(fmt.Errorf("failed to find campaign for notification_id %d: %w", legacy.NotificationID, err))
 			continue
 		}
-		
+
 		playerMessage := &entity.PlayerMessage{
 			GlobalPlayerID: globalPlayerID,
 			PlayerID:       player.ID,
@@ -255,14 +255,14 @@ func (uc *migrateUseCase) processPlayerMessageBatch(ctx context.Context, batch [
 			CreatedAt:      legacy.CreatedAt,
 			UpdatedAt:      legacy.UpdatedAt,
 		}
-		
+
 		// 檢查是否已存在
 		existing, err := uc.playerMessageRepo.GetByPlayerAndCampaign(ctx, player.ID, campaign.ID)
 		if err != nil && err != gorm.ErrRecordNotFound {
 			stats.AddError(fmt.Errorf("failed to check existing player message: %w", err))
 			continue
 		}
-		
+
 		if existing != nil {
 			// 更新現有記錄
 			playerMessage.ID = existing.ID
@@ -279,10 +279,10 @@ func (uc *migrateUseCase) processPlayerMessageBatch(ctx context.Context, batch [
 			}
 			uc.logger.DebugLog("Created player message", uc.logger.UInt64("player_id", player.ID), uc.logger.UInt64("campaign_id", campaign.ID))
 		}
-		
+
 		stats.AddSuccess()
 	}
-	
+
 	return nil
 }
 
@@ -291,21 +291,21 @@ func (uc *migrateUseCase) findCampaignByLegacyID(ctx context.Context, legacyID u
 	// 這裡需要一個方法來關聯舊 ID 和新 ID
 	// 可以通過一個臨時的映射表或者在 campaign 中存儲舊 ID
 	// 暫時使用 global_id 的方式來關聯
-	
+
 	// 首先查詢舊記錄
 	var legacy LegacyNotification
 	if err := uc.legacyDB.Where("id = ?", legacyID).First(&legacy).Error; err != nil {
 		return nil, fmt.Errorf("failed to find legacy notification: %w", err)
 	}
-	
+
 	// 生成相同的 global_id（需要確保與遷移時生成的一致）
 	globalID := uc.generateGlobalID(legacy)
-	
+
 	campaign, err := uc.messageRepo.GetByGlobalID(ctx, globalID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find campaign by global_id: %w", err)
 	}
-	
+
 	return campaign, nil
 }
 
@@ -337,11 +337,11 @@ func (uc *migrateUseCase) mapToCampaign(legacy LegacyNotification, merchant *ent
 		UpdatedAt:     legacy.UpdatedAt,
 		DeletedAt:     legacy.DeletedAt,
 	}
-	
+
 	if legacy.UpdatedBy != nil {
 		campaign.UpdatedBy = legacy.UpdatedBy
 	}
-	
+
 	return campaign
 }
 

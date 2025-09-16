@@ -29,35 +29,39 @@
 
 ## 使用方法
 
-### 1. 環境準備
+### 1. 準備 Legacy 資料庫連接字串
 
-配置舊系統資料庫連接，有兩種方式：
+Legacy 資料庫連接透過命令行參數 `--legacy-dsn` 提供，格式如下：
 
-#### 方式一：使用環境變數（推薦）
-在 `.env` 文件中添加 Legacy DB 配置：
- 
-```bash
-# Legacy DB 配置（可選，未配置時將使用主資料庫配置）
-LEGACY_DB_HOST=legacy.database.host
-LEGACY_DB_PORT=3306
-LEGACY_DB_USER=legacy_user
-LEGACY_DB_PASSWORD=legacy_password
-LEGACY_DB_NAME=fatcat_staging
 ```
-
-#### 方式二：使用主資料庫配置（測試用）
-如果未配置 `LEGACY_DB_*` 環境變數，系統將自動使用主資料庫的配置，只是資料庫名稱預設為 `fatcat_staging`。
-
-**注意**：在生產環境中，強烈建議配置獨立的 Legacy DB 連接參數。
+user:password@tcp(host:port)/dbname?charset=utf8mb4&parseTime=True&loc=Local
+```
 
 ### 2. 執行遷移
 
-```bash
-# 執行資料遷移指令
-go run main.go migrate
+使用 `--legacy-dsn` 參數執行資料遷移：
 
-# 或編譯後執行
-./ms-notification-cat migrate
+```bash
+# 基本用法
+go run main.go migrate --legacy-dsn "legacy_user:legacy_pass@tcp(legacy.host:3306)/fatcat_staging?charset=utf8mb4&parseTime=True&loc=Local"
+
+# 編譯後執行
+./ms-notification-cat migrate --legacy-dsn "legacy_user:legacy_pass@tcp(legacy.host:3306)/fatcat_staging?charset=utf8mb4&parseTime=True&loc=Local"
+
+# 檢視說明
+go run main.go migrate --help
+```
+
+**DSN 範例：**
+```bash
+# 本地測試（無 TLS）
+--legacy-dsn "root:password@tcp(localhost:3306)/fatcat_staging?charset=utf8mb4&parseTime=True&loc=Local"
+
+# 生產環境（有 TLS）
+--legacy-dsn "user:pass@tcp(prod.db:3306)/fatcat_staging?charset=utf8mb4&parseTime=True&loc=Local&tls=true"
+
+# PlanetScale 或雲端資料庫
+--legacy-dsn "user:pass@tcp(gateway.planetscale.cloud:3306)/fatcat_staging?charset=utf8mb4&parseTime=True&loc=Local&tls=true"
 ```
 
 ### 3. 遷移流程

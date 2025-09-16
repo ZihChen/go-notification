@@ -5,7 +5,6 @@ package di
 
 import (
 	"fmt"
-	"os"
 	"time"
 	"github.com/google/wire"
 	"github.com/hibiken/asynq"
@@ -147,7 +146,7 @@ type LegacyDB struct {
 }
 
 // InitializeMigrateHandler 初始化 Migrate 服務的處理器
-func InitializeMigrateHandler(cfg *config.Config, logger infrastructure.Logger, db *gorm.DB) (*migrate.MigrateHandler, error) {
+func InitializeMigrateHandler(cfg *config.Config, logger infrastructure.Logger, db *gorm.DB, legacyDSN string) (*migrate.MigrateHandler, error) {
 	wire.Build(
 		// 需要額外的 legacy DB 連接
 		provideLegacyDB,
@@ -184,10 +183,8 @@ func provideMigrateUseCase(
 }
 
 // provideLegacyDB 提供舊系統資料庫連接（fatcat_staging）
-func provideLegacyDB(cfg *config.Config) (*LegacyDB, error) {
-	// 這裡需要根據配置創建到 fatcat_staging 的連接
-	// 暫時使用相同的連接，實際使用時需要配置不同的 DSN
-	db, err := connectToLegacyDatabase(cfg)
+func provideLegacyDB(legacyDSN string) (*LegacyDB, error) {
+	db, err := connectToLegacyDatabase(legacyDSN)
 	if err != nil {
 		return nil, err
 	}
@@ -195,18 +192,10 @@ func provideLegacyDB(cfg *config.Config) (*LegacyDB, error) {
 }
 
 // connectToLegacyDatabase 連接到舊系統資料庫
-func connectToLegacyDatabase(cfg *config.Config) (*gorm.DB, error) {
-	// 檢查是否配置了 Legacy DB 環境變數
-	// 如果沒有配置，則使用主資料庫連接作為測試
-	legacyHost := getEnvOrDefault("LEGACY_DB_HOST", cfg.Database.Host)
-	legacyPort := getEnvOrDefault("LEGACY_DB_PORT", fmt.Sprintf("%d", cfg.Database.Port))
-	legacyUser := getEnvOrDefault("LEGACY_DB_USER", cfg.Database.User)
-	legacyPassword := getEnvOrDefault("LEGACY_DB_PASSWORD", cfg.Database.Password)
-	legacyDBName := getEnvOrDefault("LEGACY_DB_NAME", "fatcat_staging")
-	
-	// 構建 Legacy DSN
-	legacyDSN := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local&tls=true",
-		legacyUser, legacyPassword, legacyHost, legacyPort, legacyDBName)
+func connectToLegacyDatabase(dsn string) (*gorm.DB, error) {
+	if dsn == "" {
+		return nil, fmt.Errorf("legacy database DSN is required")
+	}
 	
 	// 創建 GORM 配置
 	gormConfig := &gorm.Config{
@@ -215,9 +204,9 @@ func connectToLegacyDatabase(cfg *config.Config) (*gorm.DB, error) {
 	}
 	
 	// 連接到 Legacy 資料庫
-	db, err := gorm.Open(mysql.Open(legacyDSN), gormConfig)
+	db, err := gorm.Open(mysql.Open(dsn), gormConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to legacy database: %w", err)
+		return nil, fmt.Errorf("failed to connect to legacy database with DSN: %w", err)
 	}
 	
 	// 設置連接池參數
@@ -231,13 +220,5 @@ func connectToLegacyDatabase(cfg *config.Config) (*gorm.DB, error) {
 	sqlDB.SetConnMaxLifetime(time.Hour)
 	
 	return db, nil
-}
-
-// getEnvOrDefault 獲取環境變數，如果不存在則使用默認值
-func getEnvOrDefault(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }
 

@@ -15,7 +15,14 @@ var migrateCmd = &cobra.Command{
 	Run:   runMigrate,
 }
 
+var legacyDSN string
+
 func init() {
+	// 添加 legacy DSN 參數
+	migrateCmd.Flags().StringVar(&legacyDSN, "legacy-dsn", "",
+		"Legacy database DSN (required)\nFormat: user:password@tcp(host:port)/dbname?charset=utf8mb4&parseTime=True&loc=Local")
+	migrateCmd.MarkFlagRequired("legacy-dsn")
+
 	cmd.AddCommand(migrateCmd)
 }
 
@@ -32,11 +39,11 @@ func runMigrate(cobraCmd *cobra.Command, args []string) {
 		return
 	}
 	defer database.Close()
-	
+
 	db := database.GetDBConnection()
 
 	// 初始化依賴注入
-	container, err := di.InitializeMigrateHandler(cfg, logger, db)
+	container, err := di.InitializeMigrateHandler(cfg, logger, db, legacyDSN)
 	if err != nil {
 		logger.ErrorLog("Failed to initialize migrate handler", logger.Error("error", err))
 		return

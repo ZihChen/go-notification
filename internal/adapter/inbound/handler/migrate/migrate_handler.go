@@ -3,10 +3,9 @@ package migrate
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
+	"time"
 )
 
 // MigrateHandler 處理資料遷移相關的業務邏輯
