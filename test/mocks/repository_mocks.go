@@ -140,6 +140,17 @@ func (m *MessageCampaignRepositoryMock) GetByGlobalID(
 	return args.Get(0).(*entity.MessageCampaign), args.Error(1)
 }
 
+func (m *MessageCampaignRepositoryMock) GetByLegacyID(
+	ctx context.Context,
+	legacyID uint,
+) (*entity.MessageCampaign, error) {
+	args := m.Called(ctx, legacyID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.MessageCampaign), args.Error(1)
+}
+
 func (m *MessageCampaignRepositoryMock) FindActiveByFocus(
 	ctx context.Context,
 	focus string,

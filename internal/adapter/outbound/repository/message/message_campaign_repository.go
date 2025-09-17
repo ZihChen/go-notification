@@ -318,6 +318,7 @@ func mapToDomainMessageCampaign(campaign *models.MessageCampaign) *entity.Messag
 		Title:         campaign.Title,
 		MerchantID:    campaign.MerchantID,
 		GlobalID:      campaign.GlobalID,
+		LegacyID:      campaign.LegacyID,
 		Content:       campaign.Content,
 		Target:        campaign.Target,
 		Status:        campaign.Status,
@@ -344,6 +345,7 @@ func mapToDBMessageCampaign(campaign *entity.MessageCampaign) *models.MessageCam
 		Content:       campaign.Content,
 		MerchantID:    campaign.MerchantID,
 		GlobalID:      campaign.GlobalID,
+		LegacyID:      campaign.LegacyID,
 		Target:        campaign.Target,
 		Status:        campaign.Status,
 		AutoSend:      campaign.AutoSend,
@@ -477,6 +479,19 @@ func (r *MessageCampaignRepository) GetByGlobalID(
 ) (*entity.MessageCampaign, error) {
 	var campaign models.MessageCampaign
 	result := r.db.WithContext(ctx).Where("global_id = ?", globalID).First(&campaign)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return mapToDomainMessageCampaign(&campaign), nil
+}
+
+// GetByLegacyID 通過舊系統ID獲取會員訊息活動（用於資料遷移）
+func (r *MessageCampaignRepository) GetByLegacyID(
+	ctx context.Context,
+	legacyID uint,
+) (*entity.MessageCampaign, error) {
+	var campaign models.MessageCampaign
+	result := r.db.WithContext(ctx).Where("legacy_id = ?", legacyID).First(&campaign)
 	if result.Error != nil {
 		return nil, result.Error
 	}

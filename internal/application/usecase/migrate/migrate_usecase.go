@@ -269,10 +269,10 @@ func (uc *migrateUseCase) processCampaignBatch(
 	for _, legacy := range batch {
 		campaign := uc.mapToCampaign(legacy, merchant)
 
-		// 使用 UpdateOrCreate 邏輯
-		existing, err := uc.messageRepo.GetByGlobalID(ctx, campaign.GlobalID)
+		// 使用 LegacyID 作為 UpdateOrCreate 的唯一鍵
+		existing, err := uc.messageRepo.GetByLegacyID(ctx, legacy.ID)
 		if err != nil && err != gorm.ErrRecordNotFound {
-			stats.AddError(fmt.Errorf("failed to check existing campaign: %w", err))
+			stats.AddError(fmt.Errorf("failed to check existing campaign by legacy_id: %w", err))
 			continue
 		}
 
@@ -285,6 +285,7 @@ func (uc *migrateUseCase) processCampaignBatch(
 			}
 			uc.logger.DebugLog(
 				"Updated existing campaign",
+				uc.logger.UInt64("legacy_id", uint64(legacy.ID)),
 				uc.logger.String("global_id", campaign.GlobalID),
 			)
 		} else {
@@ -293,7 +294,11 @@ func (uc *migrateUseCase) processCampaignBatch(
 				stats.AddError(fmt.Errorf("failed to create campaign: %w", err))
 				continue
 			}
-			uc.logger.DebugLog("Created new campaign", uc.logger.String("global_id", campaign.GlobalID))
+			uc.logger.DebugLog(
+				"Created new campaign",
+				uc.logger.UInt64("legacy_id", uint64(legacy.ID)),
+				uc.logger.String("global_id", campaign.GlobalID),
+			)
 		}
 
 		stats.AddSuccess()
@@ -389,22 +394,10 @@ func (uc *migrateUseCase) findCampaignByLegacyID(
 	ctx context.Context,
 	legacyID uint,
 ) (*entity.MessageCampaign, error) {
-	// 這裡需要一個方法來關聯舊 ID 和新 ID
-	// 可以通過一個臨時的映射表或者在 campaign 中存儲舊 ID
-	// 暫時使用 global_id 的方式來關聯
-
-	// 首先查詢舊記錄
-	var legacy LegacyNotification
-	if err := uc.legacyDB.Where("id = ?", legacyID).First(&legacy).Error; err != nil {
-		return nil, fmt.Errorf("failed to find legacy notification: %w", err)
-	}
-
-	// 生成相同的 global_id（需要確保與遷移時生成的一致）
-	globalID := uc.generateGlobalID(legacy)
-
-	campaign, err := uc.messageRepo.GetByGlobalID(ctx, globalID)
+	// 直接使用 LegacyID 查找對應的 campaign
+	campaign, err := uc.messageRepo.GetByLegacyID(ctx, legacyID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find campaign by global_id: %w", err)
+		return nil, fmt.Errorf("failed to find campaign by legacy_id: %w", err)
 	}
 
 	return campaign, nil
@@ -429,6 +422,7 @@ func (uc *migrateUseCase) mapToCampaign(
 		TriggerType:   "success", // 規格中規定統一為 success
 		MerchantID:    merchant.ID,
 		GlobalID:      uc.generateGlobalID(legacy),
+		LegacyID:      &legacy.ID, // 設置舊系統的 ID
 		Title:         legacy.Title,
 		Content:       legacy.Content,
 		Status:        uc.mapStatus(legacy.DeletedAt),

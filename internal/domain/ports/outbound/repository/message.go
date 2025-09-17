@@ -12,6 +12,7 @@ type MessageCampaignRepository interface {
 	FindByID(ctx context.Context, id uint64) (*entity.MessageCampaign, error)
 	FindByGlobalID(ctx context.Context, globalID string) (*entity.MessageCampaign, error)
 	GetByGlobalID(ctx context.Context, globalID string) (*entity.MessageCampaign, error)
+	GetByLegacyID(ctx context.Context, legacyID uint) (*entity.MessageCampaign, error)
 	FindAllWithOptions(
 		ctx context.Context,
 		query *dto.MessageCampaignsQuery,

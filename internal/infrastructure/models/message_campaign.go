@@ -14,6 +14,7 @@ type MessageCampaign struct {
 	TriggerType   string         `json:"trigger_type"              gorm:"column:trigger_type;size:20;not null;default:'success'"` // success, failure (for auto-send settings)
 	MerchantID    uint64         `json:"merchant_id"               gorm:"index;not null;default:0"`
 	GlobalID      string         `json:"global_id"                 gorm:"uniqueIndex;size:100;not null;default:''"`
+	LegacyID      *uint          `json:"legacy_id,omitempty"       gorm:"column:legacy_id;index;comment:舊系統notification ID，用於資料遷移"`
 	Title         string         `json:"title"                     gorm:"size:255;column:title;not null"`
 	Content       string         `json:"content"                   gorm:"column:content;type:mediumtext"`                        // 可包含 HTML Tag
 	Status        string         `json:"status"                    gorm:"column:status;size:255;not null;default:'draft';index"` // draft, scheduled, sent, cancelled, failed
