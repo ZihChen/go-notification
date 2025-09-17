@@ -151,6 +151,24 @@ func (m *MessageCampaignRepositoryMock) GetByLegacyID(
 	return args.Get(0).(*entity.MessageCampaign), args.Error(1)
 }
 
+func (m *MessageCampaignRepositoryMock) FindWithLegacyIDPaginated(
+	ctx context.Context,
+	limit, offset int,
+) ([]*entity.MessageCampaign, error) {
+	args := m.Called(ctx, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.MessageCampaign), args.Error(1)
+}
+
+func (m *MessageCampaignRepositoryMock) CountWithLegacyID(
+	ctx context.Context,
+) (int64, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(int64), args.Error(1)
+}
+
 func (m *MessageCampaignRepositoryMock) FindActiveByFocus(
 	ctx context.Context,
 	focus string,

@@ -96,7 +96,7 @@ func (uc *migrateUseCase) MigrateMessageCampaigns(
 	stats := &inbound.MigrationStats{}
 
 	// 計算三個月前的日期
-	threeMonthsAgo := time.Now().AddDate(0, -3, 0)
+	//threeMonthsAgo := time.Now().AddDate(0, -3, 0)
 
 	// 首先獲取 merchant 資訊
 	merchant, err := uc.getMerchantInfo(ctx)
@@ -104,10 +104,11 @@ func (uc *migrateUseCase) MigrateMessageCampaigns(
 		return stats, fmt.Errorf("failed to get merchant info: %w", err)
 	}
 
-	// 首先計算總數量
+	// 首先計算總數量（包含已刪除的資料）
 	var totalCount int64
-	if err := uc.legacyDB.Model(&LegacyNotification{}).
-		Where("created_at >= ?", threeMonthsAgo).
+	if err := uc.legacyDB.Unscoped().Model(&LegacyNotification{}).
+		Where("created_at <= ?", "2025-08-31 00:0000").
+		Where("created_at >= ?", "2025-01-01 00:0000").
 		Where("company_id", 2).
 		Count(&totalCount).Error; err != nil {
 		return stats, fmt.Errorf("failed to count legacy notifications: %w", err)
@@ -124,7 +125,8 @@ func (uc *migrateUseCase) MigrateMessageCampaigns(
 
 	for {
 		var batch []LegacyNotification
-		if err := uc.legacyDB.Where("created_at >= ?", threeMonthsAgo).
+		if err := uc.legacyDB.Unscoped().Where("created_at <= ?", "2025-08-31 00:0000").
+			Where("created_at >= ?", "2025-01-01 00:0000").
 			Where("company_id", 2).
 			Order("id ASC").
 			Limit(batchSize).
@@ -178,63 +180,67 @@ func (uc *migrateUseCase) MigratePlayerMessages(
 		return stats, fmt.Errorf("failed to get company info: %w", err)
 	}
 
-	// 首先計算總數量
-	threeMonthsAgo := time.Now().AddDate(0, -3, 0)
-	var totalCount int64
-	if err := uc.legacyDB.Model(&LegacyUserNotification{}).
-		Joins("INNER JOIN notifications n ON user_notifications.notification_id = n.id").
-		Where("n.created_at >= ?", threeMonthsAgo).
-		Count(&totalCount).Error; err != nil {
-		return stats, fmt.Errorf("failed to count legacy user notifications: %w", err)
+	// 第一步：計算有 legacy_id 的 MessageCampaign 總數量
+	totalCampaigns, err := uc.messageRepo.CountWithLegacyID(ctx)
+	if err != nil {
+		return stats, fmt.Errorf("failed to count campaigns with legacy_id: %w", err)
 	}
 
 	uc.logger.InfoLog(
-		"Found legacy user notifications to migrate",
-		uc.logger.Int64("total_count", totalCount),
+		"Found campaigns with legacy_id to process player messages",
+		uc.logger.Int64("total_campaigns", totalCampaigns),
 	)
 
-	// 使用分頁查詢避免記憶體耗盡
-	batchSize := 500
+	// 第二步：分頁處理 campaigns
+	campaignBatchSize := 50 // 每次處理50個campaigns
 	offset := 0
 
 	for {
-		var batch []LegacyUserNotification
-		if err := uc.legacyDB.
-			Joins("INNER JOIN notifications n ON user_notifications.notification_id = n.id").
-			Where("n.created_at >= ?", threeMonthsAgo).
-			Order("user_notifications.id ASC").
-			Limit(batchSize).
-			Offset(offset).
-			Find(&batch).Error; err != nil {
-			return stats, fmt.Errorf("failed to query legacy user notifications batch: %w", err)
+		// 分頁撈取 campaigns
+		campaigns, err := uc.messageRepo.FindWithLegacyIDPaginated(ctx, campaignBatchSize, offset)
+		if err != nil {
+			return stats, fmt.Errorf("failed to get campaigns batch: %w", err)
 		}
 
-		// 如果沒有更多資料，退出迴圈
-		if len(batch) == 0 {
+		// 如果沒有更多 campaigns，退出迴圈
+		if len(campaigns) == 0 {
 			break
 		}
 
 		uc.logger.DebugLog(
-			"Processing user notification batch",
+			"Processing campaign batch",
 			uc.logger.Int("offset", offset),
-			uc.logger.Int("batch_size", len(batch)),
-			uc.logger.Int64("total", totalCount),
+			uc.logger.Int("batch_size", len(campaigns)),
+			uc.logger.Int64("total", totalCampaigns),
 		)
 
-		if err := uc.processPlayerMessageBatch(ctx, batch, company.Name, stats); err != nil {
-			uc.logger.ErrorLog(
-				"Failed to process player message batch",
-				uc.logger.Int("offset", offset),
-				uc.logger.Int("batch_size", len(batch)),
-				uc.logger.Error("error", err),
+		// 第三步：處理當前批次的每個 campaign
+		for _, campaign := range campaigns {
+			if campaign.LegacyID == nil {
+				continue
+			}
+
+			uc.logger.DebugLog(
+				"Processing campaign player messages",
+				uc.logger.UInt64("campaign_id", campaign.ID),
+				uc.logger.UInt64("legacy_id", uint64(*campaign.LegacyID)),
 			)
-			stats.AddError(err)
+
+			if err := uc.processCampaignPlayerMessages(ctx, campaign, company.Name, stats); err != nil {
+				uc.logger.ErrorLog(
+					"Failed to process campaign player messages",
+					uc.logger.UInt64("campaign_id", campaign.ID),
+					uc.logger.UInt64("legacy_id", uint64(*campaign.LegacyID)),
+					uc.logger.Error("error", err),
+				)
+				stats.AddError(err)
+			}
 		}
 
-		offset += batchSize
+		offset += campaignBatchSize
 
-		// 檢查是否已處理完所有資料
-		if len(batch) < batchSize {
+		// 檢查是否已處理完所有 campaigns
+		if len(campaigns) < campaignBatchSize {
 			break
 		}
 	}
@@ -307,10 +313,65 @@ func (uc *migrateUseCase) processCampaignBatch(
 	return nil
 }
 
+// processCampaignPlayerMessages 處理單個 campaign 的 player messages
+func (uc *migrateUseCase) processCampaignPlayerMessages(
+	ctx context.Context,
+	campaign *entity.MessageCampaign,
+	companyName string,
+	stats *inbound.MigrationStats,
+) error {
+	// 根據 legacy_id 查詢對應的 user_notifications，使用分頁處理
+	batchSize := 500
+	offset := 0
+
+	for {
+		var batch []LegacyUserNotification
+		if err := uc.legacyDB.
+			Where("notification_id = ?", *campaign.LegacyID).
+			Order("id ASC").
+			Limit(batchSize).
+			Offset(offset).
+			Find(&batch).Error; err != nil {
+			return fmt.Errorf(
+				"failed to query user notifications for campaign %d: %w",
+				*campaign.LegacyID,
+				err,
+			)
+		}
+
+		// 如果沒有更多資料，退出迴圈
+		if len(batch) == 0 {
+			break
+		}
+
+		uc.logger.DebugLog(
+			"Processing user notification batch for campaign",
+			uc.logger.UInt64("campaign_id", campaign.ID),
+			uc.logger.UInt64("legacy_id", uint64(*campaign.LegacyID)),
+			uc.logger.Int("offset", offset),
+			uc.logger.Int("batch_size", len(batch)),
+		)
+
+		if err := uc.processPlayerMessageBatch(ctx, batch, campaign, companyName, stats); err != nil {
+			return fmt.Errorf("failed to process player message batch: %w", err)
+		}
+
+		offset += batchSize
+
+		// 檢查是否已處理完所有資料
+		if len(batch) < batchSize {
+			break
+		}
+	}
+
+	return nil
+}
+
 // processPlayerMessageBatch 批次處理 player message
 func (uc *migrateUseCase) processPlayerMessageBatch(
 	ctx context.Context,
 	batch []LegacyUserNotification,
+	campaign *entity.MessageCampaign,
 	companyName string,
 	stats *inbound.MigrationStats,
 ) error {
@@ -333,18 +394,7 @@ func (uc *migrateUseCase) processPlayerMessageBatch(
 			continue
 		}
 
-		// 根據 notification_id 查找對應的 campaign
-		campaign, err := uc.findCampaignByLegacyID(ctx, legacy.NotificationID)
-		if err != nil {
-			stats.AddError(
-				fmt.Errorf(
-					"failed to find campaign for notification_id %d: %w",
-					legacy.NotificationID,
-					err,
-				),
-			)
-			continue
-		}
+		// campaign 已經作為參數傳入，不需要再查找
 
 		playerMessage := &entity.PlayerMessage{
 			GlobalPlayerID: globalPlayerID,
@@ -352,7 +402,7 @@ func (uc *migrateUseCase) processPlayerMessageBatch(
 			CampaignID:     campaign.ID,
 			IsRead:         legacy.IsRead,
 			CreatedAt:      legacy.CreatedAt,
-			UpdatedAt:      legacy.UpdatedAt,
+			UpdatedAt:      time.Now(), // 使用當前時間作為更新時間
 		}
 
 		// 檢查是否已存在
@@ -403,12 +453,10 @@ func (uc *migrateUseCase) findCampaignByLegacyID(
 	return campaign, nil
 }
 
-// generateGlobalID 生成 global_id（需要確保一致性）
-func (uc *migrateUseCase) generateGlobalID(legacy LegacyNotification) string {
-	// 使用確定性的方法生成 UUID
-	// 這裡簡化為使用固定的種子來生成相同的 UUID
-	seed := fmt.Sprintf("legacy-%d", legacy.ID)
-	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(seed)).String()
+// generateGlobalID 生成 global_id
+func (uc *migrateUseCase) generateGlobalID() string {
+	// 使用標準的 UUID v4 生成
+	return uuid.New().String()
 }
 
 // mapToCampaign 將舊系統資料映射為新系統的 MessageCampaign
@@ -421,7 +469,7 @@ func (uc *migrateUseCase) mapToCampaign(
 		Item:          uc.mapItem(legacy.Item),
 		TriggerType:   "success", // 規格中規定統一為 success
 		MerchantID:    merchant.ID,
-		GlobalID:      uc.generateGlobalID(legacy),
+		GlobalID:      uc.generateGlobalID(),
 		LegacyID:      &legacy.ID, // 設置舊系統的 ID
 		Title:         legacy.Title,
 		Content:       legacy.Content,
@@ -432,7 +480,7 @@ func (uc *migrateUseCase) mapToCampaign(
 		SendEndTime:   &legacy.CreatedAt,
 		CreatedBy:     legacy.CreatedBy,
 		CreatedAt:     legacy.CreatedAt,
-		UpdatedAt:     legacy.UpdatedAt,
+		UpdatedAt:     time.Now(), // 使用當前時間作為更新時間
 		DeletedAt:     legacy.DeletedAt,
 	}
 

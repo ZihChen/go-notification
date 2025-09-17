@@ -497,3 +497,45 @@ func (r *MessageCampaignRepository) GetByLegacyID(
 	}
 	return mapToDomainMessageCampaign(&campaign), nil
 }
+
+// FindWithLegacyIDPaginated 分頁查詢有 LegacyID 的會員訊息活動（用於資料遷移）
+func (r *MessageCampaignRepository) FindWithLegacyIDPaginated(
+	ctx context.Context,
+	limit, offset int,
+) ([]*entity.MessageCampaign, error) {
+	var campaigns []models.MessageCampaign
+	result := r.db.WithContext(ctx).
+		Where("legacy_id IS NOT NULL").
+		Order("legacy_id ASC").
+		Limit(limit).
+		Offset(offset).
+		Find(&campaigns)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	domainCampaigns := make([]*entity.MessageCampaign, len(campaigns))
+	for i, campaign := range campaigns {
+		domainCampaigns[i] = mapToDomainMessageCampaign(&campaign)
+	}
+
+	return domainCampaigns, nil
+}
+
+// CountWithLegacyID 計算有 LegacyID 的會員訊息活動數量（用於資料遷移）
+func (r *MessageCampaignRepository) CountWithLegacyID(
+	ctx context.Context,
+) (int64, error) {
+	var count int64
+	result := r.db.WithContext(ctx).
+		Model(&models.MessageCampaign{}).
+		Where("legacy_id IS NOT NULL").
+		Count(&count)
+
+	if result.Error != nil {
+		return 0, result.Error
+	}
+
+	return count, nil
+}

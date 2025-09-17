@@ -67,7 +67,8 @@ func TestMigrateUseCase_MapToCampaign(t *testing.T) {
 	assert.True(t, result.AutoSend)
 	assert.Equal(t, "test_user", result.CreatedBy)
 	assert.Equal(t, now, result.CreatedAt)
-	assert.Equal(t, now, result.UpdatedAt)
+	// UpdatedAt 現在使用當前時間，所以檢查是否在合理的時間範圍內
+	assert.WithinDuration(t, time.Now(), result.UpdatedAt, 1*time.Second)
 }
 
 func TestMigrateUseCase_MapCategory(t *testing.T) {
@@ -152,14 +153,18 @@ func TestMigrateUseCase_MapTarget(t *testing.T) {
 func TestMigrateUseCase_GenerateGlobalID(t *testing.T) {
 	uc := &migrateUseCase{}
 
-	legacy := LegacyNotification{ID: 123}
+	// 測試生成的 UUID 格式正確性
+	id1 := uc.generateGlobalID()
+	id2 := uc.generateGlobalID()
 
-	// 測試生成的 UUID 是否一致
-	id1 := uc.generateGlobalID(legacy)
-	id2 := uc.generateGlobalID(legacy)
-
-	assert.Equal(t, id1, id2, "相同輸入應該產生相同的 UUID")
+	// 每次生成的 UUID 應該是不同的（隨機性）
+	assert.NotEqual(t, id1, id2, "每次應該產生不同的 UUID")
 	assert.NotEmpty(t, id1, "UUID 不應該為空")
+	assert.NotEmpty(t, id2, "UUID 不應該為空")
+
+	// 驗證 UUID 格式 (36個字符，包含4個連字符)
+	assert.Len(t, id1, 36, "UUID 長度應該是36個字符")
+	assert.Len(t, id2, 36, "UUID 長度應該是36個字符")
 }
 
 func TestMigrationStats(t *testing.T) {

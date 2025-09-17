@@ -13,6 +13,11 @@ type MessageCampaignRepository interface {
 	FindByGlobalID(ctx context.Context, globalID string) (*entity.MessageCampaign, error)
 	GetByGlobalID(ctx context.Context, globalID string) (*entity.MessageCampaign, error)
 	GetByLegacyID(ctx context.Context, legacyID uint) (*entity.MessageCampaign, error)
+	FindWithLegacyIDPaginated(
+		ctx context.Context,
+		limit, offset int,
+	) ([]*entity.MessageCampaign, error)
+	CountWithLegacyID(ctx context.Context) (int64, error)
 	FindAllWithOptions(
 		ctx context.Context,
 		query *dto.MessageCampaignsQuery,

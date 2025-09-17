@@ -40,13 +40,20 @@ func runMigrate(cobraCmd *cobra.Command, args []string) {
 		logger.ErrorLog("Invalid legacy DSN format", logger.Error("error", err))
 		fmt.Printf("❌ Invalid DSN format: %v\n", err)
 		fmt.Println("\n✅ Correct format examples:")
-		fmt.Println("  --legacy-dsn \"user:password@tcp(host:port)/dbname?charset=utf8mb4&parseTime=True&loc=Local\"")
-		fmt.Println("  --legacy-dsn \"root:pass123@tcp(localhost:3306)/fatcat_staging?charset=utf8mb4&parseTime=True&loc=Local\"")
+		fmt.Println(
+			"  --legacy-dsn \"user:password@tcp(host:port)/dbname?charset=utf8mb4&parseTime=True&loc=Local\"",
+		)
+		fmt.Println(
+			"  --legacy-dsn \"root:pass123@tcp(localhost:3306)/fatcat_staging?charset=utf8mb4&parseTime=True&loc=Local\"",
+		)
 		return
 	}
 
 	logger.InfoLog("Starting data migration service...")
-	logger.InfoLog("Legacy DSN validation passed", logger.String("dsn_host", extractHostFromDSN(legacyDSN)))
+	logger.InfoLog(
+		"Legacy DSN validation passed",
+		logger.String("dsn_host", extractHostFromDSN(legacyDSN)),
+	)
 
 	// Optional: Add confirmation step (recommended in production environment)
 	if !confirmMigration(legacyDSN, cfg) {
@@ -174,7 +181,7 @@ func confirmMigration(legacyDSN string, cfg *config.Config) bool {
 	fmt.Printf("\nDo you want to continue? (y/N): ")
 
 	var response string
-	fmt.Scanln(&response)
+	_, _ = fmt.Scanln(&response)
 	response = strings.ToLower(strings.TrimSpace(response))
 
 	return response == "y" || response == "yes"
