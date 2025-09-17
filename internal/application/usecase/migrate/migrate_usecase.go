@@ -104,34 +104,62 @@ func (uc *migrateUseCase) MigrateMessageCampaigns(
 		return stats, fmt.Errorf("failed to get merchant info: %w", err)
 	}
 
-	// 查詢過去三個月的 notifications
-	var legacyNotifications []LegacyNotification
-	if err := uc.legacyDB.Where("created_at >= ?", threeMonthsAgo).Where("company_id", 2).Find(&legacyNotifications).Error; err != nil {
-		return stats, fmt.Errorf("failed to query legacy notifications: %w", err)
+	// 首先計算總數量
+	var totalCount int64
+	if err := uc.legacyDB.Model(&LegacyNotification{}).
+		Where("created_at >= ?", threeMonthsAgo).
+		Where("company_id", 2).
+		Count(&totalCount).Error; err != nil {
+		return stats, fmt.Errorf("failed to count legacy notifications: %w", err)
 	}
 
 	uc.logger.InfoLog(
 		"Found legacy notifications to migrate",
-		uc.logger.Int("count", len(legacyNotifications)),
+		uc.logger.Int64("total_count", totalCount),
 	)
 
-	// 批次處理
-	batchSize := 100
-	for i := 0; i < len(legacyNotifications); i += batchSize {
-		end := i + batchSize
-		if end > len(legacyNotifications) {
-			end = len(legacyNotifications)
+	// 使用分頁查詢避免記憶體耗盡
+	batchSize := 500
+	offset := 0
+
+	for {
+		var batch []LegacyNotification
+		if err := uc.legacyDB.Where("created_at >= ?", threeMonthsAgo).
+			Where("company_id", 2).
+			Order("id ASC").
+			Limit(batchSize).
+			Offset(offset).
+			Find(&batch).Error; err != nil {
+			return stats, fmt.Errorf("failed to query legacy notifications batch: %w", err)
 		}
 
-		batch := legacyNotifications[i:end]
+		// 如果沒有更多資料，退出迴圈
+		if len(batch) == 0 {
+			break
+		}
+
+		uc.logger.DebugLog(
+			"Processing notification batch",
+			uc.logger.Int("offset", offset),
+			uc.logger.Int("batch_size", len(batch)),
+			uc.logger.Int64("total", totalCount),
+		)
+
 		if err := uc.processCampaignBatch(ctx, batch, merchant, stats); err != nil {
 			uc.logger.ErrorLog(
 				"Failed to process campaign batch",
-				uc.logger.Int("start", i),
-				uc.logger.Int("end", end),
+				uc.logger.Int("offset", offset),
+				uc.logger.Int("batch_size", len(batch)),
 				uc.logger.Error("error", err),
 			)
 			stats.AddError(err)
+		}
+
+		offset += batchSize
+
+		// 檢查是否已處理完所有資料
+		if len(batch) < batchSize {
+			break
 		}
 	}
 
@@ -150,40 +178,64 @@ func (uc *migrateUseCase) MigratePlayerMessages(
 		return stats, fmt.Errorf("failed to get company info: %w", err)
 	}
 
-	// 查詢 user_notifications 和關聯的 notifications
+	// 首先計算總數量
 	threeMonthsAgo := time.Now().AddDate(0, -3, 0)
-	var userNotifications []LegacyUserNotification
-	query := `
-		SELECT un.* FROM user_notifications un
-		INNER JOIN notifications n ON un.notification_id = n.id
-		WHERE n.created_at >= ?
-	`
-	if err := uc.legacyDB.Raw(query, threeMonthsAgo).Scan(&userNotifications).Error; err != nil {
-		return stats, fmt.Errorf("failed to query legacy user notifications: %w", err)
+	var totalCount int64
+	if err := uc.legacyDB.Model(&LegacyUserNotification{}).
+		Joins("INNER JOIN notifications n ON user_notifications.notification_id = n.id").
+		Where("n.created_at >= ?", threeMonthsAgo).
+		Count(&totalCount).Error; err != nil {
+		return stats, fmt.Errorf("failed to count legacy user notifications: %w", err)
 	}
 
 	uc.logger.InfoLog(
 		"Found legacy user notifications to migrate",
-		uc.logger.Int("count", len(userNotifications)),
+		uc.logger.Int64("total_count", totalCount),
 	)
 
-	// 批次處理
-	batchSize := 100
-	for i := 0; i < len(userNotifications); i += batchSize {
-		end := i + batchSize
-		if end > len(userNotifications) {
-			end = len(userNotifications)
+	// 使用分頁查詢避免記憶體耗盡
+	batchSize := 500
+	offset := 0
+
+	for {
+		var batch []LegacyUserNotification
+		if err := uc.legacyDB.
+			Joins("INNER JOIN notifications n ON user_notifications.notification_id = n.id").
+			Where("n.created_at >= ?", threeMonthsAgo).
+			Order("user_notifications.id ASC").
+			Limit(batchSize).
+			Offset(offset).
+			Find(&batch).Error; err != nil {
+			return stats, fmt.Errorf("failed to query legacy user notifications batch: %w", err)
 		}
 
-		batch := userNotifications[i:end]
+		// 如果沒有更多資料，退出迴圈
+		if len(batch) == 0 {
+			break
+		}
+
+		uc.logger.DebugLog(
+			"Processing user notification batch",
+			uc.logger.Int("offset", offset),
+			uc.logger.Int("batch_size", len(batch)),
+			uc.logger.Int64("total", totalCount),
+		)
+
 		if err := uc.processPlayerMessageBatch(ctx, batch, company.Name, stats); err != nil {
 			uc.logger.ErrorLog(
 				"Failed to process player message batch",
-				uc.logger.Int("start", i),
-				uc.logger.Int("end", end),
+				uc.logger.Int("offset", offset),
+				uc.logger.Int("batch_size", len(batch)),
 				uc.logger.Error("error", err),
 			)
 			stats.AddError(err)
+		}
+
+		offset += batchSize
+
+		// 檢查是否已處理完所有資料
+		if len(batch) < batchSize {
+			break
 		}
 	}
 
