@@ -194,8 +194,8 @@ The project maintains structured documentation for development guidance:
 - **docs/claude/archive/** - Completed feature archives
 
 ### Current Status
-**v1.6 資料搬遷系統規劃中**: DB資料搬遷系統的設計與實作規劃  
-**v1.5+ 遷移系統強化完成**: 資料庫遷移系統的DSN驗證、確認機制與程式碼品質提升  
+**v1.6 資料搬遷系統準備中**: DB資料搬遷系統技術規格完成，進入Phase 1基礎架構建立階段  
+**v1.5+ 遷移系統強化完成**: 資料庫遷移系統DSN驗證、性能優化、LegacyID支援與程式碼品質全面提升  
 **v1.5 系統優化完成**: 資料架構統一、物件類型標準化與測試基礎設施完善  
 **v1.4 測試架構統一完成**: 統一Mock框架與測試數據工廠實現，提升測試品質與維護性  
 **v1.3 六角架構重構完成**: Clean Architecture 完整實現，Ports & Adapters 模式完成  
@@ -204,12 +204,14 @@ The project maintains structured documentation for development guidance:
 
 ## Development Specifications
 
-### Current Focus: Database Migration System Enhancement (2025-09-16)
+### Current Focus: Database Migration System & v1.6 Data Migration Preparation (2025-09-17)
 
 **Recently Completed:**
 - ✅ Database migration system enhancement with DSN validation and confirmation mechanism
-- ✅ Migration system code quality improvement and error handling optimization
-- ✅ Database migration parameter processing and data query logic enhancement
+- ✅ Migration system code quality improvement and comprehensive error handling optimization
+- ✅ Database migration parameter processing and data query logic enhancement with performance improvements
+- ✅ LegacyID field addition and query methods to support data migration requirements
+- ✅ Batch processing performance optimization and memory usage improvement for large-scale data handling
 - ✅ System optimization and data architecture unification (v1.5)
 - ✅ Message campaign object type standardization
 - ✅ Database field type optimization for enhanced stability
@@ -225,24 +227,26 @@ The project maintains structured documentation for development guidance:
 - ✅ Router architecture refactoring with modular design (v1.2)
 - ✅ CORS configuration optimization for Swagger integration
 
-**Current Phase (2025-09-16):**
-- Database migration system continuous enhancement and stability improvement
-- Data migration infrastructure preparation for v1.6 implementation
-- System stability monitoring and optimization
-- Performance baseline establishment using pprof integration
-- Production readiness assessment and deployment preparation
+**Current Phase (2025-09-17):**
+- Database migration system enhancement completed with robust architecture
+- v1.6 DB data migration system technical specification completed
+- Phase 1 infrastructure development preparation for large-scale data migration
+- System stability maintenance and production deployment preparation
+- Technical documentation updates reflecting latest system improvements
 
 For detailed current tasks, see `docs/claude/CLAUDE-CURRENT.md`.
 
 ### Completed Features
 
 #### 資料庫遷移系統強化 v1.5+ ✅
-- **Status**: Completed (2025-09-16)
+- **Status**: Completed (2025-09-17)
 - **Key Components**:
   - DSN validation and confirmation mechanism implementation
   - Migration system code quality improvement and comprehensive error handling
-  - Enhanced database migration parameter processing and data query logic
-  - Robust migration system architecture with reliability enhancements
+  - Enhanced database migration parameter processing and data query logic with performance improvements
+  - LegacyID field addition and query methods to support data migration requirements
+  - Batch processing performance optimization and memory usage improvement
+  - Robust migration system architecture with reliability and scalability enhancements
 
 #### 系統優化與資料架構統一 v1.5 ✅
 - **Status**: Completed (2025-09-15)
@@ -289,13 +293,15 @@ For detailed current tasks, see `docs/claude/CLAUDE-CURRENT.md`.
 - **Specification**: `docs/claude/features/message-campaign/spec.md`
 
 #### DB資料搬遷系統 v1.6 🔄
-- **Status**: Planning & Design Phase (2025-09-16)
+- **Status**: Implementation Preparation Phase (2025-09-17)
 - **Specification**: `docs/claude/features/message-campaign/CLAUDE-2025-09-16-v1.6.md`
 - **Key Features**:
   - Historical data migration from fatcat_staging to microservice database
   - UpdateOrCreate pattern for reliable data synchronization
-  - Large-scale data handling with performance optimization
+  - Large-scale data handling with performance optimization (million-level records)
   - Comprehensive field mapping and data transformation logic
+  - Batch processing with memory optimization
+  - Progress tracking and robust error recovery mechanisms
 
 #### 會員訊息資料結構優化 v1.5 ✅
 - **Status**: Completed (2025-09-15)
@@ -319,11 +325,11 @@ For detailed current tasks, see `docs/claude/CLAUDE-CURRENT.md`.
 
 ### Active Development Areas
 
-#### Current Phase: System Stability & Migration Preparation
-- Database migration system stability monitoring and continuous optimization
-- Data migration infrastructure preparation (v1.6 planning)
-- System reliability and maintainability enhancement
-- Performance testing and optimization
-- Production readiness assessment and deployment preparation
+#### Current Phase: v1.6 Data Migration System Implementation
+- Database migration system enhancement completed with robust architecture
+- v1.6 DB data migration system entering Phase 1: Infrastructure Development
+- Large-scale data migration preparation with performance optimization
+- System stability maintenance and production deployment readiness
+- Technical documentation updates and development process optimization
 
 For detailed current tasks, see `docs/claude/CLAUDE-CURRENT.md`.
