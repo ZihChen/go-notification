@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
@@ -62,4 +63,28 @@ func (u *LevelUseCase) SyncPlayerLevel(
 	u.logger.InfoWithContext(ctx, "Upsert player level completed", u.logger.Any("level", data))
 	tracing.TraceEvent(span, "Upsert completed")
 	return nil
+}
+
+func (u *LevelUseCase) GetLevelsByMerchantID(ctx context.Context, merchantID uint64) (*dto.LevelListResponse, error) {
+	ctx, span := tracing.StartSpan(ctx, "LevelUseCase.GetLevelsByMerchantID")
+	defer tracing.SpanEnd(span)
+
+	levels, err := u.levelRepo.FindByMerchantID(ctx, merchantID)
+	if err != nil {
+		tracing.RecordSpanError(span, err)
+		return nil, fmt.Errorf("find levels by merchant ID: %w", err)
+	}
+
+	levelResponses := make([]dto.LevelResponse, len(levels))
+	for i, level := range levels {
+		levelResponses[i] = dto.LevelResponse{
+			ID:       level.ID,
+			Name:     level.Name,
+			GlobalID: level.GlobalPlayerLevelID,
+		}
+	}
+
+	return &dto.LevelListResponse{
+		Levels: levelResponses,
+	}, nil
 }

@@ -62,8 +62,12 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, redis
 	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger)
 	messageCampaignRepository := repository4.NewMessageCampaignRepository(db)
 	playerMessageRepository := repository4.NewPlayerMessageRepository(db)
-	messageUseCase := message.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, logger)
-	httpHandler := api.NewHTTPHandler(merchantUseCase, playerUseCase, managerUseCase, messageUseCase, logger)
+	tagRepository := repository2.NewTagRepository(db)
+	messageUseCase := message.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, logger)
+	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger)
+	playerTagRepository := repository2.NewPlayerTagRepository(db)
+	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager)
+	httpHandler := api.NewHTTPHandler(merchantUseCase, playerUseCase, managerUseCase, messageUseCase, playerLevelUseCase, playerTagUseCase, logger)
 	return httpHandler, nil
 }
 
@@ -146,7 +150,9 @@ func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Log
 	merchantRepository := repository.NewMerchantRepository(db)
 	playerMessageRepository := repository4.NewPlayerMessageRepository(db)
 	playerRepository := repository2.NewPlayerRepository(db)
-	messageUseCase := message.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, logger)
+	levelRepository := repository2.NewLevelRepository(db)
+	tagRepository := repository2.NewTagRepository(db)
+	messageUseCase := message.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, logger)
 	messageCampaignTriggerJob := job.NewMessageCampaignTriggerJob(messageUseCase, logger)
 	registry := job.NewRegistry(messageCampaignTriggerJob)
 	handler := scheduler.NewSchedulerHandler(logger, redisManager, registry)

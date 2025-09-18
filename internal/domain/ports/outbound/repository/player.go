@@ -14,6 +14,7 @@ type PlayerRepository interface {
 	FindByTargetType(
 		ctx context.Context,
 		targetType string,
+		targetDetail *string,
 		offset, limit int,
 	) ([]*entity.Player, error)
 	FirstOrCreate(ctx context.Context, player *entity.Player) error
@@ -27,6 +28,7 @@ type PlayerRepository interface {
 type LevelRepository interface {
 	Upsert(ctx context.Context, level *entity.Level) error
 	FindByGlobalID(ctx context.Context, globalID string) (*entity.Level, error)
+	FindByMerchantID(ctx context.Context, merchantID uint64) ([]*entity.Level, error)
 }
 
 // TagRepository 標籤資料庫接口
@@ -34,6 +36,7 @@ type TagRepository interface {
 	Upsert(ctx context.Context, tag *entity.Tag) error
 	BatchUpsert(ctx context.Context, tags []*entity.Tag) error
 	FindByGlobalIDs(ctx context.Context, globalIDs []string) ([]*entity.Tag, error)
+	FindByMerchantID(ctx context.Context, merchantID uint64) ([]*entity.Tag, error)
 }
 
 // PlayerTagRepository 玩家標籤關聯資料庫接口

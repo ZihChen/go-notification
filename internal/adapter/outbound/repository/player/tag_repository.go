@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
@@ -74,14 +75,35 @@ func (r *TagRepository) FindByGlobalIDs(
 	ctx context.Context,
 	globalIDs []string,
 ) ([]*entity.Tag, error) {
-	tags := make([]*entity.Tag, len(globalIDs))
-
+	var dbTags []models.Tag
 	result := r.db.WithContext(ctx).
 		Where("global_tag_id IN ?", globalIDs).
 		Where("deleted_at IS NULL").
-		Find(&tags)
+		Find(&dbTags)
 	if result.Error != nil {
-		return tags, fmt.Errorf("find tags by global ids failed: %w", result.Error)
+		return nil, fmt.Errorf("find tags by global ids failed: %w", result.Error)
+	}
+	
+	tags := make([]*entity.Tag, len(dbTags))
+	for i, dbTag := range dbTags {
+		tags[i] = mapToDomainTag(&dbTag)
+	}
+	return tags, nil
+}
+
+func (r *TagRepository) FindByMerchantID(ctx context.Context, merchantID uint64) ([]*entity.Tag, error) {
+	var dbTags []models.Tag
+	err := r.db.WithContext(ctx).
+		Where("merchant_id = ?", merchantID).
+		Where("deleted_at IS NULL").
+		Find(&dbTags).Error
+	if err != nil {
+		return nil, fmt.Errorf("find tags by merchant ID failed: %w", err)
+	}
+
+	tags := make([]*entity.Tag, len(dbTags))
+	for i, dbTag := range dbTags {
+		tags[i] = mapToDomainTag(&dbTag)
 	}
 	return tags, nil
 }
@@ -102,4 +124,21 @@ func mapToDBTag(tag *entity.Tag) *models.Tag {
 		}
 	}
 	return dbTag
+}
+
+func mapToDomainTag(tag *models.Tag) *entity.Tag {
+	var deletedAt *time.Time
+	if tag.DeletedAt.Valid {
+		deletedTime := tag.DeletedAt.Time
+		deletedAt = &deletedTime
+	}
+	return &entity.Tag{
+		ID:          tag.ID,
+		MerchantID:  tag.MerchantID,
+		GlobalTagID: tag.GlobalTagID,
+		Name:        tag.Name,
+		CreatedAt:   tag.CreatedAt,
+		UpdatedAt:   tag.UpdatedAt,
+		DeletedAt:   deletedAt,
+	}
 }

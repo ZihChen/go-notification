@@ -72,6 +72,23 @@ func (r *LevelRepository) FindByGlobalID(
 	return mapToDomainLevel(&dbLevel), nil
 }
 
+func (r *LevelRepository) FindByMerchantID(ctx context.Context, merchantID uint64) ([]*entity.Level, error) {
+	var dbLevels []models.Level
+	err := r.db.WithContext(ctx).
+		Where("merchant_id = ?", merchantID).
+		Where("deleted_at IS NULL").
+		Find(&dbLevels).Error
+	if err != nil {
+		return nil, fmt.Errorf("find levels by merchant ID failed: %w", err)
+	}
+
+	levels := make([]*entity.Level, len(dbLevels))
+	for i, dbLevel := range dbLevels {
+		levels[i] = mapToDomainLevel(&dbLevel)
+	}
+	return levels, nil
+}
+
 func mapToDomainLevel(level *models.Level) *entity.Level {
 	var deletedAt *time.Time
 	if level.DeletedAt.Valid {

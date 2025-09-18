@@ -2,6 +2,7 @@ package message
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -26,6 +27,8 @@ type MessageUseCase struct {
 	merchantRepo      repository.MerchantRepository
 	playerMessageRepo repository.PlayerMessageRepository
 	playerRepo        repository.PlayerRepository
+	levelRepo         repository.LevelRepository
+	tagRepo           repository.TagRepository
 	logger            infrastructure.Logger
 }
 
@@ -35,6 +38,8 @@ func NewMessageUseCase(
 	merchantRepo repository.MerchantRepository,
 	playerMessageRepo repository.PlayerMessageRepository,
 	playerRepo repository.PlayerRepository,
+	levelRepo repository.LevelRepository,
+	tagRepo repository.TagRepository,
 	logger infrastructure.Logger,
 ) inbound.MessageUseCase {
 	return &MessageUseCase{
@@ -42,6 +47,8 @@ func NewMessageUseCase(
 		merchantRepo:      merchantRepo,
 		playerMessageRepo: playerMessageRepo,
 		playerRepo:        playerRepo,
+		levelRepo:         levelRepo,
+		tagRepo:           tagRepo,
 		logger:            logger,
 	}
 }
@@ -78,6 +85,49 @@ func (u *MessageUseCase) CreateMessageCampaign(
 	if err != nil {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("copy campaign failed: %w", err)
+	}
+
+	// 處理 TargetDetail 字段
+	if len(campaign.TargetDetail) > 0 {
+		switch campaign.Target {
+		case consts.TargetPlayer:
+			// 對於 player，直接存儲 account 數組
+			targetDetailBytes, err := json.Marshal(campaign.TargetDetail)
+			if err != nil {
+				tracing.RecordSpanError(span, err)
+				return fmt.Errorf("marshal target detail for player: %w", err)
+			}
+			targetDetailStr := string(targetDetailBytes)
+			campaignEntity.TargetDetail = &targetDetailStr
+		case consts.TargetLevel:
+			// 對於 level，需要根據 ID 獲取名稱
+			levelNames, err := u.getLevelNamesByIDs(ctx, campaign.TargetDetail, merchant.ID)
+			if err != nil {
+				tracing.RecordSpanError(span, err)
+				return fmt.Errorf("get level names: %w", err)
+			}
+			targetDetailBytes, err := json.Marshal(levelNames)
+			if err != nil {
+				tracing.RecordSpanError(span, err)
+				return fmt.Errorf("marshal target detail for level: %w", err)
+			}
+			targetDetailStr := string(targetDetailBytes)
+			campaignEntity.TargetDetail = &targetDetailStr
+		case consts.TargetTag:
+			// 對於 tag，需要根據 ID 獲取名稱
+			tagNames, err := u.getTagNamesByIDs(ctx, campaign.TargetDetail, merchant.ID)
+			if err != nil {
+				tracing.RecordSpanError(span, err)
+				return fmt.Errorf("get tag names: %w", err)
+			}
+			targetDetailBytes, err := json.Marshal(tagNames)
+			if err != nil {
+				tracing.RecordSpanError(span, err)
+				return fmt.Errorf("marshal target detail for tag: %w", err)
+			}
+			targetDetailStr := string(targetDetailBytes)
+			campaignEntity.TargetDetail = &targetDetailStr
+		}
 	}
 
 	if err = u.campaignRepo.Create(ctx, campaignEntity); err != nil {
@@ -134,6 +184,52 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 	if err != nil {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("copy campaign failed: %w", err)
+	}
+
+	// 處理 TargetDetail 字段
+	if len(campaign.TargetDetail) > 0 {
+		switch campaign.Target {
+		case consts.TargetPlayer:
+			// 對於 player，直接存儲 account 數組
+			targetDetailBytes, err := json.Marshal(campaign.TargetDetail)
+			if err != nil {
+				tracing.RecordSpanError(span, err)
+				return fmt.Errorf("marshal target detail for player: %w", err)
+			}
+			targetDetailStr := string(targetDetailBytes)
+			campaignEntity.TargetDetail = &targetDetailStr
+		case consts.TargetLevel:
+			// 對於 level，需要根據 ID 獲取名稱
+			levelNames, err := u.getLevelNamesByIDs(ctx, campaign.TargetDetail, campaignEntity.MerchantID)
+			if err != nil {
+				tracing.RecordSpanError(span, err)
+				return fmt.Errorf("get level names: %w", err)
+			}
+			targetDetailBytes, err := json.Marshal(levelNames)
+			if err != nil {
+				tracing.RecordSpanError(span, err)
+				return fmt.Errorf("marshal target detail for level: %w", err)
+			}
+			targetDetailStr := string(targetDetailBytes)
+			campaignEntity.TargetDetail = &targetDetailStr
+		case consts.TargetTag:
+			// 對於 tag，需要根據 ID 獲取名稱
+			tagNames, err := u.getTagNamesByIDs(ctx, campaign.TargetDetail, campaignEntity.MerchantID)
+			if err != nil {
+				tracing.RecordSpanError(span, err)
+				return fmt.Errorf("get tag names: %w", err)
+			}
+			targetDetailBytes, err := json.Marshal(tagNames)
+			if err != nil {
+				tracing.RecordSpanError(span, err)
+				return fmt.Errorf("marshal target detail for tag: %w", err)
+			}
+			targetDetailStr := string(targetDetailBytes)
+			campaignEntity.TargetDetail = &targetDetailStr
+		}
+	} else {
+		// 如果沒有 TargetDetail，清空該字段
+		campaignEntity.TargetDetail = nil
 	}
 
 	if err = u.campaignRepo.Update(ctx, campaignEntity); err != nil {
@@ -573,4 +669,54 @@ func (u *MessageUseCase) CreateOrUpdateMerchantAutoSettings(
 		UpdatedCount:     0, // 無法精確區分新增和更新的數量
 		Operation:        "upsert",
 	}, nil
+}
+
+// getLevelNamesByIDs 根據等級ID獲取等級名稱
+func (u *MessageUseCase) getLevelNamesByIDs(ctx context.Context, levelIDs []string, merchantID uint64) ([]string, error) {
+	// 獲取商戶的所有等級
+	levels, err := u.levelRepo.FindByMerchantID(ctx, merchantID)
+	if err != nil {
+		return nil, fmt.Errorf("find levels by merchant ID: %w", err)
+	}
+
+	// 創建 ID 到名稱的映射
+	idToName := make(map[string]string)
+	for _, level := range levels {
+		idToName[fmt.Sprintf("%d", level.ID)] = level.Name
+	}
+
+	// 根據 ID 獲取名稱
+	names := make([]string, 0, len(levelIDs))
+	for _, id := range levelIDs {
+		if name, exists := idToName[id]; exists {
+			names = append(names, name)
+		}
+	}
+
+	return names, nil
+}
+
+// getTagNamesByIDs 根據標籤ID獲取標籤名稱
+func (u *MessageUseCase) getTagNamesByIDs(ctx context.Context, tagIDs []string, merchantID uint64) ([]string, error) {
+	// 獲取商戶的所有標籤
+	tags, err := u.tagRepo.FindByMerchantID(ctx, merchantID)
+	if err != nil {
+		return nil, fmt.Errorf("find tags by merchant ID: %w", err)
+	}
+
+	// 創建 ID 到名稱的映射
+	idToName := make(map[string]string)
+	for _, tag := range tags {
+		idToName[fmt.Sprintf("%d", tag.ID)] = tag.Name
+	}
+
+	// 根據 ID 獲取名稱
+	names := make([]string, 0, len(tagIDs))
+	for _, id := range tagIDs {
+		if name, exists := idToName[id]; exists {
+			names = append(names, name)
+		}
+	}
+
+	return names, nil
 }

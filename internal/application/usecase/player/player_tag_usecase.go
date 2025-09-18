@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-redsync/redsync/v4"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
@@ -198,4 +199,28 @@ func (u *PlayerTagUseCase) executeLocked(
 		}
 	}()
 	return fn()
+}
+
+func (u *PlayerTagUseCase) GetTagsByMerchantID(ctx context.Context, merchantID uint64) (*dto.TagListResponse, error) {
+	ctx, span := tracing.StartSpan(ctx, "PlayerTagUseCase.GetTagsByMerchantID")
+	defer tracing.SpanEnd(span)
+
+	tags, err := u.tagRepo.FindByMerchantID(ctx, merchantID)
+	if err != nil {
+		tracing.RecordSpanError(span, err)
+		return nil, fmt.Errorf("find tags by merchant ID: %w", err)
+	}
+
+	tagResponses := make([]dto.TagResponse, len(tags))
+	for i, tag := range tags {
+		tagResponses[i] = dto.TagResponse{
+			ID:       tag.ID,
+			Name:     tag.Name,
+			GlobalID: tag.GlobalTagID,
+		}
+	}
+
+	return &dto.TagListResponse{
+		Tags: tagResponses,
+	}, nil
 }

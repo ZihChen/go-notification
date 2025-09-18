@@ -100,3 +100,27 @@ type MessageCampaignListResponse struct {
 	Page      int                       `json:"page"`
 	PageSize  int                       `json:"page_size"`
 }
+
+// LevelResponse 等級回應 DTO
+type LevelResponse struct {
+	ID       uint64 `json:"id"`
+	Name     string `json:"name"`
+	GlobalID string `json:"global_id"`
+}
+
+// LevelListResponse 等級列表回應 DTO
+type LevelListResponse struct {
+	Levels []LevelResponse `json:"levels"`
+}
+
+// TagResponse 標籤回應 DTO
+type TagResponse struct {
+	ID       uint64 `json:"id"`
+	Name     string `json:"name"`
+	GlobalID string `json:"global_id"`
+}
+
+// TagListResponse 標籤列表回應 DTO
+type TagListResponse struct {
+	Tags []TagResponse `json:"tags"`
+}

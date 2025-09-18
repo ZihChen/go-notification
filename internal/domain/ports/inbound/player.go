@@ -19,6 +19,7 @@ type PlayerLevelUseCase interface {
 		ctx context.Context,
 		data *event.IdentityPlayerLevelSyncEvent,
 	) error
+	GetLevelsByMerchantID(ctx context.Context, merchantID uint64) (*dto.LevelListResponse, error)
 }
 
 type PlayerTagUseCase interface {
@@ -30,4 +31,5 @@ type PlayerTagUseCase interface {
 		ctx context.Context,
 		data *event.IdentityTagSyncEvent,
 	) error
+	GetTagsByMerchantID(ctx context.Context, merchantID uint64) (*dto.TagListResponse, error)
 }

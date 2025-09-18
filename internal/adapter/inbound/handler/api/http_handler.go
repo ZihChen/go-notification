@@ -26,11 +26,13 @@ type SuccessResponse struct {
 
 // HTTPHandler HTTP接口處理器
 type HTTPHandler struct {
-	merchantUseCase inbound.MerchantUseCase
-	playerUseCase   inbound.PlayerUseCase
-	managerUseCase  inbound.ManagerUseCase
-	messageUseCase  inbound.MessageUseCase
-	logger          infrastructure.Logger
+	merchantUseCase    inbound.MerchantUseCase
+	playerUseCase      inbound.PlayerUseCase
+	managerUseCase     inbound.ManagerUseCase
+	messageUseCase     inbound.MessageUseCase
+	playerLevelUseCase inbound.PlayerLevelUseCase
+	playerTagUseCase   inbound.PlayerTagUseCase
+	logger             infrastructure.Logger
 }
 
 // NewHTTPHandler 創建HTTP處理器
@@ -39,14 +41,18 @@ func NewHTTPHandler(
 	playerUseCase inbound.PlayerUseCase,
 	managerUseCase inbound.ManagerUseCase,
 	messageUseCase inbound.MessageUseCase,
+	playerLevelUseCase inbound.PlayerLevelUseCase,
+	playerTagUseCase inbound.PlayerTagUseCase,
 	logger infrastructure.Logger,
 ) *HTTPHandler {
 	return &HTTPHandler{
-		merchantUseCase: merchantUseCase,
-		playerUseCase:   playerUseCase,
-		managerUseCase:  managerUseCase,
-		messageUseCase:  messageUseCase,
-		logger:          logger,
+		merchantUseCase:    merchantUseCase,
+		playerUseCase:      playerUseCase,
+		managerUseCase:     managerUseCase,
+		messageUseCase:     messageUseCase,
+		playerLevelUseCase: playerLevelUseCase,
+		playerTagUseCase:   playerTagUseCase,
+		logger:             logger,
 	}
 }
 
@@ -753,4 +759,62 @@ func (h *HTTPHandler) SSEHandler(c *gin.Context) {
 			c.Writer.Flush()
 		}
 	}
+}
+
+// ========== 玩家等級管理 API ==========
+
+// GetPlayerLevels 獲取玩家等級列表
+// @Summary 獲取玩家等級列表
+// @Description 獲取當前商戶的所有玩家等級
+// @Tags 玩家等級
+// @Accept json
+// @Produce json
+// @Success 200 {object} dto.LevelListResponse
+// @Failure 500 {object} ErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/players/levels [get]
+func (h *HTTPHandler) GetPlayerLevels(c *gin.Context) {
+	merchantGlobalID := c.GetString("global_merchant_id")
+	merchant, err := h.merchantUseCase.GetMerchantByGlobalID(c.Request.Context(), merchantGlobalID)
+	if err != nil {
+		response.InternalServerError(c, "failed to get merchant", err.Error()).Return()
+		return
+	}
+
+	levels, err := h.playerLevelUseCase.GetLevelsByMerchantID(c.Request.Context(), merchant.ID)
+	if err != nil {
+		response.InternalServerError(c, "failed to get player levels", err.Error()).Return()
+		return
+	}
+
+	response.OK(c).Data(levels).Return()
+}
+
+// ========== 玩家標籤管理 API ==========
+
+// GetPlayerTags 獲取玩家標籤列表
+// @Summary 獲取玩家標籤列表
+// @Description 獲取當前商戶的所有玩家標籤
+// @Tags 玩家標籤
+// @Accept json
+// @Produce json
+// @Success 200 {object} dto.TagListResponse
+// @Failure 500 {object} ErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/players/tags [get]
+func (h *HTTPHandler) GetPlayerTags(c *gin.Context) {
+	merchantGlobalID := c.GetString("global_merchant_id")
+	merchant, err := h.merchantUseCase.GetMerchantByGlobalID(c.Request.Context(), merchantGlobalID)
+	if err != nil {
+		response.InternalServerError(c, "failed to get merchant", err.Error()).Return()
+		return
+	}
+
+	tags, err := h.playerTagUseCase.GetTagsByMerchantID(c.Request.Context(), merchant.ID)
+	if err != nil {
+		response.InternalServerError(c, "failed to get player tags", err.Error()).Return()
+		return
+	}
+
+	response.OK(c).Data(tags).Return()
 }

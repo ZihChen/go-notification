@@ -874,6 +874,74 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/players/levels": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "獲取當前商戶的所有玩家等級",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "玩家等級"
+                ],
+                "summary": "獲取玩家等級列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.LevelListResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/players/tags": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "獲取當前商戶的所有玩家標籤",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "玩家標籤"
+                ],
+                "summary": "獲取玩家標籤列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.TagListResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/players/{id}": {
             "get": {
                 "security": [
@@ -1039,16 +1107,14 @@ const docTemplate = `{
             ],
             "properties": {
                 "category": {
-                    "description": "消息类型：1=会员消息，2=红利消息，3=其他消息",
-                    "type": "integer",
-                    "maximum": 3,
-                    "minimum": 1,
+                    "description": "消息类型：member=会员消息，bonus=红利消息，others=其他消息",
+                    "type": "string",
                     "enum": [
-                        1,
-                        2,
-                        3
+                        "member",
+                        "bonus",
+                        "others"
                     ],
-                    "example": 1
+                    "example": "member"
                 },
                 "content": {
                     "description": "消息内容，必填",
@@ -1056,19 +1122,18 @@ const docTemplate = `{
                     "example": "恭喜您成功注册成为我们的会员！"
                 },
                 "item": {
-                    "description": "消息项目：1=注册，2=实名认证，3=存款，4=提款，5=投注，6=全部",
-                    "type": "integer",
-                    "maximum": 6,
-                    "minimum": 1,
+                    "description": "消息项目",
+                    "type": "string",
                     "enum": [
-                        1,
-                        2,
-                        3,
-                        4,
-                        5,
-                        6
+                        "registration",
+                        "identity_verification",
+                        "bank_card",
+                        "others",
+                        "event",
+                        "all",
+                        "mission"
                     ],
-                    "example": 1
+                    "example": "registration"
                 },
                 "title": {
                     "description": "消息标题，最大255个字符",
@@ -1112,21 +1177,20 @@ const docTemplate = `{
                 "content",
                 "created_by",
                 "item",
+                "status",
                 "target",
                 "title"
             ],
             "properties": {
                 "category": {
-                    "description": "消息类型：1=会员消息，2=红利消息，3=其他消息",
-                    "type": "integer",
-                    "maximum": 3,
-                    "minimum": 1,
+                    "description": "消息类型：member=会员消息，bonus=红利消息，others=其他消息",
+                    "type": "string",
                     "enum": [
-                        1,
-                        2,
-                        3
+                        "member",
+                        "bonus",
+                        "others"
                     ],
-                    "example": 1
+                    "example": "member"
                 },
                 "content": {
                     "description": "消息内容，必填",
@@ -1140,19 +1204,18 @@ const docTemplate = `{
                     "example": "admin@example.com"
                 },
                 "item": {
-                    "description": "消息项目：1=注册，2=实名认证，3=存款，4=提款，5=投注，6=全部",
-                    "type": "integer",
-                    "maximum": 6,
-                    "minimum": 1,
+                    "description": "消息项目",
+                    "type": "string",
                     "enum": [
-                        1,
-                        2,
-                        3,
-                        4,
-                        5,
-                        6
+                        "registration",
+                        "identity_verification",
+                        "bank_card",
+                        "others",
+                        "event",
+                        "all",
+                        "mission"
                     ],
-                    "example": 1
+                    "example": "registration"
                 },
                 "send_end_time": {
                     "description": "发送结束时间（可选）",
@@ -1166,10 +1229,38 @@ const docTemplate = `{
                     "format": "date-time",
                     "example": "2024-01-01T10:00:00Z"
                 },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "draft",
+                        "scheduled"
+                    ],
+                    "example": "scheduled"
+                },
                 "target": {
-                    "description": "目标用户：1=所有用户，2=特定用户组",
-                    "type": "integer",
-                    "example": 1
+                    "description": "目标用户",
+                    "type": "string",
+                    "enum": [
+                        "high_activity",
+                        "low_activity",
+                        "not_activity",
+                        "player",
+                        "level",
+                        "tag",
+                        "all"
+                    ],
+                    "example": "all"
+                },
+                "target_detail": {
+                    "description": "目标详情：player为账号数组，level/tag为ID数组",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"max123\"",
+                        " \"winston888\"]"
+                    ]
                 },
                 "title": {
                     "description": "消息标题，最大255个字符",
@@ -1192,6 +1283,31 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.LevelListResponse": {
+            "type": "object",
+            "properties": {
+                "levels": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.LevelResponse"
+                    }
+                }
+            }
+        },
+        "dto.LevelResponse": {
+            "type": "object",
+            "properties": {
+                "global_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
                     "type": "string"
                 }
             }
@@ -1333,6 +1449,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "summary": {
+                    "description": "內容摘要",
                     "type": "string"
                 },
                 "title": {
@@ -1354,28 +1471,52 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.TagListResponse": {
+            "type": "object",
+            "properties": {
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.TagResponse"
+                    }
+                }
+            }
+        },
+        "dto.TagResponse": {
+            "type": "object",
+            "properties": {
+                "global_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.UpdateMessageCampaignRequest": {
             "type": "object",
             "required": [
                 "category",
                 "content",
                 "item",
+                "status",
                 "target",
                 "title",
                 "updated_by"
             ],
             "properties": {
                 "category": {
-                    "description": "消息类型：1=会员消息，2=红利消息，3=其他消息",
-                    "type": "integer",
-                    "maximum": 3,
-                    "minimum": 1,
+                    "description": "消息类型：member=会员消息，bonus=红利消息，others=其他消息",
+                    "type": "string",
                     "enum": [
-                        1,
-                        2,
-                        3
+                        "member",
+                        "bonus",
+                        "others"
                     ],
-                    "example": 1
+                    "example": "member"
                 },
                 "content": {
                     "description": "消息内容，必填",
@@ -1383,19 +1524,18 @@ const docTemplate = `{
                     "example": "恭喜您成功注册成为我们的会员！"
                 },
                 "item": {
-                    "description": "消息项目：1=注册，2=实名认证，3=存款，4=提款，5=投注，6=全部",
-                    "type": "integer",
-                    "maximum": 6,
-                    "minimum": 1,
+                    "description": "消息项目",
+                    "type": "string",
                     "enum": [
-                        1,
-                        2,
-                        3,
-                        4,
-                        5,
-                        6
+                        "registration",
+                        "identity_verification",
+                        "bank_card",
+                        "others",
+                        "event",
+                        "all",
+                        "mission"
                     ],
-                    "example": 1
+                    "example": "registration"
                 },
                 "send_end_time": {
                     "description": "发送结束时间（可选）",
@@ -1409,10 +1549,38 @@ const docTemplate = `{
                     "format": "date-time",
                     "example": "2024-01-01T10:00:00Z"
                 },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "draft",
+                        "scheduled"
+                    ],
+                    "example": "scheduled"
+                },
                 "target": {
-                    "description": "目标用户：1=所有用户，2=特定用户组",
-                    "type": "integer",
-                    "example": 1
+                    "description": "目标用户",
+                    "type": "string",
+                    "enum": [
+                        "high_activity",
+                        "low_activity",
+                        "not_activity",
+                        "player",
+                        "level",
+                        "tag",
+                        "all"
+                    ],
+                    "example": "all"
+                },
+                "target_detail": {
+                    "description": "目标详情：player为账号数组，level/tag为ID数组",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"max123\"",
+                        " \"winston888\"]"
+                    ]
                 },
                 "title": {
                     "description": "消息标题，最大255个字符",
@@ -1503,8 +1671,8 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "category": {
-                    "description": "1=member, 2=bonus, 3=others",
-                    "type": "integer"
+                    "description": "member, bonus, others",
+                    "type": "string"
                 },
                 "content": {
                     "description": "可包含 HTML Tag",
@@ -1527,7 +1695,11 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "item": {
-                    "description": "1=registration, 2=identity_verification, ..., 6=all",
+                    "description": "registration, identity_verification, bank_card, others, event, all, mission",
+                    "type": "string"
+                },
+                "legacy_id": {
+                    "description": "舊系統的 notification ID，用於資料遷移",
                     "type": "integer"
                 },
                 "merchant_id": {
@@ -1544,12 +1716,16 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "description": "1=draft, 2=scheduled, 3=sent, 4=cancelled, 5=archived",
-                    "type": "integer"
+                    "description": "draft, scheduled, sent, cancelled, failed",
+                    "type": "string"
                 },
                 "target": {
-                    "description": "1=_in_thirty, 2=_low_activity, 3=_not_activity, 8=_one, 9=_level, 10=_tag, 11=_all",
-                    "type": "integer"
+                    "description": "high_activity, low_activity, not_activity, player, level, tag, all",
+                    "type": "string"
+                },
+                "target_detail": {
+                    "description": "JSON string containing target-specific details (player accounts, level names, tag names)",
+                    "type": "string"
                 },
                 "title": {
                     "type": "string"

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -73,6 +74,7 @@ func (r *PlayerRepository) FirstOrCreate(ctx context.Context, player *entity.Pla
 func (r *PlayerRepository) FindByTargetType(
 	ctx context.Context,
 	targetType string,
+	targetDetail *string,
 	offset, limit int,
 ) ([]*entity.Player, error) {
 	var players []models.Player
@@ -95,6 +97,46 @@ func (r *PlayerRepository) FindByTargetType(
 	case consts.TargetNotActivity:
 		hundredDaysAgo := now.AddDate(0, 0, -100)
 		query = query.Where("last_active_at IS NULL OR last_active_at < ?", hundredDaysAgo)
+	case consts.TargetPlayer:
+		if targetDetail == nil || *targetDetail == "" {
+			return nil, fmt.Errorf("target detail is required for player target type")
+		}
+		var playerAccounts []string
+		if err := json.Unmarshal([]byte(*targetDetail), &playerAccounts); err != nil {
+			return nil, fmt.Errorf("invalid target detail format for player: %w", err)
+		}
+		if len(playerAccounts) == 0 {
+			return []*entity.Player{}, nil
+		}
+		query = query.Where("account IN ?", playerAccounts)
+	case consts.TargetLevel:
+		if targetDetail == nil || *targetDetail == "" {
+			return nil, fmt.Errorf("target detail is required for level target type")
+		}
+		var levelNames []string
+		if err := json.Unmarshal([]byte(*targetDetail), &levelNames); err != nil {
+			return nil, fmt.Errorf("invalid target detail format for level: %w", err)
+		}
+		if len(levelNames) == 0 {
+			return []*entity.Player{}, nil
+		}
+		query = query.Joins("JOIN levels ON players.level_id = levels.id").
+			Where("levels.name IN ?", levelNames)
+	case consts.TargetTag:
+		if targetDetail == nil || *targetDetail == "" {
+			return nil, fmt.Errorf("target detail is required for tag target type")
+		}
+		var tagNames []string
+		if err := json.Unmarshal([]byte(*targetDetail), &tagNames); err != nil {
+			return nil, fmt.Errorf("invalid target detail format for tag: %w", err)
+		}
+		if len(tagNames) == 0 {
+			return []*entity.Player{}, nil
+		}
+		query = query.Joins("JOIN player_tags ON players.id = player_tags.player_id").
+			Joins("JOIN tags ON player_tags.tag_id = tags.id").
+			Where("tags.name IN ?", tagNames).
+			Distinct()
 	case consts.TargetAll:
 	default:
 		return nil, fmt.Errorf("unsupported target type: %s", targetType)
