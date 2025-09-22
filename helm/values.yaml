@@ -9,7 +9,6 @@ app:
   image:
     repository: 637423324672.dkr.ecr.ap-northeast-1.amazonaws.com/quantumcat/fatnotificationcat
     tag: latest
-  replicas: 1
   resources:
     requests:
       cpu: 10m

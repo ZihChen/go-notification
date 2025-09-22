@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "fatnotificationcat.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.app.replicas }}
+  replicas: 1
   selector:
     matchLabels:
       {{- include "fatnotificationcat.labels" . | nindent 6 }}
