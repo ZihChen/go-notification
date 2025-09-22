@@ -194,6 +194,7 @@ The project maintains structured documentation for development guidance:
 - **docs/claude/archive/** - Completed feature archives
 
 ### Current Status
+**v1.6+ 系統性能優化完成**: Level/Tag查詢邏輯優化，使用直接ID查詢取代低效映射，提升性能與資料完整性  
 **v1.6 資料搬遷系統準備中**: DB資料搬遷系統技術規格完成，進入Phase 1基礎架構建立階段  
 **v1.5+ 遷移系統強化完成**: 資料庫遷移系統DSN驗證、性能優化、LegacyID支援與程式碼品質全面提升  
 **v1.5 系統優化完成**: 資料架構統一、物件類型標準化與測試基礎設施完善  
@@ -204,9 +205,15 @@ The project maintains structured documentation for development guidance:
 
 ## Development Specifications
 
-### Current Focus: Database Migration System & v1.6 Data Migration Preparation (2025-09-17)
+### Current Focus: Performance Optimization & Data Migration System (2025-09-22)
 
 **Recently Completed:**
+- ✅ Level/Tag查詢邏輯性能優化 (v1.6+, 2025-09-22)
+  - 實現直接ID查詢取代merchant_id全量查詢+映射的低效模式
+  - 新增validateLevelIDs和validateTagIDs函數進行ID存在性驗證
+  - 更新FindByTargetType方法簽名支援targetDetail參數
+  - 完成Repository層FindByIDs方法實現
+  - 修復所有相關測試確保系統穩定性
 - ✅ Database migration system enhancement with DSN validation and confirmation mechanism
 - ✅ Migration system code quality improvement and comprehensive error handling optimization
 - ✅ Database migration parameter processing and data query logic enhancement with performance improvements
