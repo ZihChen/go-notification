@@ -76,21 +76,21 @@ type PlayerResponse struct {
 
 // MessageCampaignResponse 訊息活動回應 DTO
 type MessageCampaignResponse struct {
-	ID             uint64     `json:"id"`
-	GlobalID       string     `json:"global_id"`
-	MerchantID     uint64     `json:"merchant_id"`
-	Title          string     `json:"title"`
-	Content        string     `json:"content"`
-	TargetType     string     `json:"target_type"`
-	TargetCriteria string     `json:"target_criteria,omitempty"`
-	ScheduledAt    *time.Time `json:"scheduled_at,omitempty"`
-	Status         string     `json:"status"`
-	SentCount      int        `json:"sent_count"`
-	ReadCount      int        `json:"read_count"`
-	IsScheduled    bool       `json:"is_scheduled"`
-	ProcessedAt    *time.Time `json:"processed_at,omitempty"`
-	CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	ID           uint64     `json:"id"`
+	GlobalID     string     `json:"global_id"`
+	MerchantID   uint64     `json:"merchant_id"`
+	Title        string     `json:"title"`
+	Content      string     `json:"content"`
+	TargetType   string     `json:"target_type"`
+	TargetDetail []string   `json:"target_detail,omitempty"`
+	ScheduledAt  *time.Time `json:"scheduled_at,omitempty"`
+	Status       string     `json:"status"`
+	SentCount    int        `json:"sent_count"`
+	ReadCount    int        `json:"read_count"`
+	IsScheduled  bool       `json:"is_scheduled"`
+	ProcessedAt  *time.Time `json:"processed_at,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 }
 
 // MessageCampaignListResponse 訊息活動列表回應 DTO

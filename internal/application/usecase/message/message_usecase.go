@@ -330,12 +330,98 @@ func (u *MessageUseCase) GetMessageCampaign(
 
 	// 轉換為 DTO
 	response := &dto.MessageCampaignResponse{
-		ID:          campaign.ID,
-		GlobalID:    campaign.GlobalID,
-		MerchantID:  campaign.MerchantID,
-		Title:       campaign.Title,
-		Content:     campaign.Content,
-		TargetType:  campaign.Target,
+		ID:         campaign.ID,
+		GlobalID:   campaign.GlobalID,
+		MerchantID: campaign.MerchantID,
+		Title:      campaign.Title,
+		Content:    campaign.Content,
+		TargetType: campaign.Target,
+		TargetDetail: func() []string {
+			if campaign.TargetDetail == nil {
+				return []string{}
+			}
+
+			switch campaign.Target {
+			case consts.TargetPlayer:
+				// 對於 player，直接解析為 []string
+				var playerAccounts []string
+				if err := json.Unmarshal([]byte(*campaign.TargetDetail), &playerAccounts); err != nil {
+					u.logger.WarnLog("Failed to unmarshal player target detail",
+						u.logger.String("target_detail", *campaign.TargetDetail),
+						u.logger.Error("err", err))
+					return []string{}
+				}
+				return playerAccounts
+
+			case consts.TargetLevel:
+				// 對於 level，透過 ID 查詢並回傳 level name
+				var levelIDStrings []string
+				if err := json.Unmarshal([]byte(*campaign.TargetDetail), &levelIDStrings); err != nil {
+					u.logger.WarnLog("Failed to unmarshal level target detail",
+						u.logger.String("target_detail", *campaign.TargetDetail),
+						u.logger.Error("err", err))
+					return []string{}
+				}
+
+				levelIDs, err := convertStringIDsToUint64(levelIDStrings)
+				if err != nil {
+					u.logger.WarnLog("Failed to convert level IDs",
+						u.logger.Any("level_id_strings", levelIDStrings),
+						u.logger.Error("err", err))
+					return []string{}
+				}
+
+				levels, err := u.levelRepo.FindByIDs(ctx, levelIDs)
+				if err != nil {
+					u.logger.WarnLog("Failed to find levels by IDs",
+						u.logger.Any("level_ids", levelIDs),
+						u.logger.Error("err", err))
+					return []string{}
+				}
+
+				levelNames := make([]string, len(levels))
+				for i, level := range levels {
+					levelNames[i] = level.Name
+				}
+				return levelNames
+
+			case consts.TargetTag:
+				// 對於 tag，透過 ID 查詢並回傳 tag name
+				var tagIDStrings []string
+				if err := json.Unmarshal([]byte(*campaign.TargetDetail), &tagIDStrings); err != nil {
+					u.logger.WarnLog("Failed to unmarshal tag target detail",
+						u.logger.String("target_detail", *campaign.TargetDetail),
+						u.logger.Error("err", err))
+					return []string{}
+				}
+
+				tagIDs, err := convertStringIDsToUint64(tagIDStrings)
+				if err != nil {
+					u.logger.WarnLog("Failed to convert tag IDs",
+						u.logger.Any("tag_id_strings", tagIDStrings),
+						u.logger.Error("err", err))
+					return []string{}
+				}
+
+				tags, err := u.tagRepo.FindByIDs(ctx, tagIDs)
+				if err != nil {
+					u.logger.WarnLog("Failed to find tags by IDs",
+						u.logger.Any("tag_ids", tagIDs),
+						u.logger.Error("err", err))
+					return []string{}
+				}
+
+				tagNames := make([]string, len(tags))
+				for i, tag := range tags {
+					tagNames[i] = tag.Name
+				}
+				return tagNames
+
+			default:
+				// 其他類型無需特殊處理
+				return []string{}
+			}
+		}(),
 		ScheduledAt: campaign.SendStartTime,
 		Status:      campaign.Status,
 		SentCount:   int(campaign.RealSentCount),
