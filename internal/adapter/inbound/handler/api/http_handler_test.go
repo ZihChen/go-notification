@@ -260,6 +260,62 @@ func (m *MockMessageUseCase) CreateOrUpdateMerchantAutoSettings(
 	return args.Get(0).(*dto.AutoSettingsOperationResponse), args.Error(1)
 }
 
+// MockPlayerLevelUseCase for testing
+type MockPlayerLevelUseCase struct {
+	mock.Mock
+}
+
+func (m *MockPlayerLevelUseCase) SyncPlayerLevel(
+	ctx context.Context,
+	data *event.IdentityPlayerLevelSyncEvent,
+) error {
+	args := m.Called(ctx, data)
+	return args.Error(0)
+}
+
+func (m *MockPlayerLevelUseCase) GetLevelsByMerchantID(
+	ctx context.Context,
+	merchantID uint64,
+) (*dto.LevelListResponse, error) {
+	args := m.Called(ctx, merchantID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*dto.LevelListResponse), args.Error(1)
+}
+
+// MockPlayerTagUseCase for testing
+type MockPlayerTagUseCase struct {
+	mock.Mock
+}
+
+func (m *MockPlayerTagUseCase) SyncPlayerTags(
+	ctx context.Context,
+	data *event.IdentityPlayerTagSyncEvent,
+) error {
+	args := m.Called(ctx, data)
+	return args.Error(0)
+}
+
+func (m *MockPlayerTagUseCase) SyncTag(
+	ctx context.Context,
+	data *event.IdentityTagSyncEvent,
+) error {
+	args := m.Called(ctx, data)
+	return args.Error(0)
+}
+
+func (m *MockPlayerTagUseCase) GetTagsByMerchantID(
+	ctx context.Context,
+	merchantID uint64,
+) (*dto.TagListResponse, error) {
+	args := m.Called(ctx, merchantID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*dto.TagListResponse), args.Error(1)
+}
+
 // Test helper functions
 func createMockDependencies(
 	t *testing.T,
@@ -287,7 +343,18 @@ func createTestHandler(
 	messageUseCase inbound.MessageUseCase,
 	logger infrastructure.Logger,
 ) *HTTPHandler {
-	return NewHTTPHandler(merchantUseCase, playerUseCase, managerUseCase, messageUseCase, logger)
+	// 創建 mock level 和 tag use cases
+	levelUseCase := &MockPlayerLevelUseCase{}
+	tagUseCase := &MockPlayerTagUseCase{}
+	return NewHTTPHandler(
+		merchantUseCase,
+		playerUseCase,
+		managerUseCase,
+		messageUseCase,
+		levelUseCase,
+		tagUseCase,
+		logger,
+	)
 }
 
 // JSON 請求輔助函數

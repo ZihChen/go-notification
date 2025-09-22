@@ -201,7 +201,10 @@ func (u *PlayerTagUseCase) executeLocked(
 	return fn()
 }
 
-func (u *PlayerTagUseCase) GetTagsByMerchantID(ctx context.Context, merchantID uint64) (*dto.TagListResponse, error) {
+func (u *PlayerTagUseCase) GetTagsByMerchantID(
+	ctx context.Context,
+	merchantID uint64,
+) (*dto.TagListResponse, error) {
 	ctx, span := tracing.StartSpan(ctx, "PlayerTagUseCase.GetTagsByMerchantID")
 	defer tracing.SpanEnd(span)
 

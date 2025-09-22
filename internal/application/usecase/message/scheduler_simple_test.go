@@ -45,8 +45,9 @@ func TestProcessScheduledCampaigns_Simple(t *testing.T) {
 		Return(campaign, nil).Once()
 
 	// 模擬空玩家列表（快速完成）
-	playerRepo.On("FindByTargetType", mocks.ContextMatcher(), campaign.Target, 0, 5000).
-		Return([]*entity.Player{}, nil).Once()
+	playerRepo.On("FindByTargetType", mocks.ContextMatcher(), campaign.Target, campaign.TargetDetail, 0, 5000).
+		Return([]*entity.Player{}, nil).
+		Once()
 
 	// 更新統計和狀態
 	campaignRepo.On("UpdateSentCount", mocks.ContextMatcher(), campaign.ID, int64(0)).
@@ -128,8 +129,9 @@ func TestSendCampaignToPlayersAsync_Simple(t *testing.T) {
 		Return(campaign, nil).Once()
 
 	// 模擬空玩家列表
-	playerRepo.On("FindByTargetType", mocks.ContextMatcher(), campaign.Target, 0, 5000).
-		Return([]*entity.Player{}, nil).Once()
+	playerRepo.On("FindByTargetType", mocks.ContextMatcher(), campaign.Target, campaign.TargetDetail, 0, 5000).
+		Return([]*entity.Player{}, nil).
+		Once()
 
 	// 更新統計和狀態
 	campaignRepo.On("UpdateSentCount", mocks.ContextMatcher(), campaign.ID, int64(0)).
@@ -178,11 +180,13 @@ func TestSendCampaignToPlayersAsync_WithPlayers(t *testing.T) {
 		Return(campaign, nil).Once()
 
 	// 模擬分頁查詢 - 第一次查詢返回所有玩家
-	playerRepo.On("FindByTargetType", mocks.ContextMatcher(), campaign.Target, 0, 5000).
-		Return(players, nil).Once()
+	playerRepo.On("FindByTargetType", mocks.ContextMatcher(), campaign.Target, campaign.TargetDetail, 0, 5000).
+		Return(players, nil).
+		Once()
 	// 第二次查詢返回空（表示沒有更多數據）- 只有當第一批數據達到限制時才會調用
-	playerRepo.On("FindByTargetType", mocks.ContextMatcher(), campaign.Target, 100, 5000).
-		Return([]*entity.Player{}, nil).Maybe()
+	playerRepo.On("FindByTargetType", mocks.ContextMatcher(), campaign.Target, campaign.TargetDetail, 100, 5000).
+		Return([]*entity.Player{}, nil).
+		Maybe()
 
 	// 模擬批次消息檢查 - 創建結果映射
 	expectedResult := make(map[uint64]bool)

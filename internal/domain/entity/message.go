@@ -13,13 +13,13 @@ type MessageCampaign struct {
 	Title         string     `json:"title"`
 	MerchantID    uint64     `json:"merchant_id"`
 	GlobalID      string     `json:"global_id"`
-	LegacyID      *uint      `json:"legacy_id,omitempty"` // 舊系統的 notification ID，用於資料遷移
-	Content       string     `json:"content"`             // 可包含 HTML Tag
-	Target        string     `json:"target"`              // high_activity, low_activity, not_activity, player, level, tag, all
+	LegacyID      *uint      `json:"legacy_id,omitempty"`     // 舊系統的 notification ID，用於資料遷移
+	Content       string     `json:"content"`                 // 可包含 HTML Tag
+	Target        string     `json:"target"`                  // high_activity, low_activity, not_activity, player, level, tag, all
 	TargetDetail  *string    `json:"target_detail,omitempty"` // JSON string containing target-specific details (player accounts, level names, tag names)
-	Status        string     `json:"status"`              // draft, scheduled, sent, cancelled, failed
-	AutoSend      bool       `json:"auto_send"`           // 是否為系統自動訊息
-	RealSentCount int64      `json:"real_sent_count"`     // 實際成功發送人數
+	Status        string     `json:"status"`                  // draft, scheduled, sent, cancelled, failed
+	AutoSend      bool       `json:"auto_send"`               // 是否為系統自動訊息
+	RealSentCount int64      `json:"real_sent_count"`         // 實際成功發送人數
 	SendStartTime *time.Time `json:"send_start_time,omitempty"`
 	SendEndTime   *time.Time `json:"send_end_time,omitempty"`
 	CreatedBy     string     `json:"created_by"`           // 建立者帳號或名稱

@@ -65,7 +65,10 @@ func (u *LevelUseCase) SyncPlayerLevel(
 	return nil
 }
 
-func (u *LevelUseCase) GetLevelsByMerchantID(ctx context.Context, merchantID uint64) (*dto.LevelListResponse, error) {
+func (u *LevelUseCase) GetLevelsByMerchantID(
+	ctx context.Context,
+	merchantID uint64,
+) (*dto.LevelListResponse, error) {
 	ctx, span := tracing.StartSpan(ctx, "LevelUseCase.GetLevelsByMerchantID")
 	defer tracing.SpanEnd(span)
 

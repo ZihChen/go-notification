@@ -69,7 +69,13 @@ func (u *MessageUseCase) SendCampaignToPlayers(ctx context.Context, campaignID u
 	offset := 0
 
 	for {
-		players, err := u.playerRepo.FindByTargetType(ctx, campaign.Target, campaign.TargetDetail, offset, batchSize)
+		players, err := u.playerRepo.FindByTargetType(
+			ctx,
+			campaign.Target,
+			campaign.TargetDetail,
+			offset,
+			batchSize,
+		)
 		if err != nil {
 			tracing.RecordSpanError(span, err)
 			return fmt.Errorf("find players: %w", err)
@@ -337,7 +343,13 @@ func (u *MessageUseCase) producePlayerBatches(
 		default:
 		}
 
-		players, err := u.playerRepo.FindByTargetType(ctx, campaign.Target, campaign.TargetDetail, offset, batchSize)
+		players, err := u.playerRepo.FindByTargetType(
+			ctx,
+			campaign.Target,
+			campaign.TargetDetail,
+			offset,
+			batchSize,
+		)
 		if err != nil {
 			return fmt.Errorf("find players at offset %d: %w", offset, err)
 		}

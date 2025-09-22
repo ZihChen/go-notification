@@ -83,7 +83,7 @@ func (r *TagRepository) FindByGlobalIDs(
 	if result.Error != nil {
 		return nil, fmt.Errorf("find tags by global ids failed: %w", result.Error)
 	}
-	
+
 	tags := make([]*entity.Tag, len(dbTags))
 	for i, dbTag := range dbTags {
 		tags[i] = mapToDomainTag(&dbTag)
@@ -91,7 +91,10 @@ func (r *TagRepository) FindByGlobalIDs(
 	return tags, nil
 }
 
-func (r *TagRepository) FindByMerchantID(ctx context.Context, merchantID uint64) ([]*entity.Tag, error) {
+func (r *TagRepository) FindByMerchantID(
+	ctx context.Context,
+	merchantID uint64,
+) ([]*entity.Tag, error) {
 	var dbTags []models.Tag
 	err := r.db.WithContext(ctx).
 		Where("merchant_id = ?", merchantID).
@@ -99,6 +102,23 @@ func (r *TagRepository) FindByMerchantID(ctx context.Context, merchantID uint64)
 		Find(&dbTags).Error
 	if err != nil {
 		return nil, fmt.Errorf("find tags by merchant ID failed: %w", err)
+	}
+
+	tags := make([]*entity.Tag, len(dbTags))
+	for i, dbTag := range dbTags {
+		tags[i] = mapToDomainTag(&dbTag)
+	}
+	return tags, nil
+}
+
+func (r *TagRepository) FindByIDs(ctx context.Context, ids []uint64) ([]*entity.Tag, error) {
+	var dbTags []models.Tag
+	err := r.db.WithContext(ctx).
+		Where("id IN ?", ids).
+		Where("deleted_at IS NULL").
+		Find(&dbTags).Error
+	if err != nil {
+		return nil, fmt.Errorf("find tags by IDs failed: %w", err)
 	}
 
 	tags := make([]*entity.Tag, len(dbTags))

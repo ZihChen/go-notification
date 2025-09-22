@@ -153,6 +153,17 @@ func (m *MockPlayerLevelUseCase) SyncPlayerLevel(
 	return args.Error(0)
 }
 
+func (m *MockPlayerLevelUseCase) GetLevelsByMerchantID(
+	ctx context.Context,
+	merchantID uint64,
+) (*dto.LevelListResponse, error) {
+	args := m.Called(ctx, merchantID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*dto.LevelListResponse), args.Error(1)
+}
+
 type MockPlayerTagUseCase struct {
 	mock.Mock
 }
@@ -171,6 +182,17 @@ func (m *MockPlayerTagUseCase) SyncTag(
 ) error {
 	args := m.Called(ctx, data)
 	return args.Error(0)
+}
+
+func (m *MockPlayerTagUseCase) GetTagsByMerchantID(
+	ctx context.Context,
+	merchantID uint64,
+) (*dto.TagListResponse, error) {
+	args := m.Called(ctx, merchantID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*dto.TagListResponse), args.Error(1)
 }
 
 // Helper function for creating tasks

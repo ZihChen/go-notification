@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -87,11 +88,11 @@ func (u *MessageUseCase) CreateMessageCampaign(
 		return fmt.Errorf("copy campaign failed: %w", err)
 	}
 
-	// 處理 TargetDetail 字段
-	if len(campaign.TargetDetail) > 0 {
-		switch campaign.Target {
-		case consts.TargetPlayer:
-			// 對於 player，直接存儲 account 數組
+	// 處理不同的目標類型
+	switch campaign.Target {
+	case consts.TargetPlayer:
+		if len(campaign.TargetDetail) > 0 {
+			// 對於 player，直接使用 TargetDetail 欄位
 			targetDetailBytes, err := json.Marshal(campaign.TargetDetail)
 			if err != nil {
 				tracing.RecordSpanError(span, err)
@@ -99,28 +100,42 @@ func (u *MessageUseCase) CreateMessageCampaign(
 			}
 			targetDetailStr := string(targetDetailBytes)
 			campaignEntity.TargetDetail = &targetDetailStr
-		case consts.TargetLevel:
-			// 對於 level，需要根據 ID 獲取名稱
-			levelNames, err := u.getLevelNamesByIDs(ctx, campaign.TargetDetail, merchant.ID)
+		}
+	case consts.TargetLevel:
+		if len(campaign.TargetDetail) > 0 {
+			// 對於 level，轉換字符串ID為uint64並驗證存在性，然後存儲原始字符串IDs
+			levelIDs, err := convertStringIDsToUint64(campaign.TargetDetail)
 			if err != nil {
 				tracing.RecordSpanError(span, err)
-				return fmt.Errorf("get level names: %w", err)
+				return fmt.Errorf("convert level IDs: %w", err)
 			}
-			targetDetailBytes, err := json.Marshal(levelNames)
+			err = u.validateLevelIDs(ctx, levelIDs)
+			if err != nil {
+				tracing.RecordSpanError(span, err)
+				return fmt.Errorf("validate level IDs: %w", err)
+			}
+			targetDetailBytes, err := json.Marshal(campaign.TargetDetail)
 			if err != nil {
 				tracing.RecordSpanError(span, err)
 				return fmt.Errorf("marshal target detail for level: %w", err)
 			}
 			targetDetailStr := string(targetDetailBytes)
 			campaignEntity.TargetDetail = &targetDetailStr
-		case consts.TargetTag:
-			// 對於 tag，需要根據 ID 獲取名稱
-			tagNames, err := u.getTagNamesByIDs(ctx, campaign.TargetDetail, merchant.ID)
+		}
+	case consts.TargetTag:
+		if len(campaign.TargetDetail) > 0 {
+			// 對於 tag，轉換字符串ID為uint64並驗證存在性，然後存儲原始字符串IDs
+			tagIDs, err := convertStringIDsToUint64(campaign.TargetDetail)
 			if err != nil {
 				tracing.RecordSpanError(span, err)
-				return fmt.Errorf("get tag names: %w", err)
+				return fmt.Errorf("convert tag IDs: %w", err)
 			}
-			targetDetailBytes, err := json.Marshal(tagNames)
+			err = u.validateTagIDs(ctx, tagIDs)
+			if err != nil {
+				tracing.RecordSpanError(span, err)
+				return fmt.Errorf("validate tag IDs: %w", err)
+			}
+			targetDetailBytes, err := json.Marshal(campaign.TargetDetail)
 			if err != nil {
 				tracing.RecordSpanError(span, err)
 				return fmt.Errorf("marshal target detail for tag: %w", err)
@@ -186,11 +201,11 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 		return fmt.Errorf("copy campaign failed: %w", err)
 	}
 
-	// 處理 TargetDetail 字段
-	if len(campaign.TargetDetail) > 0 {
-		switch campaign.Target {
-		case consts.TargetPlayer:
-			// 對於 player，直接存儲 account 數組
+	// 處理不同的目標類型
+	switch campaign.Target {
+	case consts.TargetPlayer:
+		if len(campaign.TargetDetail) > 0 {
+			// 對於 player，直接使用 TargetDetail 欄位
 			targetDetailBytes, err := json.Marshal(campaign.TargetDetail)
 			if err != nil {
 				tracing.RecordSpanError(span, err)
@@ -198,28 +213,42 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 			}
 			targetDetailStr := string(targetDetailBytes)
 			campaignEntity.TargetDetail = &targetDetailStr
-		case consts.TargetLevel:
-			// 對於 level，需要根據 ID 獲取名稱
-			levelNames, err := u.getLevelNamesByIDs(ctx, campaign.TargetDetail, campaignEntity.MerchantID)
+		}
+	case consts.TargetLevel:
+		if len(campaign.TargetDetail) > 0 {
+			// 對於 level，轉換字符串ID為uint64並驗證存在性，然後存儲原始字符串IDs
+			levelIDs, err := convertStringIDsToUint64(campaign.TargetDetail)
 			if err != nil {
 				tracing.RecordSpanError(span, err)
-				return fmt.Errorf("get level names: %w", err)
+				return fmt.Errorf("convert level IDs: %w", err)
 			}
-			targetDetailBytes, err := json.Marshal(levelNames)
+			err = u.validateLevelIDs(ctx, levelIDs)
+			if err != nil {
+				tracing.RecordSpanError(span, err)
+				return fmt.Errorf("validate level IDs: %w", err)
+			}
+			targetDetailBytes, err := json.Marshal(campaign.TargetDetail)
 			if err != nil {
 				tracing.RecordSpanError(span, err)
 				return fmt.Errorf("marshal target detail for level: %w", err)
 			}
 			targetDetailStr := string(targetDetailBytes)
 			campaignEntity.TargetDetail = &targetDetailStr
-		case consts.TargetTag:
-			// 對於 tag，需要根據 ID 獲取名稱
-			tagNames, err := u.getTagNamesByIDs(ctx, campaign.TargetDetail, campaignEntity.MerchantID)
+		}
+	case consts.TargetTag:
+		if len(campaign.TargetDetail) > 0 {
+			// 對於 tag，轉換字符串ID為uint64並驗證存在性，然後存儲原始字符串IDs
+			tagIDs, err := convertStringIDsToUint64(campaign.TargetDetail)
 			if err != nil {
 				tracing.RecordSpanError(span, err)
-				return fmt.Errorf("get tag names: %w", err)
+				return fmt.Errorf("convert tag IDs: %w", err)
 			}
-			targetDetailBytes, err := json.Marshal(tagNames)
+			err = u.validateTagIDs(ctx, tagIDs)
+			if err != nil {
+				tracing.RecordSpanError(span, err)
+				return fmt.Errorf("validate tag IDs: %w", err)
+			}
+			targetDetailBytes, err := json.Marshal(campaign.TargetDetail)
 			if err != nil {
 				tracing.RecordSpanError(span, err)
 				return fmt.Errorf("marshal target detail for tag: %w", err)
@@ -227,9 +256,6 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 			targetDetailStr := string(targetDetailBytes)
 			campaignEntity.TargetDetail = &targetDetailStr
 		}
-	} else {
-		// 如果沒有 TargetDetail，清空該字段
-		campaignEntity.TargetDetail = nil
 	}
 
 	if err = u.campaignRepo.Update(ctx, campaignEntity); err != nil {
@@ -671,52 +697,59 @@ func (u *MessageUseCase) CreateOrUpdateMerchantAutoSettings(
 	}, nil
 }
 
-// getLevelNamesByIDs 根據等級ID獲取等級名稱
-func (u *MessageUseCase) getLevelNamesByIDs(ctx context.Context, levelIDs []string, merchantID uint64) ([]string, error) {
-	// 獲取商戶的所有等級
-	levels, err := u.levelRepo.FindByMerchantID(ctx, merchantID)
+// validateLevelIDs 驗證等級ID是否存在
+func (u *MessageUseCase) validateLevelIDs(ctx context.Context, levelIDs []uint64) error {
+	// 直接根據ID獲取等級
+	levels, err := u.levelRepo.FindByIDs(ctx, levelIDs)
 	if err != nil {
-		return nil, fmt.Errorf("find levels by merchant ID: %w", err)
+		return fmt.Errorf("find levels by IDs: %w", err)
 	}
 
-	// 創建 ID 到名稱的映射
-	idToName := make(map[string]string)
-	for _, level := range levels {
-		idToName[fmt.Sprintf("%d", level.ID)] = level.Name
+	// 檢查是否所有ID都找到了對應的等級
+	if len(levels) != len(levelIDs) {
+		return fmt.Errorf(
+			"some level IDs do not exist: expected %d, found %d",
+			len(levelIDs),
+			len(levels),
+		)
 	}
 
-	// 根據 ID 獲取名稱
-	names := make([]string, 0, len(levelIDs))
-	for _, id := range levelIDs {
-		if name, exists := idToName[id]; exists {
-			names = append(names, name)
-		}
-	}
-
-	return names, nil
+	return nil
 }
 
-// getTagNamesByIDs 根據標籤ID獲取標籤名稱
-func (u *MessageUseCase) getTagNamesByIDs(ctx context.Context, tagIDs []string, merchantID uint64) ([]string, error) {
-	// 獲取商戶的所有標籤
-	tags, err := u.tagRepo.FindByMerchantID(ctx, merchantID)
+// validateTagIDs 驗證標籤ID是否存在
+func (u *MessageUseCase) validateTagIDs(ctx context.Context, tagIDs []uint64) error {
+	// 直接根據ID獲取標籤
+	tags, err := u.tagRepo.FindByIDs(ctx, tagIDs)
 	if err != nil {
-		return nil, fmt.Errorf("find tags by merchant ID: %w", err)
+		return fmt.Errorf("find tags by IDs: %w", err)
 	}
 
-	// 創建 ID 到名稱的映射
-	idToName := make(map[string]string)
-	for _, tag := range tags {
-		idToName[fmt.Sprintf("%d", tag.ID)] = tag.Name
+	// 檢查是否所有ID都找到了對應的標籤
+	if len(tags) != len(tagIDs) {
+		return fmt.Errorf(
+			"some tag IDs do not exist: expected %d, found %d",
+			len(tagIDs),
+			len(tags),
+		)
 	}
 
-	// 根據 ID 獲取名稱
-	names := make([]string, 0, len(tagIDs))
-	for _, id := range tagIDs {
-		if name, exists := idToName[id]; exists {
-			names = append(names, name)
+	return nil
+}
+
+// convertStringIDsToUint64 將字符串ID數組轉換為uint64數組
+func convertStringIDsToUint64(stringIDs []string) ([]uint64, error) {
+	if len(stringIDs) == 0 {
+		return nil, nil
+	}
+
+	ids := make([]uint64, len(stringIDs))
+	for i, strID := range stringIDs {
+		id, err := strconv.ParseUint(strID, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid ID format '%s': %w", strID, err)
 		}
+		ids[i] = id
 	}
-
-	return names, nil
+	return ids, nil
 }

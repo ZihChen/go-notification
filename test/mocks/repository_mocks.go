@@ -235,10 +235,11 @@ func NewPlayerRepositoryMock(t *testing.T) *PlayerRepositoryMock {
 
 func (m *PlayerRepositoryMock) FindByTargetType(
 	ctx context.Context,
-	target string,
+	targetType string,
+	targetDetail *string,
 	offset, limit int,
 ) ([]*entity.Player, error) {
-	args := m.Called(ctx, target, offset, limit)
+	args := m.Called(ctx, targetType, targetDetail, offset, limit)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -545,6 +546,28 @@ func (m *LevelRepositoryMock) FindByGlobalID(
 	return args.Get(0).(*entity.Level), args.Error(1)
 }
 
+func (m *LevelRepositoryMock) FindByMerchantID(
+	ctx context.Context,
+	merchantID uint64,
+) ([]*entity.Level, error) {
+	args := m.Called(ctx, merchantID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.Level), args.Error(1)
+}
+
+func (m *LevelRepositoryMock) FindByIDs(
+	ctx context.Context,
+	ids []uint64,
+) ([]*entity.Level, error) {
+	args := m.Called(ctx, ids)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.Level), args.Error(1)
+}
+
 func (m *LevelRepositoryMock) SetupSuccess() {}
 func (m *LevelRepositoryMock) SetupError()   {}
 func (m *LevelRepositoryMock) SetupEmpty()   {}
@@ -578,6 +601,28 @@ func (m *TagRepositoryMock) FindByGlobalIDs(
 	globalIDs []string,
 ) ([]*entity.Tag, error) {
 	args := m.Called(ctx, globalIDs)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.Tag), args.Error(1)
+}
+
+func (m *TagRepositoryMock) FindByMerchantID(
+	ctx context.Context,
+	merchantID uint64,
+) ([]*entity.Tag, error) {
+	args := m.Called(ctx, merchantID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.Tag), args.Error(1)
+}
+
+func (m *TagRepositoryMock) FindByIDs(
+	ctx context.Context,
+	ids []uint64,
+) ([]*entity.Tag, error) {
+	args := m.Called(ctx, ids)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

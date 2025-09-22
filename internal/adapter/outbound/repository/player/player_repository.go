@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
@@ -113,29 +114,45 @@ func (r *PlayerRepository) FindByTargetType(
 		if targetDetail == nil || *targetDetail == "" {
 			return nil, fmt.Errorf("target detail is required for level target type")
 		}
-		var levelNames []string
-		if err := json.Unmarshal([]byte(*targetDetail), &levelNames); err != nil {
+		var levelIDStrings []string
+		if err := json.Unmarshal([]byte(*targetDetail), &levelIDStrings); err != nil {
 			return nil, fmt.Errorf("invalid target detail format for level: %w", err)
 		}
-		if len(levelNames) == 0 {
+		if len(levelIDStrings) == 0 {
 			return []*entity.Player{}, nil
 		}
-		query = query.Joins("JOIN levels ON players.level_id = levels.id").
-			Where("levels.name IN ?", levelNames)
+		// 轉換字符串ID為int
+		levelIDs := make([]int, len(levelIDStrings))
+		for i, idStr := range levelIDStrings {
+			id, err := strconv.Atoi(idStr)
+			if err != nil {
+				return nil, fmt.Errorf("invalid level ID format '%s': %w", idStr, err)
+			}
+			levelIDs[i] = id
+		}
+		query = query.Where("players.level_id IN ?", levelIDs)
 	case consts.TargetTag:
 		if targetDetail == nil || *targetDetail == "" {
 			return nil, fmt.Errorf("target detail is required for tag target type")
 		}
-		var tagNames []string
-		if err := json.Unmarshal([]byte(*targetDetail), &tagNames); err != nil {
+		var tagIDStrings []string
+		if err := json.Unmarshal([]byte(*targetDetail), &tagIDStrings); err != nil {
 			return nil, fmt.Errorf("invalid target detail format for tag: %w", err)
 		}
-		if len(tagNames) == 0 {
+		if len(tagIDStrings) == 0 {
 			return []*entity.Player{}, nil
 		}
+		// 轉換字符串ID為int
+		tagIDs := make([]int, len(tagIDStrings))
+		for i, idStr := range tagIDStrings {
+			id, err := strconv.Atoi(idStr)
+			if err != nil {
+				return nil, fmt.Errorf("invalid tag ID format '%s': %w", idStr, err)
+			}
+			tagIDs[i] = id
+		}
 		query = query.Joins("JOIN player_tags ON players.id = player_tags.player_id").
-			Joins("JOIN tags ON player_tags.tag_id = tags.id").
-			Where("tags.name IN ?", tagNames).
+			Where("player_tags.tag_id IN ?", tagIDs).
 			Distinct()
 	case consts.TargetAll:
 	default:
