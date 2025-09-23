@@ -8,6 +8,7 @@ import (
 	"github.com/google/wire"
 	"github.com/hibiken/asynq"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/api"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/consumer"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/migrate"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/scheduler"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/worker"
@@ -120,11 +121,21 @@ func provideWorkerServer(cfg *config.Config, logger infrastructure.Logger) (*asy
 	return queue.NewWorkerServer(cfg, logger)
 }
 
-// InitializeConsumer 初始化 Consumer 服務的 KDS 服務
+// InitializeConsumer 初始化 Consumer 服務的 KDS 服務 (已廢棄)
 func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, redisManager *redisCache.Manager) (*kds.KDSService, error) {
 	wire.Build(
 		queue.NewQueueService,
 		kds.NewKDSService,
+	)
+	return nil, nil
+}
+
+// InitializeConsumerHandler 初始化 Consumer 服務的處理器
+func InitializeConsumerHandler(cfg *config.Config, logger infrastructure.Logger, redisManager *redisCache.Manager) (*consumer.ConsumerHandler, error) {
+	wire.Build(
+		queue.NewQueueService,
+		kds.NewKDSService,
+		consumer.NewConsumerHandler,
 	)
 	return nil, nil
 }

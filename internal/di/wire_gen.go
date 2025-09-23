@@ -11,6 +11,7 @@ import (
 	"github.com/google/wire"
 	"github.com/hibiken/asynq"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/api"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/consumer"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/migrate"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/scheduler"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/worker"
@@ -134,7 +135,7 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 	return workerComponents, nil
 }
 
-// InitializeConsumer 初始化 Consumer 服務的 KDS 服務
+// InitializeConsumer 初始化 Consumer 服務的 KDS 服務 (已廢棄)
 func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager) (*kds.KDSService, error) {
 	queueService, err := queue.NewQueueService(cfg, logger)
 	if err != nil {
@@ -145,6 +146,20 @@ func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, redisM
 		return nil, err
 	}
 	return kdsService, nil
+}
+
+// InitializeConsumerHandler 初始化 Consumer 服務的處理器
+func InitializeConsumerHandler(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager) (*consumer.ConsumerHandler, error) {
+	queueService, err := queue.NewQueueService(cfg, logger)
+	if err != nil {
+		return nil, err
+	}
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger)
+	if err != nil {
+		return nil, err
+	}
+	consumerHandler := consumer.NewConsumerHandler(kdsService, logger)
+	return consumerHandler, nil
 }
 
 // InitializeSchedulerComponents 初始化 Scheduler 服務的處理器
