@@ -2,12 +2,15 @@ package message
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/sync/errgroup"
@@ -197,7 +200,43 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 	tracing.RecordSpanAttributes(span,
 		attribute.String("campaign.title", campaign.Title),
 		attribute.String("campaign.target", campaign.Target),
+		attribute.Int("campaign.notification_types", int(campaign.NotificationTypes)),
 	)
+
+	// 檢查推播類型並處理App推播邏輯
+	shouldSendPushNotification := (campaign.NotificationTypes & 2) != 0 // bit 2 = App推播
+	shouldCreatePlayerMessage := (campaign.NotificationTypes & 1) != 0  // bit 1 = 站內信
+
+	if shouldSendPushNotification {
+		u.logger.InfoLog("Campaign requires push notification",
+			u.logger.Int64("campaign_id", int64(campaignID)),
+			u.logger.Int("notification_types", int(campaign.NotificationTypes)))
+
+		// 發送App推播
+		if err := u.sendAppPushNotification(ctx, campaign); err != nil {
+			u.logger.ErrorLog("Failed to send app push notification",
+				u.logger.Int64("campaign_id", int64(campaignID)),
+				u.logger.Error("error", err))
+			// 推播失敗不影響主流程，繼續處理站內信
+		}
+	}
+
+	// 如果只有App推播(notification_types = 2)，不需要建立player_message
+	if !shouldCreatePlayerMessage {
+		u.logger.InfoLog("Campaign is push-only, skipping player message creation",
+			u.logger.Int64("campaign_id", int64(campaignID)),
+			u.logger.Int("notification_types", int(campaign.NotificationTypes)))
+
+		// 直接更新狀態為已發送
+		if err := u.campaignRepo.UpdateStatus(ctx, campaignID, consts.MessageCampaignStatusSent); err != nil {
+			u.logger.WarnLog("Failed to update push-only campaign status",
+				u.logger.Int64("campaign_id", int64(campaignID)),
+				u.logger.Error("err", err))
+		}
+
+		tracing.TraceEvent(span, "Push-only campaign completed")
+		return nil
+	}
 
 	// 配置參數
 	const (
@@ -476,4 +515,199 @@ func (u *MessageUseCase) processSingleBatch(
 	}
 
 	return int64(len(newMessages)), nil
+}
+
+// sendAppPushNotification 發送App推播通知（批次處理所有目標玩家）
+func (u *MessageUseCase) sendAppPushNotification(
+	ctx context.Context,
+	campaign *entity.MessageCampaign,
+) error {
+	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.sendAppPushNotification")
+	defer tracing.SpanEnd(span)
+
+	tracing.RecordSpanAttributes(span,
+		attribute.Int64("campaign.id", int64(campaign.ID)),
+		attribute.String("campaign.title", campaign.Title),
+	)
+
+	// 查詢商戶的推播API key
+	pushApiKey, err := u.pushApiKeyRepo.FindByMerchantID(ctx, campaign.MerchantID)
+	if err != nil {
+		if errors.Is(err, errmsg.ErrRepoPushKeyNotFound) {
+			u.logger.WarnLog("Merchant push API key not found, skipping push notification",
+				u.logger.Int64("campaign_id", int64(campaign.ID)),
+				u.logger.UInt64("merchant_id", campaign.MerchantID))
+			return nil // 沒有API key不算錯誤，跳過推播
+		}
+		tracing.RecordSpanError(span, err)
+		return fmt.Errorf("find merchant push API key: %w", err)
+	}
+
+	// 準備推播內容
+	pushContent := campaign.Content // 預設使用一般內容
+	if campaign.AppContent != nil && *campaign.AppContent != "" {
+		pushContent = *campaign.AppContent // 如果有專用App內容則使用
+	}
+
+	// 批次處理所有目標玩家
+	totalPushed, err := u.processPushNotificationInBatches(
+		ctx,
+		campaign,
+		pushApiKey.Key,
+		pushContent,
+	)
+	if err != nil {
+		tracing.RecordSpanError(span, err)
+		return fmt.Errorf("process push notification in batches: %w", err)
+	}
+
+	tracing.RecordSpanAttributes(span,
+		attribute.Int64("total_pushed", totalPushed),
+		attribute.String("push_content", pushContent),
+	)
+
+	u.logger.InfoLog("Push notification completed",
+		u.logger.Int64("campaign_id", int64(campaign.ID)),
+		u.logger.Int64("total_players_pushed", totalPushed))
+
+	return nil
+}
+
+// processPushNotificationInBatches 批次處理推播通知給所有目標玩家
+func (u *MessageUseCase) processPushNotificationInBatches(
+	ctx context.Context,
+	campaign *entity.MessageCampaign,
+	apiKey string,
+	pushContent string,
+) (int64, error) {
+	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.processPushNotificationInBatches")
+	defer tracing.SpanEnd(span)
+
+	const (
+		pushBatchSize  = 1000 // 每次推播的玩家數量限制
+		queryBatchSize = 5000 // 每次查詢的玩家數量
+	)
+
+	var totalPushed int64
+	offset := 0
+
+	for {
+		// 查詢一批目標玩家
+		players, err := u.playerRepo.FindByTargetType(
+			ctx,
+			campaign.Target,
+			campaign.TargetDetail,
+			offset,
+			queryBatchSize,
+		)
+		if err != nil {
+			tracing.RecordSpanError(span, err)
+			return totalPushed, fmt.Errorf("find players at offset %d: %w", offset, err)
+		}
+
+		if len(players) == 0 {
+			break // 沒有更多玩家
+		}
+
+		u.logger.InfoLog("Processing push batch",
+			u.logger.Int64("campaign_id", int64(campaign.ID)),
+			u.logger.Int("batch_size", len(players)),
+			u.logger.Int("offset", offset),
+			u.logger.Int64("total_pushed_so_far", totalPushed))
+
+		// 如果這批玩家超過推播批次大小，需要分割
+		for i := 0; i < len(players); i += pushBatchSize {
+			end := i + pushBatchSize
+			if end > len(players) {
+				end = len(players)
+			}
+
+			batchPlayers := players[i:end]
+			pushedCount, err := u.sendPushNotificationBatch(
+				ctx,
+				campaign,
+				apiKey,
+				pushContent,
+				batchPlayers,
+			)
+			if err != nil {
+				u.logger.ErrorLog("Failed to send push notification batch",
+					u.logger.Int64("campaign_id", int64(campaign.ID)),
+					u.logger.Int("batch_start", i),
+					u.logger.Int("batch_size", len(batchPlayers)),
+					u.logger.Error("error", err))
+				// 記錄錯誤但繼續處理下一批
+				continue
+			}
+			totalPushed += pushedCount
+		}
+
+		// 如果這批數據少於預期大小，說明已經到了最後一批
+		if len(players) < queryBatchSize {
+			break
+		}
+
+		offset += queryBatchSize
+	}
+
+	tracing.RecordSpanAttributes(span,
+		attribute.Int64("total_pushed", totalPushed),
+		attribute.String("campaign_target", campaign.Target),
+	)
+
+	u.logger.InfoLog("Completed push notification batches",
+		u.logger.Int64("campaign_id", int64(campaign.ID)),
+		u.logger.Int64("total_players_pushed", totalPushed))
+
+	return totalPushed, nil
+}
+
+// sendPushNotificationBatch 發送單批推播通知
+func (u *MessageUseCase) sendPushNotificationBatch(
+	ctx context.Context,
+	campaign *entity.MessageCampaign,
+	apiKey string,
+	pushContent string,
+	players []*entity.Player,
+) (int64, error) {
+	if len(players) == 0 {
+		return 0, nil
+	}
+
+	// 提取玩家帳號
+	playerAccounts := make([]string, len(players))
+	for i, player := range players {
+		playerAccounts[i] = player.Account
+	}
+
+	// 發送推播請求
+	pushRequest := &service.PushNotificationRequest{
+		Accounts: playerAccounts,
+		MsgTitle: campaign.Title,
+		MsgBody:  pushContent,
+	}
+
+	u.logger.InfoLog("Sending push notification batch",
+		u.logger.Int64("campaign_id", int64(campaign.ID)),
+		u.logger.Int("batch_size", len(playerAccounts)),
+		u.logger.String("api_key_prefix", apiKey[:10]+"..."))
+
+	response, err := u.pushService.SendPushNotification(ctx, apiKey, pushRequest)
+	if err != nil {
+		return 0, fmt.Errorf("send push notification: %w", err)
+	}
+
+	if response.Success {
+		u.logger.InfoLog("Push notification batch sent successfully",
+			u.logger.Int64("campaign_id", int64(campaign.ID)),
+			u.logger.Int("batch_size", len(playerAccounts)),
+			u.logger.String("response", response.Message))
+		return int64(len(playerAccounts)), nil
+	} else {
+		u.logger.WarnLog("Push notification batch failed",
+			u.logger.Int64("campaign_id", int64(campaign.ID)),
+			u.logger.Int("batch_size", len(playerAccounts)),
+			u.logger.String("error_message", response.Message))
+		return 0, fmt.Errorf("push notification failed: %s", response.Message)
+	}
 }

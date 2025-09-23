@@ -18,6 +18,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -30,6 +31,8 @@ type MessageUseCase struct {
 	playerRepo        repository.PlayerRepository
 	levelRepo         repository.LevelRepository
 	tagRepo           repository.TagRepository
+	pushApiKeyRepo    repository.PushKeyRepository
+	pushService       service.PushNotificationService
 	logger            infrastructure.Logger
 }
 
@@ -41,6 +44,8 @@ func NewMessageUseCase(
 	playerRepo repository.PlayerRepository,
 	levelRepo repository.LevelRepository,
 	tagRepo repository.TagRepository,
+	pushApiKeyRepo repository.PushKeyRepository,
+	pushService service.PushNotificationService,
 	logger infrastructure.Logger,
 ) inbound.MessageUseCase {
 	return &MessageUseCase{
@@ -50,6 +55,8 @@ func NewMessageUseCase(
 		playerRepo:        playerRepo,
 		levelRepo:         levelRepo,
 		tagRepo:           tagRepo,
+		pushApiKeyRepo:    pushApiKeyRepo,
+		pushService:       pushService,
 		logger:            logger,
 	}
 }
@@ -77,21 +84,15 @@ func (u *MessageUseCase) CreateMessageCampaign(
 
 	// 轉換 DTO 到 Entity 物件
 	campaignEntity := &entity.MessageCampaign{
-		GlobalID:          uuid.NewString(),
-		MerchantID:        merchant.ID,
-		NotificationTypes: 1, // 預設為站內信
-		CreatedAt:         time.Now(),
-		UpdatedAt:         time.Now(),
+		GlobalID:   uuid.NewString(),
+		MerchantID: merchant.ID,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}
 	err = copier.Copy(campaignEntity, campaign)
 	if err != nil {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("copy campaign failed: %w", err)
-	}
-
-	// 處理 NotificationTypes
-	if campaign.NotificationTypes != nil {
-		campaignEntity.NotificationTypes = *campaign.NotificationTypes
 	}
 
 	// 處理不同的目標類型

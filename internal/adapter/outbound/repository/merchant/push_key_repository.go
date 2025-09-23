@@ -32,7 +32,6 @@ func (r *PushKeyRepository) FindByMerchantID(
 	var dbApiKey models.PushKey
 	err := r.db.WithContext(ctx).
 		Where("merchant_id = ?", merchantID).
-		Where("deleted_at IS NULL").
 		First(&dbApiKey).Error
 
 	if err != nil {
@@ -53,7 +52,6 @@ func (r *PushKeyRepository) FindByGlobalMerchantID(
 	var dbApiKey models.PushKey
 	err := r.db.WithContext(ctx).
 		Where("global_merchant_id = ?", globalMerchantID).
-		Where("deleted_at IS NULL").
 		First(&dbApiKey).Error
 
 	if err != nil {

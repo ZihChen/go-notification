@@ -726,3 +726,44 @@ func (m *ManagerRepositoryMock) SetupEmpty()   {}
 func (m *ManagerRepositoryMock) Reset() {
 	m.Mock = mock.Mock{}
 }
+
+// PushKeyRepositoryMock 統一的 PushKey Repository Mock
+type PushKeyRepositoryMock struct {
+	*BaseMock
+}
+
+// NewPushKeyRepositoryMock 創建新的 PushKey Repository Mock
+func NewPushKeyRepositoryMock(t *testing.T) *PushKeyRepositoryMock {
+	return &PushKeyRepositoryMock{
+		BaseMock: NewBaseMock(t),
+	}
+}
+
+func (m *PushKeyRepositoryMock) FindByMerchantID(
+	ctx context.Context,
+	merchantID uint64,
+) (*entity.PushKey, error) {
+	args := m.Called(ctx, merchantID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.PushKey), args.Error(1)
+}
+
+func (m *PushKeyRepositoryMock) FindByGlobalMerchantID(
+	ctx context.Context,
+	globalMerchantID string,
+) (*entity.PushKey, error) {
+	args := m.Called(ctx, globalMerchantID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.PushKey), args.Error(1)
+}
+
+func (m *PushKeyRepositoryMock) SetupSuccess() {}
+func (m *PushKeyRepositoryMock) SetupError()   {}
+func (m *PushKeyRepositoryMock) SetupEmpty()   {}
+func (m *PushKeyRepositoryMock) Reset() {
+	m.Mock = mock.Mock{}
+}

@@ -22,6 +22,7 @@ type Config struct {
 	Tracing  TracingConfig
 	Events   EventsConfig
 	Auth     AuthConfig
+	Push     PushConfig
 }
 
 // AppConfig 應用程序基本配置
@@ -108,6 +109,11 @@ type AuthConfig struct {
 	EncryptionType string
 }
 
+// PushConfig 推播服務配置
+type PushConfig struct {
+	BaseURL string
+}
+
 // LoadConfig 加載配置
 func LoadConfig() (*Config, error) {
 	viper.SetConfigName(".env")
@@ -189,6 +195,9 @@ func LoadConfig() (*Config, error) {
 			APIKeys:        parseAPIKeyMap(viper.GetString("AUTH_API_KEYS")),
 			HeaderKey:      viper.GetString("AUTH_HEADER_KEY"),
 			EncryptionType: viper.GetString("AUTH_ENCRYPTION_TYPE"),
+		},
+		Push: PushConfig{
+			BaseURL: viper.GetString("PUSH_NOTIFICATION_BASE_URL"),
 		},
 	}
 

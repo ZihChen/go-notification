@@ -21,6 +21,8 @@ func TestGetMessageCampaign_TargetDetail_Player(t *testing.T) {
 	playerRepo := mocks.NewPlayerRepositoryMock(t)
 	levelRepo := mocks.NewLevelRepositoryMock(t)
 	tagRepo := mocks.NewTagRepositoryMock(t)
+	pushKeyRepo := mocks.NewPushKeyRepositoryMock(t)
+	pushService := mocks.NewPushNotificationServiceMock(t)
 	logger := helper.NewMockLogger()
 
 	useCase := NewMessageUseCase(
@@ -30,6 +32,8 @@ func TestGetMessageCampaign_TargetDetail_Player(t *testing.T) {
 		playerRepo,
 		levelRepo,
 		tagRepo,
+		pushKeyRepo,
+		pushService,
 		logger,
 	)
 
@@ -69,6 +73,8 @@ func TestGetMessageCampaign_TargetDetail_Level(t *testing.T) {
 	playerRepo := mocks.NewPlayerRepositoryMock(t)
 	levelRepo := mocks.NewLevelRepositoryMock(t)
 	tagRepo := mocks.NewTagRepositoryMock(t)
+	pushKeyRepo := mocks.NewPushKeyRepositoryMock(t)
+	pushService := mocks.NewPushNotificationServiceMock(t)
 	logger := helper.NewMockLogger()
 
 	useCase := NewMessageUseCase(
@@ -78,6 +84,8 @@ func TestGetMessageCampaign_TargetDetail_Level(t *testing.T) {
 		playerRepo,
 		levelRepo,
 		tagRepo,
+		pushKeyRepo,
+		pushService,
 		logger,
 	)
 
@@ -126,6 +134,8 @@ func TestGetMessageCampaign_TargetDetail_Tag(t *testing.T) {
 	playerRepo := mocks.NewPlayerRepositoryMock(t)
 	levelRepo := mocks.NewLevelRepositoryMock(t)
 	tagRepo := mocks.NewTagRepositoryMock(t)
+	pushKeyRepo := mocks.NewPushKeyRepositoryMock(t)
+	pushService := mocks.NewPushNotificationServiceMock(t)
 	logger := helper.NewMockLogger()
 
 	useCase := NewMessageUseCase(
@@ -135,6 +145,8 @@ func TestGetMessageCampaign_TargetDetail_Tag(t *testing.T) {
 		playerRepo,
 		levelRepo,
 		tagRepo,
+		pushKeyRepo,
+		pushService,
 		logger,
 	)
 
@@ -183,6 +195,8 @@ func TestGetMessageCampaign_TargetDetail_NoTargetDetail(t *testing.T) {
 	playerRepo := mocks.NewPlayerRepositoryMock(t)
 	levelRepo := mocks.NewLevelRepositoryMock(t)
 	tagRepo := mocks.NewTagRepositoryMock(t)
+	pushKeyRepo := mocks.NewPushKeyRepositoryMock(t)
+	pushService := mocks.NewPushNotificationServiceMock(t)
 	logger := helper.NewMockLogger()
 
 	useCase := NewMessageUseCase(
@@ -192,6 +206,8 @@ func TestGetMessageCampaign_TargetDetail_NoTargetDetail(t *testing.T) {
 		playerRepo,
 		levelRepo,
 		tagRepo,
+		pushKeyRepo,
+		pushService,
 		logger,
 	)
 

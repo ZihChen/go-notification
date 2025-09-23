@@ -5,19 +5,18 @@ package di
 
 import (
 	"fmt"
-	"time"
 	"github.com/google/wire"
 	"github.com/hibiken/asynq"
-	"gorm.io/driver/mysql"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/api"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/migrate"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/worker"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/scheduler"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/worker"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/job"
 	managerRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/manager"
 	merchantRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/merchant"
 	messageRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/message"
 	playerRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/player"
+	outboundService "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/service"
 	levelUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/level"
 	managerUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/manager"
@@ -34,7 +33,9 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/kds"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
 	"github.com/redis/go-redis/v9"
+	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"time"
 )
 
 // WorkerComponents 包含 worker 所需的所有組件
@@ -57,15 +58,17 @@ var baseSet = wire.NewSet(
 	playerRepo.NewLevelRepository,
 	playerRepo.NewTagRepository,
 	playerRepo.NewPlayerTagRepository,
+	merchantRepo.NewPushKeyRepository,
 
 	// 服務
 	service.NewEventService,
+	providePushNotificationService,
 
 	// 用例層
 	merchantUseCase.NewMerchantUseCase,
 	playerUseCase.NewPlayerUseCase,
 	managerUseCase.NewManagerUseCase,
-	messageUseCase.NewMessageUseCase, // 已移除 redisManager 參數
+	messageUseCase.NewMessageUseCase,
 	levelUseCase.NewLevelUseCase,
 	playerUseCase.NewTagUseCase,
 )
@@ -73,6 +76,11 @@ var baseSet = wire.NewSet(
 // 事件生產者提供者 (保留作為別名)
 func provideEventProducer(kdsService *kds.KDSService, logger infrastructure.Logger) servicePort.EventProducer {
 	return service.NewEventService(kdsService, logger)
+}
+
+// 推播服務提供者
+func providePushNotificationService(cfg *config.Config, logger infrastructure.Logger) servicePort.PushNotificationService {
+	return outboundService.NewPushNotificationService(cfg.Push.BaseURL, logger)
 }
 
 // InitializeWebServer 初始化 Web 服務的 HTTP 處理器
@@ -155,6 +163,8 @@ func InitializeMigrateHandler(cfg *config.Config, logger infrastructure.Logger, 
 		playerRepo.NewPlayerRepository,
 		messageRepo.NewMessageCampaignRepository,
 		messageRepo.NewPlayerMessageRepository,
+		merchantRepo.NewPushKeyRepository,
+		providePushNotificationService,
 		// Use case 層
 		provideMigrateUseCase,
 		// Handler 層
@@ -170,6 +180,8 @@ func provideMigrateUseCase(
 	playerRepo repository.PlayerRepository,
 	merchantRepo repository.MerchantRepository,
 	playerMessageRepo repository.PlayerMessageRepository,
+	pushKeyRepo repository.PushKeyRepository,
+	pushService servicePort.PushNotificationService,
 	logger infrastructure.Logger,
 ) inbound.MigrateUseCase {
 	return migrateUseCase.NewMigrateUseCase(
@@ -196,29 +208,28 @@ func connectToLegacyDatabase(dsn string) (*gorm.DB, error) {
 	if dsn == "" {
 		return nil, fmt.Errorf("legacy database DSN is required")
 	}
-	
+
 	// 創建 GORM 配置
 	gormConfig := &gorm.Config{
 		PrepareStmt:            true,
 		SkipDefaultTransaction: true,
 	}
-	
+
 	// 連接到 Legacy 資料庫
 	db, err := gorm.Open(mysql.Open(dsn), gormConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to legacy database with DSN: %w", err)
 	}
-	
+
 	// 設置連接池參數
 	sqlDB, err := db.DB()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get legacy database connection pool: %w", err)
 	}
-	
+
 	sqlDB.SetMaxIdleConns(5)
 	sqlDB.SetMaxOpenConns(10)
 	sqlDB.SetConnMaxLifetime(time.Hour)
-	
+
 	return db, nil
 }
-
