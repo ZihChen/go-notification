@@ -77,15 +77,21 @@ func (u *MessageUseCase) CreateMessageCampaign(
 
 	// 轉換 DTO 到 Entity 物件
 	campaignEntity := &entity.MessageCampaign{
-		GlobalID:   uuid.NewString(),
-		MerchantID: merchant.ID,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
+		GlobalID:          uuid.NewString(),
+		MerchantID:        merchant.ID,
+		NotificationTypes: 1, // 預設為站內信
+		CreatedAt:         time.Now(),
+		UpdatedAt:         time.Now(),
 	}
 	err = copier.Copy(campaignEntity, campaign)
 	if err != nil {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("copy campaign failed: %w", err)
+	}
+
+	// 處理 NotificationTypes
+	if campaign.NotificationTypes != nil {
+		campaignEntity.NotificationTypes = *campaign.NotificationTypes
 	}
 
 	// 處理不同的目標類型
@@ -199,6 +205,13 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 	if err != nil {
 		tracing.RecordSpanError(span, err)
 		return fmt.Errorf("copy campaign failed: %w", err)
+	}
+
+	// 處理 NotificationTypes
+	if campaign.NotificationTypes != nil {
+		campaignEntity.NotificationTypes = *campaign.NotificationTypes
+	} else {
+		campaignEntity.NotificationTypes = existing.NotificationTypes // 保持原有值
 	}
 
 	// 處理不同的目標類型
@@ -330,12 +343,14 @@ func (u *MessageUseCase) GetMessageCampaign(
 
 	// 轉換為 DTO
 	response := &dto.MessageCampaignResponse{
-		ID:         campaign.ID,
-		GlobalID:   campaign.GlobalID,
-		MerchantID: campaign.MerchantID,
-		Title:      campaign.Title,
-		Content:    campaign.Content,
-		TargetType: campaign.Target,
+		ID:                campaign.ID,
+		GlobalID:          campaign.GlobalID,
+		MerchantID:        campaign.MerchantID,
+		Title:             campaign.Title,
+		Content:           campaign.Content,
+		AppContent:        campaign.AppContent,
+		NotificationTypes: campaign.NotificationTypes,
+		TargetType:        campaign.Target,
 		TargetDetail: func() []string {
 			if campaign.TargetDetail == nil {
 				return []string{}
@@ -473,19 +488,21 @@ func (u *MessageUseCase) ListMessageCampaigns(
 	campaignResponses := make([]dto.MessageCampaignResponse, len(campaigns))
 	for i, campaign := range campaigns {
 		campaignResponses[i] = dto.MessageCampaignResponse{
-			ID:          campaign.ID,
-			GlobalID:    campaign.GlobalID,
-			MerchantID:  campaign.MerchantID,
-			Title:       campaign.Title,
-			Content:     campaign.Content,
-			TargetType:  campaign.Target,
-			ScheduledAt: campaign.SendStartTime,
-			Status:      campaign.Status,
-			SentCount:   int(campaign.RealSentCount),
-			IsScheduled: campaign.Status == consts.MessageCampaignStatusScheduled,
-			ProcessedAt: campaign.SendEndTime,
-			CreatedAt:   campaign.CreatedAt,
-			UpdatedAt:   campaign.UpdatedAt,
+			ID:                campaign.ID,
+			GlobalID:          campaign.GlobalID,
+			MerchantID:        campaign.MerchantID,
+			Title:             campaign.Title,
+			Content:           campaign.Content,
+			AppContent:        campaign.AppContent,
+			NotificationTypes: campaign.NotificationTypes,
+			TargetType:        campaign.Target,
+			ScheduledAt:       campaign.SendStartTime,
+			Status:            campaign.Status,
+			SentCount:         int(campaign.RealSentCount),
+			IsScheduled:       campaign.Status == consts.MessageCampaignStatusScheduled,
+			ProcessedAt:       campaign.SendEndTime,
+			CreatedAt:         campaign.CreatedAt,
+			UpdatedAt:         campaign.UpdatedAt,
 		}
 	}
 

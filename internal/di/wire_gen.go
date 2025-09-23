@@ -15,20 +15,20 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/scheduler"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/worker"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/job"
-	repository3 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/manager"
+	repository2 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/manager"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/merchant"
-	repository4 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/message"
-	repository2 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/player"
+	repository3 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/message"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/player"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/level"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/manager"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/merchant"
+	merchant2 "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/merchant"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/message"
 	migrate2 "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/migrate"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/player"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
-	repository5 "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
+	repository4 "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	service2 "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
@@ -44,7 +44,7 @@ import (
 
 // InitializeWebServer 初始化 Web 服務的 HTTP 處理器
 func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager, db *gorm.DB) (*api.HTTPHandler, error) {
-	merchantRepository := repository.NewMerchantRepository(db)
+	merchantRepository := merchant.NewMerchantRepository(db)
 	queueService, err := queue.NewQueueService(cfg, logger)
 	if err != nil {
 		return nil, err
@@ -54,18 +54,18 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, redis
 		return nil, err
 	}
 	eventProducer := service.NewEventService(kdsService, logger)
-	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger)
-	playerRepository := repository2.NewPlayerRepository(db)
-	levelRepository := repository2.NewLevelRepository(db)
+	merchantUseCase := merchant2.NewMerchantUseCase(merchantRepository, eventProducer, logger)
+	playerRepository := repository.NewPlayerRepository(db)
+	levelRepository := repository.NewLevelRepository(db)
 	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger)
-	managerRepository := repository3.NewManagerRepository(db)
+	managerRepository := repository2.NewManagerRepository(db)
 	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger)
-	messageCampaignRepository := repository4.NewMessageCampaignRepository(db)
-	playerMessageRepository := repository4.NewPlayerMessageRepository(db)
-	tagRepository := repository2.NewTagRepository(db)
+	messageCampaignRepository := repository3.NewMessageCampaignRepository(db)
+	playerMessageRepository := repository3.NewPlayerMessageRepository(db)
+	tagRepository := repository.NewTagRepository(db)
 	messageUseCase := message.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, logger)
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger)
-	playerTagRepository := repository2.NewPlayerTagRepository(db)
+	playerTagRepository := repository.NewPlayerTagRepository(db)
 	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager)
 	httpHandler := api.NewHTTPHandler(merchantUseCase, playerUseCase, managerUseCase, messageUseCase, playerLevelUseCase, playerTagUseCase, logger)
 	return httpHandler, nil
@@ -73,7 +73,7 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, redis
 
 // InitializeWorkerServer 初始化 Worker 服務的處理器
 func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager, db *gorm.DB) (*worker.WorkerHandler, error) {
-	merchantRepository := repository.NewMerchantRepository(db)
+	merchantRepository := merchant.NewMerchantRepository(db)
 	queueService, err := queue.NewQueueService(cfg, logger)
 	if err != nil {
 		return nil, err
@@ -83,15 +83,15 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, re
 		return nil, err
 	}
 	eventProducer := service.NewEventService(kdsService, logger)
-	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger)
-	playerRepository := repository2.NewPlayerRepository(db)
-	levelRepository := repository2.NewLevelRepository(db)
+	merchantUseCase := merchant2.NewMerchantUseCase(merchantRepository, eventProducer, logger)
+	playerRepository := repository.NewPlayerRepository(db)
+	levelRepository := repository.NewLevelRepository(db)
 	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger)
-	managerRepository := repository3.NewManagerRepository(db)
+	managerRepository := repository2.NewManagerRepository(db)
 	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger)
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger)
-	tagRepository := repository2.NewTagRepository(db)
-	playerTagRepository := repository2.NewPlayerTagRepository(db)
+	tagRepository := repository.NewTagRepository(db)
+	playerTagRepository := repository.NewPlayerTagRepository(db)
 	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager)
 	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, logger)
 	return workerHandler, nil
@@ -99,7 +99,7 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, re
 
 // InitializeWorkerComponents 初始化 Worker 服務的所有組件
 func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager, db *gorm.DB) (*WorkerComponents, error) {
-	merchantRepository := repository.NewMerchantRepository(db)
+	merchantRepository := merchant.NewMerchantRepository(db)
 	queueService, err := queue.NewQueueService(cfg, logger)
 	if err != nil {
 		return nil, err
@@ -109,15 +109,15 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 		return nil, err
 	}
 	eventProducer := service.NewEventService(kdsService, logger)
-	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger)
-	playerRepository := repository2.NewPlayerRepository(db)
-	levelRepository := repository2.NewLevelRepository(db)
+	merchantUseCase := merchant2.NewMerchantUseCase(merchantRepository, eventProducer, logger)
+	playerRepository := repository.NewPlayerRepository(db)
+	levelRepository := repository.NewLevelRepository(db)
 	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger)
-	managerRepository := repository3.NewManagerRepository(db)
+	managerRepository := repository2.NewManagerRepository(db)
 	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger)
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger)
-	tagRepository := repository2.NewTagRepository(db)
-	playerTagRepository := repository2.NewPlayerTagRepository(db)
+	tagRepository := repository.NewTagRepository(db)
+	playerTagRepository := repository.NewPlayerTagRepository(db)
 	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager)
 	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, logger)
 	server, err := provideWorkerServer(cfg, logger)
@@ -146,12 +146,12 @@ func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, redisM
 
 // InitializeSchedulerComponents 初始化 Scheduler 服務的處理器
 func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager, db *gorm.DB) (*scheduler.Handler, error) {
-	messageCampaignRepository := repository4.NewMessageCampaignRepository(db)
-	merchantRepository := repository.NewMerchantRepository(db)
-	playerMessageRepository := repository4.NewPlayerMessageRepository(db)
-	playerRepository := repository2.NewPlayerRepository(db)
-	levelRepository := repository2.NewLevelRepository(db)
-	tagRepository := repository2.NewTagRepository(db)
+	messageCampaignRepository := repository3.NewMessageCampaignRepository(db)
+	merchantRepository := merchant.NewMerchantRepository(db)
+	playerMessageRepository := repository3.NewPlayerMessageRepository(db)
+	playerRepository := repository.NewPlayerRepository(db)
+	levelRepository := repository.NewLevelRepository(db)
+	tagRepository := repository.NewTagRepository(db)
 	messageUseCase := message.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, logger)
 	messageCampaignTriggerJob := job.NewMessageCampaignTriggerJob(messageUseCase, logger)
 	registry := job.NewRegistry(messageCampaignTriggerJob)
@@ -165,10 +165,10 @@ func InitializeMigrateHandler(cfg *config.Config, logger infrastructure.Logger, 
 	if err != nil {
 		return nil, err
 	}
-	messageCampaignRepository := repository4.NewMessageCampaignRepository(db)
-	playerRepository := repository2.NewPlayerRepository(db)
-	merchantRepository := repository.NewMerchantRepository(db)
-	playerMessageRepository := repository4.NewPlayerMessageRepository(db)
+	messageCampaignRepository := repository3.NewMessageCampaignRepository(db)
+	playerRepository := repository.NewPlayerRepository(db)
+	merchantRepository := merchant.NewMerchantRepository(db)
+	playerMessageRepository := repository3.NewPlayerMessageRepository(db)
 	migrateUseCase := provideMigrateUseCase(legacyDB, messageCampaignRepository, playerRepository, merchantRepository, playerMessageRepository, logger)
 	migrateHandler := migrate.NewMigrateHandler(migrateUseCase, logger)
 	return migrateHandler, nil
@@ -182,7 +182,7 @@ type WorkerComponents struct {
 	Server  *asynq.Server
 }
 
-var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient, repository.NewMerchantRepository, repository2.NewPlayerRepository, repository3.NewManagerRepository, repository4.NewMessageCampaignRepository, repository4.NewPlayerMessageRepository, repository2.NewLevelRepository, repository2.NewTagRepository, repository2.NewPlayerTagRepository, service.NewEventService, merchant.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message.NewMessageUseCase, level.NewLevelUseCase, player.NewTagUseCase)
+var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient, merchant.NewMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, repository3.NewMessageCampaignRepository, repository3.NewPlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, service.NewEventService, merchant2.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message.NewMessageUseCase, level.NewLevelUseCase, player.NewTagUseCase)
 
 // 事件生產者提供者 (保留作為別名)
 func provideEventProducer(kdsService *kds.KDSService, logger infrastructure.Logger) service2.EventProducer {
@@ -210,10 +210,10 @@ type LegacyDB struct {
 // provideMigrateUseCase 創建 migrate use case，明確區分兩個資料庫連接
 func provideMigrateUseCase(
 	legacyDB *LegacyDB,
-	messageRepo repository5.MessageCampaignRepository,
-	playerRepo repository5.PlayerRepository,
-	merchantRepo repository5.MerchantRepository,
-	playerMessageRepo repository5.PlayerMessageRepository,
+	messageRepo repository4.MessageCampaignRepository,
+	playerRepo repository4.PlayerRepository,
+	merchantRepo repository4.MerchantRepository,
+	playerMessageRepo repository4.PlayerMessageRepository,
 	logger infrastructure.Logger,
 ) inbound.MigrateUseCase {
 	return migrate2.NewMigrateUseCase(
