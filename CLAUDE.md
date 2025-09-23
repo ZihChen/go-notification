@@ -194,6 +194,7 @@ The project maintains structured documentation for development guidance:
 - **docs/claude/archive/** - Completed feature archives
 
 ### Current Status
+**v1.8 App推播功能完成**: 會員訊息發送系統新增App推播功能，支援多渠道通知與位元遮罩管理  
 **v1.6+ 系統性能優化完成**: Level/Tag查詢邏輯優化，使用直接ID查詢取代低效映射，提升性能與資料完整性  
 **v1.6 資料搬遷系統準備中**: DB資料搬遷系統技術規格完成，進入Phase 1基礎架構建立階段  
 **v1.5+ 遷移系統強化完成**: 資料庫遷移系統DSN驗證、性能優化、LegacyID支援與程式碼品質全面提升  
@@ -205,9 +206,17 @@ The project maintains structured documentation for development guidance:
 
 ## Development Specifications
 
-### Current Focus: Performance Optimization & Data Migration System (2025-09-22)
+### Current Focus: App Push Notification System & Performance Optimization (2025-09-22)
 
 **Recently Completed:**
+- ✅ App推播功能實作 (v1.8, 2025-09-22)
+  - 新增message_campaigns表app_content和notification_types欄位
+  - 建立merchant_push_api_keys表儲存商戶API金鑰
+  - 實作位元遮罩推送類型管理 (1=站內信, 2=App推播, 4=其他)
+  - 整合第三方推播服務 (https://cmcat.jvdev.cc/v1/merchant/push_notifications)
+  - 完成PushNotificationService介面與HTTP客戶端實作
+  - 更新DTO支援新欄位並保持向後兼容
+  - 實作UseCase層多渠道推送邏輯
 - ✅ Level/Tag查詢邏輯性能優化 (v1.6+, 2025-09-22)
   - 實現直接ID查詢取代merchant_id全量查詢+映射的低效模式
   - 新增validateLevelIDs和validateTagIDs函數進行ID存在性驗證
@@ -234,16 +243,30 @@ The project maintains structured documentation for development guidance:
 - ✅ Router architecture refactoring with modular design (v1.2)
 - ✅ CORS configuration optimization for Swagger integration
 
-**Current Phase (2025-09-17):**
+**Current Phase (2025-09-22):**
+- App推播功能完整實作與文檔更新完成 (v1.8)
+- Level/Tag查詢邏輯性能優化完成，大幅提升系統查詢效率
 - Database migration system enhancement completed with robust architecture
 - v1.6 DB data migration system technical specification completed
-- Phase 1 infrastructure development preparation for large-scale data migration
 - System stability maintenance and production deployment preparation
 - Technical documentation updates reflecting latest system improvements
 
 For detailed current tasks, see `docs/claude/CLAUDE-CURRENT.md`.
 
 ### Completed Features
+
+#### App推播功能實作 v1.8 ✅
+- **Status**: Completed (2025-09-22)
+- **Specification**: `docs/claude/features/message-campaign/CLAUDE-2025-09-22-v1.8.md`
+- **Key Components**:
+  - Multi-channel notification system with bitmask management
+  - Database schema enhancement with app_content and notification_types fields
+  - Merchant push API key management system
+  - Third-party push notification service integration
+  - PushNotificationService interface and HTTP client implementation
+  - DTO updates with backward compatibility
+  - UseCase layer multi-channel push logic implementation
+  - Flexible notification type configuration (in-app, push, or both)
 
 #### 資料庫遷移系統強化 v1.5+ ✅
 - **Status**: Completed (2025-09-17)
