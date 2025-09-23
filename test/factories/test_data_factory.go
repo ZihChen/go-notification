@@ -36,22 +36,23 @@ func (f *TestDataFactory) CreateMessageCampaign() *MessageCampaignBuilder {
 	now := time.Now()
 
 	campaign := &entity.MessageCampaign{
-		ID:            id,
-		GlobalID:      fmt.Sprintf("campaign_%d", id),
-		MerchantID:    1,
-		Title:         fmt.Sprintf("Test Campaign %d", id),
-		Content:       fmt.Sprintf("Test content for campaign %d", id),
-		Target:        consts.TargetAll,
-		Category:      consts.CategoryMember,
-		Item:          consts.ItemOthers,
-		Status:        consts.MessageCampaignStatusScheduled,
-		SendStartTime: &now,
-		RealSentCount: 0,
-		AutoSend:      false,
-		TriggerType:   "manual",
-		CreatedBy:     "test",
-		CreatedAt:     now,
-		UpdatedAt:     now,
+		ID:                id,
+		GlobalID:          fmt.Sprintf("campaign_%d", id),
+		MerchantID:        1,
+		Title:             fmt.Sprintf("Test Campaign %d", id),
+		Content:           fmt.Sprintf("Test content for campaign %d", id),
+		Target:            consts.TargetAll,
+		Category:          consts.CategoryMember,
+		Item:              consts.ItemOthers,
+		Status:            consts.MessageCampaignStatusScheduled,
+		NotificationTypes: 1, // 預設只有站內信
+		SendStartTime:     &now,
+		RealSentCount:     0,
+		AutoSend:          false,
+		TriggerType:       "manual",
+		CreatedBy:         "test",
+		CreatedAt:         now,
+		UpdatedAt:         now,
 	}
 
 	return &MessageCampaignBuilder{campaign: campaign}

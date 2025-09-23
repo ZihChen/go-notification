@@ -21,12 +21,16 @@ func TestProcessScheduledCampaigns_Simple(t *testing.T) {
 	campaignRepo := mocks.NewMessageCampaignRepositoryMock(t)
 	playerRepo := mocks.NewPlayerRepositoryMock(t)
 	playerMessageRepo := mocks.NewPlayerMessageRepositoryMock(t)
+	pushKeyRepo := mocks.NewPushKeyRepositoryMock(t)
+	pushService := mocks.NewPushNotificationServiceMock(t)
 	logger := helper.NewMockLogger()
 
 	useCase := &MessageUseCase{
 		campaignRepo:      campaignRepo,
 		playerRepo:        playerRepo,
 		playerMessageRepo: playerMessageRepo,
+		pushApiKeyRepo:    pushKeyRepo,
+		pushService:       pushService,
 		logger:            logger,
 	}
 
@@ -69,6 +73,8 @@ func TestProcessScheduledCampaigns_Simple(t *testing.T) {
 	campaignRepo.Reset()
 	playerRepo.Reset()
 	playerMessageRepo.Reset()
+	pushKeyRepo.Reset()
+	pushService.Reset()
 }
 
 // TestProcessScheduledCampaigns_ErrorCase 測試錯誤情況
@@ -77,12 +83,16 @@ func TestProcessScheduledCampaigns_ErrorCase(t *testing.T) {
 	campaignRepo := mocks.NewMessageCampaignRepositoryMock(t)
 	playerRepo := mocks.NewPlayerRepositoryMock(t)
 	playerMessageRepo := mocks.NewPlayerMessageRepositoryMock(t)
+	pushKeyRepo := mocks.NewPushKeyRepositoryMock(t)
+	pushService := mocks.NewPushNotificationServiceMock(t)
 	logger := helper.NewMockLogger()
 
 	useCase := &MessageUseCase{
 		campaignRepo:      campaignRepo,
 		playerRepo:        playerRepo,
 		playerMessageRepo: playerMessageRepo,
+		pushApiKeyRepo:    pushKeyRepo,
+		pushService:       pushService,
 		logger:            logger,
 	}
 
@@ -103,6 +113,8 @@ func TestProcessScheduledCampaigns_ErrorCase(t *testing.T) {
 	campaignRepo.Reset()
 	playerRepo.Reset()
 	playerMessageRepo.Reset()
+	pushKeyRepo.Reset()
+	pushService.Reset()
 }
 
 // TestSendCampaignToPlayersAsync_Simple 簡單測試異步發送
@@ -112,12 +124,16 @@ func TestSendCampaignToPlayersAsync_Simple(t *testing.T) {
 	campaignRepo := mocks.NewMessageCampaignRepositoryMock(t)
 	playerRepo := mocks.NewPlayerRepositoryMock(t)
 	playerMessageRepo := mocks.NewPlayerMessageRepositoryMock(t)
+	pushKeyRepo := mocks.NewPushKeyRepositoryMock(t)
+	pushService := mocks.NewPushNotificationServiceMock(t)
 	logger := helper.NewMockLogger()
 
 	useCase := &MessageUseCase{
 		campaignRepo:      campaignRepo,
 		playerRepo:        playerRepo,
 		playerMessageRepo: playerMessageRepo,
+		pushApiKeyRepo:    pushKeyRepo,
+		pushService:       pushService,
 		logger:            logger,
 	}
 
@@ -153,6 +169,8 @@ func TestSendCampaignToPlayersAsync_Simple(t *testing.T) {
 	campaignRepo.Reset()
 	playerRepo.Reset()
 	playerMessageRepo.Reset()
+	pushKeyRepo.Reset()
+	pushService.Reset()
 }
 
 // TestSendCampaignToPlayersAsync_WithPlayers 測試有玩家的情況
@@ -162,12 +180,16 @@ func TestSendCampaignToPlayersAsync_WithPlayers(t *testing.T) {
 	campaignRepo := mocks.NewMessageCampaignRepositoryMock(t)
 	playerRepo := mocks.NewPlayerRepositoryMock(t)
 	playerMessageRepo := mocks.NewPlayerMessageRepositoryMock(t)
+	pushKeyRepo := mocks.NewPushKeyRepositoryMock(t)
+	pushService := mocks.NewPushNotificationServiceMock(t)
 	logger := helper.NewMockLogger()
 
 	useCase := &MessageUseCase{
 		campaignRepo:      campaignRepo,
 		playerRepo:        playerRepo,
 		playerMessageRepo: playerMessageRepo,
+		pushApiKeyRepo:    pushKeyRepo,
+		pushService:       pushService,
 		logger:            logger,
 	}
 
@@ -220,4 +242,6 @@ func TestSendCampaignToPlayersAsync_WithPlayers(t *testing.T) {
 	campaignRepo.Reset()
 	playerRepo.Reset()
 	playerMessageRepo.Reset()
+	pushKeyRepo.Reset()
+	pushService.Reset()
 }

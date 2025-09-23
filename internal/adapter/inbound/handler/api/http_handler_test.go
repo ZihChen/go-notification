@@ -435,16 +435,18 @@ func createMessageCampaignTestData() *dto.MessageCampaignResponse {
 }
 
 func createCreateMessageCampaignRequest() *dto.CreateMessageCampaignRequest {
+	notificationTypes := uint8(1) // 1 = 站內信
 	return &dto.CreateMessageCampaignRequest{
-		GlobalMerchantID: "FATCAT-MERCHANT-001",
-		Category:         consts.CategoryMember,
-		Item:             consts.ItemRegistration,
-		TriggerType:      "success",
-		Title:            "Test Campaign",
-		Content:          "Test message content",
-		Target:           consts.TargetHighActivity,
-		Status:           consts.MessageCampaignStatusDraft,
-		CreatedBy:        "test-user",
+		GlobalMerchantID:  "FATCAT-MERCHANT-001",
+		Category:          consts.CategoryMember,
+		Item:              consts.ItemRegistration,
+		TriggerType:       "success",
+		Title:             "Test Campaign",
+		Content:           "Test message content",
+		NotificationTypes: &notificationTypes,
+		Target:            consts.TargetHighActivity,
+		Status:            consts.MessageCampaignStatusDraft,
+		CreatedBy:         "test-user",
 	}
 }
 
