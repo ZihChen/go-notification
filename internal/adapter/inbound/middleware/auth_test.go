@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/utils/security"
 )
 
 func TestNewAPIKeyAuthMiddleware(t *testing.T) {
@@ -233,7 +234,7 @@ func TestDecryptAPIKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := decryptAPIKey(tt.encryptedKey, tt.encryptionType)
+			result, err := decryptAPIKey(tt.encryptedKey, tt.encryptionType, nil)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -277,7 +278,7 @@ func TestValidateAPIKeyMD5(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := ValidateAPIKeyMD5(tt.inputKey, validKeys)
+			result := security.ValidateAPIKeyMD5(tt.inputKey, validKeys)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

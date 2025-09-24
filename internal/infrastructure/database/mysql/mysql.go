@@ -8,6 +8,7 @@ import (
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/utils/security"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -22,8 +23,9 @@ type Database struct {
 
 func NewDatabase(cfg *config.Config, logger infrastructure.Logger) (*Database, error) {
 	db := &Database{
-		cfg:    cfg,
-		logger: logger,
+		cfg:     cfg,
+		logger:  logger,
+		isClose: make(chan struct{}),
 	}
 	if err := db.connect(); err != nil {
 		return nil, err
@@ -47,7 +49,8 @@ func (d *Database) connect() error {
 	}
 
 	dsn := buildDSN(d.cfg)
-	d.logger.InfoLog(fmt.Sprintf("Connecting to database DSN:%s", dsn))
+	sanitizedDSN := security.SanitizeDSN(dsn)
+	d.logger.InfoLog(fmt.Sprintf("Connecting to database DSN:%s", sanitizedDSN))
 
 	db, err := gorm.Open(mysql.Open(dsn), gormCfg)
 	if err != nil {
@@ -131,7 +134,7 @@ func (d *Database) startHealthChecker() {
 			} else {
 				d.logger.InfoLog("Database connection is up!")
 			}
-		case d.isClose <- struct{}{}:
+		case <-d.isClose:
 			return
 		}
 	}

@@ -11,6 +11,7 @@ import (
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/utils/security"
 )
 
 // PushNotificationService App推播服務實作
@@ -93,7 +94,7 @@ func (s *PushNotificationService) SendPushNotification(
 		s.logger.WarnLog("Push notification request failed",
 			s.logger.Int("status_code", resp.StatusCode),
 			s.logger.String("response_body", string(responseBody)),
-			s.logger.String("api_key_prefix", apiKey[:10]+"..."))
+			s.logger.String("api_key", security.SanitizeAPIKey(apiKey)))
 
 		return &service.PushNotificationResponse{
 			Success: false,

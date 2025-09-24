@@ -12,6 +12,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/utils/security"
 	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/sync/errgroup"
 )
@@ -555,7 +556,7 @@ func (u *MessageUseCase) sendPushNotificationBatch(
 	u.logger.InfoLog("Sending push notification batch",
 		u.logger.Int64("campaign_id", int64(campaign.ID)),
 		u.logger.Int("batch_size", len(playerAccounts)),
-		u.logger.String("api_key_prefix", apiKey[:10]+"..."))
+		u.logger.String("api_key", security.SanitizeAPIKey(apiKey)))
 
 	response, err := u.pushService.SendPushNotification(ctx, apiKey, pushRequest)
 	if err != nil {
