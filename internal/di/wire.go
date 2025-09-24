@@ -131,6 +131,7 @@ func provideWorkerServer(cfg *config.Config, logger infrastructure.Logger) (*asy
 // InitializeConsumer 初始化 Consumer 服務的 KDS 服務 (已廢棄)
 func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, redisManager *redisCache.Manager) (*kds.KDSService, error) {
 	wire.Build(
+		provideTracingService,
 		queue.NewQueueService,
 		kds.NewKDSService,
 	)
@@ -140,6 +141,7 @@ func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, redisM
 // InitializeConsumerHandler 初始化 Consumer 服務的處理器
 func InitializeConsumerHandler(cfg *config.Config, logger infrastructure.Logger, redisManager *redisCache.Manager) (*consumer.ConsumerHandler, error) {
 	wire.Build(
+		provideTracingService,
 		queue.NewQueueService,
 		kds.NewKDSService,
 		consumer.NewConsumerHandler,

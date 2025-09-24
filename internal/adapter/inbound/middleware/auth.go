@@ -37,21 +37,21 @@ func AuthMiddleware(config AuthConfig) gin.HandlerFunc {
 		encryptedKey := c.GetHeader(headerKey)
 		if encryptedKey == "" {
 			response.Unauthorized(c, "Missing API key", "The request is missing the API key").
-				Return()
+				Abort()
 			return
 		}
 
 		// 解密API Key
 		decryptedKey, err := decryptAPIKey(encryptedKey, config.EncryptionType, config.AESKey)
 		if err != nil {
-			response.Unauthorized(c, "Invalid API key format", err.Error()).Return()
+			response.Unauthorized(c, "Invalid API key format", err.Error()).Abort()
 			return
 		}
 
 		// 使用常數時間比較驗證API Key並取得對應的merchant ID
 		merchantID, isValid := security.ValidateAPIKeyConstantTime(decryptedKey, config.APIKeys)
 		if !isValid {
-			response.Unauthorized(c, "Invalid API key", "The provided API key is invalid").Return()
+			response.Unauthorized(c, "Invalid API key", "The provided API key is invalid").Abort()
 			return
 		}
 

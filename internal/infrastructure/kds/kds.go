@@ -14,7 +14,6 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	cfg "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 )
@@ -28,9 +27,10 @@ type KDSService struct {
 	tableName     string
 	partitionKey  string
 	sortKey       string
-	config        *cfg.Config
-	queueService  service.QueueService
-	logger        infrastructure.Logger
+	config         *cfg.Config
+	queueService   service.QueueService
+	logger         infrastructure.Logger
+	tracingService infrastructure.TracingService
 }
 
 // NewKDSService 創建KDS服務
@@ -39,6 +39,7 @@ func NewKDSService(
 	queueService service.QueueService,
 	redisManager *redisCache.Manager,
 	logger infrastructure.Logger,
+	tracingService infrastructure.TracingService,
 ) (*KDSService, error) {
 	// 創建AWS配置
 	awsConfig, err := config.LoadAWSConfig(context.Background())
@@ -57,26 +58,27 @@ func NewKDSService(
 		logger.String("dynamodb_table", config.AWS.DynamoDBTable))
 
 	return &KDSService{
-		client:        kinesisClient,
-		dynamoClient:  dynamoClient,
-		redisManager:  redisManager,
-		consumeStream: config.AWS.KinesisStream,
-		tableName:     config.AWS.DynamoDBTable,
-		partitionKey:  config.AWS.PartitionKey,
-		sortKey:       config.AWS.SortKey,
-		config:        config,
-		queueService:  queueService,
-		logger:        logger,
+		client:         kinesisClient,
+		dynamoClient:   dynamoClient,
+		redisManager:   redisManager,
+		consumeStream:  config.AWS.KinesisStream,
+		tableName:      config.AWS.DynamoDBTable,
+		partitionKey:   config.AWS.PartitionKey,
+		sortKey:        config.AWS.SortKey,
+		config:         config,
+		queueService:   queueService,
+		logger:         logger,
+		tracingService: tracingService,
 	}, nil
 }
 
 // Send 發送事件到KDS
 func (k *KDSService) Send(ctx context.Context, data []byte, eventType string) error {
-	ctx, span := tracing.StartSpan(ctx, "KDS.Send")
-	defer tracing.SpanEnd(span)
+	ctx, span := k.tracingService.StartSpan(ctx, "KDS.Send")
+	defer k.tracingService.SpanEnd(span)
 
 	// 添加屬性到 span
-	tracing.RecordSpanAttributes(span,
+	k.tracingService.RecordSpanAttributes(span,
 		attribute.String("messaging.system", "kds"),
 		attribute.String("messaging.operation", "send"),
 		attribute.String("messaging.event_type", eventType),
@@ -86,12 +88,12 @@ func (k *KDSService) Send(ctx context.Context, data []byte, eventType string) er
 	// 嘗試在 JSON 載荷中添加 traceparent
 	var jsonData map[string]interface{}
 	if err := json.Unmarshal(data, &jsonData); err == nil {
-		traceparent := tracing.GetTraceparent(ctx)
+		traceparent := k.tracingService.GetTraceparent(ctx)
 		if traceparent != "" {
 			jsonData["traceparent"] = traceparent
 			if newData, err := json.Marshal(jsonData); err == nil {
 				data = newData
-				tracing.RecordSpanAttributes(
+				k.tracingService.RecordSpanAttributes(
 					span,
 					attribute.Bool("messaging.trace_propagated", true),
 				)
@@ -103,7 +105,7 @@ func (k *KDSService) Send(ctx context.Context, data []byte, eventType string) er
 	partitionKey := uuid.New().String()
 
 	// 記錄事件到 span
-	tracing.TraceEvent(span, "Sending message to KDS",
+	k.tracingService.TraceEvent(span, "Sending message to KDS",
 		attribute.String("messaging.partition_key", partitionKey),
 	)
 
@@ -116,13 +118,13 @@ func (k *KDSService) Send(ctx context.Context, data []byte, eventType string) er
 		k.logger.ErrorLog("Failed to put record to kinesis",
 			k.logger.String("event_type", eventType),
 			k.logger.Error("err", err))
-		tracing.RecordSpanError(span, err)
-		tracing.RecordSpanStatus(span, codes.Error, err.Error())
+		k.tracingService.RecordSpanError(span, err)
+		k.tracingService.RecordSpanStatus(span, codes.Error, err.Error())
 		return fmt.Errorf("put record to kinesis: %w", err)
 	}
 
 	// 記錄成功事件
-	tracing.TraceEvent(span, "Message sent to KDS successfully")
+	k.tracingService.TraceEvent(span, "Message sent to KDS successfully")
 
 	k.logger.InfoLog("Published event to KDS",
 		k.logger.String("event_type", eventType),
@@ -133,24 +135,24 @@ func (k *KDSService) Send(ctx context.Context, data []byte, eventType string) er
 
 // PublishMerchantSync 發布商戶同步事件
 func (k *KDSService) PublishMerchantSync(ctx context.Context, event *event.CloudEvent) error {
-	ctx, span := tracing.TraceWorkerToKDS(ctx, event.Type, event.ID)
-	defer tracing.SpanEnd(span)
+	ctx, span := k.tracingService.TraceWorkerToKDS(ctx, event.Type, event.ID)
+	defer k.tracingService.SpanEnd(span)
 
 	return k.publishEvent(ctx, event)
 }
 
 // PublishPlayerSync 發布玩家同步事件
 func (k *KDSService) PublishPlayerSync(ctx context.Context, event *event.CloudEvent) error {
-	ctx, span := tracing.TraceWorkerToKDS(ctx, event.Type, event.ID)
-	defer tracing.SpanEnd(span)
+	ctx, span := k.tracingService.TraceWorkerToKDS(ctx, event.Type, event.ID)
+	defer k.tracingService.SpanEnd(span)
 
 	return k.publishEvent(ctx, event)
 }
 
 // PublishManagerSync 發布管理員同步事件
 func (k *KDSService) PublishManagerSync(ctx context.Context, event *event.CloudEvent) error {
-	ctx, span := tracing.TraceWorkerToKDS(ctx, event.Type, event.ID)
-	defer tracing.SpanEnd(span)
+	ctx, span := k.tracingService.TraceWorkerToKDS(ctx, event.Type, event.ID)
+	defer k.tracingService.SpanEnd(span)
 
 	return k.publishEvent(ctx, event)
 }
@@ -158,7 +160,7 @@ func (k *KDSService) PublishManagerSync(ctx context.Context, event *event.CloudE
 // 內部方法：發布事件到KDS
 func (k *KDSService) publishEvent(ctx context.Context, event *event.CloudEvent) error {
 	// 確保 traceparent 在事件中
-	event.TraceParent = tracing.GetTraceparent(ctx)
+	event.TraceParent = k.tracingService.GetTraceparent(ctx)
 
 	eventBytes, err := json.Marshal(event)
 	if err != nil {

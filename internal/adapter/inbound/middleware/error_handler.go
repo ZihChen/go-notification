@@ -20,7 +20,7 @@ func ErrorHandler() gin.HandlerFunc {
 				}
 
 				// 其他 panic 情況，記錄錯誤並返回 500
-				response.InternalServerError(c, "Internal server error").Return()
+				response.InternalServerError(c, "Internal server error").Abort()
 			}
 		}()
 
@@ -37,15 +37,15 @@ func ErrorHandler() gin.HandlerFunc {
 					Status(http.StatusBadRequest).
 					Success(false).
 					Error(response.ErrCodeBadRequest, err.Error()).
-					Return()
+					Abort()
 			case gin.ErrorTypeBind:
 				response.NewResponse(c).
 					Status(http.StatusBadRequest).
 					Success(false).
 					Error(response.ErrCodeValidationFailed, "Request validation failed", err.Meta).
-					Return()
+					Abort()
 			default:
-				response.InternalServerError(c, "An unexpected error occurred").Return()
+				response.InternalServerError(c, "An unexpected error occurred").Abort()
 			}
 
 			c.Abort()
@@ -67,5 +67,5 @@ func RateLimitExceeded(c *gin.Context) {
 
 // NotFoundHandler 404 處理
 func NotFoundHandler(c *gin.Context) {
-	response.NotFound(c, "The requested resource was not found").Return()
+	response.NotFound(c, "The requested resource was not found").Abort()
 }

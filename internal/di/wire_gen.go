@@ -48,11 +48,12 @@ import (
 // InitializeWebServer 初始化 Web 服務的 HTTP 處理器
 func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager, db *gorm.DB) (*api.HTTPHandler, error) {
 	merchantRepository := merchant.NewMerchantRepository(db)
-	queueService, err := queue.NewQueueService(cfg, logger)
+	tracingService := provideTracingService()
+	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger)
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +69,6 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, redis
 	tagRepository := repository.NewTagRepository(db)
 	pushKeyRepository := merchant.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
-	tracingService := provideTracingService()
 	messageUseCase := message.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger)
 	playerTagRepository := repository.NewPlayerTagRepository(db)
@@ -80,11 +80,12 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, redis
 // InitializeWorkerServer 初始化 Worker 服務的處理器
 func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager, db *gorm.DB) (*worker.WorkerHandler, error) {
 	merchantRepository := merchant.NewMerchantRepository(db)
-	queueService, err := queue.NewQueueService(cfg, logger)
+	tracingService := provideTracingService()
+	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger)
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
@@ -99,18 +100,19 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, re
 	tagRepository := repository.NewTagRepository(db)
 	playerTagRepository := repository.NewPlayerTagRepository(db)
 	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager)
-	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, logger)
+	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, logger, tracingService)
 	return workerHandler, nil
 }
 
 // InitializeWorkerComponents 初始化 Worker 服務的所有組件
 func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager, db *gorm.DB) (*WorkerComponents, error) {
 	merchantRepository := merchant.NewMerchantRepository(db)
-	queueService, err := queue.NewQueueService(cfg, logger)
+	tracingService := provideTracingService()
+	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger)
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +127,7 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 	tagRepository := repository.NewTagRepository(db)
 	playerTagRepository := repository.NewPlayerTagRepository(db)
 	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager)
-	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, logger)
+	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, logger, tracingService)
 	server, err := provideWorkerServer(cfg, logger)
 	if err != nil {
 		return nil, err
@@ -139,11 +141,12 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 
 // InitializeConsumer 初始化 Consumer 服務的 KDS 服務 (已廢棄)
 func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager) (*kds.KDSService, error) {
-	queueService, err := queue.NewQueueService(cfg, logger)
+	tracingService := provideTracingService()
+	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger)
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
@@ -152,11 +155,12 @@ func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, redisM
 
 // InitializeConsumerHandler 初始化 Consumer 服務的處理器
 func InitializeConsumerHandler(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager) (*consumer.ConsumerHandler, error) {
-	queueService, err := queue.NewQueueService(cfg, logger)
+	tracingService := provideTracingService()
+	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger)
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}

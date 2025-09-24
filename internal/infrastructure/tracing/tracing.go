@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -26,6 +27,29 @@ const (
 // Tracer 追踪器封裝
 type Tracer struct {
 	provider *sdktrace.TracerProvider
+}
+
+// tracingService 實現 TracingService 介面
+type tracingService struct {
+	tracer *Tracer
+}
+
+// Service 代表實現了 TracingService 介面的服務
+type Service = infrastructure.TracingService
+
+// defaultTracingService 全域預設的TracingService實例
+// 用於向後兼容的全域函數調用
+var defaultTracingService infrastructure.TracingService
+
+// init 初始化預設的TracingService實例
+func init() {
+	defaultTracingService = NewTracingService()
+}
+
+// SetDefaultTracingService 設定全域預設的TracingService實例
+// 主要用於測試或需要自訂TracingService的場景
+func SetDefaultTracingService(service infrastructure.TracingService) {
+	defaultTracingService = service
 }
 
 // NewTracer 創建追踪器
@@ -60,6 +84,16 @@ func NewTracer(cfg *config.Config) (*Tracer, error) {
 	return &Tracer{provider: provider}, nil
 }
 
+// NewTracingService 創建 TracingService 實例
+func NewTracingService() infrastructure.TracingService {
+	return &tracingService{}
+}
+
+// NewTracingServiceWithTracer 使用指定的Tracer創建TracingService實例
+func NewTracingServiceWithTracer(tracer *Tracer) infrastructure.TracingService {
+	return &tracingService{tracer: tracer}
+}
+
 // Shutdown 關閉追踪器
 func (t *Tracer) Shutdown(ctx context.Context) error {
 	if err := t.provider.Shutdown(ctx); err != nil {
@@ -67,6 +101,250 @@ func (t *Tracer) Shutdown(ctx context.Context) error {
 	}
 	return nil
 }
+
+// ===== TracingService Interface Implementation =====
+
+// StartSpan 開始一個新的span
+func (t *tracingService) StartSpan(
+	ctx context.Context,
+	spanName string,
+	opts ...trace.SpanStartOption,
+) (context.Context, trace.Span) {
+	return GetTracer().Start(ctx, spanName, opts...)
+}
+
+// RecordSpanError 記錄span錯誤
+func (t *tracingService) RecordSpanError(span trace.Span, err error) {
+	if span != nil && span.IsRecording() {
+		span.RecordError(err)
+	}
+}
+
+// RecordSpanAttributes 記錄span屬性
+func (t *tracingService) RecordSpanAttributes(span trace.Span, attrs ...attribute.KeyValue) {
+	if span != nil && span.IsRecording() {
+		span.SetAttributes(attrs...)
+	}
+}
+
+// TraceEvent 追蹤事件
+func (t *tracingService) TraceEvent(span trace.Span, name string, attrs ...attribute.KeyValue) {
+	if span != nil && span.IsRecording() {
+		span.AddEvent(name, trace.WithAttributes(attrs...))
+	}
+}
+
+// SpanEnd 結束span
+func (t *tracingService) SpanEnd(span trace.Span) {
+	if span != nil {
+		span.End()
+	}
+}
+
+// GetTraceparent 從上下文中獲取traceparent
+func (t *tracingService) GetTraceparent(ctx context.Context) string {
+	carrier := make(propagation.MapCarrier)
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	return carrier.Get("traceparent")
+}
+
+// InjectTraceparentToJSON 將traceparent注入到JSON數據中
+func (t *tracingService) InjectTraceparentToJSON(ctx context.Context, data []byte) ([]byte, error) {
+	traceparent := t.GetTraceparent(ctx)
+	if traceparent == "" {
+		return data, nil
+	}
+
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(data, &jsonData); err != nil {
+		return data, err
+	}
+
+	jsonData["traceparent"] = traceparent
+
+	return json.Marshal(jsonData)
+}
+
+// RecordSpanStatus 記錄span狀態
+func (t *tracingService) RecordSpanStatus(span trace.Span, code codes.Code, desc string) {
+	if span != nil && span.IsRecording() {
+		span.SetStatus(code, desc)
+	}
+}
+
+// TraceWorkerToKDS 從Worker到KDS的追蹤封裝
+func (t *tracingService) TraceWorkerToKDS(ctx context.Context, eventType, eventID string) (context.Context, trace.Span) {
+	ctx, span := t.StartSpan(ctx, "Worker.PublishToKDS")
+	t.RecordSpanAttributes(span,
+		attribute.String("messaging.system", "kds"),
+		attribute.String("messaging.operation", "publish"),
+		attribute.String("messaging.event_type", eventType),
+		attribute.String("messaging.event_id", eventID))
+	return ctx, span
+}
+
+// ExtractTraceContext 從數據中提取追蹤上下文
+func (t *tracingService) ExtractTraceContext(ctx context.Context, carrier []byte) context.Context {
+	// 嘗試解析 JSON
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(carrier, &jsonData); err == nil {
+		// 如果包含 traceparent
+		if traceparent, ok := jsonData["traceparent"].(string); ok && traceparent != "" {
+			mapCarrier := make(propagation.MapCarrier)
+			mapCarrier.Set("traceparent", traceparent)
+			return otel.GetTextMapPropagator().Extract(ctx, mapCarrier)
+		}
+	}
+
+	// 無法解析 JSON 或沒有找到 traceparent，直接解析
+	traceparent := ExtractTraceparent(string(carrier))
+	if traceparent != "" {
+		mapCarrier := make(propagation.MapCarrier)
+		mapCarrier.Set("traceparent", traceparent)
+		return otel.GetTextMapPropagator().Extract(ctx, mapCarrier)
+	}
+
+	return ctx
+}
+
+// TraceRedisToWorker 從Redis到Worker的追蹤封裝
+func (t *tracingService) TraceRedisToWorker(ctx context.Context, taskType, taskID string) (context.Context, trace.Span) {
+	ctx, span := t.StartSpan(ctx, "Redis.WorkerConsume")
+	t.RecordSpanAttributes(span,
+		attribute.String("messaging.system", "redis"),
+		attribute.String("messaging.destination", "worker"),
+		attribute.String("messaging.task_type", taskType),
+		attribute.String("messaging.task_id", taskID))
+	return ctx, span
+}
+
+// TraceWorkerProcessing Worker處理任務的追蹤封裝
+func (t *tracingService) TraceWorkerProcessing(ctx context.Context, taskType, taskID string) (context.Context, trace.Span) {
+	ctx, span := t.StartSpan(ctx, "Worker.ProcessTask")
+	t.RecordSpanAttributes(span,
+		attribute.String("processing.task_type", taskType),
+		attribute.String("processing.task_id", taskID))
+	return ctx, span
+}
+
+// ===== Legacy Functions (for backward compatibility) =====
+
+// GetTracer 返回全局 tracer
+func GetTracer() trace.Tracer {
+	return otel.Tracer(ServiceName)
+}
+
+// StartSpan 開始一個新的 span (全局函數版本)
+func StartSpan(
+	ctx context.Context,
+	spanName string,
+	opts ...trace.SpanStartOption,
+) (context.Context, trace.Span) {
+	return defaultTracingService.StartSpan(ctx, spanName, opts...)
+}
+
+// RecordSpanError 記錄span錯誤 (全局函數版本)
+func RecordSpanError(span trace.Span, err error) {
+	defaultTracingService.RecordSpanError(span, err)
+}
+
+// RecordSpanAttributes 記錄span屬性 (全局函數版本)
+func RecordSpanAttributes(span trace.Span, attrs ...attribute.KeyValue) {
+	defaultTracingService.RecordSpanAttributes(span, attrs...)
+}
+
+// RecordSpanStatus 記錄span狀態 (全局函數版本)
+func RecordSpanStatus(span trace.Span, code codes.Code, desc string) {
+	defaultTracingService.RecordSpanStatus(span, code, desc)
+}
+
+// TraceEvent 追蹤事件 (全局函數版本)
+func TraceEvent(span trace.Span, name string, attrs ...attribute.KeyValue) {
+	defaultTracingService.TraceEvent(span, name, attrs...)
+}
+
+// SpanEnd 結束span (全局函數版本)
+func SpanEnd(span trace.Span) {
+	defaultTracingService.SpanEnd(span)
+}
+
+// GetTraceparent 從上下文中獲取traceparent (全局函數版本)
+func GetTraceparent(ctx context.Context) string {
+	return defaultTracingService.GetTraceparent(ctx)
+}
+
+// InjectTraceparentToJSON 將traceparent注入到JSON數據中 (全局函數版本)
+func InjectTraceparentToJSON(ctx context.Context, data []byte) ([]byte, error) {
+	return defaultTracingService.InjectTraceparentToJSON(ctx, data)
+}
+
+// ===== Specialized Tracing Functions =====
+
+// TraceRedisToWorker 從Redis到Worker的追蹤封裝 (全局函數版本)
+func TraceRedisToWorker(
+	ctx context.Context,
+	taskType, taskID string,
+) (context.Context, trace.Span) {
+	return defaultTracingService.TraceRedisToWorker(ctx, taskType, taskID)
+}
+
+// TraceWorkerProcessing Worker處理任務的追蹤封裝 (全局函數版本)
+func TraceWorkerProcessing(
+	ctx context.Context,
+	taskType, taskID string,
+) (context.Context, trace.Span) {
+	return defaultTracingService.TraceWorkerProcessing(ctx, taskType, taskID)
+}
+
+// TraceWorkerToKDS 從Worker到KDS的追蹤封裝
+func TraceWorkerToKDS(
+	ctx context.Context,
+	eventType, eventID string,
+) (context.Context, trace.Span) {
+	ctx, span := StartSpan(ctx, "Worker.PublishToKDS")
+	RecordSpanAttributes(span,
+		attribute.String("messaging.system", "kds"),
+		attribute.String("messaging.operation", "publish"),
+		attribute.String("messaging.event_type", eventType),
+		attribute.String("messaging.event_id", eventID))
+	return ctx, span
+}
+
+// ===== Context and Propagation Functions =====
+
+// ExtractTraceContext 取出資料 (全局函數版本)
+func ExtractTraceContext(ctx context.Context, carrier []byte) context.Context {
+	return defaultTracingService.ExtractTraceContext(ctx, carrier)
+}
+
+// InjectTraceContext 將追蹤上下文注入到 context 中
+func InjectTraceContext(ctx context.Context) propagation.MapCarrier {
+	carrier := make(propagation.MapCarrier)
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	return carrier
+}
+
+// ExtractTraceparent 從 JSON 字符串中提取 traceparent
+func ExtractTraceparent(jsonStr string) string {
+	// 簡單的字符串匹配，實際應用中可能需要更健壯的方式
+	traceparentStart := `"traceparent":"`
+	traceparentEnd := `"`
+
+	traceparentStartIndex := findIndex(jsonStr, traceparentStart)
+	if traceparentStartIndex == -1 {
+		return ""
+	}
+
+	traceparentStartIndex += len(traceparentStart)
+	traceparentEndIndex := findIndex(jsonStr[traceparentStartIndex:], traceparentEnd)
+	if traceparentEndIndex == -1 {
+		return ""
+	}
+
+	return jsonStr[traceparentStartIndex : traceparentStartIndex+traceparentEndIndex]
+}
+
+// ===== Internal Helper Functions =====
 
 // 創建OTLP導出器
 func createExporter(ctx context.Context, cfg *config.Config) (*otlptrace.Exporter, error) {
@@ -104,78 +382,6 @@ func createResource(cfg *config.Config) *resource.Resource {
 	)
 }
 
-// GetTracer 返回全局 tracer
-func GetTracer() trace.Tracer {
-	return otel.Tracer(ServiceName)
-}
-
-// StartSpan 開始一個新的 span
-func StartSpan(
-	ctx context.Context,
-	spanName string,
-	opts ...trace.SpanStartOption,
-) (context.Context, trace.Span) {
-	return GetTracer().Start(ctx, spanName, opts...)
-}
-
-// ExtractTraceContext 取出資料
-func ExtractTraceContext(ctx context.Context, carrier []byte) context.Context {
-	// 嘗試解析 JSON
-	var jsonData map[string]interface{}
-	if err := json.Unmarshal(carrier, &jsonData); err == nil {
-		// 如果包含 traceparent
-		if traceparent, ok := jsonData["traceparent"].(string); ok && traceparent != "" {
-			mapCarrier := make(propagation.MapCarrier)
-			mapCarrier.Set("traceparent", traceparent)
-			return otel.GetTextMapPropagator().Extract(ctx, mapCarrier)
-		}
-	}
-
-	// 無法解析 JSON 或沒有找到 traceparent，直接解析
-	traceparent := ExtractTraceparent(string(carrier))
-	if traceparent != "" {
-		mapCarrier := make(propagation.MapCarrier)
-		mapCarrier.Set("traceparent", traceparent)
-		return otel.GetTextMapPropagator().Extract(ctx, mapCarrier)
-	}
-
-	return ctx
-}
-
-// InjectTraceContext 將追蹤上下文注入到 context 中
-func InjectTraceContext(ctx context.Context) propagation.MapCarrier {
-	carrier := make(propagation.MapCarrier)
-	otel.GetTextMapPropagator().Inject(ctx, carrier)
-	return carrier
-}
-
-// GetTraceparent 從上下文中獲取 traceparent
-func GetTraceparent(ctx context.Context) string {
-	carrier := make(propagation.MapCarrier)
-	otel.GetTextMapPropagator().Inject(ctx, carrier)
-	return carrier.Get("traceparent")
-}
-
-// ExtractTraceparent 從 JSON 字符串中提取 traceparent
-func ExtractTraceparent(jsonStr string) string {
-	// 簡單的字符串匹配，實際應用中可能需要更健壯的方式
-	traceparentStart := `"traceparent":"`
-	traceparentEnd := `"`
-
-	traceparentStartIndex := findIndex(jsonStr, traceparentStart)
-	if traceparentStartIndex == -1 {
-		return ""
-	}
-
-	traceparentStartIndex += len(traceparentStart)
-	traceparentEndIndex := findIndex(jsonStr[traceparentStartIndex:], traceparentEnd)
-	if traceparentEndIndex == -1 {
-		return ""
-	}
-
-	return jsonStr[traceparentStartIndex : traceparentStartIndex+traceparentEndIndex]
-}
-
 // findIndex 在字符串中查找子字符串的索引
 func findIndex(s, substr string) int {
 	for i := 0; i <= len(s)-len(substr); i++ {
@@ -184,92 +390,4 @@ func findIndex(s, substr string) int {
 		}
 	}
 	return -1
-}
-
-// TraceRedisToWorker 從Redis到Worker的追蹤封裝
-func TraceRedisToWorker(
-	ctx context.Context,
-	taskType, taskID string,
-) (context.Context, trace.Span) {
-	ctx, span := StartSpan(ctx, "Redis.WorkerConsume")
-	RecordSpanAttributes(span,
-		attribute.String("messaging.system", "redis"),
-		attribute.String("messaging.destination", "worker"),
-		attribute.String("messaging.task_type", taskType),
-		attribute.String("messaging.task_id", taskID))
-	return ctx, span
-}
-
-// TraceWorkerProcessing Worker處理任務的追蹤封裝
-func TraceWorkerProcessing(
-	ctx context.Context,
-	taskType, taskID string,
-) (context.Context, trace.Span) {
-	ctx, span := StartSpan(ctx, "Worker.ProcessTask")
-	RecordSpanAttributes(span,
-		attribute.String("processing.task_type", taskType),
-		attribute.String("processing.task_id", taskID))
-	return ctx, span
-}
-
-// TraceWorkerToKDS 從Worker到KDS的追蹤封裝
-func TraceWorkerToKDS(
-	ctx context.Context,
-	eventType, eventID string,
-) (context.Context, trace.Span) {
-	ctx, span := StartSpan(ctx, "Worker.PublishToKDS")
-	RecordSpanAttributes(span,
-		attribute.String("messaging.system", "kds"),
-		attribute.String("messaging.operation", "publish"),
-		attribute.String("messaging.event_type", eventType),
-		attribute.String("messaging.event_id", eventID))
-	return ctx, span
-}
-
-// InjectTraceparentToJSON 將 traceparent 注入到 JSON 數據中
-func InjectTraceparentToJSON(ctx context.Context, data []byte) ([]byte, error) {
-	traceparent := GetTraceparent(ctx)
-	if traceparent == "" {
-		return data, nil
-	}
-
-	var jsonData map[string]interface{}
-	if err := json.Unmarshal(data, &jsonData); err != nil {
-		return data, err
-	}
-
-	jsonData["traceparent"] = traceparent
-
-	return json.Marshal(jsonData)
-}
-
-func RecordSpanError(span trace.Span, err error) {
-	if span != nil && span.IsRecording() {
-		span.RecordError(err)
-	}
-}
-
-func RecordSpanAttributes(span trace.Span, attrs ...attribute.KeyValue) {
-	if span != nil && span.IsRecording() {
-		span.SetAttributes(attrs...)
-	}
-}
-
-func RecordSpanStatus(span trace.Span, code codes.Code, desc string) {
-	if span != nil && span.IsRecording() {
-		span.SetStatus(code, desc)
-	}
-}
-
-// TraceEvent 追蹤事件
-func TraceEvent(span trace.Span, name string, attrs ...attribute.KeyValue) {
-	if span != nil && span.IsRecording() {
-		span.AddEvent(name, trace.WithAttributes(attrs...))
-	}
-}
-
-func SpanEnd(span trace.Span) {
-	if span != nil {
-		span.End()
-	}
 }

@@ -227,6 +227,7 @@ func createTestHandler(
 	tagUseCase inbound.PlayerTagUseCase,
 	logger infrastructure.Logger,
 ) *WorkerHandler {
+	tracingService := helper.NewMockTracingService()
 	return NewWorkerHandler(
 		merchantUseCase,
 		playerUseCase,
@@ -234,6 +235,7 @@ func createTestHandler(
 		levelUseCase,
 		tagUseCase,
 		logger,
+		tracingService,
 	)
 }
 
@@ -428,6 +430,7 @@ func TestNewWorkerHandler_Success(t *testing.T) {
 	)
 
 	// Execute
+	tracingService := helper.NewMockTracingService()
 	handler := NewWorkerHandler(
 		merchantUseCase,
 		playerUseCase,
@@ -435,6 +438,7 @@ func TestNewWorkerHandler_Success(t *testing.T) {
 		levelUseCase,
 		tagUseCase,
 		logger,
+		tracingService,
 	)
 
 	// Verify
@@ -957,7 +961,8 @@ func TestParseCloudEvent_Success(t *testing.T) {
 	payload := createMerchantEventPayload()
 
 	// Execute
-	cloudEvent, err := parseCloudEvent(payload, trace.SpanFromContext(context.Background()))
+	tracingService := helper.NewMockTracingService()
+	cloudEvent, err := parseCloudEvent(payload, trace.SpanFromContext(context.Background()), tracingService)
 
 	// Verify
 	assert.NoError(t, err)
@@ -972,7 +977,8 @@ func TestParseCloudEvent_InvalidJSON(t *testing.T) {
 	payload := createInvalidJSONPayload()
 
 	// Execute
-	cloudEvent, err := parseCloudEvent(payload, trace.SpanFromContext(context.Background()))
+	tracingService := helper.NewMockTracingService()
+	cloudEvent, err := parseCloudEvent(payload, trace.SpanFromContext(context.Background()), tracingService)
 
 	// Verify
 	assert.Error(t, err)
