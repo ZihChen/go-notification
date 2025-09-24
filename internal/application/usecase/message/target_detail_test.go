@@ -24,6 +24,8 @@ func TestGetMessageCampaign_TargetDetail_Player(t *testing.T) {
 	pushKeyRepo := mocks.NewPushKeyRepositoryMock(t)
 	pushService := mocks.NewPushNotificationServiceMock(t)
 	logger := helper.NewMockLogger()
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
 
 	useCase := NewMessageUseCase(
 		campaignRepo,
@@ -35,6 +37,7 @@ func TestGetMessageCampaign_TargetDetail_Player(t *testing.T) {
 		pushKeyRepo,
 		pushService,
 		logger,
+		tracingService,
 	)
 
 	// Test data
@@ -76,6 +79,8 @@ func TestGetMessageCampaign_TargetDetail_Level(t *testing.T) {
 	pushKeyRepo := mocks.NewPushKeyRepositoryMock(t)
 	pushService := mocks.NewPushNotificationServiceMock(t)
 	logger := helper.NewMockLogger()
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
 
 	useCase := NewMessageUseCase(
 		campaignRepo,
@@ -87,6 +92,7 @@ func TestGetMessageCampaign_TargetDetail_Level(t *testing.T) {
 		pushKeyRepo,
 		pushService,
 		logger,
+		tracingService,
 	)
 
 	// Test data
@@ -137,6 +143,8 @@ func TestGetMessageCampaign_TargetDetail_Tag(t *testing.T) {
 	pushKeyRepo := mocks.NewPushKeyRepositoryMock(t)
 	pushService := mocks.NewPushNotificationServiceMock(t)
 	logger := helper.NewMockLogger()
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
 
 	useCase := NewMessageUseCase(
 		campaignRepo,
@@ -148,6 +156,7 @@ func TestGetMessageCampaign_TargetDetail_Tag(t *testing.T) {
 		pushKeyRepo,
 		pushService,
 		logger,
+		tracingService,
 	)
 
 	// Test data
@@ -198,6 +207,8 @@ func TestGetMessageCampaign_TargetDetail_NoTargetDetail(t *testing.T) {
 	pushKeyRepo := mocks.NewPushKeyRepositoryMock(t)
 	pushService := mocks.NewPushNotificationServiceMock(t)
 	logger := helper.NewMockLogger()
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
 
 	useCase := NewMessageUseCase(
 		campaignRepo,
@@ -209,6 +220,7 @@ func TestGetMessageCampaign_TargetDetail_NoTargetDetail(t *testing.T) {
 		pushKeyRepo,
 		pushService,
 		logger,
+		tracingService,
 	)
 
 	// Test data

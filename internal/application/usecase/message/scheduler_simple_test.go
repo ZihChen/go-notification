@@ -19,20 +19,29 @@ func TestProcessScheduledCampaigns_Simple(t *testing.T) {
 	// 設定測試環境
 	factory := factories.NewTestDataFactory()
 	campaignRepo := mocks.NewMessageCampaignRepositoryMock(t)
+	merchantRepo := mocks.NewMerchantRepositoryMock(t)
 	playerRepo := mocks.NewPlayerRepositoryMock(t)
 	playerMessageRepo := mocks.NewPlayerMessageRepositoryMock(t)
+	levelRepo := mocks.NewLevelRepositoryMock(t)
+	tagRepo := mocks.NewTagRepositoryMock(t)
 	pushKeyRepo := mocks.NewPushKeyRepositoryMock(t)
 	pushService := mocks.NewPushNotificationServiceMock(t)
 	logger := helper.NewMockLogger()
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
 
-	useCase := &MessageUseCase{
-		campaignRepo:      campaignRepo,
-		playerRepo:        playerRepo,
-		playerMessageRepo: playerMessageRepo,
-		pushApiKeyRepo:    pushKeyRepo,
-		pushService:       pushService,
-		logger:            logger,
-	}
+	useCase := NewMessageUseCase(
+		campaignRepo,
+		merchantRepo,
+		playerMessageRepo,
+		playerRepo,
+		levelRepo,
+		tagRepo,
+		pushKeyRepo,
+		pushService,
+		logger,
+		tracingService,
+	).(*MessageUseCase)
 
 	// 使用工廠創建測試數據
 	scheduledCampaigns := []*entity.MessageCampaign{
@@ -122,20 +131,29 @@ func TestSendCampaignToPlayersAsync_Simple(t *testing.T) {
 	// 設定測試環境
 	factory := factories.NewTestDataFactory()
 	campaignRepo := mocks.NewMessageCampaignRepositoryMock(t)
+	merchantRepo := mocks.NewMerchantRepositoryMock(t)
 	playerRepo := mocks.NewPlayerRepositoryMock(t)
 	playerMessageRepo := mocks.NewPlayerMessageRepositoryMock(t)
+	levelRepo := mocks.NewLevelRepositoryMock(t)
+	tagRepo := mocks.NewTagRepositoryMock(t)
 	pushKeyRepo := mocks.NewPushKeyRepositoryMock(t)
 	pushService := mocks.NewPushNotificationServiceMock(t)
 	logger := helper.NewMockLogger()
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
 
-	useCase := &MessageUseCase{
-		campaignRepo:      campaignRepo,
-		playerRepo:        playerRepo,
-		playerMessageRepo: playerMessageRepo,
-		pushApiKeyRepo:    pushKeyRepo,
-		pushService:       pushService,
-		logger:            logger,
-	}
+	useCase := NewMessageUseCase(
+		campaignRepo,
+		merchantRepo,
+		playerMessageRepo,
+		playerRepo,
+		levelRepo,
+		tagRepo,
+		pushKeyRepo,
+		pushService,
+		logger,
+		tracingService,
+	).(*MessageUseCase)
 
 	// 使用工廠創建測試數據
 	campaign := factory.CreateScheduledCampaign()
@@ -178,20 +196,29 @@ func TestSendCampaignToPlayersAsync_WithPlayers(t *testing.T) {
 	// 設定測試環境
 	factory := factories.NewTestDataFactory()
 	campaignRepo := mocks.NewMessageCampaignRepositoryMock(t)
+	merchantRepo := mocks.NewMerchantRepositoryMock(t)
 	playerRepo := mocks.NewPlayerRepositoryMock(t)
 	playerMessageRepo := mocks.NewPlayerMessageRepositoryMock(t)
+	levelRepo := mocks.NewLevelRepositoryMock(t)
+	tagRepo := mocks.NewTagRepositoryMock(t)
 	pushKeyRepo := mocks.NewPushKeyRepositoryMock(t)
 	pushService := mocks.NewPushNotificationServiceMock(t)
 	logger := helper.NewMockLogger()
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
 
-	useCase := &MessageUseCase{
-		campaignRepo:      campaignRepo,
-		playerRepo:        playerRepo,
-		playerMessageRepo: playerMessageRepo,
-		pushApiKeyRepo:    pushKeyRepo,
-		pushService:       pushService,
-		logger:            logger,
-	}
+	useCase := NewMessageUseCase(
+		campaignRepo,
+		merchantRepo,
+		playerMessageRepo,
+		playerRepo,
+		levelRepo,
+		tagRepo,
+		pushKeyRepo,
+		pushService,
+		logger,
+		tracingService,
+	).(*MessageUseCase)
 
 	// 使用工廠創建測試數據
 	campaign := factory.CreateScheduledCampaign()

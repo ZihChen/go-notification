@@ -4,7 +4,7 @@ import (
 	"crypto/subtle"
 	"regexp"
 	"strings"
-	
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -27,11 +27,11 @@ func SanitizeAPIKey(apiKey string) string {
 	if len(apiKey) <= 8 {
 		return "****"
 	}
-	
+
 	if len(apiKey) <= 16 {
 		return apiKey[:4] + "****" + apiKey[len(apiKey)-4:]
 	}
-	
+
 	return apiKey[:4] + "****" + apiKey[len(apiKey)-4:]
 }
 
@@ -54,13 +54,13 @@ func SanitizeURL(url string) string {
 			param + `=([^&]+)&`,
 			param + `=([^&]+)$`,
 		}
-		
+
 		for _, pattern := range patterns {
 			re := regexp.MustCompile(`(?i)` + pattern)
 			result = re.ReplaceAllString(result, param+"=****&")
 		}
 	}
-	
+
 	// 清理結尾可能的多餘 &
 	result = strings.TrimSuffix(result, "&")
 	return result

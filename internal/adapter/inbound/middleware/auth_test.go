@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/utils/security"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewAPIKeyAuthMiddleware(t *testing.T) {

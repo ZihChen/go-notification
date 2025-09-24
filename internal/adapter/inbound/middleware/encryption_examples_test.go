@@ -11,7 +11,7 @@ import (
 // TestDecryptAPIKey_AllSupportedMethods 測試所有支持的加密方式
 func TestDecryptAPIKey_AllSupportedMethods(t *testing.T) {
 	originalKey := "test-api-key-123"
-	
+
 	tests := []struct {
 		name           string
 		encryptionType string
@@ -71,7 +71,7 @@ func TestDecryptAPIKey_AllSupportedMethods(t *testing.T) {
 				if _, err := rand.Read(aesKey); err != nil {
 					return "", nil, err
 				}
-				
+
 				encrypted, err := EncryptAESGCM(key, aesKey)
 				return encrypted, aesKey, err
 			},
@@ -114,7 +114,10 @@ func TestDecryptAPIKey_AllSupportedMethods(t *testing.T) {
 
 			if tt.expectedError {
 				if err == nil {
-					t.Errorf("Expected error for encryption type %s, but got none", tt.encryptionType)
+					t.Errorf(
+						"Expected error for encryption type %s, but got none",
+						tt.encryptionType,
+					)
 				}
 				return
 			}
@@ -171,9 +174,9 @@ func TestAESGCM_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.key != nil && len(tt.key) == 32 {
+			if len(tt.key) == 32 {
 				// 填充隨機密鑰
-				rand.Read(tt.key)
+				_, _ = rand.Read(tt.key)
 			}
 
 			// 測試加密
@@ -217,9 +220,9 @@ func TestAESGCM_EdgeCases(t *testing.T) {
 
 // 輔助函數：檢查字符串是否包含子字符串
 func contains(str, substr string) bool {
-	return len(str) >= len(substr) && str[:len(substr)] == substr || 
-		   (len(str) > len(substr) && str[len(str)-len(substr):] == substr) ||
-		   (len(str) > len(substr) && findSubstring(str, substr))
+	return len(str) >= len(substr) && str[:len(substr)] == substr ||
+		(len(str) > len(substr) && str[len(str)-len(substr):] == substr) ||
+		(len(str) > len(substr) && findSubstring(str, substr))
 }
 
 func findSubstring(str, substr string) bool {

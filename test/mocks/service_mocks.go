@@ -5,8 +5,11 @@ import (
 	"testing"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/stretchr/testify/mock"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // EventProducerMock 統一的 EventProducer Mock
@@ -102,5 +105,75 @@ func (m *PushNotificationServiceMock) SetupSuccess() {}
 func (m *PushNotificationServiceMock) SetupError()   {}
 func (m *PushNotificationServiceMock) SetupEmpty()   {}
 func (m *PushNotificationServiceMock) Reset() {
+	m.Mock = mock.Mock{}
+}
+
+// TracingServiceMock 統一的 TracingService Mock
+type TracingServiceMock struct {
+	*BaseMock
+}
+
+var _ infrastructure.TracingService = (*TracingServiceMock)(nil)
+
+// NewTracingServiceMock 創建新的 TracingService Mock
+func NewTracingServiceMock(t *testing.T) *TracingServiceMock {
+	return &TracingServiceMock{
+		BaseMock: NewBaseMock(t),
+	}
+}
+
+func (m *TracingServiceMock) StartSpan(
+	ctx context.Context,
+	spanName string,
+	opts ...trace.SpanStartOption,
+) (context.Context, trace.Span) {
+	m.Called(ctx, spanName, opts)
+	// Return the original context and a nil span for testing
+	return ctx, trace.SpanFromContext(ctx)
+}
+
+func (m *TracingServiceMock) RecordSpanError(span trace.Span, err error) {
+	m.Called(span, err)
+}
+
+func (m *TracingServiceMock) RecordSpanAttributes(span trace.Span, attrs ...attribute.KeyValue) {
+	m.Called(span, attrs)
+}
+
+func (m *TracingServiceMock) TraceEvent(span trace.Span, name string, attrs ...attribute.KeyValue) {
+	m.Called(span, name, attrs)
+}
+
+func (m *TracingServiceMock) SpanEnd(span trace.Span) {
+	m.Called(span)
+}
+
+func (m *TracingServiceMock) GetTraceparent(ctx context.Context) string {
+	args := m.Called(ctx)
+	return args.String(0)
+}
+
+func (m *TracingServiceMock) InjectTraceparentToJSON(
+	ctx context.Context,
+	data []byte,
+) ([]byte, error) {
+	args := m.Called(ctx, data)
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (m *TracingServiceMock) SetupSuccess() {
+	// Setup common success scenarios
+	m.On("StartSpan", mock.Anything, mock.Anything, mock.Anything).Return(context.Background(), nil)
+	m.On("RecordSpanError", mock.Anything, mock.Anything).Return()
+	m.On("RecordSpanAttributes", mock.Anything, mock.Anything).Return()
+	m.On("TraceEvent", mock.Anything, mock.Anything, mock.Anything).Return()
+	m.On("SpanEnd", mock.Anything).Return()
+	m.On("GetTraceparent", mock.Anything).Return("")
+	m.On("InjectTraceparentToJSON", mock.Anything, mock.Anything).Return([]byte{}, nil)
+}
+
+func (m *TracingServiceMock) SetupError() {}
+func (m *TracingServiceMock) SetupEmpty() {}
+func (m *TracingServiceMock) Reset() {
 	m.Mock = mock.Mock{}
 }

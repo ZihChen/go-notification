@@ -33,6 +33,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/kds"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -49,6 +50,7 @@ var baseSet = wire.NewSet(
 	// 基礎設施層
 	queue.NewQueueService,
 	provideRedisClient,
+	provideTracingService,
 
 	// 資料庫
 	merchantRepo.NewMerchantRepository,
@@ -82,6 +84,11 @@ func provideEventProducer(kdsService *kds.KDSService, logger infrastructure.Logg
 // 推播服務提供者
 func providePushNotificationService(cfg *config.Config, logger infrastructure.Logger) servicePort.PushNotificationService {
 	return outboundService.NewPushNotificationService(cfg.Push.BaseURL, logger)
+}
+
+// TracingService提供者
+func provideTracingService() infrastructure.TracingService {
+	return tracing.NewTracingService()
 }
 
 // InitializeWebServer 初始化 Web 服務的 HTTP 處理器

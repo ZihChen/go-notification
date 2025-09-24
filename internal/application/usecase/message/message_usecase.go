@@ -19,7 +19,6 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -34,6 +33,7 @@ type MessageUseCase struct {
 	pushApiKeyRepo    repository.PushKeyRepository
 	pushService       service.PushNotificationService
 	logger            infrastructure.Logger
+	tracingService    infrastructure.TracingService
 }
 
 // NewMessageUseCase 創建訊息用例
@@ -47,6 +47,7 @@ func NewMessageUseCase(
 	pushApiKeyRepo repository.PushKeyRepository,
 	pushService service.PushNotificationService,
 	logger infrastructure.Logger,
+	tracingService infrastructure.TracingService,
 ) inbound.MessageUseCase {
 	return &MessageUseCase{
 		campaignRepo:      campaignRepo,
@@ -58,6 +59,7 @@ func NewMessageUseCase(
 		pushApiKeyRepo:    pushApiKeyRepo,
 		pushService:       pushService,
 		logger:            logger,
+		tracingService:    tracingService,
 	}
 }
 
@@ -66,10 +68,10 @@ func (u *MessageUseCase) CreateMessageCampaign(
 	ctx context.Context,
 	campaign *dto.CreateMessageCampaignRequest,
 ) error {
-	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.CreateMessageCampaign")
-	defer tracing.SpanEnd(span)
+	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.CreateMessageCampaign")
+	defer u.tracingService.SpanEnd(span)
 
-	tracing.RecordSpanAttributes(span,
+	u.tracingService.RecordSpanAttributes(span,
 		attribute.String("campaign.title", campaign.Title),
 		attribute.String("campaign.category", campaign.Category),
 		attribute.String("campaign.target", campaign.Target),
@@ -77,10 +79,10 @@ func (u *MessageUseCase) CreateMessageCampaign(
 
 	merchant, err := u.merchantRepo.FindByGlobalID(ctx, campaign.GlobalMerchantID)
 	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("find merchant: %w", err)
 	}
-	tracing.TraceEvent(span, "Creating message campaign")
+	u.tracingService.TraceEvent(span, "Creating message campaign")
 
 	// 轉換 DTO 到 Entity 物件
 	campaignEntity := &entity.MessageCampaign{
@@ -91,7 +93,7 @@ func (u *MessageUseCase) CreateMessageCampaign(
 	}
 	err = copier.Copy(campaignEntity, campaign)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("copy campaign failed: %w", err)
 	}
 
@@ -102,7 +104,7 @@ func (u *MessageUseCase) CreateMessageCampaign(
 			// 對於 player，直接使用 TargetDetail 欄位
 			targetDetailBytes, err := json.Marshal(campaign.TargetDetail)
 			if err != nil {
-				tracing.RecordSpanError(span, err)
+				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("marshal target detail for player: %w", err)
 			}
 			targetDetailStr := string(targetDetailBytes)
@@ -113,17 +115,17 @@ func (u *MessageUseCase) CreateMessageCampaign(
 			// 對於 level，轉換字符串ID為uint64並驗證存在性，然後存儲原始字符串IDs
 			levelIDs, err := convertStringIDsToUint64(campaign.TargetDetail)
 			if err != nil {
-				tracing.RecordSpanError(span, err)
+				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("convert level IDs: %w", err)
 			}
 			err = u.validateLevelIDs(ctx, levelIDs)
 			if err != nil {
-				tracing.RecordSpanError(span, err)
+				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("validate level IDs: %w", err)
 			}
 			targetDetailBytes, err := json.Marshal(campaign.TargetDetail)
 			if err != nil {
-				tracing.RecordSpanError(span, err)
+				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("marshal target detail for level: %w", err)
 			}
 			targetDetailStr := string(targetDetailBytes)
@@ -134,17 +136,17 @@ func (u *MessageUseCase) CreateMessageCampaign(
 			// 對於 tag，轉換字符串ID為uint64並驗證存在性，然後存儲原始字符串IDs
 			tagIDs, err := convertStringIDsToUint64(campaign.TargetDetail)
 			if err != nil {
-				tracing.RecordSpanError(span, err)
+				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("convert tag IDs: %w", err)
 			}
 			err = u.validateTagIDs(ctx, tagIDs)
 			if err != nil {
-				tracing.RecordSpanError(span, err)
+				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("validate tag IDs: %w", err)
 			}
 			targetDetailBytes, err := json.Marshal(campaign.TargetDetail)
 			if err != nil {
-				tracing.RecordSpanError(span, err)
+				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("marshal target detail for tag: %w", err)
 			}
 			targetDetailStr := string(targetDetailBytes)
@@ -153,12 +155,15 @@ func (u *MessageUseCase) CreateMessageCampaign(
 	}
 
 	if err = u.campaignRepo.Create(ctx, campaignEntity); err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("create campaign: %w", err)
 	}
 
-	tracing.RecordSpanAttributes(span, attribute.Int64("campaign.id", int64(campaignEntity.ID)))
-	tracing.TraceEvent(span, "Message campaign created successfully")
+	u.tracingService.RecordSpanAttributes(
+		span,
+		attribute.Int64("campaign.id", int64(campaignEntity.ID)),
+	)
+	u.tracingService.TraceEvent(span, "Message campaign created successfully")
 
 	u.logger.InfoWithContext(ctx, "Message campaign created",
 		u.logger.Int64("campaign_id", int64(campaignEntity.ID)),
@@ -172,20 +177,20 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 	ctx context.Context,
 	campaign *dto.UpdateMessageCampaignRequest,
 ) error {
-	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.UpdateMessageCampaign")
-	defer tracing.SpanEnd(span)
+	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.UpdateMessageCampaign")
+	defer u.tracingService.SpanEnd(span)
 
-	tracing.RecordSpanAttributes(span,
+	u.tracingService.RecordSpanAttributes(span,
 		attribute.String("campaign.global_id", campaign.GlobalID),
 		attribute.String("campaign.title", campaign.Title),
 	)
 
-	tracing.TraceEvent(span, "Updating message campaign")
+	u.tracingService.TraceEvent(span, "Updating message campaign")
 
 	// 檢查活動是否存在
 	existing, err := u.campaignRepo.FindByGlobalID(ctx, campaign.GlobalID)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("find campaign: %w", err)
 	}
 
@@ -204,7 +209,7 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 	// 先複製可更新的字段
 	err = copier.Copy(campaignEntity, campaign)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("copy campaign failed: %w", err)
 	}
 
@@ -222,7 +227,7 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 			// 對於 player，直接使用 TargetDetail 欄位
 			targetDetailBytes, err := json.Marshal(campaign.TargetDetail)
 			if err != nil {
-				tracing.RecordSpanError(span, err)
+				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("marshal target detail for player: %w", err)
 			}
 			targetDetailStr := string(targetDetailBytes)
@@ -233,17 +238,17 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 			// 對於 level，轉換字符串ID為uint64並驗證存在性，然後存儲原始字符串IDs
 			levelIDs, err := convertStringIDsToUint64(campaign.TargetDetail)
 			if err != nil {
-				tracing.RecordSpanError(span, err)
+				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("convert level IDs: %w", err)
 			}
 			err = u.validateLevelIDs(ctx, levelIDs)
 			if err != nil {
-				tracing.RecordSpanError(span, err)
+				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("validate level IDs: %w", err)
 			}
 			targetDetailBytes, err := json.Marshal(campaign.TargetDetail)
 			if err != nil {
-				tracing.RecordSpanError(span, err)
+				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("marshal target detail for level: %w", err)
 			}
 			targetDetailStr := string(targetDetailBytes)
@@ -254,17 +259,17 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 			// 對於 tag，轉換字符串ID為uint64並驗證存在性，然後存儲原始字符串IDs
 			tagIDs, err := convertStringIDsToUint64(campaign.TargetDetail)
 			if err != nil {
-				tracing.RecordSpanError(span, err)
+				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("convert tag IDs: %w", err)
 			}
 			err = u.validateTagIDs(ctx, tagIDs)
 			if err != nil {
-				tracing.RecordSpanError(span, err)
+				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("validate tag IDs: %w", err)
 			}
 			targetDetailBytes, err := json.Marshal(campaign.TargetDetail)
 			if err != nil {
-				tracing.RecordSpanError(span, err)
+				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("marshal target detail for tag: %w", err)
 			}
 			targetDetailStr := string(targetDetailBytes)
@@ -273,11 +278,11 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 	}
 
 	if err = u.campaignRepo.Update(ctx, campaignEntity); err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("update campaign: %w", err)
 	}
 
-	tracing.TraceEvent(span, "Message campaign updated successfully")
+	u.tracingService.TraceEvent(span, "Message campaign updated successfully")
 
 	u.logger.InfoWithContext(ctx, "Message campaign updated",
 		u.logger.String("campaign_global_id", campaign.GlobalID),
@@ -288,22 +293,22 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 
 // DeleteMessageCampaign 刪除會員訊息活動
 func (u *MessageUseCase) DeleteMessageCampaign(ctx context.Context, globalID string) error {
-	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.DeleteMessageCampaign")
-	defer tracing.SpanEnd(span)
+	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.DeleteMessageCampaign")
+	defer u.tracingService.SpanEnd(span)
 
-	tracing.RecordSpanAttributes(span, attribute.String("campaign.global_id", globalID))
+	u.tracingService.RecordSpanAttributes(span, attribute.String("campaign.global_id", globalID))
 
-	tracing.TraceEvent(span, "Deleting message campaign")
+	u.tracingService.TraceEvent(span, "Deleting message campaign")
 
 	// 先查找記錄以獲取ID（用於後續更新狀態）
 	existing, err := u.campaignRepo.FindByGlobalID(ctx, globalID)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("find campaign: %w", err)
 	}
 
 	if err = u.campaignRepo.Delete(ctx, existing.ID); err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("delete campaign: %w", err)
 	}
 	setColumn := map[string]interface{}{
@@ -311,11 +316,11 @@ func (u *MessageUseCase) DeleteMessageCampaign(ctx context.Context, globalID str
 	}
 
 	if err = u.campaignRepo.UpdateFields(ctx, existing.ID, setColumn, true); err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("update campaign status: %w", err)
 	}
 
-	tracing.TraceEvent(span, "Message campaign deleted successfully")
+	u.tracingService.TraceEvent(span, "Message campaign deleted successfully")
 	u.logger.InfoWithContext(
 		ctx,
 		"Message campaign deleted",
@@ -329,18 +334,18 @@ func (u *MessageUseCase) GetMessageCampaign(
 	ctx context.Context,
 	globalID string,
 ) (*dto.MessageCampaignResponse, error) {
-	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.GetMessageCampaign")
-	defer tracing.SpanEnd(span)
+	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.GetMessageCampaign")
+	defer u.tracingService.SpanEnd(span)
 
-	tracing.RecordSpanAttributes(span, attribute.String("campaign.global_id", globalID))
+	u.tracingService.RecordSpanAttributes(span, attribute.String("campaign.global_id", globalID))
 
 	campaign, err := u.campaignRepo.FindByGlobalID(ctx, globalID)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return nil, fmt.Errorf("find campaign: %w", err)
 	}
 
-	tracing.RecordSpanAttributes(span, attribute.String("campaign.title", campaign.Title))
+	u.tracingService.RecordSpanAttributes(span, attribute.String("campaign.title", campaign.Title))
 
 	// 轉換為 DTO
 	response := &dto.MessageCampaignResponse{
@@ -456,10 +461,10 @@ func (u *MessageUseCase) ListMessageCampaigns(
 	ctx context.Context,
 	req *dto.ListMessageCampaignsRequest,
 ) (*dto.MessageCampaignListResponse, error) {
-	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.ListMessageCampaigns")
-	defer tracing.SpanEnd(span)
+	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.ListMessageCampaigns")
+	defer u.tracingService.SpanEnd(span)
 
-	tracing.RecordSpanAttributes(span,
+	u.tracingService.RecordSpanAttributes(span,
 		attribute.Int("page", req.Page),
 		attribute.Int("page_size", req.PageSize),
 	)
@@ -470,17 +475,17 @@ func (u *MessageUseCase) ListMessageCampaigns(
 	}
 	err := copier.Copy(query, req)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return nil, fmt.Errorf("copy query failed: %w", err)
 	}
 
 	campaigns, total, err := u.campaignRepo.FindAllWithOptions(ctx, query)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return nil, fmt.Errorf("list campaigns with options: %w", err)
 	}
 
-	tracing.RecordSpanAttributes(span,
+	u.tracingService.RecordSpanAttributes(span,
 		attribute.Int("total_campaigns", total),
 		attribute.Int("returned_campaigns", len(campaigns)),
 	)
@@ -522,10 +527,10 @@ func (u *MessageUseCase) GetPlayerMessages(
 	globalPlayerID string,
 	page, pageSize int,
 ) (*dto.MessageListResponse, error) {
-	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.GetPlayerMessages")
-	defer tracing.SpanEnd(span)
+	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.GetPlayerMessages")
+	defer u.tracingService.SpanEnd(span)
 
-	tracing.RecordSpanAttributes(span,
+	u.tracingService.RecordSpanAttributes(span,
 		attribute.String("global_player_id", globalPlayerID),
 		attribute.Int("page", page),
 		attribute.Int("page_size", pageSize),
@@ -541,14 +546,14 @@ func (u *MessageUseCase) GetPlayerMessages(
 	// 獲取統計資訊
 	stats, err := u.playerMessageRepo.GetPlayerMessageStats(ctx, globalPlayerID)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return nil, fmt.Errorf("get player message stats: %w", err)
 	}
 
 	// 獲取訊息列表
 	messages, total, err := u.playerMessageRepo.FindByPlayerID(ctx, globalPlayerID, page, pageSize)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return nil, fmt.Errorf("find player messages: %w", err)
 	}
 
@@ -564,7 +569,7 @@ func (u *MessageUseCase) GetPlayerMessages(
 		}
 	}
 
-	tracing.RecordSpanAttributes(span,
+	u.tracingService.RecordSpanAttributes(span,
 		attribute.Int("stats.total_count", int(stats.TotalCount)),
 		attribute.Int("stats.read_count", int(stats.ReadCount)),
 		attribute.Int("stats.unread_count", int(stats.UnreadCount)),
@@ -591,22 +596,22 @@ func (u *MessageUseCase) MarkMessageAsRead(
 	globalPlayerID string,
 	messageID uint64,
 ) error {
-	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.MarkMessageAsRead")
-	defer tracing.SpanEnd(span)
+	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.MarkMessageAsRead")
+	defer u.tracingService.SpanEnd(span)
 
-	tracing.RecordSpanAttributes(span,
+	u.tracingService.RecordSpanAttributes(span,
 		attribute.String("global_player_id", globalPlayerID),
 		attribute.Int64("message.id", int64(messageID)),
 	)
 
-	tracing.TraceEvent(span, "Marking message as read")
+	u.tracingService.TraceEvent(span, "Marking message as read")
 
 	if err := u.playerMessageRepo.MarkAsRead(ctx, globalPlayerID, messageID); err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("mark message as read: %w", err)
 	}
 
-	tracing.TraceEvent(span, "Message marked as read successfully")
+	u.tracingService.TraceEvent(span, "Message marked as read successfully")
 
 	u.logger.InfoLog("Message marked as read",
 		u.logger.String("global_player_id", globalPlayerID),
@@ -617,22 +622,25 @@ func (u *MessageUseCase) MarkMessageAsRead(
 
 // processPlayerMessages 處理玩家訊息（檢查是否需要新增訊息）
 func (u *MessageUseCase) processPlayerMessages(ctx context.Context, globalPlayerID string) error {
-	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.processPlayerMessages")
-	defer tracing.SpanEnd(span)
+	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.processPlayerMessages")
+	defer u.tracingService.SpanEnd(span)
 
-	tracing.RecordSpanAttributes(span, attribute.String("global_player_id", globalPlayerID))
+	u.tracingService.RecordSpanAttributes(
+		span,
+		attribute.String("global_player_id", globalPlayerID),
+	)
 
 	// 獲取玩家資訊
 	player, err := u.playerRepo.FindByGlobalID(ctx, globalPlayerID)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("find player: %w", err)
 	}
 
 	// 判斷玩家的活躍狀態
 	focusType := u.determinePlayerFocus(player)
 
-	tracing.RecordSpanAttributes(span,
+	u.tracingService.RecordSpanAttributes(span,
 		attribute.String("player.focus_type", focusType),
 		attribute.String("player.account", player.Account),
 	)
@@ -640,11 +648,11 @@ func (u *MessageUseCase) processPlayerMessages(ctx context.Context, globalPlayer
 	// 獲取符合條件的活動
 	campaigns, err := u.campaignRepo.FindActiveByFocus(ctx, focusType)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("find active campaigns: %w", err)
 	}
 
-	tracing.RecordSpanAttributes(span, attribute.Int("matching_campaigns", len(campaigns)))
+	u.tracingService.RecordSpanAttributes(span, attribute.Int("matching_campaigns", len(campaigns)))
 
 	// 為每個活動創建訊息（如果尚未存在）
 	var newMessages []*entity.PlayerMessage
@@ -673,11 +681,11 @@ func (u *MessageUseCase) processPlayerMessages(ctx context.Context, globalPlayer
 	// 批量創建新訊息
 	if len(newMessages) > 0 {
 		if err = u.playerMessageRepo.CreateBatch(ctx, newMessages); err != nil {
-			tracing.RecordSpanError(span, err)
+			u.tracingService.RecordSpanError(span, err)
 			return fmt.Errorf("create batch messages: %w", err)
 		}
 
-		tracing.TraceEvent(span, "New messages created",
+		u.tracingService.TraceEvent(span, "New messages created",
 			attribute.Int("new_messages_count", len(newMessages)))
 
 		u.logger.InfoLog("New messages created for player",
@@ -724,20 +732,20 @@ func (u *MessageUseCase) GetMerchantAutoSettings(
 	ctx context.Context,
 	globalMerchantID string,
 ) (*dto.MerchantAutoSettingsResponse, error) {
-	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.GetMerchantAutoSettings")
-	defer tracing.SpanEnd(span)
+	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.GetMerchantAutoSettings")
+	defer u.tracingService.SpanEnd(span)
 
 	// 獲取商戶資訊
 	merchant, err := u.merchantRepo.FindByGlobalID(ctx, globalMerchantID)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return nil, fmt.Errorf("find merchant: %w", err)
 	}
 
 	// 查找自動設定
 	campaigns, err := u.campaignRepo.FindAutoSettingsByMerchantID(ctx, merchant.ID)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return nil, fmt.Errorf("find auto settings: %w", err)
 	}
 
@@ -752,13 +760,16 @@ func (u *MessageUseCase) CreateOrUpdateMerchantAutoSettings(
 	ctx context.Context,
 	req *dto.MerchantAutoSettingsRequest,
 ) (*dto.AutoSettingsOperationResponse, error) {
-	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.CreateOrUpdateMerchantAutoSettings")
-	defer tracing.SpanEnd(span)
+	ctx, span := u.tracingService.StartSpan(
+		ctx,
+		"MessageUseCase.CreateOrUpdateMerchantAutoSettings",
+	)
+	defer u.tracingService.SpanEnd(span)
 
 	// 獲取商戶資訊
 	merchant, err := u.merchantRepo.FindByGlobalID(ctx, req.GlobalMerchantID)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return nil, fmt.Errorf("find merchant: %w", err)
 	}
 
@@ -784,7 +795,7 @@ func (u *MessageUseCase) CreateOrUpdateMerchantAutoSettings(
 
 	// 批量新增或更新
 	if err = u.campaignRepo.UpsertAutoSettings(ctx, campaigns); err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return nil, fmt.Errorf("upsert auto settings: %w", err)
 	}
 

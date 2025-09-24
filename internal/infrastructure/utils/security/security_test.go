@@ -123,10 +123,10 @@ func TestValidateAPIKeyConstantTime(t *testing.T) {
 	}
 
 	tests := []struct {
-		name         string
-		inputKey     string
-		expectedID   string
-		expectedOK   bool
+		name       string
+		inputKey   string
+		expectedID string
+		expectedOK bool
 	}{
 		{
 			name:       "Valid API Key 1",
@@ -135,7 +135,7 @@ func TestValidateAPIKeyConstantTime(t *testing.T) {
 			expectedOK: true,
 		},
 		{
-			name:       "Valid API Key 2", 
+			name:       "Valid API Key 2",
 			inputKey:   "api-key-2",
 			expectedID: "merchant-2",
 			expectedOK: true,
@@ -152,7 +152,7 @@ func TestValidateAPIKeyConstantTime(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			merchantID, isValid := ValidateAPIKeyConstantTime(tt.inputKey, validKeys)
 			if merchantID != tt.expectedID || isValid != tt.expectedOK {
-				t.Errorf("ValidateAPIKeyConstantTime() = (%v, %v), want (%v, %v)", 
+				t.Errorf("ValidateAPIKeyConstantTime() = (%v, %v), want (%v, %v)",
 					merchantID, isValid, tt.expectedID, tt.expectedOK)
 			}
 		})
@@ -169,12 +169,12 @@ func TestValidateAPIKeyMD5Deprecated(t *testing.T) {
 
 func TestHashAPIKey(t *testing.T) {
 	key := "test-api-key"
-	
+
 	hashed, err := HashAPIKey(key)
 	if err != nil {
 		t.Fatalf("HashAPIKey() error = %v", err)
 	}
-	
+
 	// 驗證雜湊後的key可以被驗證
 	err = bcrypt.CompareHashAndPassword([]byte(hashed), []byte(key))
 	if err != nil {

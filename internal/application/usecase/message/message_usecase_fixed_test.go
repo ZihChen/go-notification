@@ -33,16 +33,27 @@ func setupMessageTestSuite(t *testing.T) *MessageTestSuite {
 	playerRepo := mocks.NewPlayerRepositoryMock(t)
 	playerMessageRepo := mocks.NewPlayerMessageRepositoryMock(t)
 	merchantRepo := mocks.NewMerchantRepositoryMock(t)
+	levelRepo := mocks.NewLevelRepositoryMock(t)
+	tagRepo := mocks.NewTagRepositoryMock(t)
+	pushKeyRepo := mocks.NewPushKeyRepositoryMock(t)
+	pushService := mocks.NewPushNotificationServiceMock(t)
 	logger := helper.NewMockLogger()
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
 
 	// 創建UseCase實例
-	useCase := &MessageUseCase{
-		campaignRepo:      campaignRepo,
-		playerRepo:        playerRepo,
-		playerMessageRepo: playerMessageRepo,
-		merchantRepo:      merchantRepo,
-		logger:            logger,
-	}
+	useCase := NewMessageUseCase(
+		campaignRepo,
+		merchantRepo,
+		playerMessageRepo,
+		playerRepo,
+		levelRepo,
+		tagRepo,
+		pushKeyRepo,
+		pushService,
+		logger,
+		tracingService,
+	).(*MessageUseCase)
 
 	// 創建測試數據工廠
 	factory := factories.NewTestDataFactory()

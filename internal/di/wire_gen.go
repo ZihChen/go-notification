@@ -36,6 +36,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/kds"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	redis2 "github.com/redis/go-redis/v9"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -67,7 +68,8 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, redis
 	tagRepository := repository.NewTagRepository(db)
 	pushKeyRepository := merchant.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
-	messageUseCase := message.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger)
+	tracingService := provideTracingService()
+	messageUseCase := message.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger)
 	playerTagRepository := repository.NewPlayerTagRepository(db)
 	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager)
@@ -172,7 +174,8 @@ func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Log
 	tagRepository := repository.NewTagRepository(db)
 	pushKeyRepository := merchant.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
-	messageUseCase := message.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger)
+	tracingService := provideTracingService()
+	messageUseCase := message.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
 	messageCampaignTriggerJob := job.NewMessageCampaignTriggerJob(messageUseCase, logger)
 	registry := job.NewRegistry(messageCampaignTriggerJob)
 	handler := scheduler.NewSchedulerHandler(logger, redisManager, registry)
@@ -204,7 +207,9 @@ type WorkerComponents struct {
 	Server  *asynq.Server
 }
 
-var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient, merchant.NewMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, repository3.NewMessageCampaignRepository, repository3.NewPlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant.NewPushKeyRepository, service.NewEventService, providePushNotificationService, merchant2.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message.NewMessageUseCase, level.NewLevelUseCase, player.NewTagUseCase)
+var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient,
+	provideTracingService, merchant.NewMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, repository3.NewMessageCampaignRepository, repository3.NewPlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant.NewPushKeyRepository, service.NewEventService, providePushNotificationService, merchant2.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message.NewMessageUseCase, level.NewLevelUseCase, player.NewTagUseCase,
+)
 
 // 事件生產者提供者 (保留作為別名)
 func provideEventProducer(kdsService *kds.KDSService, logger infrastructure.Logger) service2.EventProducer {
@@ -214,6 +219,11 @@ func provideEventProducer(kdsService *kds.KDSService, logger infrastructure.Logg
 // 推播服務提供者
 func providePushNotificationService(cfg *config.Config, logger infrastructure.Logger) service2.PushNotificationService {
 	return service3.NewPushNotificationService(cfg.Push.BaseURL, logger)
+}
+
+// TracingService提供者
+func provideTracingService() infrastructure.TracingService {
+	return tracing.NewTracingService()
 }
 
 // 提供 worker 服務器
