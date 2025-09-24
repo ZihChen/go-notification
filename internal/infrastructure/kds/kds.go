@@ -21,16 +21,16 @@ import (
 
 // KDSService KDS服務實現
 type KDSService struct {
-	client       *kinesis.Client
-	dynamoClient *dynamodb.Client
-	redisManager *redisCache.Manager
-	streamName   string
-	tableName    string
-	partitionKey string
-	sortKey      string
-	config       *cfg.Config
-	queueService service.QueueService
-	logger       infrastructure.Logger
+	client        *kinesis.Client
+	dynamoClient  *dynamodb.Client
+	redisManager  *redisCache.Manager
+	consumeStream string
+	tableName     string
+	partitionKey  string
+	sortKey       string
+	config        *cfg.Config
+	queueService  service.QueueService
+	logger        infrastructure.Logger
 }
 
 // NewKDSService 創建KDS服務
@@ -57,16 +57,16 @@ func NewKDSService(
 		logger.String("dynamodb_table", config.AWS.DynamoDBTable))
 
 	return &KDSService{
-		client:       kinesisClient,
-		dynamoClient: dynamoClient,
-		redisManager: redisManager,
-		streamName:   config.AWS.KinesisStream,
-		tableName:    config.AWS.DynamoDBTable,
-		partitionKey: config.AWS.PartitionKey,
-		sortKey:      config.AWS.SortKey,
-		config:       config,
-		queueService: queueService,
-		logger:       logger,
+		client:        kinesisClient,
+		dynamoClient:  dynamoClient,
+		redisManager:  redisManager,
+		consumeStream: config.AWS.KinesisStream,
+		tableName:     config.AWS.DynamoDBTable,
+		partitionKey:  config.AWS.PartitionKey,
+		sortKey:       config.AWS.SortKey,
+		config:        config,
+		queueService:  queueService,
+		logger:        logger,
 	}, nil
 }
 
@@ -109,7 +109,7 @@ func (k *KDSService) Send(ctx context.Context, data []byte, eventType string) er
 
 	_, err := k.client.PutRecord(ctx, &kinesis.PutRecordInput{
 		Data:         data,
-		StreamName:   aws.String(k.streamName),
+		StreamName:   aws.String(k.consumeStream),
 		PartitionKey: aws.String(partitionKey),
 	})
 	if err != nil {

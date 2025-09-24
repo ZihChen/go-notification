@@ -23,6 +23,7 @@ type Config struct {
 	Events   EventsConfig
 	Auth     AuthConfig
 	Push     PushConfig
+	Consumer ConsumerConfig
 }
 
 // AppConfig 應用程序基本配置
@@ -114,6 +115,28 @@ type PushConfig struct {
 	BaseURL string
 }
 
+// ConsumerConfig Consumer 服務配置
+type ConsumerConfig struct {
+	// 批次處理配置
+	BatchSize        int           // 每批次記錄數 (用於 Worker Pool 處理)
+	MaxBatchWaitTime time.Duration // 批次最大等待時間
+
+	// KDS 獲取配置
+	KDSRecordLimit int // 每次從 KDS GetRecords 獲取的記錄數上限
+
+	// Worker Pool 配置
+	WorkerPoolSize   int // Worker 數量
+	WorkerBufferSize int // Worker 通道緩衝區大小
+
+	// 退避策略配置
+	MinBackoff time.Duration // 最小退避時間
+	MaxBackoff time.Duration // 最大退避時間
+
+	// 分片處理配置
+	MaxShardConcurrency int           // 最大並行分片數
+	ShardLockTimeout    time.Duration // 分片鎖超時時間
+}
+
 // LoadConfig 加載配置
 func LoadConfig() (*Config, error) {
 	viper.SetConfigName(".env")
@@ -199,6 +222,32 @@ func LoadConfig() (*Config, error) {
 		Push: PushConfig{
 			BaseURL: viper.GetString("PUSH_NOTIFICATION_BASE_URL"),
 		},
+		Consumer: ConsumerConfig{
+			// 批次處理配置
+			BatchSize: getIntWithDefault("CONSUMER_BATCH_SIZE", 100),
+			MaxBatchWaitTime: getDurationWithDefault(
+				"CONSUMER_MAX_BATCH_WAIT_TIME",
+				500*time.Millisecond,
+			),
+
+			// KDS 獲取配置
+			KDSRecordLimit: getIntWithDefault("CONSUMER_KDS_RECORD_LIMIT", 1000),
+
+			// Worker Pool 配置
+			WorkerPoolSize:   getIntWithDefault("CONSUMER_WORKER_POOL_SIZE", 10),
+			WorkerBufferSize: getIntWithDefault("CONSUMER_WORKER_BUFFER_SIZE", 200),
+
+			// 退避策略配置
+			MinBackoff: getDurationWithDefault("CONSUMER_MIN_BACKOFF", 500*time.Millisecond),
+			MaxBackoff: getDurationWithDefault("CONSUMER_MAX_BACKOFF", 5*time.Second),
+
+			// 分片處理配置
+			MaxShardConcurrency: getIntWithDefault("CONSUMER_MAX_SHARD_CONCURRENCY", 8),
+			ShardLockTimeout: getDurationWithDefault(
+				"CONSUMER_SHARD_LOCK_TIMEOUT",
+				1*time.Minute,
+			),
+		},
 	}
 
 	return config, nil
@@ -267,6 +316,14 @@ func getIntWithDefault(key string, defaultValue int) int {
 func getBoolWithDefault(key string, defaultValue bool) bool {
 	if viper.IsSet(key) {
 		return viper.GetBool(key)
+	}
+	return defaultValue
+}
+
+// getDurationWithDefault 獲取 duration 配置值，如果不存在則使用預設值
+func getDurationWithDefault(key string, defaultValue time.Duration) time.Duration {
+	if viper.IsSet(key) {
+		return viper.GetDuration(key)
 	}
 	return defaultValue
 }
@@ -341,6 +398,17 @@ func (c *Config) PrintConfig() {
 	fmt.Printf("  IdentityTagSync: %s\n", c.Events.IdentityTagSync)
 	fmt.Printf("  IdentityPlayerLevelSync: %s\n", c.Events.IdentityPlayerLevelSync)
 	fmt.Printf("  IdentityPlayerTagsSync: %s\n", c.Events.IdentityPlayerTagsSync)
+
+	fmt.Printf("\n[Consumer]\n")
+	fmt.Printf("  BatchSize: %d\n", c.Consumer.BatchSize)
+	fmt.Printf("  MaxBatchWaitTime: %v\n", c.Consumer.MaxBatchWaitTime)
+	fmt.Printf("  KDSRecordLimit: %d\n", c.Consumer.KDSRecordLimit)
+	fmt.Printf("  WorkerPoolSize: %d\n", c.Consumer.WorkerPoolSize)
+	fmt.Printf("  WorkerBufferSize: %d\n", c.Consumer.WorkerBufferSize)
+	fmt.Printf("  MinBackoff: %v\n", c.Consumer.MinBackoff)
+	fmt.Printf("  MaxBackoff: %v\n", c.Consumer.MaxBackoff)
+	fmt.Printf("  MaxShardConcurrency: %d\n", c.Consumer.MaxShardConcurrency)
+	fmt.Printf("  ShardLockTimeout: %v\n", c.Consumer.ShardLockTimeout)
 
 	fmt.Println("\n==============================")
 }

@@ -51,11 +51,6 @@ func TestConsumerHandler_Close_Success(t *testing.T) {
 }
 
 func TestConsumerHandler_BackoffDelay(t *testing.T) {
-	// 準備測試數據
-	mockLogger := helper.NewMockLogger()
-	mockKDSService := &kds.KDSService{}
-	handler := NewConsumerHandler(mockKDSService, mockLogger)
-
 	// 測試退避延遲計算
 	testCases := []struct {
 		name    string
@@ -69,7 +64,7 @@ func TestConsumerHandler_BackoffDelay(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			delay := handler.backoffDelay(tc.attempt)
+			delay := backoffDelay(tc.attempt)
 
 			// 驗證延遲是正數
 			if delay <= 0 {

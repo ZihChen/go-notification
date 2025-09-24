@@ -142,20 +142,16 @@ func initializeServices(
 func (s *services) cleanup(ctx context.Context, logger infrastructure.Logger) {
 	// 關閉Consumer Handler
 	if err := s.consumerHandler.Close(); err != nil {
-		logger.ErrorLog("Failed to close consumer handler", logger.Error("err", err))
-	} else {
-		logger.InfoWithContext(ctx, "Consumer handler closed successfully")
+		logger.ErrorWithContext(ctx, "Failed to close consumer handler", logger.Error("err", err))
 	}
 
 	// 關閉追蹤器
 	if err := s.tracer.Shutdown(ctx); err != nil {
-		logger.ErrorLog("Failed to shutdown tracer", logger.Error("err", err))
+		logger.ErrorWithContext(ctx, "Failed to shutdown tracer", logger.Error("err", err))
 	}
 
 	// 關閉Redis連線
 	if err := s.redisManager.Close(); err != nil {
-		logger.ErrorLog("Failed to close Redis connection", logger.Error("err", err))
-	} else {
-		logger.InfoWithContext(ctx, "Redis connection closed successfully")
+		logger.ErrorWithContext(ctx, "Failed to close Redis connection", logger.Error("err", err))
 	}
 }
