@@ -210,11 +210,11 @@ func TestDecryptAPIKey(t *testing.T) {
 			expectError:    true,
 		},
 		{
-			name:           "MD5 (passthrough)",
+			name:           "MD5 (deprecated - should error)",
 			encryptedKey:   "md5hash",
 			encryptionType: "md5",
-			expectedKey:    "md5hash",
-			expectError:    false,
+			expectedKey:    "",
+			expectError:    true,
 		},
 		{
 			name:           "Empty encryption type defaults to plain",
@@ -224,11 +224,11 @@ func TestDecryptAPIKey(t *testing.T) {
 			expectError:    false,
 		},
 		{
-			name:           "Unknown encryption type defaults to plain",
+			name:           "Unknown encryption type should error",
 			encryptedKey:   "test-key",
 			encryptionType: "unknown",
-			expectedKey:    "test-key",
-			expectError:    false,
+			expectedKey:    "",
+			expectError:    true,
 		},
 	}
 
@@ -255,22 +255,22 @@ func TestValidateAPIKeyMD5(t *testing.T) {
 		expected bool
 	}{
 		{
-			name:     "Valid key 1",
+			name:     "MD5 deprecated - always returns false for key1",
 			inputKey: "key1",
-			expected: true,
+			expected: false, // MD5 is deprecated and always returns false
 		},
 		{
-			name:     "Valid key 2",
+			name:     "MD5 deprecated - always returns false for key2", 
 			inputKey: "key2",
-			expected: true,
+			expected: false, // MD5 is deprecated and always returns false
 		},
 		{
-			name:     "Invalid key",
+			name:     "MD5 deprecated - invalid key also returns false",
 			inputKey: "invalid",
 			expected: false,
 		},
 		{
-			name:     "Empty key",
+			name:     "MD5 deprecated - empty key returns false",
 			inputKey: "",
 			expected: false,
 		},
