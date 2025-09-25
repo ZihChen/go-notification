@@ -13,25 +13,27 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 )
 
 type LevelUseCase struct {
-	levelRepo     repository.LevelRepository
-	merchantRepo  repository.MerchantRepository
-	eventProducer service.EventProducer
-	logger        infrastructure.Logger
+	levelRepo      repository.LevelRepository
+	merchantRepo   repository.MerchantRepository
+	eventProducer  service.EventProducer
+	logger         infrastructure.Logger
+	tracingService infrastructure.TracingService
 }
 
 func NewLevelUseCase(
 	levelRepo repository.LevelRepository,
 	merchantRepo repository.MerchantRepository,
 	logger infrastructure.Logger,
+	tracingService infrastructure.TracingService,
 ) inbound.PlayerLevelUseCase {
 	return &LevelUseCase{
-		levelRepo:    levelRepo,
-		merchantRepo: merchantRepo,
-		logger:       logger,
+		levelRepo:      levelRepo,
+		merchantRepo:   merchantRepo,
+		logger:         logger,
+		tracingService: tracingService,
 	}
 }
 
@@ -39,13 +41,13 @@ func (u *LevelUseCase) SyncPlayerLevel(
 	ctx context.Context,
 	data *event.IdentityPlayerLevelSyncEvent,
 ) error {
-	ctx, span := tracing.StartSpan(ctx, "LevelUseCase.SyncPlayerLevel")
-	defer tracing.SpanEnd(span)
+	ctx, span := u.tracingService.StartSpan(ctx, "LevelUseCase.SyncPlayerLevel")
+	defer u.tracingService.SpanEnd(span)
 
-	tracing.TraceEvent(span, "Checking if merchant exists")
+	u.tracingService.TraceEvent(span, "Checking if merchant exists")
 	merchant, err := u.merchantRepo.FindByGlobalID(ctx, data.GlobalMerchantID)
 	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("find merchant: %w", err)
 	}
 	level := &entity.Level{
@@ -57,11 +59,11 @@ func (u *LevelUseCase) SyncPlayerLevel(
 	}
 	err = u.levelRepo.Upsert(ctx, level)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("upsert player level: %w", err)
 	}
 	u.logger.InfoWithContext(ctx, "Upsert player level completed", u.logger.Any("level", data))
-	tracing.TraceEvent(span, "Upsert completed")
+	u.tracingService.TraceEvent(span, "Upsert completed")
 	return nil
 }
 
@@ -69,12 +71,12 @@ func (u *LevelUseCase) GetLevelsByMerchantID(
 	ctx context.Context,
 	merchantID uint64,
 ) (*dto.LevelListResponse, error) {
-	ctx, span := tracing.StartSpan(ctx, "LevelUseCase.GetLevelsByMerchantID")
-	defer tracing.SpanEnd(span)
+	ctx, span := u.tracingService.StartSpan(ctx, "LevelUseCase.GetLevelsByMerchantID")
+	defer u.tracingService.SpanEnd(span)
 
 	levels, err := u.levelRepo.FindByMerchantID(ctx, merchantID)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return nil, fmt.Errorf("find levels by merchant ID: %w", err)
 	}
 

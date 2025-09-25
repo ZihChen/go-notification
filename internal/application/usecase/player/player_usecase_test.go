@@ -55,7 +55,16 @@ func TestPlayerUseCase_SyncPlayer(t *testing.T) {
 		UpdatedAt:        time.Now(),
 	}, nil)
 
-	useCase := NewPlayerUseCase(playerRepo, merchantRepo, levelRepo, eventProducer, logger)
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
+	useCase := NewPlayerUseCase(
+		playerRepo,
+		merchantRepo,
+		levelRepo,
+		eventProducer,
+		logger,
+		tracingService,
+	)
 
 	// 執行測試
 	err := useCase.SyncPlayer(context.Background(), createPlayerEvent())
@@ -94,7 +103,16 @@ func TestPlayerUseCase_GetPlayerByID(t *testing.T) {
 	playerRepo.On("FindByID", mock.Anything, playerID).Return(existingPlayer, nil)
 
 	// 創建用例
-	useCase := NewPlayerUseCase(playerRepo, merchantRepo, levelRepo, eventProducer, logger)
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
+	useCase := NewPlayerUseCase(
+		playerRepo,
+		merchantRepo,
+		levelRepo,
+		eventProducer,
+		logger,
+		tracingService,
+	)
 
 	// 執行測試
 	player, err := useCase.GetPlayerByID(context.Background(), playerID)
@@ -137,7 +155,16 @@ func TestPlayerUseCase_GetPlayerByGlobalID(t *testing.T) {
 	playerRepo.On("FindByGlobalID", mock.Anything, globalPlayerID).Return(existingPlayer, nil)
 
 	// 創建用例
-	useCase := NewPlayerUseCase(playerRepo, merchantRepo, levelRepo, eventProducer, logger)
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
+	useCase := NewPlayerUseCase(
+		playerRepo,
+		merchantRepo,
+		levelRepo,
+		eventProducer,
+		logger,
+		tracingService,
+	)
 
 	// 執行測試
 	player, err := useCase.GetPlayerByGlobalID(context.Background(), globalPlayerID)
@@ -182,7 +209,16 @@ func TestPlayerUseCase_UpdatePlayerLastActive(t *testing.T) {
 	playerRepo.On("Update", mock.Anything, mock.AnythingOfType("*entity.Player")).Return(nil)
 
 	// 創建用例
-	useCase := NewPlayerUseCase(playerRepo, merchantRepo, levelRepo, eventProducer, logger)
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
+	useCase := NewPlayerUseCase(
+		playerRepo,
+		merchantRepo,
+		levelRepo,
+		eventProducer,
+		logger,
+		tracingService,
+	)
 
 	// 執行測試
 	err := useCase.UpdatePlayerLastActive(context.Background(), playerID)

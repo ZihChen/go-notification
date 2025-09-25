@@ -77,10 +77,6 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	}
 	defer svc.cleanup(rootCtx, logger)
 
-	// 創建追蹤 span
-	ctx, rootSpan := tracing.StartSpan(rootCtx, "WebService")
-	defer tracing.SpanEnd(rootSpan)
-
 	// 決定服務端口
 	serverPort := determinePort(port, cfg)
 
@@ -109,14 +105,14 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	// 在後台運行服務器
 	go func() {
 		logger.InfoWithContext(
-			ctx,
+			rootCtx,
 			"Starting web server",
 			logger.Int("port", serverPort),
 		)
 		if serverErr := server.ListenAndServe(); serverErr != nil &&
 			!errors.Is(serverErr, http.ErrServerClosed) {
 			logger.FatalWithContext(
-				ctx,
+				rootCtx,
 				"Failed to start server",
 				logger.Error("err", serverErr),
 			)
@@ -128,36 +124,33 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	logger.InfoWithContext(ctx, "Shutting down server...")
-	tracing.TraceEvent(rootSpan, "Shutting down web server")
+	logger.InfoWithContext(rootCtx, "Shutting down server...")
 
 	// 創建帶超時的上下文用於優雅關閉
-	shutdownCtx, cancel := context.WithTimeout(ctx, shutdownTimeout)
+	shutdownCtx, cancel := context.WithTimeout(rootCtx, shutdownTimeout)
 	defer cancel()
 
 	// 關閉HTTP服務器，停止接受新請求，並等待現有請求完成
 	if err = server.Shutdown(shutdownCtx); err != nil {
 		logger.ErrorWithContext(
-			ctx,
+			rootCtx,
 			"Failed to gracefully shutdown server",
 			logger.Error("err", err),
 		)
 	} else {
-		logger.InfoWithContext(ctx, "HTTP server shutdown gracefully")
+		logger.InfoWithContext(rootCtx, "HTTP server shutdown gracefully")
 	}
 
 	// 額外檢查是否還有活動連接
 	select {
 	case <-shutdownCtx.Done():
 		if errors.Is(shutdownCtx.Err(), context.DeadlineExceeded) {
-			logger.WarnWithContext(ctx, "Server shutdown timeout exceeded, forcing exit")
+			logger.WarnWithContext(rootCtx, "Server shutdown timeout exceeded, forcing exit")
 		}
 	default:
-		logger.InfoWithContext(ctx, "All connections closed gracefully")
+		logger.InfoWithContext(rootCtx, "All connections closed gracefully")
 	}
-
-	tracing.TraceEvent(rootSpan, "Web server exited gracefully")
-	logger.InfoWithContext(ctx, "Server exited")
+	logger.InfoWithContext(rootCtx, "Server exited")
 }
 
 // initializeServices 初始化所有必要的服務

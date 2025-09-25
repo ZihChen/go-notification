@@ -69,7 +69,9 @@ func TestLevelUseCase_SyncPlayerLevel(t *testing.T) {
 	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").Return(merchant, nil)
 	levelRepo.On("Upsert", mock.Anything, mock.AnythingOfType("*entity.Level")).Return(nil)
 
-	useCase := NewLevelUseCase(levelRepo, merchantRepo, logger)
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
+	useCase := NewLevelUseCase(levelRepo, merchantRepo, logger, tracingService)
 
 	event := createIdentityPlayerLevelSyncEvent()
 
@@ -102,7 +104,9 @@ func TestLevelUseCase_SyncPlayerLevel_MerchantNotFound_PanicExpected(t *testing.
 	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").
 		Return(nil, errmsg.ErrRepoMerchantNotFound)
 
-	useCase := NewLevelUseCase(levelRepo, merchantRepo, logger)
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
+	useCase := NewLevelUseCase(levelRepo, merchantRepo, logger, tracingService)
 
 	event := createIdentityPlayerLevelSyncEvent()
 
@@ -122,7 +126,9 @@ func TestLevelUseCase_SyncPlayerLevel_MerchantRepositoryError(t *testing.T) {
 	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").
 		Return(nil, errors.New("database connection error"))
 
-	useCase := NewLevelUseCase(levelRepo, merchantRepo, logger)
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
+	useCase := NewLevelUseCase(levelRepo, merchantRepo, logger, tracingService)
 
 	event := createIdentityPlayerLevelSyncEvent()
 
@@ -142,7 +148,9 @@ func TestLevelUseCase_SyncPlayerLevel_LevelUpsertError(t *testing.T) {
 	levelRepo.On("Upsert", mock.Anything, mock.AnythingOfType("*entity.Level")).
 		Return(errors.New("database upsert error"))
 
-	useCase := NewLevelUseCase(levelRepo, merchantRepo, logger)
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
+	useCase := NewLevelUseCase(levelRepo, merchantRepo, logger, tracingService)
 
 	event := createIdentityPlayerLevelSyncEvent()
 
@@ -167,7 +175,9 @@ func TestLevelUseCase_SyncPlayerLevel_DataMapping(t *testing.T) {
 			capturedLevel = args.Get(1).(*entity.Level)
 		}).Return(nil)
 
-	useCase := NewLevelUseCase(levelRepo, merchantRepo, logger)
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
+	useCase := NewLevelUseCase(levelRepo, merchantRepo, logger, tracingService)
 
 	event := &event.IdentityPlayerLevelSyncEvent{
 		GlobalMerchantID:    "FATCAT-MERCHANT-1",
@@ -201,7 +211,9 @@ func TestLevelUseCase_SyncPlayerLevel_EmptyLevelName(t *testing.T) {
 		return level.Name == "" // Verify empty name is preserved
 	})).Return(nil)
 
-	useCase := NewLevelUseCase(levelRepo, merchantRepo, logger)
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
+	useCase := NewLevelUseCase(levelRepo, merchantRepo, logger, tracingService)
 
 	event := createIdentityPlayerLevelSyncEvent()
 	event.Name = "" // Set empty name
@@ -221,7 +233,9 @@ func TestLevelUseCase_SyncPlayerLevel_TracingAndLogging(t *testing.T) {
 	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").Return(merchant, nil)
 	levelRepo.On("Upsert", mock.Anything, mock.AnythingOfType("*entity.Level")).Return(nil)
 
-	useCase := NewLevelUseCase(levelRepo, merchantRepo, logger)
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
+	useCase := NewLevelUseCase(levelRepo, merchantRepo, logger, tracingService)
 
 	event := createIdentityPlayerLevelSyncEvent()
 
@@ -255,7 +269,9 @@ func TestLevelUseCase_SyncPlayerLevel_ContextCancellation(t *testing.T) {
 	levelRepo.On("Upsert", mock.Anything, mock.AnythingOfType("*entity.Level")).
 		Return(context.Canceled)
 
-	useCase := NewLevelUseCase(levelRepo, merchantRepo, logger)
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
+	useCase := NewLevelUseCase(levelRepo, merchantRepo, logger, tracingService)
 
 	event := createIdentityPlayerLevelSyncEvent()
 

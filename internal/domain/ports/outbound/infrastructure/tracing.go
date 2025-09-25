@@ -50,5 +50,8 @@ type TracingService interface {
 	TraceRedisToWorker(ctx context.Context, taskType, taskID string) (context.Context, trace.Span)
 
 	// TraceWorkerProcessing Worker處理任務的追蹤封裝
-	TraceWorkerProcessing(ctx context.Context, taskType, taskID string) (context.Context, trace.Span)
+	TraceWorkerProcessing(
+		ctx context.Context,
+		taskType, taskID string,
+	) (context.Context, trace.Span)
 }

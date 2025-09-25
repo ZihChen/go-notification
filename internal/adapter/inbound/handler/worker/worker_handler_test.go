@@ -962,7 +962,11 @@ func TestParseCloudEvent_Success(t *testing.T) {
 
 	// Execute
 	tracingService := helper.NewMockTracingService()
-	cloudEvent, err := parseCloudEvent(payload, trace.SpanFromContext(context.Background()), tracingService)
+	cloudEvent, err := parseCloudEvent(
+		payload,
+		trace.SpanFromContext(context.Background()),
+		tracingService,
+	)
 
 	// Verify
 	assert.NoError(t, err)
@@ -978,7 +982,11 @@ func TestParseCloudEvent_InvalidJSON(t *testing.T) {
 
 	// Execute
 	tracingService := helper.NewMockTracingService()
-	cloudEvent, err := parseCloudEvent(payload, trace.SpanFromContext(context.Background()), tracingService)
+	cloudEvent, err := parseCloudEvent(
+		payload,
+		trace.SpanFromContext(context.Background()),
+		tracingService,
+	)
 
 	// Verify
 	assert.Error(t, err)

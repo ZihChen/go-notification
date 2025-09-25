@@ -16,16 +16,16 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/constants"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 )
 
 type PlayerTagUseCase struct {
-	tagRepo       repository.TagRepository
-	merchantRepo  repository.MerchantRepository
-	playerRepo    repository.PlayerRepository
-	playerTagRepo repository.PlayerTagRepository
-	logger        infrastructure.Logger
-	redisManager  *redisCache.Manager
+	tagRepo        repository.TagRepository
+	merchantRepo   repository.MerchantRepository
+	playerRepo     repository.PlayerRepository
+	playerTagRepo  repository.PlayerTagRepository
+	logger         infrastructure.Logger
+	redisManager   *redisCache.Manager
+	tracingService infrastructure.TracingService
 }
 
 func NewTagUseCase(
@@ -35,14 +35,16 @@ func NewTagUseCase(
 	playerTagRepo repository.PlayerTagRepository,
 	logger infrastructure.Logger,
 	redisManager *redisCache.Manager,
+	tracingService infrastructure.TracingService,
 ) inbound.PlayerTagUseCase {
 	return &PlayerTagUseCase{
-		tagRepo:       tagRepo,
-		merchantRepo:  merchantRepo,
-		playerRepo:    playerRepo,
-		playerTagRepo: playerTagRepo,
-		logger:        logger,
-		redisManager:  redisManager,
+		tagRepo:        tagRepo,
+		merchantRepo:   merchantRepo,
+		playerRepo:     playerRepo,
+		playerTagRepo:  playerTagRepo,
+		logger:         logger,
+		redisManager:   redisManager,
+		tracingService: tracingService,
 	}
 }
 
@@ -50,20 +52,20 @@ func (u *PlayerTagUseCase) SyncPlayerTags(
 	ctx context.Context,
 	data *event.IdentityPlayerTagSyncEvent,
 ) error {
-	ctx, span := tracing.StartSpan(ctx, "PlayerTagUseCase.SyncPlayerTags")
-	defer tracing.SpanEnd(span)
+	ctx, span := u.tracingService.StartSpan(ctx, "PlayerTagUseCase.SyncPlayerTags")
+	defer u.tracingService.SpanEnd(span)
 
-	tracing.TraceEvent(span, "Checking if merchant exists")
+	u.tracingService.TraceEvent(span, "Checking if merchant exists")
 	merchant, err := u.merchantRepo.FindByGlobalID(ctx, data.GlobalMerchantID)
 	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("find merchant: %w", err)
 	}
 
-	tracing.TraceEvent(span, "Checking if player exists")
+	u.tracingService.TraceEvent(span, "Checking if player exists")
 	player, err := u.playerRepo.FindByGlobalID(ctx, data.GlobalPlayerID)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("find player by global_id: %w", err)
 	}
 
@@ -82,9 +84,9 @@ func (u *PlayerTagUseCase) SyncPlayerTags(
 	}
 
 	// 更新或創建Tags
-	tracing.TraceEvent(span, "Start operation tags batch upsert")
+	u.tracingService.TraceEvent(span, "Start operation tags batch upsert")
 	if err = u.tagRepo.BatchUpsert(ctx, tagsToInsert); err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("batch upsert tags failed: %w", err)
 	}
 	u.logger.InfoWithContext(
@@ -96,7 +98,7 @@ func (u *PlayerTagUseCase) SyncPlayerTags(
 
 	tags, err := u.tagRepo.FindByGlobalIDs(ctx, tagsGlobalIDs)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("find tags by global_ids: %w", err)
 	}
 
@@ -106,11 +108,11 @@ func (u *PlayerTagUseCase) SyncPlayerTags(
 	}
 
 	// 建立Player Tags關聯
-	tracing.TraceEvent(span, "Start sync player tags relation")
+	u.tracingService.TraceEvent(span, "Start sync player tags relation")
 	if err = u.executeLocked(ctx, player.ID, func() error {
 		err = u.playerTagRepo.BatchUpdate(ctx, player.ID, tagIDs)
 		if err != nil {
-			tracing.RecordSpanError(span, err)
+			u.tracingService.RecordSpanError(span, err)
 			return fmt.Errorf("batch update player tags failed: %w", err)
 		}
 		u.logger.InfoWithContext(ctx, "Batch upsert player tags completed",
@@ -120,22 +122,22 @@ func (u *PlayerTagUseCase) SyncPlayerTags(
 		)
 		return nil
 	}); err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("batch upsert player tags failed: %w", err)
 	}
 
-	tracing.TraceEvent(span, "Sync player tags relation completed")
+	u.tracingService.TraceEvent(span, "Sync player tags relation completed")
 	return nil
 }
 
 func (u *PlayerTagUseCase) SyncTag(ctx context.Context, data *event.IdentityTagSyncEvent) error {
-	ctx, span := tracing.StartSpan(ctx, "PlayerTagUseCase.SyncTag")
-	defer tracing.SpanEnd(span)
+	ctx, span := u.tracingService.StartSpan(ctx, "PlayerTagUseCase.SyncTag")
+	defer u.tracingService.SpanEnd(span)
 
-	tracing.TraceEvent(span, "Checking if merchant exists")
+	u.tracingService.TraceEvent(span, "Checking if merchant exists")
 	merchant, err := u.merchantRepo.FindByGlobalID(ctx, data.GlobalMerchantID)
 	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("find merchant: %w", err)
 	}
 
@@ -154,7 +156,7 @@ func (u *PlayerTagUseCase) SyncTag(ctx context.Context, data *event.IdentityTagS
 	}
 
 	if err = u.tagRepo.Upsert(ctx, tagToInsert); err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("upsert tag failed: %w", err)
 	}
 	u.logger.InfoWithContext(
@@ -163,7 +165,7 @@ func (u *PlayerTagUseCase) SyncTag(ctx context.Context, data *event.IdentityTagS
 		u.logger.Any("tag", tagToInsert),
 	)
 
-	tracing.TraceEvent(span, "Tag sync completed successfully")
+	u.tracingService.TraceEvent(span, "Tag sync completed successfully")
 	return nil
 }
 
@@ -205,12 +207,12 @@ func (u *PlayerTagUseCase) GetTagsByMerchantID(
 	ctx context.Context,
 	merchantID uint64,
 ) (*dto.TagListResponse, error) {
-	ctx, span := tracing.StartSpan(ctx, "PlayerTagUseCase.GetTagsByMerchantID")
-	defer tracing.SpanEnd(span)
+	ctx, span := u.tracingService.StartSpan(ctx, "PlayerTagUseCase.GetTagsByMerchantID")
+	defer u.tracingService.SpanEnd(span)
 
 	tags, err := u.tagRepo.FindByMerchantID(ctx, merchantID)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return nil, fmt.Errorf("find tags by merchant ID: %w", err)
 	}
 

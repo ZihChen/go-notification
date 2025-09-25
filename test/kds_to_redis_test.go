@@ -14,6 +14,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
 	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
+	"github.com/jvdiamondtech/ms-notification-cat/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -39,7 +40,8 @@ func TestKDSToRedisManagerSync(t *testing.T) {
 	kinesisClient := kinesis.NewFromConfig(awsConfig)
 
 	// 創建Redis隊列客戶端
-	queueService, err := queue.NewQueueService(cfg, logger)
+	tracingService := mocks.NewTracingServiceMock(nil)
+	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
 	require.NoError(t, err, "Should create queue service without error")
 
 	// 從ARN中提取流名稱
@@ -138,7 +140,8 @@ func TestKDSToRedisPlayerSync(t *testing.T) {
 	kinesisClient := kinesis.NewFromConfig(awsConfig)
 
 	// 創建Redis隊列客戶端
-	queueService, err := queue.NewQueueService(cfg, logger)
+	tracingService := mocks.NewTracingServiceMock(nil)
+	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
 	require.NoError(t, err, "Should create queue service without error")
 
 	// 從ARN中提取流名稱
@@ -237,7 +240,8 @@ func TestKDSToRedisMerchantSync(t *testing.T) {
 	kinesisClient := kinesis.NewFromConfig(awsConfig)
 
 	// 創建Redis隊列客戶端
-	queueService, err := queue.NewQueueService(cfg, logger)
+	tracingService := mocks.NewTracingServiceMock(nil)
+	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
 	require.NoError(t, err, "Should create queue service without error")
 
 	// 從ARN中提取流名稱

@@ -197,7 +197,17 @@ func TestPlayerTagUseCase_SyncTag(t *testing.T) {
 	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").Return(merchant, nil)
 	tagRepo.On("Upsert", mock.Anything, mock.AnythingOfType("*entity.Tag")).Return(nil)
 
-	useCase := NewTagUseCase(tagRepo, merchantRepo, playerRepo, playerTagRepo, logger, nil)
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
+	useCase := NewTagUseCase(
+		tagRepo,
+		merchantRepo,
+		playerRepo,
+		playerTagRepo,
+		logger,
+		nil,
+		tracingService,
+	)
 
 	event := createIdentityTagSyncEvent()
 
@@ -233,7 +243,17 @@ func TestPlayerTagUseCase_SyncTag_WithDeletedTag(t *testing.T) {
 			capturedTag = args.Get(1).(*entity.Tag)
 		}).Return(nil)
 
-	useCase := NewTagUseCase(tagRepo, merchantRepo, playerRepo, playerTagRepo, logger, nil)
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
+	useCase := NewTagUseCase(
+		tagRepo,
+		merchantRepo,
+		playerRepo,
+		playerTagRepo,
+		logger,
+		nil,
+		tracingService,
+	)
 
 	event := createIdentityTagSyncEvent()
 	event.Tag.DeletedAt = "2023-01-01T12:00:00Z" // Set deleted timestamp
@@ -258,7 +278,17 @@ func TestPlayerTagUseCase_SyncTag_MerchantRepositoryError(t *testing.T) {
 	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").
 		Return(nil, errors.New("database connection error"))
 
-	useCase := NewTagUseCase(tagRepo, merchantRepo, playerRepo, playerTagRepo, logger, nil)
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
+	useCase := NewTagUseCase(
+		tagRepo,
+		merchantRepo,
+		playerRepo,
+		playerTagRepo,
+		logger,
+		nil,
+		tracingService,
+	)
 
 	event := createIdentityTagSyncEvent()
 
@@ -280,7 +310,17 @@ func TestPlayerTagUseCase_SyncTag_UpsertError(t *testing.T) {
 	tagRepo.On("Upsert", mock.Anything, mock.AnythingOfType("*entity.Tag")).
 		Return(errors.New("upsert failed"))
 
-	useCase := NewTagUseCase(tagRepo, merchantRepo, playerRepo, playerTagRepo, logger, nil)
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
+	useCase := NewTagUseCase(
+		tagRepo,
+		merchantRepo,
+		playerRepo,
+		playerTagRepo,
+		logger,
+		nil,
+		tracingService,
+	)
 
 	event := createIdentityTagSyncEvent()
 
@@ -304,7 +344,17 @@ func TestPlayerTagUseCase_SyncTag_TracingAndLogging(t *testing.T) {
 	merchantRepo.On("FindByGlobalID", mock.Anything, "FATCAT-MERCHANT-1").Return(merchant, nil)
 	tagRepo.On("Upsert", mock.Anything, mock.AnythingOfType("*entity.Tag")).Return(nil)
 
-	useCase := NewTagUseCase(tagRepo, merchantRepo, playerRepo, playerTagRepo, logger, nil)
+	tracingService := mocks.NewTracingServiceMock(t)
+	tracingService.SetupSuccess()
+	useCase := NewTagUseCase(
+		tagRepo,
+		merchantRepo,
+		playerRepo,
+		playerTagRepo,
+		logger,
+		nil,
+		tracingService,
+	)
 
 	event := createIdentityTagSyncEvent()
 

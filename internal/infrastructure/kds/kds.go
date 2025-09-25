@@ -20,13 +20,13 @@ import (
 
 // KDSService KDS服務實現
 type KDSService struct {
-	client        *kinesis.Client
-	dynamoClient  *dynamodb.Client
-	redisManager  *redisCache.Manager
-	consumeStream string
-	tableName     string
-	partitionKey  string
-	sortKey       string
+	client         *kinesis.Client
+	dynamoClient   *dynamodb.Client
+	redisManager   *redisCache.Manager
+	consumeStream  string
+	tableName      string
+	partitionKey   string
+	sortKey        string
 	config         *cfg.Config
 	queueService   service.QueueService
 	logger         infrastructure.Logger

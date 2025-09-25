@@ -166,22 +166,34 @@ func (m *TracingServiceMock) RecordSpanStatus(span trace.Span, code codes.Code, 
 	m.Called(span, code, desc)
 }
 
-func (m *TracingServiceMock) TraceWorkerToKDS(ctx context.Context, eventType, eventID string) (context.Context, trace.Span) {
+func (m *TracingServiceMock) TraceWorkerToKDS(
+	ctx context.Context,
+	eventType, eventID string,
+) (context.Context, trace.Span) {
 	m.Called(ctx, eventType, eventID)
 	return ctx, trace.SpanFromContext(ctx)
 }
 
-func (m *TracingServiceMock) ExtractTraceContext(ctx context.Context, carrier []byte) context.Context {
+func (m *TracingServiceMock) ExtractTraceContext(
+	ctx context.Context,
+	carrier []byte,
+) context.Context {
 	m.Called(ctx, carrier)
 	return ctx
 }
 
-func (m *TracingServiceMock) TraceRedisToWorker(ctx context.Context, taskType, taskID string) (context.Context, trace.Span) {
+func (m *TracingServiceMock) TraceRedisToWorker(
+	ctx context.Context,
+	taskType, taskID string,
+) (context.Context, trace.Span) {
 	m.Called(ctx, taskType, taskID)
 	return ctx, trace.SpanFromContext(ctx)
 }
 
-func (m *TracingServiceMock) TraceWorkerProcessing(ctx context.Context, taskType, taskID string) (context.Context, trace.Span) {
+func (m *TracingServiceMock) TraceWorkerProcessing(
+	ctx context.Context,
+	taskType, taskID string,
+) (context.Context, trace.Span) {
 	m.Called(ctx, taskType, taskID)
 	return ctx, trace.SpanFromContext(ctx)
 }
@@ -196,10 +208,13 @@ func (m *TracingServiceMock) SetupSuccess() {
 	m.On("GetTraceparent", mock.Anything).Return("")
 	m.On("InjectTraceparentToJSON", mock.Anything, mock.Anything).Return([]byte{}, nil)
 	m.On("RecordSpanStatus", mock.Anything, mock.Anything, mock.Anything).Return()
-	m.On("TraceWorkerToKDS", mock.Anything, mock.Anything, mock.Anything).Return(context.Background(), nil)
+	m.On("TraceWorkerToKDS", mock.Anything, mock.Anything, mock.Anything).
+		Return(context.Background(), nil)
 	m.On("ExtractTraceContext", mock.Anything, mock.Anything).Return(context.Background())
-	m.On("TraceRedisToWorker", mock.Anything, mock.Anything, mock.Anything).Return(context.Background(), nil)
-	m.On("TraceWorkerProcessing", mock.Anything, mock.Anything, mock.Anything).Return(context.Background(), nil)
+	m.On("TraceRedisToWorker", mock.Anything, mock.Anything, mock.Anything).
+		Return(context.Background(), nil)
+	m.On("TraceWorkerProcessing", mock.Anything, mock.Anything, mock.Anything).
+		Return(context.Background(), nil)
 }
 
 func (m *TracingServiceMock) SetupError() {}

@@ -70,31 +70,25 @@ func runWorker(cobraCmd *cobra.Command, args []string) {
 	}
 	defer svc.cleanup(rootCtx, logger)
 
-	// 創建追蹤 span
-	ctx, rootSpan := tracing.StartSpan(rootCtx, "WorkerService")
-	defer tracing.SpanEnd(rootSpan)
-
 	// 創建並註冊任務處理器
 	mux := asynq.NewServeMux()
 	svc.workerHandler.RegisterHandlers(mux)
-	logger.InfoWithContext(ctx, "Task handlers registered successfully")
+	logger.InfoWithContext(rootCtx, "Task handlers registered successfully")
 
 	// 記錄Worker啟動
-	logger.InfoWithContext(ctx, "Starting worker service",
+	logger.InfoWithContext(rootCtx, "Starting worker service",
 		logger.String("redis", cfg.Redis.Domain),
 		logger.Int("redis_port", cfg.Redis.Port))
-	tracing.TraceEvent(rootSpan, "Starting worker service")
 
 	// 啟動Worker服務器
 	go func() {
 		if serverErr := svc.workerServer.Start(mux); serverErr != nil &&
 			!errors.Is(serverErr, asynq.ErrServerClosed) {
 			logger.FatalWithContext(
-				ctx,
+				rootCtx,
 				"Failed to start worker server",
 				logger.Error("err", serverErr),
 			)
-			tracing.RecordSpanError(rootSpan, serverErr)
 		}
 	}()
 
@@ -103,11 +97,8 @@ func runWorker(cobraCmd *cobra.Command, args []string) {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	logger.InfoWithContext(ctx, "Shutting down worker...")
+	logger.InfoWithContext(rootCtx, "Shutting down worker...")
 	rootCancel()
-
-	// 記錄關閉事件
-	tracing.TraceEvent(rootSpan, "Shutting down worker service")
 
 	// 優雅關閉Worker
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), gracefulShutdownTime)
@@ -121,14 +112,12 @@ func runWorker(cobraCmd *cobra.Command, args []string) {
 
 	select {
 	case <-done:
-		logger.InfoWithContext(ctx, "Worker service shutdown completed gracefully")
+		logger.InfoWithContext(rootCtx, "Worker service shutdown completed gracefully")
 	case <-shutdownCtx.Done():
-		logger.WarnWithContext(ctx, "Worker service shutdown timeout - forcing exit")
+		logger.WarnWithContext(rootCtx, "Worker service shutdown timeout - forcing exit")
 	}
 
-	// 記錄成功關閉
-	tracing.TraceEvent(rootSpan, "Worker service exited gracefully")
-	logger.InfoWithContext(ctx, "Worker service exited")
+	logger.InfoWithContext(rootCtx, "Worker service exited")
 }
 
 func initializeServices(

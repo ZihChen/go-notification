@@ -34,8 +34,12 @@ func TestMerchantUseCase_SyncMerchant(t *testing.T) {
 	// 創建記錄器
 	logger := helper.NewMockLogger()
 
+	// 創建追蹤服務
+	tracingService := mocks.NewTracingServiceMock(t)
+
 	// 創建用例
-	useCase := NewMerchantUseCase(merchantRepo, eventProducer, logger)
+	tracingService.SetupSuccess()
+	useCase := NewMerchantUseCase(merchantRepo, eventProducer, logger, tracingService)
 
 	// 創建測試事件
 	merchantEvent := createMerchantEvent()
@@ -78,8 +82,12 @@ func TestMerchantUseCase_GetMerchantByID(t *testing.T) {
 	// 創建記錄器
 	logger := helper.NewMockLogger()
 
+	// 創建追蹤服務
+	tracingService := mocks.NewTracingServiceMock(t)
+
 	// 創建用例
-	useCase := NewMerchantUseCase(merchantRepo, eventProducer, logger)
+	tracingService.SetupSuccess()
+	useCase := NewMerchantUseCase(merchantRepo, eventProducer, logger, tracingService)
 
 	// 執行測試
 	merchant, err := useCase.GetMerchantByID(context.Background(), merchantID)
@@ -124,8 +132,12 @@ func TestMerchantUseCase_GetMerchantByGlobalID(t *testing.T) {
 	// 創建記錄器
 	logger := helper.NewMockLogger()
 
+	// 創建追蹤服務
+	tracingService := mocks.NewTracingServiceMock(t)
+
 	// 創建用例
-	useCase := NewMerchantUseCase(merchantRepo, eventProducer, logger)
+	tracingService.SetupSuccess()
+	useCase := NewMerchantUseCase(merchantRepo, eventProducer, logger, tracingService)
 
 	// 執行測試
 	merchant, err := useCase.GetMerchantByGlobalID(context.Background(), globalMerchantID)

@@ -12,10 +12,8 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // 任務類型常量
@@ -104,7 +102,7 @@ func (q *QueueService) EnqueueTagSync(ctx context.Context, data []byte) error {
 // enqueueTask 通用方法，將任務加入佇列並添加追蹤
 func (q *QueueService) enqueueTask(ctx context.Context, taskType string, data []byte) error {
 	// 從當前上下文中獲取 span
-	span := trace.SpanFromContext(ctx)
+	ctx, span := q.tracingService.StartSpan(ctx, "QueueService.EnqueueTask")
 	q.tracingService.RecordSpanAttributes(span,
 		attribute.String("messaging.destination", "redis_queue"),
 		attribute.String("messaging.task_type", taskType),
@@ -146,7 +144,6 @@ func (q *QueueService) enqueueTask(ctx context.Context, taskType string, data []
 	info, err := q.client.EnqueueContext(ctx, task, opts...)
 	if err != nil {
 		q.tracingService.RecordSpanError(span, err)
-		tracing.RecordSpanStatus(span, codes.Error, fmt.Sprintf("failed to enqueue task: %v", err))
 		q.logger.ErrorLog("Failed to enqueue task",
 			q.logger.String("task_type", taskType),
 			q.logger.String("event_id", eventID),
@@ -181,7 +178,10 @@ func (q *QueueService) WrapHandlerWithTracing(h asynq.Handler) asynq.Handler {
 }
 
 // WrapHandlerWithTracing 包裝處理器以添加追蹤功能 (函數版本)
-func WrapHandlerWithTracing(tracingService infrastructure.TracingService, h asynq.Handler) asynq.Handler {
+func WrapHandlerWithTracing(
+	tracingService infrastructure.TracingService,
+	h asynq.Handler,
+) asynq.Handler {
 	return asynq.HandlerFunc(func(ctx context.Context, task *asynq.Task) error {
 		if task == nil || len(task.Payload()) == 0 || task.Type() == "" {
 			return asynq.SkipRetry
@@ -210,7 +210,10 @@ func WrapHandlerWithTracing(tracingService infrastructure.TracingService, h asyn
 		var jsonData map[string]interface{}
 		if err := json.Unmarshal(data, &jsonData); err == nil {
 			if id, ok := jsonData["id"].(string); ok {
-				tracingService.RecordSpanAttributes(span, attribute.String("messaging.event_id", id))
+				tracingService.RecordSpanAttributes(
+					span,
+					attribute.String("messaging.event_id", id),
+				)
 			}
 		}
 

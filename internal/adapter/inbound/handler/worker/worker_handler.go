@@ -444,7 +444,11 @@ func (h *WorkerHandler) HandleTagSync(ctx context.Context, task *asynq.Task) err
 	return nil
 }
 
-func parseCloudEvent(eventData []byte, span trace.Span, tracingService infrastructure.TracingService) (*event.CloudEvent, error) {
+func parseCloudEvent(
+	eventData []byte,
+	span trace.Span,
+	tracingService infrastructure.TracingService,
+) (*event.CloudEvent, error) {
 	var cloudEvent event.CloudEvent
 	if err := jsoniter.Unmarshal(eventData, &cloudEvent); err != nil {
 		tracingService.RecordSpanError(span, err)

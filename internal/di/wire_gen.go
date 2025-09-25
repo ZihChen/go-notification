@@ -58,21 +58,21 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, redis
 		return nil, err
 	}
 	eventProducer := service.NewEventService(kdsService, logger)
-	merchantUseCase := merchant2.NewMerchantUseCase(merchantRepository, eventProducer, logger)
+	merchantUseCase := merchant2.NewMerchantUseCase(merchantRepository, eventProducer, logger, tracingService)
 	playerRepository := repository.NewPlayerRepository(db)
 	levelRepository := repository.NewLevelRepository(db)
-	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger)
+	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger, tracingService)
 	managerRepository := repository2.NewManagerRepository(db)
-	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger)
+	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger, tracingService)
 	messageCampaignRepository := repository3.NewMessageCampaignRepository(db)
 	playerMessageRepository := repository3.NewPlayerMessageRepository(db)
 	tagRepository := repository.NewTagRepository(db)
 	pushKeyRepository := merchant.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
 	messageUseCase := message.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
-	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger)
+	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger, tracingService)
 	playerTagRepository := repository.NewPlayerTagRepository(db)
-	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager)
+	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager, tracingService)
 	httpHandler := api.NewHTTPHandler(merchantUseCase, playerUseCase, managerUseCase, messageUseCase, playerLevelUseCase, playerTagUseCase, logger)
 	return httpHandler, nil
 }
@@ -90,16 +90,16 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, re
 		return nil, err
 	}
 	eventProducer := service.NewEventService(kdsService, logger)
-	merchantUseCase := merchant2.NewMerchantUseCase(merchantRepository, eventProducer, logger)
+	merchantUseCase := merchant2.NewMerchantUseCase(merchantRepository, eventProducer, logger, tracingService)
 	playerRepository := repository.NewPlayerRepository(db)
 	levelRepository := repository.NewLevelRepository(db)
-	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger)
+	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger, tracingService)
 	managerRepository := repository2.NewManagerRepository(db)
-	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger)
-	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger)
+	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger, tracingService)
+	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger, tracingService)
 	tagRepository := repository.NewTagRepository(db)
 	playerTagRepository := repository.NewPlayerTagRepository(db)
-	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager)
+	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager, tracingService)
 	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, logger, tracingService)
 	return workerHandler, nil
 }
@@ -117,16 +117,16 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 		return nil, err
 	}
 	eventProducer := service.NewEventService(kdsService, logger)
-	merchantUseCase := merchant2.NewMerchantUseCase(merchantRepository, eventProducer, logger)
+	merchantUseCase := merchant2.NewMerchantUseCase(merchantRepository, eventProducer, logger, tracingService)
 	playerRepository := repository.NewPlayerRepository(db)
 	levelRepository := repository.NewLevelRepository(db)
-	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger)
+	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger, tracingService)
 	managerRepository := repository2.NewManagerRepository(db)
-	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger)
-	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger)
+	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger, tracingService)
+	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger, tracingService)
 	tagRepository := repository.NewTagRepository(db)
 	playerTagRepository := repository.NewPlayerTagRepository(db)
-	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager)
+	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager, tracingService)
 	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, logger, tracingService)
 	server, err := provideWorkerServer(cfg, logger)
 	if err != nil {
@@ -170,6 +170,7 @@ func InitializeConsumerHandler(cfg *config.Config, logger infrastructure.Logger,
 
 // InitializeSchedulerComponents 初始化 Scheduler 服務的處理器
 func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager, db *gorm.DB) (*scheduler.Handler, error) {
+	tracingService := provideTracingService()
 	messageCampaignRepository := repository3.NewMessageCampaignRepository(db)
 	merchantRepository := merchant.NewMerchantRepository(db)
 	playerMessageRepository := repository3.NewPlayerMessageRepository(db)
@@ -178,11 +179,10 @@ func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Log
 	tagRepository := repository.NewTagRepository(db)
 	pushKeyRepository := merchant.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
-	tracingService := provideTracingService()
 	messageUseCase := message.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
 	messageCampaignTriggerJob := job.NewMessageCampaignTriggerJob(messageUseCase, logger)
 	registry := job.NewRegistry(messageCampaignTriggerJob)
-	handler := scheduler.NewSchedulerHandler(logger, redisManager, registry)
+	handler := scheduler.NewSchedulerHandler(logger, redisManager, tracingService, registry)
 	return handler, nil
 }
 

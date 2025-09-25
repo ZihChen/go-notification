@@ -11,7 +11,6 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/utils/security"
 	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/sync/errgroup"
@@ -19,18 +18,21 @@ import (
 
 // ProcessScheduledCampaigns 處理排程的活動
 func (u *MessageUseCase) ProcessScheduledCampaigns(ctx context.Context) error {
-	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.ProcessScheduledCampaigns")
-	defer tracing.SpanEnd(span)
+	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.ProcessScheduledCampaigns")
+	defer u.tracingService.SpanEnd(span)
 
-	tracing.TraceEvent(span, "Processing scheduled campaigns")
+	u.tracingService.TraceEvent(span, "Processing scheduled campaigns")
 
 	campaigns, err := u.campaignRepo.FindScheduledCampaigns(ctx)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("find scheduled campaigns: %w", err)
 	}
 
-	tracing.RecordSpanAttributes(span, attribute.Int("scheduled_campaigns", len(campaigns)))
+	u.tracingService.RecordSpanAttributes(
+		span,
+		attribute.Int("scheduled_campaigns", len(campaigns)),
+	)
 
 	for _, campaign := range campaigns {
 		if err = u.SendCampaignToPlayersAsync(ctx, campaign.ID); err != nil {
@@ -46,24 +48,24 @@ func (u *MessageUseCase) ProcessScheduledCampaigns(ctx context.Context) error {
 			u.logger.String("title", campaign.Title))
 	}
 
-	tracing.TraceEvent(span, "Scheduled campaigns processed")
+	u.tracingService.TraceEvent(span, "Scheduled campaigns processed")
 	return nil
 }
 
 // SendCampaignToPlayersAsync 高性能異步發送活動給符合條件的玩家
 func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaignID uint64) error {
-	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.SendCampaignToPlayersAsync")
-	defer tracing.SpanEnd(span)
+	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.SendCampaignToPlayersAsync")
+	defer u.tracingService.SpanEnd(span)
 
-	tracing.RecordSpanAttributes(span, attribute.Int64("campaign.id", int64(campaignID)))
+	u.tracingService.RecordSpanAttributes(span, attribute.Int64("campaign.id", int64(campaignID)))
 
 	campaign, err := u.campaignRepo.FindByID(ctx, campaignID)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("find campaign: %w", err)
 	}
 
-	tracing.RecordSpanAttributes(span,
+	u.tracingService.RecordSpanAttributes(span,
 		attribute.String("campaign.title", campaign.Title),
 		attribute.String("campaign.target", campaign.Target),
 		attribute.Int("campaign.notification_types", int(campaign.NotificationTypes)),
@@ -100,7 +102,7 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 				u.logger.Error("err", err))
 		}
 
-		tracing.TraceEvent(span, "Push-only campaign completed")
+		u.tracingService.TraceEvent(span, "Push-only campaign completed")
 		return nil
 	}
 
@@ -144,7 +146,7 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 	if waitErr := g.Wait(); waitErr != nil {
 		// 獲取處理過程中已發送的數量（錯誤情況下）
 		finalTotalSent := atomic.LoadInt64(&totalSent)
-		tracing.RecordSpanError(span, waitErr)
+		u.tracingService.RecordSpanError(span, waitErr)
 
 		// 發生錯誤時的回滾策略：保留已處理數據，更新統計並標記為失敗
 		u.logger.ErrorLog("Campaign processing failed, performing partial rollback",
@@ -172,7 +174,7 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 		}
 
 		// 記錄部分成功的追蹤信息
-		tracing.RecordSpanAttributes(span,
+		u.tracingService.RecordSpanAttributes(span,
 			attribute.Int64("partial_sent", finalTotalSent),
 			attribute.String("final_status", consts.MessageCampaignStatusFailed),
 			attribute.Bool("partial_success", finalTotalSent > 0),
@@ -217,12 +219,12 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 			u.logger.String("status", consts.MessageCampaignStatusSent))
 	}
 
-	tracing.RecordSpanAttributes(span,
+	u.tracingService.RecordSpanAttributes(span,
 		attribute.Int64("total_sent", finalTotalSent),
 		attribute.String("final_status", consts.MessageCampaignStatusSent),
 	)
 
-	tracing.TraceEvent(span, "Campaign sent to players asynchronously and status updated")
+	u.tracingService.TraceEvent(span, "Campaign sent to players asynchronously and status updated")
 
 	u.logger.InfoLog("Campaign sent to players asynchronously",
 		u.logger.Int64("campaign_id", int64(campaignID)),
@@ -388,10 +390,10 @@ func (u *MessageUseCase) sendAppPushNotification(
 	ctx context.Context,
 	campaign *entity.MessageCampaign,
 ) error {
-	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.sendAppPushNotification")
-	defer tracing.SpanEnd(span)
+	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.sendAppPushNotification")
+	defer u.tracingService.SpanEnd(span)
 
-	tracing.RecordSpanAttributes(span,
+	u.tracingService.RecordSpanAttributes(span,
 		attribute.Int64("campaign.id", int64(campaign.ID)),
 		attribute.String("campaign.title", campaign.Title),
 	)
@@ -405,7 +407,7 @@ func (u *MessageUseCase) sendAppPushNotification(
 				u.logger.UInt64("merchant_id", campaign.MerchantID))
 			return nil // 沒有API key不算錯誤，跳過推播
 		}
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("find merchant push API key: %w", err)
 	}
 
@@ -423,11 +425,11 @@ func (u *MessageUseCase) sendAppPushNotification(
 		pushContent,
 	)
 	if err != nil {
-		tracing.RecordSpanError(span, err)
+		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("process push notification in batches: %w", err)
 	}
 
-	tracing.RecordSpanAttributes(span,
+	u.tracingService.RecordSpanAttributes(span,
 		attribute.Int64("total_pushed", totalPushed),
 		attribute.String("push_content", pushContent),
 	)
@@ -446,8 +448,8 @@ func (u *MessageUseCase) processPushNotificationInBatches(
 	apiKey string,
 	pushContent string,
 ) (int64, error) {
-	ctx, span := tracing.StartSpan(ctx, "MessageUseCase.processPushNotificationInBatches")
-	defer tracing.SpanEnd(span)
+	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.processPushNotificationInBatches")
+	defer u.tracingService.SpanEnd(span)
 
 	const (
 		pushBatchSize  = 1000 // 每次推播的玩家數量限制
@@ -467,7 +469,7 @@ func (u *MessageUseCase) processPushNotificationInBatches(
 			queryBatchSize,
 		)
 		if err != nil {
-			tracing.RecordSpanError(span, err)
+			u.tracingService.RecordSpanError(span, err)
 			return totalPushed, fmt.Errorf("find players at offset %d: %w", offset, err)
 		}
 
@@ -516,7 +518,7 @@ func (u *MessageUseCase) processPushNotificationInBatches(
 		offset += queryBatchSize
 	}
 
-	tracing.RecordSpanAttributes(span,
+	u.tracingService.RecordSpanAttributes(span,
 		attribute.Int64("total_pushed", totalPushed),
 		attribute.String("campaign_target", campaign.Target),
 	)

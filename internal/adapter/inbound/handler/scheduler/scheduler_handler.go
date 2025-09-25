@@ -12,9 +12,10 @@ import (
 
 // Handler 排程處理器
 type Handler struct {
-	logger       infrastructure.Logger
-	redisManager *redisCache.Manager
-	jobs         []ScheduledJobConfig
+	logger         infrastructure.Logger
+	redisManager   *redisCache.Manager
+	tracingService infrastructure.TracingService
+	jobs           []ScheduledJobConfig
 }
 
 // ScheduledJobConfig 排程任務配置
@@ -28,11 +29,13 @@ type ScheduledJobConfig struct {
 func NewSchedulerHandler(
 	logger infrastructure.Logger,
 	redisManager *redisCache.Manager,
+	tracingService infrastructure.TracingService,
 	jobRegistry *job.Registry) *Handler {
 	h := &Handler{
-		logger:       logger,
-		redisManager: redisManager,
-		jobs:         make([]ScheduledJobConfig, 0),
+		logger:         logger,
+		redisManager:   redisManager,
+		tracingService: tracingService,
+		jobs:           make([]ScheduledJobConfig, 0),
 	}
 	for _, j := range jobRegistry.GetAllJobs() {
 		err := h.registerJobWithSchedule(j.GetName(), j, j.GetCron())
@@ -52,9 +55,10 @@ func (h *Handler) RegisterJobs(cronManager *cron.Cron) {
 		}
 
 		wrapper := &JobWrapper{
-			job:          jobConfig.Job,
-			logger:       h.logger,
-			redisManager: h.redisManager,
+			job:            jobConfig.Job,
+			logger:         h.logger,
+			redisManager:   h.redisManager,
+			tracingService: h.tracingService,
 		}
 
 		_, err := cronManager.AddFunc(scheduleStr, wrapper.run)

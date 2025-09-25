@@ -16,7 +16,7 @@ import (
 
 func createManagerMockDependencies(
 	t *testing.T,
-) (*mocks.ManagerRepositoryMock, *mocks.MerchantRepositoryMock, *mocks.EventProducerMock, *helper.MockLogger) {
+) (*mocks.ManagerRepositoryMock, *mocks.MerchantRepositoryMock, *mocks.EventProducerMock, *helper.MockLogger, *mocks.TracingServiceMock) {
 	// Explicitly use imports to avoid "unused import" errors
 	var _ context.Context
 	var _ entity.Manager
@@ -26,7 +26,8 @@ func createManagerMockDependencies(
 	merchantRepo := mocks.NewMerchantRepositoryMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
 	logger := helper.NewMockLogger()
-	return managerRepo, merchantRepo, eventProducer, logger
+	tracingService := mocks.NewTracingServiceMock(t)
+	return managerRepo, merchantRepo, eventProducer, logger, tracingService
 }
 
 func createManagerEvent() *event.ManagerEvent {
@@ -44,7 +45,9 @@ func TestManagerUseCase_SyncManager(t *testing.T) {
 	// 準備測試數據
 	globalMerchantID := "FATCAT-MERCHANT-1"
 
-	managerRepo, merchantRepo, eventProducer, logger := createManagerMockDependencies(t)
+	managerRepo, merchantRepo, eventProducer, logger, tracingService := createManagerMockDependencies(
+		t,
+	)
 
 	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(&entity.Merchant{
 		ID:               1,
@@ -59,7 +62,8 @@ func TestManagerUseCase_SyncManager(t *testing.T) {
 	managerRepo.On("Upsert", mock.Anything, mock.Anything).Return(nil)
 
 	// 創建用例
-	useCase := NewManagerUseCase(managerRepo, merchantRepo, eventProducer, logger)
+	tracingService.SetupSuccess()
+	useCase := NewManagerUseCase(managerRepo, merchantRepo, eventProducer, logger, tracingService)
 
 	// 創建測試事件
 	managerEvent := createManagerEvent()
@@ -92,12 +96,15 @@ func TestManagerUseCase_GetManagerByID(t *testing.T) {
 		CreatedAt:       time.Now().Add(-24 * time.Hour),
 		UpdatedAt:       time.Now().Add(-24 * time.Hour),
 	}
-	managerRepo, merchantRepo, eventProducer, logger := createManagerMockDependencies(t)
+	managerRepo, merchantRepo, eventProducer, logger, tracingService := createManagerMockDependencies(
+		t,
+	)
 
 	managerRepo.On("FindByID", mock.Anything, managerID).Return(existingManager, nil)
 
 	// 創建用例
-	useCase := NewManagerUseCase(managerRepo, merchantRepo, eventProducer, logger)
+	tracingService.SetupSuccess()
+	useCase := NewManagerUseCase(managerRepo, merchantRepo, eventProducer, logger, tracingService)
 
 	// 執行測試
 	manager, err := useCase.GetManagerByID(context.Background(), managerID)
@@ -132,12 +139,15 @@ func TestManagerUseCase_GetManagerByGlobalID(t *testing.T) {
 		CreatedAt:       time.Now().Add(-24 * time.Hour),
 		UpdatedAt:       time.Now().Add(-24 * time.Hour),
 	}
-	managerRepo, merchantRepo, eventProducer, logger := createManagerMockDependencies(t)
+	managerRepo, merchantRepo, eventProducer, logger, tracingService := createManagerMockDependencies(
+		t,
+	)
 
 	managerRepo.On("FindByGlobalID", mock.Anything, globalManagerID).Return(existingManager, nil)
 
 	// 創建用例
-	useCase := NewManagerUseCase(managerRepo, merchantRepo, eventProducer, logger)
+	tracingService.SetupSuccess()
+	useCase := NewManagerUseCase(managerRepo, merchantRepo, eventProducer, logger, tracingService)
 
 	// 執行測試
 	manager, err := useCase.GetManagerByGlobalID(context.Background(), globalManagerID)

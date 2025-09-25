@@ -10,14 +10,14 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	jobport "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/job"
 	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 )
 
 // JobWrapper 包裝job執行邏輯，添加追蹤、日誌和分布式鎖
 type JobWrapper struct {
-	job          jobport.ScheduledJob
-	logger       infrastructure.Logger
-	redisManager *redisCache.Manager
+	job            jobport.ScheduledJob
+	logger         infrastructure.Logger
+	redisManager   *redisCache.Manager
+	tracingService infrastructure.TracingService
 }
 
 // run JobWrapper的執行方法
@@ -26,8 +26,8 @@ func (w *JobWrapper) run() {
 	jobName := w.job.GetName()
 
 	ctx := context.Background()
-	ctx, span := tracing.StartSpan(ctx, fmt.Sprintf("ScheduledJob:%s", jobName))
-	defer tracing.SpanEnd(span)
+	ctx, span := w.tracingService.StartSpan(ctx, fmt.Sprintf("ScheduledJob:%s", jobName))
+	defer w.tracingService.SpanEnd(span)
 
 	// 分布式鎖 key，使用 job 名稱
 	mutexKey := fmt.Sprintf("scheduler:job:%s", jobName)
@@ -41,7 +41,7 @@ func (w *JobWrapper) run() {
 			redsync.WithRetryDelay(100*time.Millisecond), // 重試間隔
 		)
 		if err != nil {
-			tracing.RecordSpanError(span, err)
+			w.tracingService.RecordSpanError(span, err)
 			w.logger.ErrorWithContext(ctx, "Failed to get distributed lock",
 				w.logger.String("job_name", jobName),
 				w.logger.String("job_id", jobID),
@@ -88,9 +88,9 @@ func (w *JobWrapper) run() {
 		w.logger.String("job_name", jobName),
 		w.logger.String("job_id", jobID))
 
-	tracing.TraceEvent(
+	w.tracingService.TraceEvent(
 		span,
-		fmt.Sprintf("Executing scheduled job with distributed lock: %s", jobName),
+		"job.execution.start",
 	)
 
 	startTime := time.Now()
@@ -98,7 +98,7 @@ func (w *JobWrapper) run() {
 	// 執行任務
 	if err := w.job.Execute(ctx); err != nil {
 		duration := time.Since(startTime)
-		tracing.RecordSpanError(span, err)
+		w.tracingService.RecordSpanError(span, err)
 		w.logger.ErrorWithContext(ctx, "Scheduled job execution failed",
 			w.logger.String("job_name", jobName),
 			w.logger.String("job_id", jobID),
@@ -108,7 +108,7 @@ func (w *JobWrapper) run() {
 	}
 
 	duration := time.Since(startTime)
-	tracing.TraceEvent(span, fmt.Sprintf("Scheduled job completed: %s", jobName))
+	w.tracingService.TraceEvent(span, "job.execution.completed")
 
 	w.logger.InfoWithContext(ctx, "Scheduled job execution completed successfully",
 		w.logger.String("job_name", jobName),

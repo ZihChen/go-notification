@@ -32,6 +32,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	jobport "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/job"
 	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
+	"github.com/jvdiamondtech/ms-notification-cat/test/mocks"
 	"github.com/robfig/cron/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -179,7 +180,8 @@ func createTestJobRegistry(t *testing.T, jobs []jobport.ScheduledJob) *job.Regis
 }
 
 func createTestHandler(logger infrastructure.Logger, registry *job.Registry) *Handler {
-	return NewSchedulerHandler(logger, nil, registry)
+	tracingService := mocks.NewTracingServiceMock(nil)
+	return NewSchedulerHandler(logger, nil, tracingService, registry)
 }
 
 // Test data helpers
@@ -223,7 +225,8 @@ func TestNewSchedulerHandler_Success(t *testing.T) {
 	registry := createTestJobRegistry(t, []jobport.ScheduledJob{mockJob})
 
 	// Execute
-	handler := NewSchedulerHandler(logger, nil, registry)
+	tracingService := mocks.NewTracingServiceMock(nil)
+	handler := NewSchedulerHandler(logger, nil, tracingService, registry)
 
 	// Verify
 	assert.NotNil(t, handler)
@@ -246,7 +249,8 @@ func TestNewSchedulerHandler_MultipleJobs(t *testing.T) {
 	registry := createTestJobRegistry(t, []jobport.ScheduledJob{job1, job2})
 
 	// Execute
-	handler := NewSchedulerHandler(logger, nil, registry)
+	tracingService := mocks.NewTracingServiceMock(nil)
+	handler := NewSchedulerHandler(logger, nil, tracingService, registry)
 
 	// Verify
 	assert.NotNil(t, handler)
@@ -281,7 +285,8 @@ func TestNewSchedulerHandler_JobRegistrationError(t *testing.T) {
 		}
 	}()
 
-	handler := NewSchedulerHandler(logger, nil, registry)
+	tracingService := mocks.NewTracingServiceMock(nil)
+	handler := NewSchedulerHandler(logger, nil, tracingService, registry)
 
 	// 如果程式沒有 panic，驗證 handler 仍然被創建但只有默認的 message-campaign-trigger job
 	if handler != nil {
@@ -303,7 +308,8 @@ func TestHandler_RegisterJobs_Success(t *testing.T) {
 	// Mock expectations for constructor
 	logger.On("InfoLog", "Registered scheduled job", mock.Anything).Return()
 
-	handler := NewSchedulerHandler(logger, nil, registry)
+	tracingService := mocks.NewTracingServiceMock(nil)
+	handler := NewSchedulerHandler(logger, nil, tracingService, registry)
 
 	// Mock expectations for RegisterJobs
 	logger.On("InfoLog", "Successfully registered scheduled job", mock.Anything).Return()
@@ -391,7 +397,8 @@ func TestHandler_RegisterJobs_MultipleJobs(t *testing.T) {
 	job2 := createTestScheduledJob("job-2", "0 */5 * * * *")
 	registry := createTestJobRegistry(t, []jobport.ScheduledJob{job1, job2})
 
-	handler := NewSchedulerHandler(logger, nil, registry)
+	tracingService := mocks.NewTracingServiceMock(nil)
+	handler := NewSchedulerHandler(logger, nil, tracingService, registry)
 
 	cronManager := cron.New(cron.WithSeconds())
 
@@ -557,7 +564,8 @@ func TestHandler_GetRegisteredJobs_Success(t *testing.T) {
 	// Mock expectations
 	logger.On("InfoLog", "Registered scheduled job", mock.Anything).Return().Times(2)
 
-	handler := NewSchedulerHandler(logger, nil, registry)
+	tracingService := mocks.NewTracingServiceMock(nil)
+	handler := NewSchedulerHandler(logger, nil, tracingService, registry)
 
 	// Execute
 	jobNames := handler.GetRegisteredJobs()
@@ -577,7 +585,8 @@ func TestHandler_GetRegisteredJobs_Empty(t *testing.T) {
 	logger := helper.NewMockLogger()
 	registry := createTestJobRegistry(t, []jobport.ScheduledJob{})
 
-	handler := NewSchedulerHandler(logger, nil, registry)
+	tracingService := mocks.NewTracingServiceMock(nil)
+	handler := NewSchedulerHandler(logger, nil, tracingService, registry)
 
 	// Execute
 	jobNames := handler.GetRegisteredJobs()
@@ -601,7 +610,8 @@ func TestHandler_FullWorkflow_Integration(t *testing.T) {
 	// Mock expectations for constructor
 	logger.On("InfoLog", "Registered scheduled job", mock.Anything).Return().Times(2)
 
-	handler := NewSchedulerHandler(logger, nil, registry)
+	tracingService := mocks.NewTracingServiceMock(nil)
+	handler := NewSchedulerHandler(logger, nil, tracingService, registry)
 
 	// Verify jobs were registered during construction
 	assert.Len(t, handler.jobs, 2)
