@@ -12,4 +12,11 @@ var (
 	ErrRepoDeletePlayerNotFound   = errors.New("repo delete player not found")
 	ErrRepoLevelNotFound          = errors.New("repo level not found")
 	ErrUnknownEventType           = errors.New("unknown event type")
+
+	// 位元遮罩相關錯誤
+	ErrInvalidNotificationType = errors.New(
+		"invalid notification type: value out of range or contains undefined bits",
+	)
+	ErrNotificationTypeRequired    = errors.New("notification type is required")
+	ErrUnsupportedNotificationType = errors.New("unsupported notification type combination")
 )

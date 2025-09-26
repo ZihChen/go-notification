@@ -1,8 +1,8 @@
 # 🔍 Fat Notification Cat 專案稽核總結報告 (已更新)
 
 **更新日期**: 2025-09-25  
-**版本**: v1.8.2 - Phase 1 安全加固 + 測試修復完成  
-**更新內容**: Critical級別安全問題修復 + UseCase測試統一 + 安全中間件測試修復
+**版本**: v1.8.3 - Phase 1 安全加固 + 位元遮罩安全完成  
+**更新內容**: Critical級別安全問題修復 + UseCase測試統一 + 安全中間件測試修復 + v1.8位元遮罩安全強化
 
 ## 📊 整體評估 (已更新)
 
@@ -88,6 +88,30 @@
   - ✅ **測試通過率**：27個中間件測試100%通過
   - ✅ **安全合規性**：所有安全測試符合最佳實踐要求
 
+#### 6. ✅ v1.8位元遮罩安全問題 **已完成** ⭐ **新增**
+- **狀態**: ✅ **完全修復** (2025-09-25)
+- **問題**: notification_types缺乏邊界檢查和常數定義，存在安全隱患
+- **位置**: 
+  - internal/application/dto/request.go:18,49
+  - internal/application/usecase/message/scheduler.go:75-76
+- **實際修復內容**:
+  - ✅ **NotificationType常數系統**：建立完整的位元遮罩常數定義
+    - 位置：internal/domain/consts/notification.go
+    - 支援：站內信(1)、App推播(2)、預留擴展(4-16)
+    - 邊界值：最小1、最大7（當前支援範圍）
+  - ✅ **驗證器系統**：實現業務規則驗證
+    - 位置：internal/domain/utils/notification_validator.go
+    - 功能：創建/更新驗證、清理無效值、業務規則檢查
+  - ✅ **錯誤處理強化**：新增專用錯誤常數
+    - 位置：internal/domain/errmsg/errors.go
+    - 錯誤：ErrInvalidNotificationType、ErrNotificationTypeRequired
+  - ✅ **DTO驗證更新**：從oneof改為min=1,max=7邊界檢查
+  - ✅ **業務邏輯集成**：MessageUseCase完全集成驗證器
+  - ✅ **Magic Number消除**：scheduler.go使用語義化方法替換位運算
+    - `(campaign.NotificationTypes & 2) != 0` → `notificationType.HasAppPush()`
+    - `(campaign.NotificationTypes & 1) != 0` → `notificationType.HasInApp()`
+  - ✅ **測試更新**：所有相關測試通過並支援新驗證邏輯
+
 ## 🚨 當前優先問題 (已重新排序)
 
 ### 🟠 High - 短期修復 (2-4 週內)
@@ -98,13 +122,7 @@
 - **位置**: internal/application/usecase/message/message_usecase.go:22
 - **修復**: 建立TracingService介面，實現依賴倒置
 
-#### 2. v1.8位元遮罩安全
-- **狀態**: 🔄 **待處理**
-- **問題**: notification_types缺乏邊界檢查和常數定義
-- **位置**: App推播功能相關檔案
-- **修復**: 實施位元遮罩驗證函數和安全常數
-
-#### 3. CORS生產安全
+#### 2. CORS生產安全
 - **狀態**: 🔄 **待處理**
 - **問題**: AllowAllOrigins在生產環境的安全風險
 - **位置**: internal/adapter/inbound/middleware/cors.go

@@ -19,21 +19,23 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/utils"
 	"go.opentelemetry.io/otel/attribute"
 )
 
 // MessageUseCase 訊息用例
 type MessageUseCase struct {
-	campaignRepo      repository.MessageCampaignRepository
-	merchantRepo      repository.MerchantRepository
-	playerMessageRepo repository.PlayerMessageRepository
-	playerRepo        repository.PlayerRepository
-	levelRepo         repository.LevelRepository
-	tagRepo           repository.TagRepository
-	pushApiKeyRepo    repository.PushKeyRepository
-	pushService       service.PushNotificationService
-	logger            infrastructure.Logger
-	tracingService    infrastructure.TracingService
+	campaignRepo          repository.MessageCampaignRepository
+	merchantRepo          repository.MerchantRepository
+	playerMessageRepo     repository.PlayerMessageRepository
+	playerRepo            repository.PlayerRepository
+	levelRepo             repository.LevelRepository
+	tagRepo               repository.TagRepository
+	pushApiKeyRepo        repository.PushKeyRepository
+	pushService           service.PushNotificationService
+	logger                infrastructure.Logger
+	tracingService        infrastructure.TracingService
+	notificationValidator *utils.NotificationValidator
 }
 
 // NewMessageUseCase 創建訊息用例
@@ -50,16 +52,17 @@ func NewMessageUseCase(
 	tracingService infrastructure.TracingService,
 ) inbound.MessageUseCase {
 	return &MessageUseCase{
-		campaignRepo:      campaignRepo,
-		merchantRepo:      merchantRepo,
-		playerMessageRepo: playerMessageRepo,
-		playerRepo:        playerRepo,
-		levelRepo:         levelRepo,
-		tagRepo:           tagRepo,
-		pushApiKeyRepo:    pushApiKeyRepo,
-		pushService:       pushService,
-		logger:            logger,
-		tracingService:    tracingService,
+		campaignRepo:          campaignRepo,
+		merchantRepo:          merchantRepo,
+		playerMessageRepo:     playerMessageRepo,
+		playerRepo:            playerRepo,
+		levelRepo:             levelRepo,
+		tagRepo:               tagRepo,
+		pushApiKeyRepo:        pushApiKeyRepo,
+		pushService:           pushService,
+		logger:                logger,
+		tracingService:        tracingService,
+		notificationValidator: utils.NewNotificationValidator(),
 	}
 }
 
@@ -76,6 +79,12 @@ func (u *MessageUseCase) CreateMessageCampaign(
 		attribute.String("campaign.category", campaign.Category),
 		attribute.String("campaign.target", campaign.Target),
 	)
+
+	// 驗證通知類型
+	if err := u.notificationValidator.IsValidForCreate(campaign.NotificationTypes); err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return fmt.Errorf("invalid notification type: %w", err)
+	}
 
 	merchant, err := u.merchantRepo.FindByGlobalID(ctx, campaign.GlobalMerchantID)
 	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
@@ -184,6 +193,12 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 		attribute.String("campaign.global_id", campaign.GlobalID),
 		attribute.String("campaign.title", campaign.Title),
 	)
+
+	// 驗證通知類型（更新時可為 nil）
+	if err := u.notificationValidator.IsValidForUpdate(campaign.NotificationTypes); err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return fmt.Errorf("invalid notification type: %w", err)
+	}
 
 	u.tracingService.TraceEvent(span, "Updating message campaign")
 

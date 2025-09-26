@@ -93,14 +93,17 @@ func TestCreateMessageCampaign_Success(t *testing.T) {
 	// 使用工廠創建測試數據
 	merchant := suite.factory.CreateMerchant()
 
+	notificationTypes := uint8(3) // 站內信+App推播
 	createDTO := &dto.CreateMessageCampaignRequest{
-		GlobalMerchantID: merchant.GlobalMerchantID,
-		Category:         consts.CategoryMember,
-		Item:             consts.ItemRegistration,
-		Title:            "測試活動",
-		Content:          "測試內容",
-		Target:           consts.TargetHighActivity,
-		CreatedBy:        "test@example.com",
+		GlobalMerchantID:  merchant.GlobalMerchantID,
+		Category:          consts.CategoryMember,
+		Item:              consts.ItemRegistration,
+		Title:             "測試活動",
+		Content:           "測試內容",
+		NotificationTypes: &notificationTypes,
+		Target:            consts.TargetHighActivity,
+		Status:            "draft",
+		CreatedBy:         "test@example.com",
 	}
 
 	// 設定Mock期望
@@ -126,14 +129,17 @@ func TestCreateMessageCampaign_MerchantNotFound(t *testing.T) {
 	suite := setupMessageTestSuite(t)
 	defer suite.tearDown()
 
+	notificationTypes := uint8(1) // 僅站內信
 	createDTO := &dto.CreateMessageCampaignRequest{
-		GlobalMerchantID: "non-existent-merchant",
-		Category:         consts.CategoryMember,
-		Item:             consts.ItemRegistration,
-		Title:            "測試活動",
-		Content:          "測試內容",
-		Target:           consts.TargetHighActivity,
-		CreatedBy:        "test@example.com",
+		GlobalMerchantID:  "non-existent-merchant",
+		Category:          consts.CategoryMember,
+		Item:              consts.ItemRegistration,
+		Title:             "測試活動",
+		Content:           "測試內容",
+		NotificationTypes: &notificationTypes,
+		Target:            consts.TargetHighActivity,
+		Status:            "draft",
+		CreatedBy:         "test@example.com",
 	}
 
 	// 設定Mock期望

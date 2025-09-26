@@ -72,8 +72,9 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 	)
 
 	// 檢查推播類型並處理App推播邏輯
-	shouldSendPushNotification := (campaign.NotificationTypes & 2) != 0 // bit 2 = App推播
-	shouldCreatePlayerMessage := (campaign.NotificationTypes & 1) != 0  // bit 1 = 站內信
+	notificationType := consts.NotificationType(campaign.NotificationTypes)
+	shouldSendPushNotification := notificationType.HasAppPush() // 包含App推播
+	shouldCreatePlayerMessage := notificationType.HasInApp()    // 包含站內信
 
 	if shouldSendPushNotification {
 		u.logger.InfoLog("Campaign requires push notification",

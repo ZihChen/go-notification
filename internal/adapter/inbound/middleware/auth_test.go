@@ -260,7 +260,7 @@ func TestValidateAPIKeyMD5(t *testing.T) {
 			expected: false, // MD5 is deprecated and always returns false
 		},
 		{
-			name:     "MD5 deprecated - always returns false for key2", 
+			name:     "MD5 deprecated - always returns false for key2",
 			inputKey: "key2",
 			expected: false, // MD5 is deprecated and always returns false
 		},
