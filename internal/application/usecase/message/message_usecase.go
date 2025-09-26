@@ -19,23 +19,21 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/utils"
 	"go.opentelemetry.io/otel/attribute"
 )
 
 // MessageUseCase 訊息用例
 type MessageUseCase struct {
-	campaignRepo          repository.MessageCampaignRepository
-	merchantRepo          repository.MerchantRepository
-	playerMessageRepo     repository.PlayerMessageRepository
-	playerRepo            repository.PlayerRepository
-	levelRepo             repository.LevelRepository
-	tagRepo               repository.TagRepository
-	pushApiKeyRepo        repository.PushKeyRepository
-	pushService           service.PushNotificationService
-	logger                infrastructure.Logger
-	tracingService        infrastructure.TracingService
-	notificationValidator *utils.NotificationValidator
+	campaignRepo      repository.MessageCampaignRepository
+	merchantRepo      repository.MerchantRepository
+	playerMessageRepo repository.PlayerMessageRepository
+	playerRepo        repository.PlayerRepository
+	levelRepo         repository.LevelRepository
+	tagRepo           repository.TagRepository
+	pushApiKeyRepo    repository.PushKeyRepository
+	pushService       service.PushNotificationService
+	logger            infrastructure.Logger
+	tracingService    infrastructure.TracingService
 }
 
 // NewMessageUseCase 創建訊息用例
@@ -52,17 +50,16 @@ func NewMessageUseCase(
 	tracingService infrastructure.TracingService,
 ) inbound.MessageUseCase {
 	return &MessageUseCase{
-		campaignRepo:          campaignRepo,
-		merchantRepo:          merchantRepo,
-		playerMessageRepo:     playerMessageRepo,
-		playerRepo:            playerRepo,
-		levelRepo:             levelRepo,
-		tagRepo:               tagRepo,
-		pushApiKeyRepo:        pushApiKeyRepo,
-		pushService:           pushService,
-		logger:                logger,
-		tracingService:        tracingService,
-		notificationValidator: utils.NewNotificationValidator(),
+		campaignRepo:      campaignRepo,
+		merchantRepo:      merchantRepo,
+		playerMessageRepo: playerMessageRepo,
+		playerRepo:        playerRepo,
+		levelRepo:         levelRepo,
+		tagRepo:           tagRepo,
+		pushApiKeyRepo:    pushApiKeyRepo,
+		pushService:       pushService,
+		logger:            logger,
+		tracingService:    tracingService,
 	}
 }
 
@@ -79,12 +76,6 @@ func (u *MessageUseCase) CreateMessageCampaign(
 		attribute.String("campaign.category", campaign.Category),
 		attribute.String("campaign.target", campaign.Target),
 	)
-
-	// 驗證通知類型
-	if err := u.notificationValidator.IsValidForCreate(campaign.NotificationTypes); err != nil {
-		u.tracingService.RecordSpanError(span, err)
-		return fmt.Errorf("invalid notification type: %w", err)
-	}
 
 	merchant, err := u.merchantRepo.FindByGlobalID(ctx, campaign.GlobalMerchantID)
 	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
@@ -106,22 +97,24 @@ func (u *MessageUseCase) CreateMessageCampaign(
 		return fmt.Errorf("copy campaign failed: %w", err)
 	}
 
-	// 處理不同的目標類型
+	// 使用領域方法驗證通知類型
+	if err := campaignEntity.ValidateNotificationTypes(true); err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return fmt.Errorf("invalid notification type: %w", err)
+	}
+
+	// 使用領域方法處理不同的目標類型
 	switch campaign.Target {
 	case consts.TargetPlayer:
 		if len(campaign.TargetDetail) > 0 {
-			// 對於 player，直接使用 TargetDetail 欄位
-			targetDetailBytes, err := json.Marshal(campaign.TargetDetail)
-			if err != nil {
+			if err := campaignEntity.SetPlayerTargetDetail(campaign.TargetDetail); err != nil {
 				u.tracingService.RecordSpanError(span, err)
-				return fmt.Errorf("marshal target detail for player: %w", err)
+				return fmt.Errorf("set player target detail: %w", err)
 			}
-			targetDetailStr := string(targetDetailBytes)
-			campaignEntity.TargetDetail = &targetDetailStr
 		}
 	case consts.TargetLevel:
 		if len(campaign.TargetDetail) > 0 {
-			// 對於 level，轉換字符串ID為uint64並驗證存在性，然後存儲原始字符串IDs
+			// 驗證等級ID存在性
 			levelIDs, err := convertStringIDsToUint64(campaign.TargetDetail)
 			if err != nil {
 				u.tracingService.RecordSpanError(span, err)
@@ -132,17 +125,15 @@ func (u *MessageUseCase) CreateMessageCampaign(
 				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("validate level IDs: %w", err)
 			}
-			targetDetailBytes, err := json.Marshal(campaign.TargetDetail)
-			if err != nil {
+			// 使用領域方法設置目標詳情
+			if err := campaignEntity.SetLevelTargetDetail(campaign.TargetDetail); err != nil {
 				u.tracingService.RecordSpanError(span, err)
-				return fmt.Errorf("marshal target detail for level: %w", err)
+				return fmt.Errorf("set level target detail: %w", err)
 			}
-			targetDetailStr := string(targetDetailBytes)
-			campaignEntity.TargetDetail = &targetDetailStr
 		}
 	case consts.TargetTag:
 		if len(campaign.TargetDetail) > 0 {
-			// 對於 tag，轉換字符串ID為uint64並驗證存在性，然後存儲原始字符串IDs
+			// 驗證標籤ID存在性
 			tagIDs, err := convertStringIDsToUint64(campaign.TargetDetail)
 			if err != nil {
 				u.tracingService.RecordSpanError(span, err)
@@ -153,13 +144,11 @@ func (u *MessageUseCase) CreateMessageCampaign(
 				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("validate tag IDs: %w", err)
 			}
-			targetDetailBytes, err := json.Marshal(campaign.TargetDetail)
-			if err != nil {
+			// 使用領域方法設置目標詳情
+			if err := campaignEntity.SetTagTargetDetail(campaign.TargetDetail); err != nil {
 				u.tracingService.RecordSpanError(span, err)
-				return fmt.Errorf("marshal target detail for tag: %w", err)
+				return fmt.Errorf("set tag target detail: %w", err)
 			}
-			targetDetailStr := string(targetDetailBytes)
-			campaignEntity.TargetDetail = &targetDetailStr
 		}
 	}
 
@@ -193,12 +182,6 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 		attribute.String("campaign.global_id", campaign.GlobalID),
 		attribute.String("campaign.title", campaign.Title),
 	)
-
-	// 驗證通知類型（更新時可為 nil）
-	if err := u.notificationValidator.IsValidForUpdate(campaign.NotificationTypes); err != nil {
-		u.tracingService.RecordSpanError(span, err)
-		return fmt.Errorf("invalid notification type: %w", err)
-	}
 
 	u.tracingService.TraceEvent(span, "Updating message campaign")
 
@@ -235,22 +218,24 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 		campaignEntity.NotificationTypes = existing.NotificationTypes // 保持原有值
 	}
 
-	// 處理不同的目標類型
+	// 使用領域方法驗證通知類型
+	if err := campaignEntity.ValidateNotificationTypes(false); err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return fmt.Errorf("invalid notification type: %w", err)
+	}
+
+	// 使用領域方法處理不同的目標類型
 	switch campaign.Target {
 	case consts.TargetPlayer:
 		if len(campaign.TargetDetail) > 0 {
-			// 對於 player，直接使用 TargetDetail 欄位
-			targetDetailBytes, err := json.Marshal(campaign.TargetDetail)
-			if err != nil {
+			if err := campaignEntity.SetPlayerTargetDetail(campaign.TargetDetail); err != nil {
 				u.tracingService.RecordSpanError(span, err)
-				return fmt.Errorf("marshal target detail for player: %w", err)
+				return fmt.Errorf("set player target detail: %w", err)
 			}
-			targetDetailStr := string(targetDetailBytes)
-			campaignEntity.TargetDetail = &targetDetailStr
 		}
 	case consts.TargetLevel:
 		if len(campaign.TargetDetail) > 0 {
-			// 對於 level，轉換字符串ID為uint64並驗證存在性，然後存儲原始字符串IDs
+			// 驗證等級ID存在性
 			levelIDs, err := convertStringIDsToUint64(campaign.TargetDetail)
 			if err != nil {
 				u.tracingService.RecordSpanError(span, err)
@@ -261,17 +246,15 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("validate level IDs: %w", err)
 			}
-			targetDetailBytes, err := json.Marshal(campaign.TargetDetail)
-			if err != nil {
+			// 使用領域方法設置目標詳情
+			if err := campaignEntity.SetLevelTargetDetail(campaign.TargetDetail); err != nil {
 				u.tracingService.RecordSpanError(span, err)
-				return fmt.Errorf("marshal target detail for level: %w", err)
+				return fmt.Errorf("set level target detail: %w", err)
 			}
-			targetDetailStr := string(targetDetailBytes)
-			campaignEntity.TargetDetail = &targetDetailStr
 		}
 	case consts.TargetTag:
 		if len(campaign.TargetDetail) > 0 {
-			// 對於 tag，轉換字符串ID為uint64並驗證存在性，然後存儲原始字符串IDs
+			// 驗證標籤ID存在性
 			tagIDs, err := convertStringIDsToUint64(campaign.TargetDetail)
 			if err != nil {
 				u.tracingService.RecordSpanError(span, err)
@@ -282,13 +265,11 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("validate tag IDs: %w", err)
 			}
-			targetDetailBytes, err := json.Marshal(campaign.TargetDetail)
-			if err != nil {
+			// 使用領域方法設置目標詳情
+			if err := campaignEntity.SetTagTargetDetail(campaign.TargetDetail); err != nil {
 				u.tracingService.RecordSpanError(span, err)
-				return fmt.Errorf("marshal target detail for tag: %w", err)
+				return fmt.Errorf("set tag target detail: %w", err)
 			}
-			targetDetailStr := string(targetDetailBytes)
-			campaignEntity.TargetDetail = &targetDetailStr
 		}
 	}
 
@@ -462,7 +443,7 @@ func (u *MessageUseCase) GetMessageCampaign(
 		Status:      campaign.Status,
 		SentCount:   int(campaign.RealSentCount),
 		ReadCount:   0,
-		IsScheduled: campaign.Status == consts.MessageCampaignStatusScheduled,
+		IsScheduled: campaign.IsScheduled(),
 		ProcessedAt: campaign.SendEndTime,
 		CreatedAt:   campaign.CreatedAt,
 		UpdatedAt:   campaign.UpdatedAt,
@@ -520,7 +501,7 @@ func (u *MessageUseCase) ListMessageCampaigns(
 			ScheduledAt:       campaign.SendStartTime,
 			Status:            campaign.Status,
 			SentCount:         int(campaign.RealSentCount),
-			IsScheduled:       campaign.Status == consts.MessageCampaignStatusScheduled,
+			IsScheduled:       campaign.IsScheduled(),
 			ProcessedAt:       campaign.SendEndTime,
 			CreatedAt:         campaign.CreatedAt,
 			UpdatedAt:         campaign.UpdatedAt,
@@ -652,8 +633,8 @@ func (u *MessageUseCase) processPlayerMessages(ctx context.Context, globalPlayer
 		return fmt.Errorf("find player: %w", err)
 	}
 
-	// 判斷玩家的活躍狀態
-	focusType := u.determinePlayerFocus(player)
+	// 使用領域方法判斷玩家的活躍狀態
+	focusType := player.DetermineFocusType()
 
 	u.tracingService.RecordSpanAttributes(span,
 		attribute.String("player.focus_type", focusType),
@@ -709,25 +690,6 @@ func (u *MessageUseCase) processPlayerMessages(ctx context.Context, globalPlayer
 	}
 
 	return nil
-}
-
-// determinePlayerFocus 根據玩家最後活躍時間判斷焦點類型
-func (u *MessageUseCase) determinePlayerFocus(player *entity.Player) string {
-	if player.LastActiveAt == nil {
-		return consts.TargetNotActivity // 沒有活躍記錄視為不活躍
-	}
-
-	now := time.Now()
-	daysSinceActive := int(now.Sub(*player.LastActiveAt).Hours() / 24)
-
-	switch {
-	case daysSinceActive <= 30:
-		return consts.TargetHighActivity // 30天內
-	case daysSinceActive <= 100:
-		return consts.TargetLowActivity // 31-100天
-	default:
-		return consts.TargetNotActivity // 100天以上
-	}
 }
 
 // generateSummary 生成內容摘要

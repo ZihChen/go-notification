@@ -86,13 +86,14 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, data *event.PlayerEvent)
 		MerchantID:     merchant.ID,
 		LevelID:        level.ID,
 		GlobalPlayerID: data.GlobalPlayerID,
-		APIKey:         uuid.New().String(), // 生成新的API密鑰
 		Account:        data.Account,
 		Email:          &data.Email,
 		LastActiveAt:   lastActiveAt,
 		CreatedAt:      data.UpdatedAt,
 		UpdatedAt:      data.UpdatedAt,
 	}
+	// 使用領域方法生成API密鑰
+	player.RegenerateAPIKey()
 
 	u.tracingService.TraceEvent(span, "Upsert player")
 	if err = u.playerRepo.Upsert(ctx, &player); err != nil {
@@ -330,10 +331,8 @@ func (u *PlayerUseCase) UpdatePlayerLastActive(ctx context.Context, id uint64) e
 		attribute.String("player.global_id", player.GlobalPlayerID),
 		attribute.String("player.account", player.Account))
 
-	// 更新最後活躍時間
-	now := time.Now()
-	player.LastActiveAt = &now
-	player.UpdatedAt = now
+	// 使用領域方法更新最後活躍時間
+	player.UpdateLastActive()
 
 	// 更新玩家
 	u.tracingService.TraceEvent(span, "Updating player last active time")
@@ -344,7 +343,7 @@ func (u *PlayerUseCase) UpdatePlayerLastActive(ctx context.Context, id uint64) e
 
 	// 記錄更新成功
 	u.tracingService.TraceEvent(span, "Player last active time updated successfully",
-		attribute.String("last_active_at", now.Format(time.RFC3339)))
+		attribute.String("last_active_at", player.LastActiveAt.Format(time.RFC3339)))
 
 	return nil
 }
