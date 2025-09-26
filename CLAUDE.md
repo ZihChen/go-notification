@@ -152,6 +152,7 @@ The application uses Viper for configuration management. Configuration is loaded
 - **OpenTelemetry tracing endpoints** - Distributed tracing
 - **Service-specific ports and settings** - Multi-service architecture
 - **Authentication settings** - API middleware configuration
+- **CORS configuration** - Environment-aware cross-origin resource sharing (see [CORS Configuration Guide](docs/claude/common/CORS_CONFIGURATION.md))
 - **Scheduler settings** - Cron job intervals and concurrency
 
 ## Important Patterns

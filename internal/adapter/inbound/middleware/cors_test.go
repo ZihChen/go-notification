@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -37,9 +38,9 @@ func TestDefaultCorsMiddleware(t *testing.T) {
 	// 設定 Gin 為測試模式
 	gin.SetMode(gin.TestMode)
 
-	// 創建測試用 Gin 引擎
+	// 創建測試用 Gin 引擎 - 使用 nil 參數測試預設 CORS 行為
 	router := gin.New()
-	router.Use(CorsMiddleware())
+	router.Use(CorsMiddleware(nil))
 
 	// 添加測試端點
 	router.GET("/test", func(c *gin.Context) {
@@ -106,5 +107,101 @@ func TestCorsMiddlewareWithCustomConfig(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Equal(t, "https://trusted-domain.com", w.Header().Get("Access-Control-Allow-Origin"))
 		assert.Equal(t, "true", w.Header().Get("Access-Control-Allow-Credentials"))
+	})
+}
+
+func TestProductionCorsSecurityStrictness(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	t.Run("Production must reject requests without explicit whitelist", func(t *testing.T) {
+		// 生產環境沒有白名單時應該拒絕所有跨域請求
+		cfg := &config.Config{
+			App: config.AppConfig{
+				Env: "production",
+			},
+			CORS: config.CORSConfig{
+				Enabled: true,
+				// 故意不設定 AllowedOrigins
+			},
+		}
+
+		router := gin.New()
+		router.Use(CorsMiddleware(cfg))
+		router.GET("/test", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"message": "test"})
+		})
+
+		req := httptest.NewRequest("GET", "/test", nil)
+		req.Header.Set("Origin", "https://any-external-site.com")
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		// 生產環境沒有明確白名單時不應該設定 Access-Control-Allow-Origin
+		allowOrigin := w.Header().Get("Access-Control-Allow-Origin")
+		assert.Empty(
+			t,
+			allowOrigin,
+			"Production environment should not allow any origin without explicit whitelist",
+		)
+	})
+
+	t.Run("Production should only allow explicitly whitelisted origins", func(t *testing.T) {
+		cfg := &config.Config{
+			App: config.AppConfig{
+				Env: "production",
+			},
+			CORS: config.CORSConfig{
+				Enabled: true,
+				AllowedOrigins: []string{
+					"https://secure-frontend.com",
+					"https://admin.secure.com",
+				},
+				AllowCredentials: true,
+			},
+		}
+
+		router := gin.New()
+		router.Use(CorsMiddleware(cfg))
+		router.GET("/api/sensitive", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"data": "sensitive information"})
+		})
+
+		testCases := []struct {
+			origin      string
+			shouldAllow bool
+		}{
+			{"https://secure-frontend.com", true},
+			{"https://admin.secure.com", true},
+			{"https://malicious-site.com", false},
+			{"http://localhost:3000", false}, // 即使是 localhost 在生產環境也不應該自動允許
+			{"", false},
+		}
+
+		for _, tc := range testCases {
+			t.Run("Origin: "+tc.origin, func(t *testing.T) {
+				req := httptest.NewRequest("GET", "/api/sensitive", nil)
+				if tc.origin != "" {
+					req.Header.Set("Origin", tc.origin)
+				}
+
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				allowOrigin := w.Header().Get("Access-Control-Allow-Origin")
+				if tc.shouldAllow {
+					assert.Equal(t, tc.origin, allowOrigin)
+					assert.Equal(t, "true", w.Header().Get("Access-Control-Allow-Credentials"))
+				} else {
+					// 對於不被允許的來源，檢查是否沒有設置預期的 CORS 標頭
+					if tc.origin != "" {
+						assert.NotEqual(t, tc.origin, allowOrigin)
+					} else {
+						// 空 origin 的情況下，不應該有 CORS 標頭
+						assert.Empty(t, allowOrigin)
+					}
+				}
+			})
+		}
 	})
 }

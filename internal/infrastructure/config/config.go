@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -24,6 +25,7 @@ type Config struct {
 	Auth     AuthConfig
 	Push     PushConfig
 	Consumer ConsumerConfig
+	CORS     CORSConfig
 }
 
 // AppConfig 應用程序基本配置
@@ -137,6 +139,17 @@ type ConsumerConfig struct {
 	ShardLockTimeout    time.Duration // 分片鎖超時時間
 }
 
+// CORSConfig CORS配置
+type CORSConfig struct {
+	Enabled          bool     // 是否啟用CORS
+	AllowedOrigins   []string // 允許的來源列表，逗號分隔
+	AllowedMethods   []string // 允許的HTTP方法
+	AllowedHeaders   []string // 允許的請求頭
+	ExposedHeaders   []string // 暴露的回應頭
+	AllowCredentials bool     // 是否允許憑證
+	MaxAge           int      // 預檢請求快取時間(小時)
+}
+
 // LoadConfig 加載配置
 func LoadConfig() (*Config, error) {
 	viper.SetConfigName(".env")
@@ -248,6 +261,27 @@ func LoadConfig() (*Config, error) {
 				1*time.Minute,
 			),
 		},
+		CORS: CORSConfig{
+			Enabled: getBoolWithDefault("CORS_ENABLED", true),
+			AllowedOrigins: parseStringSlice(
+				viper.GetString("CORS_ALLOWED_ORIGINS"),
+				[]string{},
+			),
+			AllowedMethods: parseStringSlice(
+				viper.GetString("CORS_ALLOWED_METHODS"),
+				[]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+			),
+			AllowedHeaders: parseStringSlice(
+				viper.GetString("CORS_ALLOWED_HEADERS"),
+				[]string{"Origin", "Content-Type", "Authorization", "API-Key"},
+			),
+			ExposedHeaders: parseStringSlice(
+				viper.GetString("CORS_EXPOSED_HEADERS"),
+				[]string{"Content-Type"},
+			),
+			AllowCredentials: getBoolWithDefault("CORS_ALLOW_CREDENTIALS", true),
+			MaxAge:           getIntWithDefault("CORS_MAX_AGE", 6),
+		},
 	}
 
 	return config, nil
@@ -326,6 +360,32 @@ func getDurationWithDefault(key string, defaultValue time.Duration) time.Duratio
 		return viper.GetDuration(key)
 	}
 	return defaultValue
+}
+
+// parseStringSlice 解析逗號分隔的字符串為字符串切片，如果為空則使用預設值
+func parseStringSlice(value string, defaultValue []string) []string {
+	if value == "" {
+		return defaultValue
+	}
+
+	result := strings.Split(value, ",")
+	for i, s := range result {
+		result[i] = strings.TrimSpace(s)
+	}
+
+	// 過濾空字符串
+	filteredResult := make([]string, 0, len(result))
+	for _, s := range result {
+		if s != "" {
+			filteredResult = append(filteredResult, s)
+		}
+	}
+
+	if len(filteredResult) == 0 {
+		return defaultValue
+	}
+
+	return filteredResult
 }
 
 // PrintConfig 輸出所有配置值用於除錯和追蹤
@@ -409,6 +469,15 @@ func (c *Config) PrintConfig() {
 	fmt.Printf("  MaxBackoff: %v\n", c.Consumer.MaxBackoff)
 	fmt.Printf("  MaxShardConcurrency: %d\n", c.Consumer.MaxShardConcurrency)
 	fmt.Printf("  ShardLockTimeout: %v\n", c.Consumer.ShardLockTimeout)
+
+	fmt.Printf("\n[CORS]\n")
+	fmt.Printf("  Enabled: %t\n", c.CORS.Enabled)
+	fmt.Printf("  AllowedOrigins: %v\n", c.CORS.AllowedOrigins)
+	fmt.Printf("  AllowedMethods: %v\n", c.CORS.AllowedMethods)
+	fmt.Printf("  AllowedHeaders: %v\n", c.CORS.AllowedHeaders)
+	fmt.Printf("  ExposedHeaders: %v\n", c.CORS.ExposedHeaders)
+	fmt.Printf("  AllowCredentials: %t\n", c.CORS.AllowCredentials)
+	fmt.Printf("  MaxAge: %d hours\n", c.CORS.MaxAge)
 
 	fmt.Println("\n==============================")
 }
