@@ -1177,11 +1177,18 @@ const docTemplate = `{
                 "content",
                 "created_by",
                 "item",
+                "notification_types",
                 "status",
                 "target",
                 "title"
             ],
             "properties": {
+                "app_content": {
+                    "description": "App推播內容，可選，最大255個字符",
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "恭喜您成功注册！"
+                },
                 "category": {
                     "description": "消息类型：member=会员消息，bonus=红利消息，others=其他消息",
                     "type": "string",
@@ -1217,6 +1224,13 @@ const docTemplate = `{
                     ],
                     "example": "registration"
                 },
+                "notification_types": {
+                    "description": "推送類型位元遮罩：1=站內信，2=App推播，3=兩者皆有，可組合至7，必填",
+                    "type": "integer",
+                    "maximum": 7,
+                    "minimum": 1,
+                    "example": 3
+                },
                 "send_end_time": {
                     "description": "发送结束时间（可选）",
                     "type": "string",
@@ -1230,6 +1244,7 @@ const docTemplate = `{
                     "example": "2024-01-01T10:00:00Z"
                 },
                 "status": {
+                    "description": "活动状态",
                     "type": "string",
                     "enum": [
                         "draft",
@@ -1249,17 +1264,17 @@ const docTemplate = `{
                         "tag",
                         "all"
                     ],
-                    "example": "all"
+                    "example": "player"
                 },
                 "target_detail": {
-                    "description": "目标详情：player为账号数组，level/tag为ID数组",
+                    "description": "目标详情：player为账号数组，level/tag为ID字符串数组",
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
                     "example": [
-                        "[\"max123\"",
-                        " \"winston888\"]"
+                        "['winston123'",
+                        " 'winston888']"
                     ]
                 },
                 "title": {
@@ -1366,6 +1381,10 @@ const docTemplate = `{
         "dto.MessageCampaignResponse": {
             "type": "object",
             "properties": {
+                "app_content": {
+                    "description": "App推播內容",
+                    "type": "string"
+                },
                 "content": {
                     "type": "string"
                 },
@@ -1384,6 +1403,10 @@ const docTemplate = `{
                 "merchant_id": {
                     "type": "integer"
                 },
+                "notification_types": {
+                    "description": "推送類型位元遮罩: 1=站內信, 2=App推播, 4=其他",
+                    "type": "integer"
+                },
                 "processed_at": {
                     "type": "string"
                 },
@@ -1399,8 +1422,11 @@ const docTemplate = `{
                 "status": {
                     "type": "string"
                 },
-                "target_criteria": {
-                    "type": "string"
+                "target_detail": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "target_type": {
                     "type": "string"
@@ -1508,6 +1534,12 @@ const docTemplate = `{
                 "updated_by"
             ],
             "properties": {
+                "app_content": {
+                    "description": "App推播內容，可選，最大255個字符",
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "恭喜您成功注册！"
+                },
                 "category": {
                     "description": "消息类型：member=会员消息，bonus=红利消息，others=其他消息",
                     "type": "string",
@@ -1537,6 +1569,13 @@ const docTemplate = `{
                     ],
                     "example": "registration"
                 },
+                "notification_types": {
+                    "description": "推送類型位元遮罩：1=站內信，2=App推播，4=其他，可選",
+                    "type": "integer",
+                    "maximum": 7,
+                    "minimum": 1,
+                    "example": 3
+                },
                 "send_end_time": {
                     "description": "发送结束时间（可选）",
                     "type": "string",
@@ -1550,6 +1589,7 @@ const docTemplate = `{
                     "example": "2024-01-01T10:00:00Z"
                 },
                 "status": {
+                    "description": "活动状态",
                     "type": "string",
                     "enum": [
                         "draft",
@@ -1572,14 +1612,14 @@ const docTemplate = `{
                     "example": "all"
                 },
                 "target_detail": {
-                    "description": "目标详情：player为账号数组，level/tag为ID数组",
+                    "description": "目标详情：player为账号数组，level/tag为ID字符串数组",
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
                     "example": [
-                        "[\"max123\"",
-                        " \"winston888\"]"
+                        "['123'",
+                        " '456']"
                     ]
                 },
                 "title": {
@@ -1666,6 +1706,10 @@ const docTemplate = `{
         "entity.MessageCampaign": {
             "type": "object",
             "properties": {
+                "app_content": {
+                    "description": "App推播內容",
+                    "type": "string"
+                },
                 "auto_send": {
                     "description": "是否為系統自動訊息",
                     "type": "boolean"
@@ -1703,6 +1747,10 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "merchant_id": {
+                    "type": "integer"
+                },
+                "notification_types": {
+                    "description": "推送類型位元遮罩: 1=站內信, 2=App推播, 4=其他",
                     "type": "integer"
                 },
                 "real_sent_count": {

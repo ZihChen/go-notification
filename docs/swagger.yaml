@@ -70,6 +70,11 @@ definitions:
     type: object
   dto.CreateMessageCampaignRequest:
     properties:
+      app_content:
+        description: App推播內容，可選，最大255個字符
+        example: 恭喜您成功注册！
+        maxLength: 255
+        type: string
       category:
         description: 消息类型：member=会员消息，bonus=红利消息，others=其他消息
         enum:
@@ -99,6 +104,12 @@ definitions:
         - mission
         example: registration
         type: string
+      notification_types:
+        description: 推送類型位元遮罩：1=站內信，2=App推播，3=兩者皆有，可組合至7，必填
+        example: 3
+        maximum: 7
+        minimum: 1
+        type: integer
       send_end_time:
         description: 发送结束时间（可选）
         example: "2024-01-01T18:00:00Z"
@@ -110,6 +121,7 @@ definitions:
         format: date-time
         type: string
       status:
+        description: 活动状态
         enum:
         - draft
         - scheduled
@@ -125,13 +137,13 @@ definitions:
         - level
         - tag
         - all
-        example: all
+        example: player
         type: string
       target_detail:
-        description: 目标详情：player为账号数组，level/tag为ID数组
+        description: 目标详情：player为账号数组，level/tag为ID字符串数组
         example:
-        - '["max123"'
-        - ' "winston888"]'
+        - '[''winston123'''
+        - ' ''winston888'']'
         items:
           type: string
         type: array
@@ -152,6 +164,7 @@ definitions:
     - content
     - created_by
     - item
+    - notification_types
     - status
     - target
     - title
@@ -213,6 +226,9 @@ definitions:
     type: object
   dto.MessageCampaignResponse:
     properties:
+      app_content:
+        description: App推播內容
+        type: string
       content:
         type: string
       created_at:
@@ -225,6 +241,9 @@ definitions:
         type: boolean
       merchant_id:
         type: integer
+      notification_types:
+        description: '推送類型位元遮罩: 1=站內信, 2=App推播, 4=其他'
+        type: integer
       processed_at:
         type: string
       read_count:
@@ -235,8 +254,10 @@ definitions:
         type: integer
       status:
         type: string
-      target_criteria:
-        type: string
+      target_detail:
+        items:
+          type: string
+        type: array
       target_type:
         type: string
       title:
@@ -300,6 +321,11 @@ definitions:
     type: object
   dto.UpdateMessageCampaignRequest:
     properties:
+      app_content:
+        description: App推播內容，可選，最大255個字符
+        example: 恭喜您成功注册！
+        maxLength: 255
+        type: string
       category:
         description: 消息类型：member=会员消息，bonus=红利消息，others=其他消息
         enum:
@@ -324,6 +350,12 @@ definitions:
         - mission
         example: registration
         type: string
+      notification_types:
+        description: 推送類型位元遮罩：1=站內信，2=App推播，4=其他，可選
+        example: 3
+        maximum: 7
+        minimum: 1
+        type: integer
       send_end_time:
         description: 发送结束时间（可选）
         example: "2024-01-01T18:00:00Z"
@@ -335,6 +367,7 @@ definitions:
         format: date-time
         type: string
       status:
+        description: 活动状态
         enum:
         - draft
         - scheduled
@@ -353,10 +386,10 @@ definitions:
         example: all
         type: string
       target_detail:
-        description: 目标详情：player为账号数组，level/tag为ID数组
+        description: 目标详情：player为账号数组，level/tag为ID字符串数组
         example:
-        - '["max123"'
-        - ' "winston888"]'
+        - '[''123'''
+        - ' ''456'']'
         items:
           type: string
         type: array
@@ -426,6 +459,9 @@ definitions:
     type: object
   entity.MessageCampaign:
     properties:
+      app_content:
+        description: App推播內容
+        type: string
       auto_send:
         description: 是否為系統自動訊息
         type: boolean
@@ -454,6 +490,9 @@ definitions:
         description: 舊系統的 notification ID，用於資料遷移
         type: integer
       merchant_id:
+        type: integer
+      notification_types:
+        description: '推送類型位元遮罩: 1=站內信, 2=App推播, 4=其他'
         type: integer
       real_sent_count:
         description: 實際成功發送人數

@@ -532,11 +532,11 @@ func (u *MessageUseCase) GetPlayerMessages(
 		attribute.Int("page_size", pageSize),
 	)
 
-	// 檢查玩家是否需要新增訊息
-	if err := u.processPlayerMessages(ctx, globalPlayerID); err != nil {
-		u.logger.WarnLog("Failed to process player messages",
-			u.logger.String("global_player_id", globalPlayerID),
-			u.logger.Error("err", err))
+	// 先檢查 player 是否存在
+	_, err := u.playerRepo.FindByGlobalID(ctx, globalPlayerID)
+	if err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return nil, fmt.Errorf("find player by global ID: %w", err)
 	}
 
 	// 獲取統計資訊
@@ -546,44 +546,46 @@ func (u *MessageUseCase) GetPlayerMessages(
 		return nil, fmt.Errorf("get player message stats: %w", err)
 	}
 
-	// 獲取訊息列表
-	messages, total, err := u.playerMessageRepo.FindByPlayerID(ctx, globalPlayerID, page, pageSize)
+	// 使用 JOIN 查詢直接獲取訊息列表和活動資訊
+	messageAggregates, total, err := u.playerMessageRepo.FindByPlayerIDWithCampaign(
+		ctx,
+		globalPlayerID,
+		page,
+		pageSize,
+	)
 	if err != nil {
 		u.tracingService.RecordSpanError(span, err)
-		return nil, fmt.Errorf("find player messages: %w", err)
+		return nil, fmt.Errorf("find player messages with campaign: %w", err)
 	}
 
 	// 轉換為摘要格式
-	summaries := make([]dto.MessageSummary, len(messages))
-	for i, message := range messages {
+	summaries := make([]dto.MessageSummary, len(messageAggregates))
+	for i, aggregate := range messageAggregates {
 		summaries[i] = dto.MessageSummary{
-			ID:        message.ID,
-			Title:     "Message",
-			Summary:   "Message content",
-			IsRead:    message.IsRead,
-			CreatedAt: message.CreatedAt,
+			ID:        aggregate.ID,
+			Title:     aggregate.CampaignTitle,
+			Summary:   generateSummary(aggregate.CampaignContent),
+			IsRead:    aggregate.IsRead,
+			CreatedAt: aggregate.CreatedAt,
 		}
 	}
 
 	u.tracingService.RecordSpanAttributes(span,
-		attribute.Int("stats.total_count", int(stats.TotalCount)),
-		attribute.Int("stats.read_count", int(stats.ReadCount)),
-		attribute.Int("stats.unread_count", int(stats.UnreadCount)),
+		attribute.Int("stats.total_count", stats.TotalCount),
+		attribute.Int("stats.read_count", stats.ReadCount),
+		attribute.Int("stats.unread_count", stats.UnreadCount),
 		attribute.Int("returned_messages", len(summaries)),
 	)
 
-	// stats 已經是 DTO 類型，直接使用
 	dtoStats := *stats
 
-	response := &dto.MessageListResponse{
+	return &dto.MessageListResponse{
 		Stats:    dtoStats,
 		Messages: summaries,
 		Page:     page,
 		PageSize: pageSize,
 		Total:    total,
-	}
-
-	return response, nil
+	}, nil
 }
 
 // MarkMessageAsRead 標記訊息為已讀
@@ -692,16 +694,16 @@ func (u *MessageUseCase) processPlayerMessages(ctx context.Context, globalPlayer
 	return nil
 }
 
-// generateSummary 生成內容摘要
+// generateSummary 生成內容摘要：最多只顯示 300個字符，避免過長
 func generateSummary(content string) string {
 	content = strings.ReplaceAll(content, "<", "&lt;")
 	content = strings.ReplaceAll(content, ">", "&gt;")
-
+	maxLength := 300
 	runes := []rune(content)
-	if len(runes) <= 100 {
+	if len(runes) <= maxLength {
 		return content
 	}
-	return string(runes[:100]) + "..."
+	return string(runes[:maxLength]) + "..."
 }
 
 // GetMerchantAutoSettings 獲取商戶自動設定

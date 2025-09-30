@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/aggregate"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
@@ -76,6 +77,51 @@ func (r *PlayerMessageRepository) FindByPlayerID(
 	}
 
 	return domainMessages, int(total), nil
+}
+
+// FindByPlayerIDWithCampaign 通過玩家ID查找訊息列表並JOIN活動資訊（支援分頁）
+func (r *PlayerMessageRepository) FindByPlayerIDWithCampaign(
+	ctx context.Context,
+	globalPlayerID string,
+	page, pageSize int,
+) ([]*aggregate.PlayerMessageAggregate, int, error) {
+	var results []aggregate.PlayerMessageQueryResult
+	var total int64
+	pm := models.PlayerMessage{}
+
+	// 計算總數
+	if err := r.db.WithContext(ctx).
+		Table(fmt.Sprintf("%s pm", pm.TableName())).
+		Joins("LEFT JOIN message_campaigns mc ON pm.campaign_id = mc.id").
+		Where("pm.global_player_id = ?", globalPlayerID).
+		Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 分頁查詢並JOIN活動資訊
+	offset := (page - 1) * pageSize
+	if err := r.db.WithContext(ctx).
+		Table(fmt.Sprintf("%s pm", pm.TableName())).
+		Select(`pm.id, pm.global_player_id, pm.player_id, pm.campaign_id, pm.is_read, 
+			pm.created_at, pm.updated_at,
+			COALESCE(mc.title, '站內信') as campaign_title,
+			COALESCE(mc.content, '您有一封新的訊息') as campaign_content`).
+		Joins("LEFT JOIN message_campaigns mc ON pm.campaign_id = mc.id").
+		Where("pm.global_player_id = ?", globalPlayerID).
+		Order("pm.created_at DESC").
+		Offset(offset).
+		Limit(pageSize).
+		Scan(&results).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 轉換為 Aggregate
+	aggregates := make([]*aggregate.PlayerMessageAggregate, len(results))
+	for i, result := range results {
+		aggregates[i] = result.ToAggregate()
+	}
+
+	return aggregates, int(total), nil
 }
 
 // GetPlayerMessageStats 獲取玩家訊息統計

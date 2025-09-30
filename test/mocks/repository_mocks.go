@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/aggregate"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/stretchr/testify/mock"
 )
@@ -391,6 +392,18 @@ func (m *PlayerMessageRepositoryMock) FindByPlayerID(
 		return nil, args.Int(1), args.Error(2)
 	}
 	return args.Get(0).([]*entity.PlayerMessage), args.Int(1), args.Error(2)
+}
+
+func (m *PlayerMessageRepositoryMock) FindByPlayerIDWithCampaign(
+	ctx context.Context,
+	globalPlayerID string,
+	page, pageSize int,
+) ([]*aggregate.PlayerMessageAggregate, int, error) {
+	args := m.Called(ctx, globalPlayerID, page, pageSize)
+	if args.Get(0) == nil {
+		return nil, args.Int(1), args.Error(2)
+	}
+	return args.Get(0).([]*aggregate.PlayerMessageAggregate), args.Int(1), args.Error(2)
 }
 
 func (m *PlayerMessageRepositoryMock) GetPlayerMessageStats(

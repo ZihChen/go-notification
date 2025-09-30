@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/aggregate"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 )
 
@@ -58,6 +59,11 @@ type PlayerMessageRepository interface {
 		globalPlayerID string,
 		page, pageSize int,
 	) ([]*entity.PlayerMessage, int, error)
+	FindByPlayerIDWithCampaign(
+		ctx context.Context,
+		globalPlayerID string,
+		page, pageSize int,
+	) ([]*aggregate.PlayerMessageAggregate, int, error)
 	GetByPlayerAndCampaign(
 		ctx context.Context,
 		playerID uint64,
