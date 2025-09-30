@@ -1,8 +1,6 @@
 package api
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -651,115 +649,6 @@ func (h *HTTPHandler) CreateOrUpdateMerchantAutoSettings(c *gin.Context) {
 	}
 }
 
-// SSEHandler Server-Sent Events處理器
-// @Summary Server-Sent Events訊息推送
-// @Description 為指定玩家建立SSE連接，即時推送訊息更新
-// @Tags 玩家訊息
-// @Accept json
-// @Produce text/event-stream
-// @Param global_player_id path string true "全域玩家ID - 跨系統玩家唯一識別符，用於標識特定玩家" example("player-123e4567-e89b-12d3-a456-426614174000")
-// @Success 200 {string} string "SSE stream"
-// @Failure 400 {object} ErrorResponse
-// @Security ApiKeyAuth
-// @Router /api/v1/messages/player/{global_player_id}/sse [get]
-func (h *HTTPHandler) SSEHandler(c *gin.Context) {
-	globalPlayerID := c.Param("global_player_id")
-	if globalPlayerID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Global player ID is required",
-		})
-		return
-	}
-
-	// 設置SSE headers
-	c.Header("Content-Type", "text/event-stream")
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-	c.Header("Access-Control-Allow-Origin", "*")
-
-	// 發送初始連接成功訊息
-	_, _ = fmt.Fprintf(
-		c.Writer,
-		"data: {\"type\": \"connected\", \"message\": \"SSE connection established\"}\n\n",
-	)
-	c.Writer.Flush()
-
-	// 獲取初始訊息統計
-	response, err := h.messageUseCase.GetPlayerMessages(c.Request.Context(), globalPlayerID, 1, 10)
-	if err != nil {
-		h.logger.ErrorLog("Failed to get initial player messages for SSE",
-			h.logger.String("global_player_id", globalPlayerID),
-			h.logger.Error("err", err))
-	} else {
-		// 發送初始統計資訊
-		statsData, _ := json.Marshal(map[string]interface{}{
-			"type":  "stats",
-			"stats": response.Stats,
-		})
-		_, _ = fmt.Fprintf(c.Writer, "data: %s\n\n", statsData)
-		c.Writer.Flush()
-	}
-
-	// 建立ticker用於定期檢查新訊息
-	ticker := time.NewTicker(30 * time.Second)
-	defer ticker.Stop()
-
-	// 用於檢測客戶端斷線
-	clientGone := c.Writer.CloseNotify()
-	var lastUnreadCount = 0
-	if response != nil {
-		lastUnreadCount = response.Stats.UnreadCount
-	}
-
-	h.logger.InfoLog("SSE connection established",
-		h.logger.String("global_player_id", globalPlayerID))
-
-	for {
-		select {
-		case <-clientGone:
-			h.logger.InfoLog("SSE client disconnected",
-				h.logger.String("global_player_id", globalPlayerID))
-			return
-		case <-ticker.C:
-			// 定期檢查新訊息
-			currentResponse, err := h.messageUseCase.GetPlayerMessages(
-				c.Request.Context(),
-				globalPlayerID,
-				1,
-				1,
-			)
-			if err != nil {
-				h.logger.WarnLog("Failed to check messages in SSE",
-					h.logger.String("global_player_id", globalPlayerID),
-					h.logger.Error("err", err))
-				continue
-			}
-
-			// 如果未讀數量有變化，發送更新
-			if currentResponse.Stats.UnreadCount != lastUnreadCount {
-				updateData, _ := json.Marshal(map[string]interface{}{
-					"type":  "stats_update",
-					"stats": currentResponse.Stats,
-				})
-				_, _ = fmt.Fprintf(c.Writer, "data: %s\n\n", updateData)
-				c.Writer.Flush()
-				lastUnreadCount = currentResponse.Stats.UnreadCount
-
-				h.logger.DebugLog("SSE stats update sent",
-					h.logger.String("global_player_id", globalPlayerID),
-					h.logger.Int("unread_count", lastUnreadCount))
-			}
-
-			// 發送心跳
-			_, _ = fmt.Fprintf(
-				c.Writer,
-				"data: {\"type\": \"heartbeat\", \"timestamp\": \"%s\"}\n\n",
-				time.Now().Format(time.RFC3339),
-			)
-			c.Writer.Flush()
-		}
-	}
-}
 
 // ========== 玩家等級管理 API ==========
 

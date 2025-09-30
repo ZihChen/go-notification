@@ -1050,34 +1050,6 @@ paths:
       summary: 標記訊息為已讀
       tags:
       - 玩家訊息
-  /api/v1/messages/player/{global_player_id}/sse:
-    get:
-      consumes:
-      - application/json
-      description: 為指定玩家建立SSE連接，即時推送訊息更新
-      parameters:
-      - description: 全域玩家ID - 跨系統玩家唯一識別符，用於標識特定玩家
-        example: '"player-123e4567-e89b-12d3-a456-426614174000"'
-        in: path
-        name: global_player_id
-        required: true
-        type: string
-      produces:
-      - text/event-stream
-      responses:
-        "200":
-          description: SSE stream
-          schema:
-            type: string
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      security:
-      - ApiKeyAuth: []
-      summary: Server-Sent Events訊息推送
-      tags:
-      - 玩家訊息
   /api/v1/players/{id}:
     get:
       consumes:

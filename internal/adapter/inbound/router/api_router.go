@@ -69,6 +69,5 @@ func (r *APIRouter) RegisterRoutes(router *gin.Engine, authMiddleware gin.Handle
 	{
 		messages.GET("/player/:global_player_id", r.handler.GetPlayerMessages)
 		messages.PUT("/player/:global_player_id/:message_id/read", r.handler.MarkMessageAsRead)
-		messages.GET("/player/:global_player_id/sse", r.handler.SSEHandler)
 	}
 }

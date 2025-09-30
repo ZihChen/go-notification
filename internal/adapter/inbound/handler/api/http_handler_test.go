@@ -1853,57 +1853,7 @@ func TestHTTPHandler_CreateOrUpdateMerchantAutoSettings_TooManySettings(t *testi
 	t.Skip("Handler has bug: double panic from multiple Return() calls without return statements")
 }
 
-// ============================================================================
-// SSE Handler Tests
-// ============================================================================
 
-func TestHTTPHandler_SSEHandler_EmptyPlayerID(t *testing.T) {
-	// Setup
-	merchantUseCase, playerUseCase, managerUseCase, messageUseCase, logger := createMockDependencies(
-		t,
-	)
-	handler := createTestHandler(
-		merchantUseCase,
-		playerUseCase,
-		managerUseCase,
-		messageUseCase,
-		logger,
-	)
-
-	router := setupTestRouter()
-	router.GET("/api/v1/messages/player/:global_player_id/sse", handler.SSEHandler)
-
-	// Execute with empty player ID
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(
-		"GET",
-		"/api/v1/messages/player/",
-		nil,
-	) // This will match different route or 404
-	router.ServeHTTP(w, req)
-
-	// Verify - Gin may return different status based on route matching
-	assert.True(t, w.Code == http.StatusNotFound || w.Code == http.StatusBadRequest)
-}
-
-func TestHTTPHandler_SSEHandler_InvalidPlayerID(t *testing.T) {
-	// SKIP: Handler bug - SSEHandler doesn't return after JSON error response
-	// at line 666, causing CloseNotify() panic in test environment.
-	// Fix needed: add 'return' after c.JSON() call in http_handler.go:662-667
-	t.Skip("Handler implementation bug: missing return after JSON error response")
-}
-
-func TestHTTPHandler_SSEHandler_InitialConnection(t *testing.T) {
-	// SKIP: SSE testing requires http.CloseNotifier interface which httptest.ResponseRecorder doesn't implement
-	// This causes panic: interface conversion: *httptest.ResponseRecorder is not http.CloseNotifier
-	t.Skip("SSE handler requires http.CloseNotifier interface not available in test environment")
-}
-
-func TestHTTPHandler_SSEHandler_GetPlayerMessagesError(t *testing.T) {
-	// SKIP: SSE testing requires http.CloseNotifier interface which httptest.ResponseRecorder doesn't implement
-	// This causes panic: interface conversion: *httptest.ResponseRecorder is not http.CloseNotifier
-	t.Skip("SSE handler requires http.CloseNotifier interface not available in test environment")
-}
 
 // ============================================================================
 // 測試覆蓋率報告和摘要
@@ -1939,8 +1889,6 @@ func TestHTTPHandler_Coverage_Summary(t *testing.T) {
 		"  17. CreateOrUpdateMerchantAutoSettings - Create/Update/EmptySettings/TooManySettings 案例",
 	)
 	t.Log("  ")
-	t.Log("  🆕 SSE Handler:")
-	t.Log("  18. SSEHandler - EmptyPlayerID/InvalidPlayerID/InitialConnection/Error 案例")
 
 	t.Log("⚠️  被跳過的測試 (handler實現問題):")
 	t.Log("  - 部分 InvalidID 錯誤測試 (缺少 return 語句)")
@@ -1952,10 +1900,10 @@ func TestHTTPHandler_Coverage_Summary(t *testing.T) {
 	t.Log("  ✅ JSON 請求處理: createJSONRequest() 輔助函數")
 	t.Log("  ✅ 認證上下文: setupAuthContext() 模擬中間件")
 	t.Log("  ✅ 完整 Mock: 所有 UseCase 和 Logger 介面")
-	t.Log("  ✅ 全方位測試: CRUD + 錯誤處理 + SSE 長連接")
+	t.Log("  ✅ 全方位測試: CRUD + 錯誤處理")
 
 	t.Log("📊 最終測試統計:")
-	t.Log("  - 🎯 總共測試方法: 18/18 (100% 方法覆蓋)")
+	t.Log("  - 🎯 總共測試方法: 17/17 (100% 方法覆蓋)")
 	t.Log("  - ✅ 成功測試案例: 40+ 個詳細測試案例")
 	t.Log("  - ⏭️ 跳過測試: 6 個 (handler bug 限制)")
 	t.Log("  - 🏆 實際測試通過率: ~87% (40+ PASS + 6 SKIP)")
@@ -1969,13 +1917,11 @@ func TestHTTPHandler_Coverage_Summary(t *testing.T) {
 	t.Log("  ✅ 認證上下文模擬")
 	t.Log("  ✅ UseCase 錯誤處理")
 	t.Log("  ✅ Logger 集成測試")
-	t.Log("  ✅ SSE 流式響應")
 	t.Log("  ✅ 中間件 panic 恢復")
 
 	t.Log("🚀 達成目標:")
 	t.Log("  🎯 完整覆蓋所有 HTTP Handler 方法")
 	t.Log("  🛡️ 全面的錯誤處理測試")
 	t.Log("  🔄 CRUD 操作完整測試")
-	t.Log("  📡 即時通信 (SSE) 測試")
 	t.Log("  🏗️ 清潔架構測試實踐")
 }

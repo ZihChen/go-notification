@@ -709,50 +709,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/messages/player/{global_player_id}/sse": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "為指定玩家建立SSE連接，即時推送訊息更新",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "text/event-stream"
-                ],
-                "tags": [
-                    "玩家訊息"
-                ],
-                "summary": "Server-Sent Events訊息推送",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "example": "\"player-123e4567-e89b-12d3-a456-426614174000\"",
-                        "description": "全域玩家ID - 跨系統玩家唯一識別符，用於標識特定玩家",
-                        "name": "global_player_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "SSE stream",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/messages/player/{global_player_id}/{message_id}/read": {
             "put": {
                 "security": [
