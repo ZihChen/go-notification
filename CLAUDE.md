@@ -195,6 +195,7 @@ The project maintains structured documentation for development guidance:
 - **docs/claude/archive/** - Completed feature archives
 
 ### Current Status
+**v1.9 玩家訊息API完成**: 前台玩家訊息管理系統上線，提供訊息列表查詢、已讀標記與統計功能，達到production-ready標準  
 **v1.8 App推播功能完成**: 會員訊息發送系統新增App推播功能，支援多渠道通知與位元遮罩管理  
 **v1.6+ 系統性能優化完成**: Level/Tag查詢邏輯優化，使用直接ID查詢取代低效映射，提升性能與資料完整性  
 **v1.6 資料搬遷系統準備中**: DB資料搬遷系統技術規格完成，進入Phase 1基礎架構建立階段  
@@ -244,17 +245,33 @@ The project maintains structured documentation for development guidance:
 - ✅ Router architecture refactoring with modular design (v1.2)
 - ✅ CORS configuration optimization for Swagger integration
 
-**Current Phase (2025-09-26):**
-- v1.8 App推播功能實作完成：多渠道通知系統完整實現
-- Level/Tag性能優化完成：直接ID查詢模式實現，O(n)→O(1)效能提升
-- Phase 1 企業級安全加固完成：消除所有Critical級別安全風險
-- 系統整體品質從良好提升至優秀水準，具備生產環境部署條件
-- 技術文檔更新完成：反映v1.8成果與Phase 1安全加固狀態
-- 進入Phase 3架構完善階段：專注於Clean Architecture DIP修復與CORS安全
+**Current Phase (2025-09-30):**
+- ✅ v1.9 玩家訊息API實作完成：前台玩家訊息管理系統上線
+- ✅ DDD架構完善完成：PlayerMessageAggregate正確分離，架構純度提升
+- ✅ JOIN查詢性能優化：消除N+1查詢問題，數據庫效能大幅提升
+- ✅ 測試架構統一完成：所有UseCase和Handler測試100%通過
+- ✅ v1.8 App推播功能實作完成：多渠道通知系統完整實現
+- ✅ Level/Tag性能優化完成：直接ID查詢模式實現，O(n)→O(1)效能提升
+- ✅ Phase 1 企業級安全加固完成：消除所有Critical級別安全風險
+- 系統整體品質達到優秀水準，具備生產環境部署條件
+- 進入v2.0規劃階段：考慮大規模生產優化與新功能開發
 
 For detailed current tasks, see `docs/claude/CLAUDE-CURRENT.md`.
 
 ### Completed Features
+
+#### 玩家訊息API系統 v1.9 ✅
+- **Status**: Completed (2025-09-30)
+- **Specification**: `docs/claude/features/message-campaign/CLAUDE-2025-09-30-v1.9.md`
+- **Key Components**:
+  - Player message list API with JOIN query optimization
+  - Message read status management system
+  - Player message statistics (read/unread/total counts)
+  - Message summary generation with HTML escape
+  - Pagination support with default 20 items per page
+  - DDD architecture enhancement with PlayerMessageAggregate separation
+  - Performance optimization eliminating N+1 query problems
+  - Comprehensive test coverage for all use cases and handlers
 
 #### App推播功能實作 v1.8 ✅
 - **Status**: Completed (2025-09-22)
