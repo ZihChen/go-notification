@@ -17,19 +17,21 @@ import (
 
 // MessageTestSuite 訊息測試套件
 type MessageTestSuite struct {
-	useCase           *MessageUseCase
-	campaignRepo      *mocks.MessageCampaignRepositoryMock
-	playerRepo        *mocks.PlayerRepositoryMock
-	playerMessageRepo *mocks.PlayerMessageRepositoryMock
-	merchantRepo      *mocks.MerchantRepositoryMock
-	factory           *factories.TestDataFactory
-	logger            *helper.MockLogger
+	useCase            *MessageUseCase
+	campaignRepo       *mocks.MessageCampaignRepositoryMock
+	campaignTargetRepo *mocks.CampaignTargetRepositoryMock
+	playerRepo         *mocks.PlayerRepositoryMock
+	playerMessageRepo  *mocks.PlayerMessageRepositoryMock
+	merchantRepo       *mocks.MerchantRepositoryMock
+	factory            *factories.TestDataFactory
+	logger             *helper.MockLogger
 }
 
 // setupMessageTestSuite 設定訊息測試套件
 func setupMessageTestSuite(t *testing.T) *MessageTestSuite {
 	// 創建Mock實例
 	campaignRepo := mocks.NewMessageCampaignRepositoryMock(t)
+	campaignTargetRepo := mocks.NewCampaignTargetRepositoryMock(t)
 	playerRepo := mocks.NewPlayerRepositoryMock(t)
 	playerMessageRepo := mocks.NewPlayerMessageRepositoryMock(t)
 	merchantRepo := mocks.NewMerchantRepositoryMock(t)
@@ -44,6 +46,7 @@ func setupMessageTestSuite(t *testing.T) *MessageTestSuite {
 	// 創建UseCase實例
 	useCase := NewMessageUseCase(
 		campaignRepo,
+		campaignTargetRepo,
 		merchantRepo,
 		playerMessageRepo,
 		playerRepo,
@@ -59,13 +62,14 @@ func setupMessageTestSuite(t *testing.T) *MessageTestSuite {
 	factory := factories.NewTestDataFactory()
 
 	return &MessageTestSuite{
-		useCase:           useCase,
-		campaignRepo:      campaignRepo,
-		playerRepo:        playerRepo,
-		playerMessageRepo: playerMessageRepo,
-		merchantRepo:      merchantRepo,
-		factory:           factory,
-		logger:            logger,
+		useCase:            useCase,
+		campaignRepo:       campaignRepo,
+		campaignTargetRepo: campaignTargetRepo,
+		playerRepo:         playerRepo,
+		playerMessageRepo:  playerMessageRepo,
+		merchantRepo:       merchantRepo,
+		factory:            factory,
+		logger:             logger,
 	}
 }
 

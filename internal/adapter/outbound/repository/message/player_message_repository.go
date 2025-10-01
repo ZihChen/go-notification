@@ -1,4 +1,4 @@
-package repository
+package message
 
 import (
 	"context"
@@ -378,4 +378,28 @@ func (r *PlayerMessageRepository) Update(
 		return fmt.Errorf("failed to update player message: %w", result.Error)
 	}
 	return nil
+}
+
+// FindExistingCampaignIDs 查找指定玩家已存在的活動ID列表
+func (r *PlayerMessageRepository) FindExistingCampaignIDs(
+	ctx context.Context,
+	globalPlayerID string,
+	campaignIDs []uint64,
+) ([]uint64, error) {
+	if len(campaignIDs) == 0 {
+		return nil, nil
+	}
+
+	var existingCampaignIDs []uint64
+	result := r.db.WithContext(ctx).
+		Model(&models.PlayerMessage{}).
+		Select("campaign_id").
+		Where("global_player_id = ? AND campaign_id IN ?", globalPlayerID, campaignIDs).
+		Find(&existingCampaignIDs)
+
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to find existing campaign IDs: %w", result.Error)
+	}
+
+	return existingCampaignIDs, nil
 }

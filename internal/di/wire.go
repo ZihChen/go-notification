@@ -57,6 +57,7 @@ var baseSet = wire.NewSet(
 	playerRepo.NewPlayerRepository,
 	managerRepo.NewManagerRepository,
 	messageRepo.NewMessageCampaignRepository,
+	messageRepo.NewCampaignTargetRepository,
 	messageRepo.NewPlayerMessageRepository,
 	playerRepo.NewLevelRepository,
 	playerRepo.NewTagRepository,

@@ -30,8 +30,11 @@ func TestProcessScheduledCampaigns_Simple(t *testing.T) {
 	tracingService := mocks.NewTracingServiceMock(t)
 	tracingService.SetupSuccess()
 
+	campaignTargetRepo := mocks.NewCampaignTargetRepositoryMock(t)
+
 	useCase := NewMessageUseCase(
 		campaignRepo,
+		campaignTargetRepo,
 		merchantRepo,
 		playerMessageRepo,
 		playerRepo,
@@ -101,8 +104,11 @@ func TestProcessScheduledCampaigns_ErrorCase(t *testing.T) {
 	tracingService := mocks.NewTracingServiceMock(t)
 	tracingService.SetupSuccess()
 
+	campaignTargetRepo := mocks.NewCampaignTargetRepositoryMock(t)
+
 	useCase := NewMessageUseCase(
 		campaignRepo,
+		campaignTargetRepo,
 		merchantRepo,
 		playerMessageRepo,
 		playerRepo,
@@ -154,8 +160,11 @@ func TestSendCampaignToPlayersAsync_Simple(t *testing.T) {
 	tracingService := mocks.NewTracingServiceMock(t)
 	tracingService.SetupSuccess()
 
+	campaignTargetRepo := mocks.NewCampaignTargetRepositoryMock(t)
+
 	useCase := NewMessageUseCase(
 		campaignRepo,
+		campaignTargetRepo,
 		merchantRepo,
 		playerMessageRepo,
 		playerRepo,
@@ -219,8 +228,11 @@ func TestSendCampaignToPlayersAsync_WithPlayers(t *testing.T) {
 	tracingService := mocks.NewTracingServiceMock(t)
 	tracingService.SetupSuccess()
 
+	campaignTargetRepo := mocks.NewCampaignTargetRepositoryMock(t)
+
 	useCase := NewMessageUseCase(
 		campaignRepo,
+		campaignTargetRepo,
 		merchantRepo,
 		playerMessageRepo,
 		playerRepo,

@@ -10,6 +10,8 @@ import (
 type PlayerRepository interface {
 	FindByID(ctx context.Context, id uint64) (*entity.Player, error)
 	FindByGlobalID(ctx context.Context, globalID string) (*entity.Player, error)
+	FindByAccount(ctx context.Context, account string) (*entity.Player, error)
+	FindByAccounts(ctx context.Context, accounts []string) ([]*entity.Player, error)
 	GetByGlobalPlayerID(ctx context.Context, globalPlayerID string) (*entity.Player, error)
 	FindByTargetType(
 		ctx context.Context,

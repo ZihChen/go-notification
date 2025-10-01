@@ -113,6 +113,14 @@ type PlayerTag struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// CampaignTarget 訊息活動目標關聯實體
+type CampaignTarget struct {
+	CampaignID uint64    `json:"campaign_id"`
+	TargetType string    `json:"target_type"` // player, level, tag, all
+	TargetID   uint64    `json:"target_id"`   // 目標ID：player_id/level_id/tag_id，all類型為NULL
+	CreatedAt  time.Time `json:"created_at"`
+}
+
 // LoggerFiled 日誌欄位結構
 type LoggerFiled struct {
 	Key   string

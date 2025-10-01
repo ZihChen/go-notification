@@ -27,8 +27,11 @@ func TestGetMessageCampaign_TargetDetail_Player(t *testing.T) {
 	tracingService := mocks.NewTracingServiceMock(t)
 	tracingService.SetupSuccess()
 
+	campaignTargetRepo := mocks.NewCampaignTargetRepositoryMock(t)
+
 	useCase := NewMessageUseCase(
 		campaignRepo,
+		campaignTargetRepo,
 		merchantRepo,
 		playerMessageRepo,
 		playerRepo,
@@ -82,8 +85,11 @@ func TestGetMessageCampaign_TargetDetail_Level(t *testing.T) {
 	tracingService := mocks.NewTracingServiceMock(t)
 	tracingService.SetupSuccess()
 
+	campaignTargetRepo := mocks.NewCampaignTargetRepositoryMock(t)
+
 	useCase := NewMessageUseCase(
 		campaignRepo,
+		campaignTargetRepo,
 		merchantRepo,
 		playerMessageRepo,
 		playerRepo,
@@ -146,8 +152,11 @@ func TestGetMessageCampaign_TargetDetail_Tag(t *testing.T) {
 	tracingService := mocks.NewTracingServiceMock(t)
 	tracingService.SetupSuccess()
 
+	campaignTargetRepo := mocks.NewCampaignTargetRepositoryMock(t)
+
 	useCase := NewMessageUseCase(
 		campaignRepo,
+		campaignTargetRepo,
 		merchantRepo,
 		playerMessageRepo,
 		playerRepo,
@@ -210,8 +219,11 @@ func TestGetMessageCampaign_TargetDetail_NoTargetDetail(t *testing.T) {
 	tracingService := mocks.NewTracingServiceMock(t)
 	tracingService.SetupSuccess()
 
+	campaignTargetRepo := mocks.NewCampaignTargetRepositoryMock(t)
+
 	useCase := NewMessageUseCase(
 		campaignRepo,
+		campaignTargetRepo,
 		merchantRepo,
 		playerMessageRepo,
 		playerRepo,

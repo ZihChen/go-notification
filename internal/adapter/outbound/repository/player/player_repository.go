@@ -58,6 +58,46 @@ func (r *PlayerRepository) FindByGlobalID(
 	return mapToDomainPlayer(&player), nil
 }
 
+// FindByAccount 通過賬號查找玩家
+func (r *PlayerRepository) FindByAccount(
+	ctx context.Context,
+	account string,
+) (*entity.Player, error) {
+	var player models.Player
+	result := r.db.WithContext(ctx).Where("account = ?", account).First(&player)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, errmsg.ErrRepoPlayerNotFound
+		}
+		return &entity.Player{}, result.Error
+	}
+
+	return mapToDomainPlayer(&player), nil
+}
+
+// FindByAccounts 通過賬號列表批量查找玩家
+func (r *PlayerRepository) FindByAccounts(
+	ctx context.Context,
+	accounts []string,
+) ([]*entity.Player, error) {
+	if len(accounts) == 0 {
+		return []*entity.Player{}, nil
+	}
+
+	var players []models.Player
+	result := r.db.WithContext(ctx).Where("account IN ?", accounts).Find(&players)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	domainPlayers := make([]*entity.Player, len(players))
+	for i, player := range players {
+		domainPlayers[i] = mapToDomainPlayer(&player)
+	}
+
+	return domainPlayers, nil
+}
+
 // FirstOrCreate 取得或創建，避免重複插入
 func (r *PlayerRepository) FirstOrCreate(ctx context.Context, player *entity.Player) error {
 	playerModel := mapToDBPlayer(player)

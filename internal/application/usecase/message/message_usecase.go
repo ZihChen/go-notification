@@ -24,21 +24,23 @@ import (
 
 // MessageUseCase 訊息用例
 type MessageUseCase struct {
-	campaignRepo      repository.MessageCampaignRepository
-	merchantRepo      repository.MerchantRepository
-	playerMessageRepo repository.PlayerMessageRepository
-	playerRepo        repository.PlayerRepository
-	levelRepo         repository.LevelRepository
-	tagRepo           repository.TagRepository
-	pushApiKeyRepo    repository.PushKeyRepository
-	pushService       service.PushNotificationService
-	logger            infrastructure.Logger
-	tracingService    infrastructure.TracingService
+	campaignRepo       repository.MessageCampaignRepository
+	campaignTargetRepo repository.CampaignTargetRepository
+	merchantRepo       repository.MerchantRepository
+	playerMessageRepo  repository.PlayerMessageRepository
+	playerRepo         repository.PlayerRepository
+	levelRepo          repository.LevelRepository
+	tagRepo            repository.TagRepository
+	pushApiKeyRepo     repository.PushKeyRepository
+	pushService        service.PushNotificationService
+	logger             infrastructure.Logger
+	tracingService     infrastructure.TracingService
 }
 
 // NewMessageUseCase 創建訊息用例
 func NewMessageUseCase(
 	campaignRepo repository.MessageCampaignRepository,
+	campaignTargetRepo repository.CampaignTargetRepository,
 	merchantRepo repository.MerchantRepository,
 	playerMessageRepo repository.PlayerMessageRepository,
 	playerRepo repository.PlayerRepository,
@@ -50,16 +52,17 @@ func NewMessageUseCase(
 	tracingService infrastructure.TracingService,
 ) inbound.MessageUseCase {
 	return &MessageUseCase{
-		campaignRepo:      campaignRepo,
-		merchantRepo:      merchantRepo,
-		playerMessageRepo: playerMessageRepo,
-		playerRepo:        playerRepo,
-		levelRepo:         levelRepo,
-		tagRepo:           tagRepo,
-		pushApiKeyRepo:    pushApiKeyRepo,
-		pushService:       pushService,
-		logger:            logger,
-		tracingService:    tracingService,
+		campaignRepo:       campaignRepo,
+		campaignTargetRepo: campaignTargetRepo,
+		merchantRepo:       merchantRepo,
+		playerMessageRepo:  playerMessageRepo,
+		playerRepo:         playerRepo,
+		levelRepo:          levelRepo,
+		tagRepo:            tagRepo,
+		pushApiKeyRepo:     pushApiKeyRepo,
+		pushService:        pushService,
+		logger:             logger,
+		tracingService:     tracingService,
 	}
 }
 
@@ -104,9 +107,17 @@ func (u *MessageUseCase) CreateMessageCampaign(
 	}
 
 	// 使用領域方法處理不同的目標類型
+	var targetIds []uint64
 	switch campaign.Target {
 	case consts.TargetPlayer:
 		if len(campaign.TargetDetail) > 0 {
+			// 驗證玩家帳號存在性並獲取player IDs
+			playerIDs, err := u.validatePlayerAccounts(ctx, campaign.TargetDetail)
+			if err != nil {
+				u.tracingService.RecordSpanError(span, err)
+				return fmt.Errorf("validate player accounts: %w", err)
+			}
+			targetIds = playerIDs // 儲存以供優化使用
 			if err := campaignEntity.SetPlayerTargetDetail(campaign.TargetDetail); err != nil {
 				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("set player target detail: %w", err)
@@ -130,6 +141,7 @@ func (u *MessageUseCase) CreateMessageCampaign(
 				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("set level target detail: %w", err)
 			}
+			targetIds = levelIDs
 		}
 	case consts.TargetTag:
 		if len(campaign.TargetDetail) > 0 {
@@ -149,12 +161,20 @@ func (u *MessageUseCase) CreateMessageCampaign(
 				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("set tag target detail: %w", err)
 			}
+			targetIds = tagIDs
 		}
 	}
 
 	if err = u.campaignRepo.Create(ctx, campaignEntity); err != nil {
 		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("create campaign: %w", err)
+	}
+
+	err = u.createCampaignTargets(ctx, campaignEntity, targetIds)
+	if err != nil {
+		u.logger.WarnLog("Failed to create campaign targets (dual-write)",
+			u.logger.UInt64("campaign_id", campaignEntity.ID),
+			u.logger.Error("err", err))
 	}
 
 	u.tracingService.RecordSpanAttributes(
@@ -194,14 +214,15 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 
 	// 轉換 DTO 到 Entity 物件
 	campaignEntity := &entity.MessageCampaign{
-		ID:         existing.ID,
-		MerchantID: existing.MerchantID,
-		GlobalID:   existing.GlobalID,
-		CreatedAt:  existing.CreatedAt,
-		CreatedBy:  existing.CreatedBy,
-		Status:     consts.MessageCampaignStatusDraft,
-		UpdatedAt:  time.Now(),
-		UpdatedBy:  &campaign.UpdatedBy,
+		ID:          existing.ID,
+		MerchantID:  existing.MerchantID,
+		GlobalID:    existing.GlobalID,
+		CreatedAt:   existing.CreatedAt,
+		CreatedBy:   existing.CreatedBy,
+		Status:      campaign.Status,
+		TriggerType: "success",
+		UpdatedAt:   time.Now(),
+		UpdatedBy:   &campaign.UpdatedBy,
 	}
 
 	// 先複製可更新的字段
@@ -225,13 +246,21 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 	}
 
 	// 使用領域方法處理不同的目標類型
+	var targetIds []uint64 // 用於優化的player IDs
 	switch campaign.Target {
 	case consts.TargetPlayer:
 		if len(campaign.TargetDetail) > 0 {
+			// 驗證玩家帳號存在性並獲取player IDs
+			playerIDs, err := u.validatePlayerAccounts(ctx, campaign.TargetDetail)
+			if err != nil {
+				u.tracingService.RecordSpanError(span, err)
+				return fmt.Errorf("validate player accounts: %w", err)
+			}
 			if err := campaignEntity.SetPlayerTargetDetail(campaign.TargetDetail); err != nil {
 				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("set player target detail: %w", err)
 			}
+			targetIds = playerIDs
 		}
 	case consts.TargetLevel:
 		if len(campaign.TargetDetail) > 0 {
@@ -251,6 +280,7 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("set level target detail: %w", err)
 			}
+			targetIds = levelIDs
 		}
 	case consts.TargetTag:
 		if len(campaign.TargetDetail) > 0 {
@@ -270,12 +300,20 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 				u.tracingService.RecordSpanError(span, err)
 				return fmt.Errorf("set tag target detail: %w", err)
 			}
+			targetIds = tagIDs
 		}
 	}
 
 	if err = u.campaignRepo.Update(ctx, campaignEntity); err != nil {
 		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("update campaign: %w", err)
+	}
+
+	err = u.updateCampaignTargets(ctx, campaignEntity, targetIds)
+	if err != nil {
+		u.logger.WarnLog("Failed to update campaign targets (dual-write)",
+			u.logger.UInt64("campaign_id", campaignEntity.ID),
+			u.logger.Error("err", err))
 	}
 
 	u.tracingService.TraceEvent(span, "Message campaign updated successfully")
@@ -306,6 +344,14 @@ func (u *MessageUseCase) DeleteMessageCampaign(ctx context.Context, globalID str
 	if err = u.campaignRepo.Delete(ctx, existing.ID); err != nil {
 		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("delete campaign: %w", err)
+	}
+
+	// 雙寫：清理關聯記錄
+	if err = u.campaignTargetRepo.DeleteByCampaignID(ctx, existing.ID); err != nil {
+		u.logger.WarnLog("Failed to delete campaign targets (dual-write)",
+			u.logger.UInt64("campaign_id", existing.ID),
+			u.logger.Error("err", err))
+		// 如果關聯記錄刪除失敗，記錄警告但不影響主流程
 	}
 	setColumn := map[string]interface{}{
 		"status": consts.MessageCampaignStatusCancelled,
@@ -1143,4 +1189,220 @@ func hasIntersection(slice1, slice2 []string) bool {
 		}
 	}
 	return false
+}
+
+// createCampaignTargets 創建活動目標關聯記錄（雙寫功能）
+func (u *MessageUseCase) createCampaignTargets(
+	ctx context.Context,
+	campaign *entity.MessageCampaign,
+	targetIds []uint64,
+) error {
+	targets, err := u.buildCampaignTargets(campaign.Target, targetIds, campaign.ID)
+	if err != nil {
+		return fmt.Errorf("build campaign targets: %w", err)
+	}
+
+	if len(targets) == 0 {
+		return nil
+	}
+
+	if err := u.campaignTargetRepo.CreateBatch(ctx, targets); err != nil {
+		return fmt.Errorf("create campaign targets: %w", err)
+	}
+
+	u.logger.InfoWithContext(ctx, "Created campaign targets for dual-write",
+		u.logger.UInt64("campaign_id", campaign.ID),
+		u.logger.String("target_type", campaign.Target),
+		u.logger.Int("targets_count", len(targets)))
+
+	return nil
+}
+
+// buildCampaignTargets 根據目標類型和詳情構建關聯記錄
+func (u *MessageUseCase) buildCampaignTargets(
+	targetType string,
+	targetIds []uint64,
+	campaignID uint64,
+) ([]*entity.CampaignTarget, error) {
+	var campaignTargets []*entity.CampaignTarget
+
+	if len(targetIds) == 0 {
+		return nil, fmt.Errorf("targetIds is required for campaign target")
+	}
+
+	for _, targetId := range targetIds {
+		campaignTargets = append(campaignTargets, &entity.CampaignTarget{
+			CampaignID: campaignID,
+			TargetType: targetType,
+			TargetID:   targetId,
+		})
+	}
+
+	return campaignTargets, nil
+}
+
+// updateCampaignTargets 更新活動目標關聯記錄（雙寫功能）
+func (u *MessageUseCase) updateCampaignTargets(
+	ctx context.Context,
+	campaign *entity.MessageCampaign,
+	targetIds []uint64,
+) error {
+	// 先刪除現有的關聯記錄
+	if err := u.campaignTargetRepo.DeleteByCampaignID(ctx, campaign.ID); err != nil {
+		return fmt.Errorf("delete existing campaign targets: %w", err)
+	}
+
+	// 重新創建關聯記錄
+	targets, err := u.buildCampaignTargets(campaign.Target, targetIds, campaign.ID)
+	if err != nil {
+		return fmt.Errorf("build campaign targets: %w", err)
+	}
+
+	if len(targets) == 0 {
+		return nil
+	}
+
+	if err = u.campaignTargetRepo.CreateBatch(ctx, targets); err != nil {
+		return fmt.Errorf("create campaign targets: %w", err)
+	}
+
+	u.logger.InfoWithContext(ctx, "Updated campaign targets for dual-write",
+		u.logger.UInt64("campaign_id", campaign.ID),
+		u.logger.String("target_type", campaign.Target),
+		u.logger.Int("targets_count", len(targets)))
+
+	return nil
+}
+
+// ProcessPlayerV2 優化版本的ProcessPlayer，使用campaign_targets表進行高效能查詢
+func (u *MessageUseCase) ProcessPlayerV2(ctx context.Context, globalPlayerID string) error {
+	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.ProcessPlayerV2")
+	defer u.tracingService.SpanEnd(span)
+
+	// 獲取玩家資訊
+	player, err := u.playerRepo.FindByGlobalID(ctx, globalPlayerID)
+	if err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return fmt.Errorf("find player: %w", err)
+	}
+
+	// 獲取玩家標籤IDs
+	playerTagIDs, err := u.playerRepo.GetPlayerTagIDs(ctx, player.ID)
+	if err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return fmt.Errorf("get player tag IDs: %w", err)
+	}
+
+	// 一次性查詢所有符合條件的 campaigns
+	eligibleCampaignIDs, err := u.campaignTargetRepo.FindCampaignIDsByPlayerCriteria(ctx,
+		player.Account,
+		fmt.Sprintf("%d", player.LevelID),
+		playerTagIDs,
+		player.MerchantID,
+	)
+	if err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return fmt.Errorf("find eligible campaigns: %w", err)
+	}
+
+	u.tracingService.RecordSpanAttributes(span,
+		attribute.Int("eligible_campaigns", len(eligibleCampaignIDs)))
+
+	// 批量處理 player_message 創建
+	return u.processCampaignMessages(ctx, globalPlayerID, eligibleCampaignIDs)
+}
+
+// processCampaignMessages 批量處理campaign訊息創建
+func (u *MessageUseCase) processCampaignMessages(
+	ctx context.Context,
+	globalPlayerID string,
+	campaignIDs []uint64,
+) error {
+	if len(campaignIDs) == 0 {
+		return nil
+	}
+
+	// 檢查已存在的訊息
+	existingMessageCampaignIDs, err := u.playerMessageRepo.FindExistingCampaignIDs(
+		ctx, globalPlayerID, campaignIDs,
+	)
+	if err != nil {
+		return fmt.Errorf("find existing messages: %w", err)
+	}
+
+	// 計算需要創建的新訊息
+	newCampaignIDs := make([]uint64, 0, len(campaignIDs))
+	existingSet := make(map[uint64]bool)
+	for _, id := range existingMessageCampaignIDs {
+		existingSet[id] = true
+	}
+
+	for _, id := range campaignIDs {
+		if !existingSet[id] {
+			newCampaignIDs = append(newCampaignIDs, id)
+		}
+	}
+
+	if len(newCampaignIDs) == 0 {
+		return nil
+	}
+
+	// 批量創建新訊息
+	newMessages := make([]*entity.PlayerMessage, len(newCampaignIDs))
+	for i, campaignID := range newCampaignIDs {
+		newMessages[i] = &entity.PlayerMessage{
+			GlobalPlayerID: globalPlayerID,
+			CampaignID:     campaignID,
+			IsRead:         false,
+			CreatedAt:      time.Now(),
+		}
+	}
+
+	if err = u.playerMessageRepo.CreateBatch(ctx, newMessages); err != nil {
+		return fmt.Errorf("create batch messages: %w", err)
+	}
+
+	u.logger.InfoLog("New messages created for returning player",
+		u.logger.String("global_player_id", globalPlayerID),
+		u.logger.Int("new_messages_count", len(newMessages)))
+
+	return nil
+}
+
+// validatePlayerAccounts 驗證玩家帳號是否存在並回傳存在的player IDs
+func (u *MessageUseCase) validatePlayerAccounts(
+	ctx context.Context,
+	accounts []string,
+) ([]uint64, error) {
+	if len(accounts) == 0 {
+		return []uint64{}, nil
+	}
+
+	// 批量查詢所有帳號
+	foundPlayers, err := u.playerRepo.FindByAccounts(ctx, accounts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query player accounts: %w", err)
+	}
+
+	// 建立已找到的帳號集合
+	foundAccountsSet := make(map[string]bool)
+	playerIDs := make([]uint64, 0, len(foundPlayers))
+	for _, player := range foundPlayers {
+		foundAccountsSet[player.Account] = true
+		playerIDs = append(playerIDs, player.ID)
+	}
+
+	// 檢查哪些帳號不存在
+	var invalidAccounts []string
+	for _, account := range accounts {
+		if !foundAccountsSet[account] {
+			invalidAccounts = append(invalidAccounts, account)
+		}
+	}
+
+	if len(invalidAccounts) > 0 {
+		return nil, fmt.Errorf("invalid player accounts: %v", invalidAccounts)
+	}
+
+	return playerIDs, nil
 }

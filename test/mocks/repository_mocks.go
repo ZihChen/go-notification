@@ -271,6 +271,28 @@ func (m *PlayerRepositoryMock) FindByGlobalID(
 	return args.Get(0).(*entity.Player), args.Error(1)
 }
 
+func (m *PlayerRepositoryMock) FindByAccount(
+	ctx context.Context,
+	account string,
+) (*entity.Player, error) {
+	args := m.Called(ctx, account)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.Player), args.Error(1)
+}
+
+func (m *PlayerRepositoryMock) FindByAccounts(
+	ctx context.Context,
+	accounts []string,
+) ([]*entity.Player, error) {
+	args := m.Called(ctx, accounts)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.Player), args.Error(1)
+}
+
 func (m *PlayerRepositoryMock) GetByGlobalPlayerID(
 	ctx context.Context,
 	globalPlayerID string,
@@ -322,6 +344,85 @@ func (m *PlayerRepositoryMock) SetupSuccess() {}
 func (m *PlayerRepositoryMock) SetupError()   {}
 func (m *PlayerRepositoryMock) SetupEmpty()   {}
 func (m *PlayerRepositoryMock) Reset() {
+	m.Mock = mock.Mock{}
+}
+
+// CampaignTargetRepositoryMock 統一的 CampaignTarget Repository Mock
+type CampaignTargetRepositoryMock struct {
+	*BaseMock
+}
+
+func NewCampaignTargetRepositoryMock(t *testing.T) *CampaignTargetRepositoryMock {
+	return &CampaignTargetRepositoryMock{
+		BaseMock: NewBaseMock(t),
+	}
+}
+
+func (m *CampaignTargetRepositoryMock) Create(
+	ctx context.Context,
+	target *entity.CampaignTarget,
+) error {
+	args := m.Called(ctx, target)
+	return args.Error(0)
+}
+
+func (m *CampaignTargetRepositoryMock) CreateBatch(
+	ctx context.Context,
+	targets []*entity.CampaignTarget,
+) error {
+	args := m.Called(ctx, targets)
+	return args.Error(0)
+}
+
+func (m *CampaignTargetRepositoryMock) DeleteByCampaignID(
+	ctx context.Context,
+	campaignID uint64,
+) error {
+	args := m.Called(ctx, campaignID)
+	return args.Error(0)
+}
+
+func (m *CampaignTargetRepositoryMock) FindCampaignIDsByPlayerCriteria(
+	ctx context.Context,
+	playerAccount string,
+	levelID string,
+	tagIDs []uint64,
+	merchantID uint64,
+) ([]uint64, error) {
+	args := m.Called(ctx, playerAccount, levelID, tagIDs, merchantID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]uint64), args.Error(1)
+}
+
+func (m *CampaignTargetRepositoryMock) FindByTargetType(
+	ctx context.Context,
+	targetType string,
+	merchantID uint64,
+) ([]*entity.CampaignTarget, error) {
+	args := m.Called(ctx, targetType, merchantID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.CampaignTarget), args.Error(1)
+}
+
+func (m *CampaignTargetRepositoryMock) FindByCampaignID(
+	ctx context.Context,
+	campaignID uint64,
+) ([]*entity.CampaignTarget, error) {
+	args := m.Called(ctx, campaignID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.CampaignTarget), args.Error(1)
+}
+
+func (m *CampaignTargetRepositoryMock) SetupSuccess() {}
+func (m *CampaignTargetRepositoryMock) SetupError()   {}
+func (m *CampaignTargetRepositoryMock) SetupEmpty()   {}
+func (m *CampaignTargetRepositoryMock) Reset() {
 	m.Mock = mock.Mock{}
 }
 
@@ -455,6 +556,18 @@ func (m *PlayerMessageRepositoryMock) Update(
 ) error {
 	args := m.Called(ctx, message)
 	return args.Error(0)
+}
+
+func (m *PlayerMessageRepositoryMock) FindExistingCampaignIDs(
+	ctx context.Context,
+	globalPlayerID string,
+	campaignIDs []uint64,
+) ([]uint64, error) {
+	args := m.Called(ctx, globalPlayerID, campaignIDs)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]uint64), args.Error(1)
 }
 
 func (m *PlayerMessageRepositoryMock) SetupSuccess() {}

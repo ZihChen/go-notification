@@ -84,4 +84,9 @@ type PlayerMessageRepository interface {
 		playerIDs []uint64,
 		campaignID uint64,
 	) (map[uint64]bool, error)
+	FindExistingCampaignIDs(
+		ctx context.Context,
+		globalPlayerID string,
+		campaignIDs []uint64,
+	) ([]uint64, error)
 }
