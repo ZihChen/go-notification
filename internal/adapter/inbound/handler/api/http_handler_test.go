@@ -238,6 +238,11 @@ func (m *MockMessageUseCase) SendCampaignToPlayersAsync(
 	return args.Error(0)
 }
 
+func (m *MockMessageUseCase) ProcessPlayer(ctx context.Context, globalPlayerID string) error {
+	args := m.Called(ctx, globalPlayerID)
+	return args.Error(0)
+}
+
 func (m *MockMessageUseCase) GetMerchantAutoSettings(
 	ctx context.Context,
 	globalMerchantID string,
@@ -1485,6 +1490,7 @@ func TestHTTPHandler_GetPlayerMessages_Success(t *testing.T) {
 	router.GET("/api/v1/messages/player/:global_player_id", handler.GetPlayerMessages)
 
 	messagesResponse := createPlayerMessagesResponse()
+	messageUseCase.On("ProcessPlayer", mock.Anything, "FATCAT-PLAYER-001").Return(nil)
 	messageUseCase.On("GetPlayerMessages", mock.Anything, "FATCAT-PLAYER-001", 1, 10).
 		Return(messagesResponse, nil)
 
@@ -1551,6 +1557,7 @@ func TestHTTPHandler_GetPlayerMessages_WithDefaults(t *testing.T) {
 	router.GET("/api/v1/messages/player/:global_player_id", handler.GetPlayerMessages)
 
 	messagesResponse := createPlayerMessagesResponse()
+	messageUseCase.On("ProcessPlayer", mock.Anything, "FATCAT-PLAYER-001").Return(nil)
 	messageUseCase.On("GetPlayerMessages", mock.Anything, "FATCAT-PLAYER-001", 1, 10). // 預設值
 												Return(messagesResponse, nil)
 
@@ -1852,8 +1859,6 @@ func TestHTTPHandler_CreateOrUpdateMerchantAutoSettings_TooManySettings(t *testi
 	// Handler has missing return statement after first BadRequest().Return()
 	t.Skip("Handler has bug: double panic from multiple Return() calls without return statements")
 }
-
-
 
 // ============================================================================
 // 測試覆蓋率報告和摘要

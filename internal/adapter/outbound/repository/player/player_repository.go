@@ -109,7 +109,13 @@ func (r *PlayerRepository) FindByTargetType(
 		if len(playerAccounts) == 0 {
 			return []*entity.Player{}, nil
 		}
-		query = query.Where("account IN ?", playerAccounts)
+		// 過濾100天內活躍的玩家
+		hundredDaysAgo := now.AddDate(0, 0, -100)
+		query = query.Where(
+			"account IN ? AND (last_active_at IS NOT NULL AND last_active_at >= ?)",
+			playerAccounts,
+			hundredDaysAgo,
+		)
 	case consts.TargetLevel:
 		if targetDetail == nil || *targetDetail == "" {
 			return nil, fmt.Errorf("target detail is required for level target type")
@@ -130,7 +136,13 @@ func (r *PlayerRepository) FindByTargetType(
 			}
 			levelIDs[i] = id
 		}
-		query = query.Where("players.level_id IN ?", levelIDs)
+		// 過濾100天內活躍的玩家
+		hundredDaysAgo := now.AddDate(0, 0, -100)
+		query = query.Where(
+			"players.level_id IN ? AND (last_active_at IS NOT NULL AND last_active_at >= ?)",
+			levelIDs,
+			hundredDaysAgo,
+		)
 	case consts.TargetTag:
 		if targetDetail == nil || *targetDetail == "" {
 			return nil, fmt.Errorf("target detail is required for tag target type")
@@ -151,10 +163,15 @@ func (r *PlayerRepository) FindByTargetType(
 			}
 			tagIDs[i] = id
 		}
+		// 過濾100天內活躍的玩家
+		hundredDaysAgo := now.AddDate(0, 0, -100)
 		query = query.Joins("JOIN player_tags ON players.id = player_tags.player_id").
-			Where("player_tags.tag_id IN ?", tagIDs).
+			Where("player_tags.tag_id IN ? AND (last_active_at IS NOT NULL AND last_active_at >= ?)", tagIDs, hundredDaysAgo).
 			Distinct()
 	case consts.TargetAll:
+		// 過濾100天內活躍的玩家
+		hundredDaysAgo := now.AddDate(0, 0, -100)
+		query = query.Where("last_active_at IS NOT NULL AND last_active_at >= ?", hundredDaysAgo)
 	default:
 		return nil, fmt.Errorf("unsupported target type: %s", targetType)
 	}
@@ -304,4 +321,19 @@ func (r *PlayerRepository) GetByGlobalPlayerID(
 		return nil, result.Error
 	}
 	return mapToDomainPlayer(&player), nil
+}
+
+// GetPlayerTagIDs 獲取玩家的所有標籤ID
+func (r *PlayerRepository) GetPlayerTagIDs(ctx context.Context, playerID uint64) ([]uint64, error) {
+	var tagIDs []uint64
+	result := r.db.WithContext(ctx).
+		Table("player_tags").
+		Where("player_id = ?", playerID).
+		Pluck("tag_id", &tagIDs)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return tagIDs, nil
 }

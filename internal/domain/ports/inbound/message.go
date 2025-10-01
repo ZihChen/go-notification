@@ -29,6 +29,7 @@ type MessageUseCase interface {
 		page, pageSize int,
 	) (*dto.MessageListResponse, error)
 	MarkMessageAsRead(ctx context.Context, globalPlayerID string, messageID uint64) error
+	ProcessPlayer(ctx context.Context, globalPlayerID string) error
 	ProcessScheduledCampaigns(ctx context.Context) error
 	SendCampaignToPlayersAsync(ctx context.Context, campaignID uint64) error
 }

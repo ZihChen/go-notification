@@ -53,6 +53,11 @@ func (m *MockMessageUseCase) ProcessScheduledCampaigns(ctx context.Context) erro
 	return args.Error(0)
 }
 
+func (m *MockMessageUseCase) ProcessPlayer(ctx context.Context, globalPlayerID string) error {
+	args := m.Called(ctx, globalPlayerID)
+	return args.Error(0)
+}
+
 // CompleteMessageUseCaseMock - 完整實現 MessageUseCase 介面但方法都是空實現
 type CompleteMessageUseCaseMock struct{}
 
@@ -137,6 +142,13 @@ func (m *CompleteMessageUseCaseMock) SendCampaignToPlayers(
 func (m *CompleteMessageUseCaseMock) SendCampaignToPlayersAsync(
 	ctx context.Context,
 	campaignID uint64,
+) error {
+	return nil
+}
+
+func (m *CompleteMessageUseCaseMock) ProcessPlayer(
+	ctx context.Context,
+	globalPlayerID string,
 ) error {
 	return nil
 }

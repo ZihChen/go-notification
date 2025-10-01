@@ -201,6 +201,88 @@ func createMockTaskForHandler(taskType string, payload []byte) *asynq.Task {
 	return asynq.NewTask(taskType, payload)
 }
 
+// MockMessageUseCase Mock for MessageUseCase
+type MockMessageUseCase struct {
+	mock.Mock
+}
+
+func (m *MockMessageUseCase) ProcessPlayer(ctx context.Context, globalPlayerID string) error {
+	args := m.Called(ctx, globalPlayerID)
+	return args.Error(0)
+}
+
+// Additional methods to satisfy the interface (simplified implementations)
+func (m *MockMessageUseCase) CreateMessageCampaign(
+	ctx context.Context,
+	campaign *dto.CreateMessageCampaignRequest,
+) error {
+	return nil
+}
+
+func (m *MockMessageUseCase) UpdateMessageCampaign(
+	ctx context.Context,
+	campaign *dto.UpdateMessageCampaignRequest,
+) error {
+	return nil
+}
+func (m *MockMessageUseCase) DeleteMessageCampaign(ctx context.Context, globalID string) error {
+	return nil
+}
+
+func (m *MockMessageUseCase) GetMessageCampaign(
+	ctx context.Context,
+	globalID string,
+) (*dto.MessageCampaignResponse, error) {
+	return nil, nil
+}
+
+func (m *MockMessageUseCase) ListMessageCampaigns(
+	ctx context.Context,
+	req *dto.ListMessageCampaignsRequest,
+) (*dto.MessageCampaignListResponse, error) {
+	return nil, nil
+}
+
+func (m *MockMessageUseCase) GetMerchantAutoSettings(
+	ctx context.Context,
+	globalMerchantID string,
+) (*dto.MerchantAutoSettingsResponse, error) {
+	return nil, nil
+}
+
+func (m *MockMessageUseCase) CreateOrUpdateMerchantAutoSettings(
+	ctx context.Context,
+	req *dto.MerchantAutoSettingsRequest,
+) (*dto.AutoSettingsOperationResponse, error) {
+	return nil, nil
+}
+
+func (m *MockMessageUseCase) GetPlayerMessages(
+	ctx context.Context,
+	globalPlayerID string,
+	page, pageSize int,
+) (*dto.MessageListResponse, error) {
+	return nil, nil
+}
+
+func (m *MockMessageUseCase) MarkMessageAsRead(
+	ctx context.Context,
+	globalPlayerID string,
+	messageID uint64,
+) error {
+	return nil
+}
+func (m *MockMessageUseCase) ProcessScheduledCampaigns(ctx context.Context) error {
+	return nil
+}
+
+func (m *MockMessageUseCase) SendCampaignToPlayersAsync(
+	ctx context.Context,
+	campaignID uint64,
+) error {
+	return nil
+}
+
 // Test helper functions
 func createMockDependencies(t *testing.T) (
 	*MockMerchantUseCase,
@@ -208,6 +290,7 @@ func createMockDependencies(t *testing.T) (
 	*MockManagerUseCase,
 	*MockPlayerLevelUseCase,
 	*MockPlayerTagUseCase,
+	*MockMessageUseCase,
 	*helper.MockLogger,
 ) {
 	merchantUseCase := new(MockMerchantUseCase)
@@ -215,8 +298,9 @@ func createMockDependencies(t *testing.T) (
 	managerUseCase := new(MockManagerUseCase)
 	levelUseCase := new(MockPlayerLevelUseCase)
 	tagUseCase := new(MockPlayerTagUseCase)
+	messageUseCase := new(MockMessageUseCase)
 	logger := helper.NewMockLogger()
-	return merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, logger
+	return merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, logger
 }
 
 func createTestHandler(
@@ -225,6 +309,7 @@ func createTestHandler(
 	managerUseCase inbound.ManagerUseCase,
 	levelUseCase inbound.PlayerLevelUseCase,
 	tagUseCase inbound.PlayerTagUseCase,
+	messageUseCase inbound.MessageUseCase,
 	logger infrastructure.Logger,
 ) *WorkerHandler {
 	tracingService := helper.NewMockTracingService()
@@ -234,6 +319,7 @@ func createTestHandler(
 		managerUseCase,
 		levelUseCase,
 		tagUseCase,
+		messageUseCase,
 		logger,
 		tracingService,
 	)
@@ -425,7 +511,7 @@ func createInvalidCloudEventPayload() []byte {
 
 func TestNewWorkerHandler_Success(t *testing.T) {
 	// Setup
-	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, logger := createMockDependencies(
+	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, logger := createMockDependencies(
 		t,
 	)
 
@@ -437,6 +523,7 @@ func TestNewWorkerHandler_Success(t *testing.T) {
 		managerUseCase,
 		levelUseCase,
 		tagUseCase,
+		messageUseCase,
 		logger,
 		tracingService,
 	)
@@ -448,6 +535,7 @@ func TestNewWorkerHandler_Success(t *testing.T) {
 	assert.Equal(t, managerUseCase, handler.managerUseCase)
 	assert.Equal(t, levelUseCase, handler.levelUseCase)
 	assert.Equal(t, tagUseCase, handler.playerTagUseCase)
+	assert.Equal(t, messageUseCase, handler.messageUseCase)
 	assert.Equal(t, logger, handler.logger)
 }
 
@@ -457,7 +545,7 @@ func TestNewWorkerHandler_Success(t *testing.T) {
 
 func TestWorkerHandler_RegisterHandlers_Success(t *testing.T) {
 	// Setup
-	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, logger := createMockDependencies(
+	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, logger := createMockDependencies(
 		t,
 	)
 	handler := createTestHandler(
@@ -466,6 +554,7 @@ func TestWorkerHandler_RegisterHandlers_Success(t *testing.T) {
 		managerUseCase,
 		levelUseCase,
 		tagUseCase,
+		messageUseCase,
 		logger,
 	)
 
@@ -508,7 +597,7 @@ func TestGetTaskID_NilTask(t *testing.T) {
 
 func TestWorkerHandler_HandleMerchantSync_Success(t *testing.T) {
 	// Setup
-	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, logger := createMockDependencies(
+	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, logger := createMockDependencies(
 		t,
 	)
 	handler := createTestHandler(
@@ -517,6 +606,7 @@ func TestWorkerHandler_HandleMerchantSync_Success(t *testing.T) {
 		managerUseCase,
 		levelUseCase,
 		tagUseCase,
+		messageUseCase,
 		logger,
 	)
 
@@ -537,7 +627,7 @@ func TestWorkerHandler_HandleMerchantSync_Success(t *testing.T) {
 
 func TestWorkerHandler_HandleMerchantSync_InvalidJSON(t *testing.T) {
 	// Setup
-	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, logger := createMockDependencies(
+	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, logger := createMockDependencies(
 		t,
 	)
 	handler := createTestHandler(
@@ -546,6 +636,7 @@ func TestWorkerHandler_HandleMerchantSync_InvalidJSON(t *testing.T) {
 		managerUseCase,
 		levelUseCase,
 		tagUseCase,
+		messageUseCase,
 		logger,
 	)
 
@@ -562,7 +653,7 @@ func TestWorkerHandler_HandleMerchantSync_InvalidJSON(t *testing.T) {
 
 func TestWorkerHandler_HandleMerchantSync_SyncError(t *testing.T) {
 	// Setup
-	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, logger := createMockDependencies(
+	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, logger := createMockDependencies(
 		t,
 	)
 	handler := createTestHandler(
@@ -571,6 +662,7 @@ func TestWorkerHandler_HandleMerchantSync_SyncError(t *testing.T) {
 		managerUseCase,
 		levelUseCase,
 		tagUseCase,
+		messageUseCase,
 		logger,
 	)
 
@@ -599,7 +691,7 @@ func TestWorkerHandler_HandleMerchantSync_SyncError(t *testing.T) {
 
 func TestWorkerHandler_HandlePlayerSync_Success(t *testing.T) {
 	// Setup
-	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, logger := createMockDependencies(
+	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, logger := createMockDependencies(
 		t,
 	)
 	handler := createTestHandler(
@@ -608,6 +700,7 @@ func TestWorkerHandler_HandlePlayerSync_Success(t *testing.T) {
 		managerUseCase,
 		levelUseCase,
 		tagUseCase,
+		messageUseCase,
 		logger,
 	)
 
@@ -617,6 +710,8 @@ func TestWorkerHandler_HandlePlayerSync_Success(t *testing.T) {
 	// Mock expectations
 	playerUseCase.On("SyncPlayer", mock.Anything, mock.AnythingOfType("*event.PlayerEvent")).
 		Return(nil)
+	messageUseCase.On("ProcessPlayer", mock.Anything, mock.AnythingOfType("string")).
+		Return(nil)
 
 	// Execute
 	err := handler.HandlePlayerSync(context.Background(), task)
@@ -624,11 +719,12 @@ func TestWorkerHandler_HandlePlayerSync_Success(t *testing.T) {
 	// Verify
 	assert.NoError(t, err)
 	playerUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations(t)
 }
 
 func TestWorkerHandler_HandlePlayerSync_UnmarshalEventError(t *testing.T) {
 	// Setup
-	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, logger := createMockDependencies(
+	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, logger := createMockDependencies(
 		t,
 	)
 	handler := createTestHandler(
@@ -637,6 +733,7 @@ func TestWorkerHandler_HandlePlayerSync_UnmarshalEventError(t *testing.T) {
 		managerUseCase,
 		levelUseCase,
 		tagUseCase,
+		messageUseCase,
 		logger,
 	)
 
@@ -657,7 +754,7 @@ func TestWorkerHandler_HandlePlayerSync_UnmarshalEventError(t *testing.T) {
 
 func TestWorkerHandler_HandlePlayerSync_SyncError(t *testing.T) {
 	// Setup
-	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, logger := createMockDependencies(
+	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, logger := createMockDependencies(
 		t,
 	)
 	handler := createTestHandler(
@@ -666,6 +763,7 @@ func TestWorkerHandler_HandlePlayerSync_SyncError(t *testing.T) {
 		managerUseCase,
 		levelUseCase,
 		tagUseCase,
+		messageUseCase,
 		logger,
 	)
 
@@ -694,7 +792,7 @@ func TestWorkerHandler_HandlePlayerSync_SyncError(t *testing.T) {
 
 func TestWorkerHandler_HandleManagerSync_Success(t *testing.T) {
 	// Setup
-	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, logger := createMockDependencies(
+	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, logger := createMockDependencies(
 		t,
 	)
 	handler := createTestHandler(
@@ -703,6 +801,7 @@ func TestWorkerHandler_HandleManagerSync_Success(t *testing.T) {
 		managerUseCase,
 		levelUseCase,
 		tagUseCase,
+		messageUseCase,
 		logger,
 	)
 
@@ -723,7 +822,7 @@ func TestWorkerHandler_HandleManagerSync_Success(t *testing.T) {
 
 func TestWorkerHandler_HandleManagerSync_SyncError(t *testing.T) {
 	// Setup
-	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, logger := createMockDependencies(
+	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, logger := createMockDependencies(
 		t,
 	)
 	handler := createTestHandler(
@@ -732,6 +831,7 @@ func TestWorkerHandler_HandleManagerSync_SyncError(t *testing.T) {
 		managerUseCase,
 		levelUseCase,
 		tagUseCase,
+		messageUseCase,
 		logger,
 	)
 
@@ -760,7 +860,7 @@ func TestWorkerHandler_HandleManagerSync_SyncError(t *testing.T) {
 
 func TestWorkerHandler_HandlePlayerLevelSync_Success(t *testing.T) {
 	// Setup
-	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, logger := createMockDependencies(
+	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, logger := createMockDependencies(
 		t,
 	)
 	handler := createTestHandler(
@@ -769,6 +869,7 @@ func TestWorkerHandler_HandlePlayerLevelSync_Success(t *testing.T) {
 		managerUseCase,
 		levelUseCase,
 		tagUseCase,
+		messageUseCase,
 		logger,
 	)
 
@@ -789,7 +890,7 @@ func TestWorkerHandler_HandlePlayerLevelSync_Success(t *testing.T) {
 
 func TestWorkerHandler_HandlePlayerLevelSync_SyncError(t *testing.T) {
 	// Setup
-	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, logger := createMockDependencies(
+	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, logger := createMockDependencies(
 		t,
 	)
 	handler := createTestHandler(
@@ -798,6 +899,7 @@ func TestWorkerHandler_HandlePlayerLevelSync_SyncError(t *testing.T) {
 		managerUseCase,
 		levelUseCase,
 		tagUseCase,
+		messageUseCase,
 		logger,
 	)
 
@@ -826,7 +928,7 @@ func TestWorkerHandler_HandlePlayerLevelSync_SyncError(t *testing.T) {
 
 func TestWorkerHandler_HandlePlayerTagsSync_Success(t *testing.T) {
 	// Setup
-	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, logger := createMockDependencies(
+	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, logger := createMockDependencies(
 		t,
 	)
 	handler := createTestHandler(
@@ -835,6 +937,7 @@ func TestWorkerHandler_HandlePlayerTagsSync_Success(t *testing.T) {
 		managerUseCase,
 		levelUseCase,
 		tagUseCase,
+		messageUseCase,
 		logger,
 	)
 
@@ -855,7 +958,7 @@ func TestWorkerHandler_HandlePlayerTagsSync_Success(t *testing.T) {
 
 func TestWorkerHandler_HandlePlayerTagsSync_SyncError(t *testing.T) {
 	// Setup
-	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, logger := createMockDependencies(
+	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, logger := createMockDependencies(
 		t,
 	)
 	handler := createTestHandler(
@@ -864,6 +967,7 @@ func TestWorkerHandler_HandlePlayerTagsSync_SyncError(t *testing.T) {
 		managerUseCase,
 		levelUseCase,
 		tagUseCase,
+		messageUseCase,
 		logger,
 	)
 
@@ -892,7 +996,7 @@ func TestWorkerHandler_HandlePlayerTagsSync_SyncError(t *testing.T) {
 
 func TestWorkerHandler_HandleTagSync_Success(t *testing.T) {
 	// Setup
-	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, logger := createMockDependencies(
+	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, logger := createMockDependencies(
 		t,
 	)
 	handler := createTestHandler(
@@ -901,6 +1005,7 @@ func TestWorkerHandler_HandleTagSync_Success(t *testing.T) {
 		managerUseCase,
 		levelUseCase,
 		tagUseCase,
+		messageUseCase,
 		logger,
 	)
 
@@ -921,7 +1026,7 @@ func TestWorkerHandler_HandleTagSync_Success(t *testing.T) {
 
 func TestWorkerHandler_HandleTagSync_SyncError(t *testing.T) {
 	// Setup
-	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, logger := createMockDependencies(
+	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, logger := createMockDependencies(
 		t,
 	)
 	handler := createTestHandler(
@@ -930,6 +1035,7 @@ func TestWorkerHandler_HandleTagSync_SyncError(t *testing.T) {
 		managerUseCase,
 		levelUseCase,
 		tagUseCase,
+		messageUseCase,
 		logger,
 	)
 

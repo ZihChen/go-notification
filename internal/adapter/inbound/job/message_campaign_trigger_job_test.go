@@ -145,6 +145,11 @@ func (m *MockMessageUseCase) SendCampaignToPlayersAsync(
 	return args.Error(0)
 }
 
+func (m *MockMessageUseCase) ProcessPlayer(ctx context.Context, globalPlayerID string) error {
+	args := m.Called(ctx, globalPlayerID)
+	return args.Error(0)
+}
+
 // Test helper functions
 func createMockDependencies(t *testing.T) (*MockMessageUseCase, *helper.MockLogger) {
 	messageUseCase := new(MockMessageUseCase)

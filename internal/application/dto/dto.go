@@ -33,6 +33,7 @@ type PlayerMessageStats struct {
 type MessageCampaignsQuery struct {
 	Page           int      `json:"page"`
 	PageSize       int      `json:"page_size"`
+	MerchantID     uint64   `json:"merchant_id"`     // 商戶ID
 	Category       string   `json:"category"`        // 類型：member, bonus, others
 	Item           string   `json:"item"`            // 項目：registration, identity_verification, bank_card, others, event, all, mission
 	Status         []string `json:"status"`          // 狀態：draft, scheduled, sent, cancelled, failed

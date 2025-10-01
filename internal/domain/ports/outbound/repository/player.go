@@ -22,6 +22,7 @@ type PlayerRepository interface {
 	Update(ctx context.Context, player *entity.Player) error
 	Delete(ctx context.Context, id uint64) error
 	Upsert(ctx context.Context, player *entity.Player) error
+	GetPlayerTagIDs(ctx context.Context, playerID uint64) ([]uint64, error)
 }
 
 // LevelRepository 等級資料庫接口

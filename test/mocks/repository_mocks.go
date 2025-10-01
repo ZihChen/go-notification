@@ -307,6 +307,17 @@ func (m *PlayerRepositoryMock) Upsert(ctx context.Context, player *entity.Player
 	return args.Error(0)
 }
 
+func (m *PlayerRepositoryMock) GetPlayerTagIDs(
+	ctx context.Context,
+	playerID uint64,
+) ([]uint64, error) {
+	args := m.Called(ctx, playerID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]uint64), args.Error(1)
+}
+
 func (m *PlayerRepositoryMock) SetupSuccess() {}
 func (m *PlayerRepositoryMock) SetupError()   {}
 func (m *PlayerRepositoryMock) SetupEmpty()   {}

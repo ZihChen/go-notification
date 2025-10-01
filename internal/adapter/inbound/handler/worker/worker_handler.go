@@ -33,6 +33,7 @@ type WorkerHandler struct {
 	managerUseCase   inbound.ManagerUseCase
 	levelUseCase     inbound.PlayerLevelUseCase
 	playerTagUseCase inbound.PlayerTagUseCase
+	messageUseCase   inbound.MessageUseCase
 	logger           infrastructure.Logger
 	tracingService   infrastructure.TracingService
 }
@@ -44,6 +45,7 @@ func NewWorkerHandler(
 	managerUseCase inbound.ManagerUseCase,
 	levelUseCase inbound.PlayerLevelUseCase,
 	playerTagUseCase inbound.PlayerTagUseCase,
+	messageUseCase inbound.MessageUseCase,
 	logger infrastructure.Logger,
 	tracingService infrastructure.TracingService,
 ) *WorkerHandler {
@@ -53,6 +55,7 @@ func NewWorkerHandler(
 		managerUseCase:   managerUseCase,
 		levelUseCase:     levelUseCase,
 		playerTagUseCase: playerTagUseCase,
+		messageUseCase:   messageUseCase,
 		logger:           logger,
 		tracingService:   tracingService,
 	}
@@ -201,6 +204,17 @@ func (h *WorkerHandler) HandlePlayerSync(ctx context.Context, task *asynq.Task) 
 		h.tracingService.RecordSpanError(span, err)
 
 		return fmt.Errorf("failed to sync player: %w", err)
+	}
+
+	// 同步玩家的player_message（如果玩家重新上線）
+	if playerEvent.GlobalPlayerID != "" {
+		if err = h.messageUseCase.ProcessPlayer(ctx, playerEvent.GlobalPlayerID); err != nil {
+			h.logger.WarnLog("Failed to process player for message sync after player sync",
+				h.logger.String("global_player_id", playerEvent.GlobalPlayerID),
+				h.logger.String("task_id", taskID),
+				h.logger.Error("err", err))
+			// 即使訊息同步失敗，也不影響玩家資料同步的成功
+		}
 	}
 
 	// 記錄成功完成任務

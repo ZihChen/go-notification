@@ -100,7 +100,12 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, re
 	tagRepository := repository.NewTagRepository(db)
 	playerTagRepository := repository.NewPlayerTagRepository(db)
 	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager, tracingService)
-	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, logger, tracingService)
+	messageCampaignRepository := repository3.NewMessageCampaignRepository(db)
+	playerMessageRepository := repository3.NewPlayerMessageRepository(db)
+	pushKeyRepository := merchant.NewPushKeyRepository(db)
+	pushNotificationService := providePushNotificationService(cfg, logger)
+	messageUseCase := message.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
+	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, messageUseCase, logger, tracingService)
 	return workerHandler, nil
 }
 
@@ -127,7 +132,12 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 	tagRepository := repository.NewTagRepository(db)
 	playerTagRepository := repository.NewPlayerTagRepository(db)
 	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager, tracingService)
-	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, logger, tracingService)
+	messageCampaignRepository := repository3.NewMessageCampaignRepository(db)
+	playerMessageRepository := repository3.NewPlayerMessageRepository(db)
+	pushKeyRepository := merchant.NewPushKeyRepository(db)
+	pushNotificationService := providePushNotificationService(cfg, logger)
+	messageUseCase := message.NewMessageUseCase(messageCampaignRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
+	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, messageUseCase, logger, tracingService)
 	server, err := provideWorkerServer(cfg, logger)
 	if err != nil {
 		return nil, err

@@ -73,6 +73,11 @@ func (r *MessageCampaignRepository) FindAllWithOptions(
 		builder = builder.Unscoped()
 	}
 
+	// 商戶ID篩選
+	if query.MerchantID > 0 {
+		builder = builder.Where("merchant_id = ?", query.MerchantID)
+	}
+
 	// 類別篩選
 	if query.Category != "" {
 		builder = builder.Where("category = ?", query.Category)
