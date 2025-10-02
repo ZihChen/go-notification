@@ -236,11 +236,11 @@ func NewPlayerRepositoryMock(t *testing.T) *PlayerRepositoryMock {
 
 func (m *PlayerRepositoryMock) FindByTargetType(
 	ctx context.Context,
+	campaignID uint64,
 	targetType string,
-	targetDetail *string,
 	offset, limit int,
 ) ([]*entity.Player, error) {
-	args := m.Called(ctx, targetType, targetDetail, offset, limit)
+	args := m.Called(ctx, campaignID, targetType, offset, limit)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -396,23 +396,23 @@ func (m *CampaignTargetRepositoryMock) FindCampaignIDsByPlayerCriteria(
 	return args.Get(0).([]uint64), args.Error(1)
 }
 
-func (m *CampaignTargetRepositoryMock) FindByTargetType(
+func (m *CampaignTargetRepositoryMock) FindByCampaignID(
 	ctx context.Context,
-	targetType string,
-	merchantID uint64,
+	campaignID uint64,
 ) ([]*entity.CampaignTarget, error) {
-	args := m.Called(ctx, targetType, merchantID)
+	args := m.Called(ctx, campaignID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]*entity.CampaignTarget), args.Error(1)
 }
 
-func (m *CampaignTargetRepositoryMock) FindByCampaignID(
+func (m *CampaignTargetRepositoryMock) FindByTargetType(
 	ctx context.Context,
-	campaignID uint64,
+	targetType string,
+	merchantID uint64,
 ) ([]*entity.CampaignTarget, error) {
-	args := m.Called(ctx, campaignID)
+	args := m.Called(ctx, targetType, merchantID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

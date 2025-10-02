@@ -15,8 +15,8 @@ type PlayerRepository interface {
 	GetByGlobalPlayerID(ctx context.Context, globalPlayerID string) (*entity.Player, error)
 	FindByTargetType(
 		ctx context.Context,
+		campaignID uint64,
 		targetType string,
-		targetDetail *string,
 		offset, limit int,
 	) ([]*entity.Player, error)
 	FirstOrCreate(ctx context.Context, player *entity.Player) error

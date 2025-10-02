@@ -2,10 +2,8 @@ package repository
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
@@ -114,104 +112,76 @@ func (r *PlayerRepository) FirstOrCreate(ctx context.Context, player *entity.Pla
 // FindByTargetType 根據目標類型查找玩家
 func (r *PlayerRepository) FindByTargetType(
 	ctx context.Context,
+	campaignID uint64,
 	targetType string,
-	targetDetail *string,
 	offset, limit int,
 ) ([]*entity.Player, error) {
 	var players []models.Player
 
+	now := time.Now()
+	hundredDaysAgo := now.AddDate(0, 0, -100)
+
 	query := r.db.WithContext(ctx)
 
-	now := time.Now()
 	switch targetType {
+	case consts.TargetAll:
+		// 所有活躍玩家
+		query = query.Where("last_active_at IS NOT NULL AND last_active_at >= ?", hundredDaysAgo)
+
 	case consts.TargetHighActivity:
+		// 30天內活躍玩家
 		thirtyDaysAgo := now.AddDate(0, 0, -30)
 		query = query.Where("last_active_at IS NOT NULL AND last_active_at >= ?", thirtyDaysAgo)
+
 	case consts.TargetLowActivity:
+		// 30-100天內活躍玩家
 		thirtyDaysAgo := now.AddDate(0, 0, -30)
-		hundredDaysAgo := now.AddDate(0, 0, -100)
 		query = query.Where(
 			"last_active_at IS NOT NULL AND last_active_at < ? AND last_active_at >= ?",
 			thirtyDaysAgo,
 			hundredDaysAgo,
 		)
+
 	case consts.TargetNotActivity:
-		hundredDaysAgo := now.AddDate(0, 0, -100)
+		// 100天以上未活躍玩家
 		query = query.Where("last_active_at IS NULL OR last_active_at < ?", hundredDaysAgo)
+
 	case consts.TargetPlayer:
-		if targetDetail == nil || *targetDetail == "" {
-			return nil, fmt.Errorf("target detail is required for player target type")
-		}
-		var playerAccounts []string
-		if err := json.Unmarshal([]byte(*targetDetail), &playerAccounts); err != nil {
-			return nil, fmt.Errorf("invalid target detail format for player: %w", err)
-		}
-		if len(playerAccounts) == 0 {
-			return []*entity.Player{}, nil
-		}
-		// 過濾100天內活躍的玩家
-		hundredDaysAgo := now.AddDate(0, 0, -100)
-		query = query.Where(
-			"account IN ? AND (last_active_at IS NOT NULL AND last_active_at >= ?)",
-			playerAccounts,
+		// 透過 campaign_targets 表查找指定的玩家
+		query = query.Joins(
+			"INNER JOIN campaign_targets ct ON players.id = ct.target_id",
+		).Where(
+			"ct.campaign_id = ? AND ct.target_type = ? AND (last_active_at IS NOT NULL AND last_active_at >= ?)",
+			campaignID,
+			consts.TargetPlayer,
 			hundredDaysAgo,
 		)
+
 	case consts.TargetLevel:
-		if targetDetail == nil || *targetDetail == "" {
-			return nil, fmt.Errorf("target detail is required for level target type")
-		}
-		var levelIDStrings []string
-		if err := json.Unmarshal([]byte(*targetDetail), &levelIDStrings); err != nil {
-			return nil, fmt.Errorf("invalid target detail format for level: %w", err)
-		}
-		if len(levelIDStrings) == 0 {
-			return []*entity.Player{}, nil
-		}
-		// 轉換字符串ID為int
-		levelIDs := make([]int, len(levelIDStrings))
-		for i, idStr := range levelIDStrings {
-			id, err := strconv.Atoi(idStr)
-			if err != nil {
-				return nil, fmt.Errorf("invalid level ID format '%s': %w", idStr, err)
-			}
-			levelIDs[i] = id
-		}
-		// 過濾100天內活躍的玩家
-		hundredDaysAgo := now.AddDate(0, 0, -100)
-		query = query.Where(
-			"players.level_id IN ? AND (last_active_at IS NOT NULL AND last_active_at >= ?)",
-			levelIDs,
+		// 透過 campaign_targets 表查找指定等級的玩家
+		query = query.Joins(
+			"INNER JOIN campaign_targets ct ON players.level_id = ct.target_id",
+		).Where(
+			"ct.campaign_id = ? AND ct.target_type = ? AND (last_active_at IS NOT NULL AND last_active_at >= ?)",
+			campaignID,
+			consts.TargetLevel,
 			hundredDaysAgo,
 		)
+
 	case consts.TargetTag:
-		if targetDetail == nil || *targetDetail == "" {
-			return nil, fmt.Errorf("target detail is required for tag target type")
-		}
-		var tagIDStrings []string
-		if err := json.Unmarshal([]byte(*targetDetail), &tagIDStrings); err != nil {
-			return nil, fmt.Errorf("invalid target detail format for tag: %w", err)
-		}
-		if len(tagIDStrings) == 0 {
-			return []*entity.Player{}, nil
-		}
-		// 轉換字符串ID為int
-		tagIDs := make([]int, len(tagIDStrings))
-		for i, idStr := range tagIDStrings {
-			id, err := strconv.Atoi(idStr)
-			if err != nil {
-				return nil, fmt.Errorf("invalid tag ID format '%s': %w", idStr, err)
-			}
-			tagIDs[i] = id
-		}
-		// 過濾100天內活躍的玩家
-		hundredDaysAgo := now.AddDate(0, 0, -100)
-		query = query.Joins("JOIN player_tags ON players.id = player_tags.player_id").
-			Where("player_tags.tag_id IN ? AND (last_active_at IS NOT NULL AND last_active_at >= ?)", tagIDs, hundredDaysAgo).
+		// 透過 campaign_targets 表和 player_tags 表查找指定標籤的玩家
+		query = query.Joins(
+			"INNER JOIN player_tags pt ON players.id = pt.player_id",
+		).Joins(
+			"INNER JOIN campaign_targets ct ON pt.tag_id = ct.target_id",
+		).Where(
+			"ct.campaign_id = ? AND ct.target_type = ? AND (last_active_at IS NOT NULL AND last_active_at >= ?)",
+			campaignID,
+			consts.TargetTag,
+			hundredDaysAgo,
+		).
 			Distinct()
-	case consts.TargetAll:
-		// 過濾100天內活躍的玩家
-		hundredDaysAgo := now.AddDate(0, 0, -100)
-		query = query.Where("last_active_at IS NOT NULL AND last_active_at >= ?", hundredDaysAgo)
+
 	default:
 		return nil, fmt.Errorf("unsupported target type: %s", targetType)
 	}

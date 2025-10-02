@@ -253,8 +253,8 @@ func (u *MessageUseCase) producePlayerBatches(
 
 		players, err := u.playerRepo.FindByTargetType(
 			ctx,
+			campaign.ID,
 			campaign.Target,
-			campaign.TargetDetail,
 			offset,
 			batchSize,
 		)
@@ -464,8 +464,8 @@ func (u *MessageUseCase) processPushNotificationInBatches(
 		// 查詢一批目標玩家
 		players, err := u.playerRepo.FindByTargetType(
 			ctx,
+			campaign.ID,
 			campaign.Target,
-			campaign.TargetDetail,
 			offset,
 			queryBatchSize,
 		)

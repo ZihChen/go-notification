@@ -239,6 +239,11 @@ func TestUpdateMessageCampaign_Success(t *testing.T) {
 		mock.AnythingOfType("*entity.MessageCampaign")).
 		Return(nil).Once()
 
+	// Mock campaign target operations for dual-write
+	suite.campaignTargetRepo.On("DeleteByCampaignID", mocks.ContextMatcher(),
+		campaign.ID).
+		Return(nil).Once()
+
 	// 執行測試
 	ctx := context.Background()
 	err := suite.useCase.UpdateMessageCampaign(ctx, updateDTO)
