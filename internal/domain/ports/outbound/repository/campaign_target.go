@@ -21,10 +21,8 @@ type CampaignTargetRepository interface {
 	// 一次性查詢所有符合條件的 campaigns，支援所有目標類型
 	FindCampaignIDsByPlayerCriteria(
 		ctx context.Context,
-		playerAccount string,
-		levelID string,
+		merchantID, playerID, levelID uint64,
 		tagIDs []uint64,
-		merchantID uint64,
 	) ([]uint64, error)
 
 	// FindByTargetType 根據目標類型查找關聯記錄

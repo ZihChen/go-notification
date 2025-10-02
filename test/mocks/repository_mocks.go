@@ -384,12 +384,10 @@ func (m *CampaignTargetRepositoryMock) DeleteByCampaignID(
 
 func (m *CampaignTargetRepositoryMock) FindCampaignIDsByPlayerCriteria(
 	ctx context.Context,
-	playerAccount string,
-	levelID string,
+	merchantID, playerID, levelID uint64,
 	tagIDs []uint64,
-	merchantID uint64,
 ) ([]uint64, error) {
-	args := m.Called(ctx, playerAccount, levelID, tagIDs, merchantID)
+	args := m.Called(ctx, merchantID, playerID, levelID, tagIDs)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

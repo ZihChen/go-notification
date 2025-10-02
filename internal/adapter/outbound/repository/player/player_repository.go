@@ -284,6 +284,7 @@ func mapToDomainPlayer(player *models.Player) *entity.Player {
 	return &entity.Player{
 		ID:             player.ID,
 		MerchantID:     player.MerchantID,
+		LevelID:        player.LevelID,
 		GlobalPlayerID: player.GlobalPlayerID,
 		APIKey:         player.APIKey,
 		Account:        player.Account,

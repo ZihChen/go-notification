@@ -508,14 +508,6 @@ func (h *HTTPHandler) GetPlayerMessages(c *gin.Context) {
 		pageSize = 10
 	}
 
-	// 在獲取訊息列表前，先同步玩家的player_message
-	if err := h.messageUseCase.ProcessPlayer(c.Request.Context(), globalPlayerID); err != nil {
-		h.logger.WarnLog("Failed to process player for message sync",
-			h.logger.String("global_player_id", globalPlayerID),
-			h.logger.Error("err", err))
-		// 即使同步失敗，也繼續獲取現有訊息，不阻塞用戶體驗
-	}
-
 	res, err := h.messageUseCase.GetPlayerMessages(
 		c.Request.Context(),
 		globalPlayerID,

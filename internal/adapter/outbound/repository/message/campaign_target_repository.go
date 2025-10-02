@@ -129,10 +129,8 @@ func (r *CampaignTargetRepository) DeleteByCampaignID(
 
 func (r *CampaignTargetRepository) FindCampaignIDsByPlayerCriteria(
 	ctx context.Context,
-	playerAccount string,
-	levelID string,
+	merchantID, playerID, levelID uint64,
 	tagIDs []uint64,
-	merchantID uint64,
 ) ([]uint64, error) {
 	ctx, span := r.tracingService.StartSpan(
 		ctx,
@@ -152,7 +150,7 @@ func (r *CampaignTargetRepository) FindCampaignIDsByPlayerCriteria(
 		FROM campaign_targets ct
 		INNER JOIN message_campaign mc ON ct.campaign_id = mc.id
 		WHERE mc.merchant_id = ? 
-		  AND mc.status IN ('scheduled', 'sent')
+		  AND mc.status = 'sent'
 		  AND mc.deleted_at IS NULL
 		  AND mc.created_at <= NOW()
 		  AND (
@@ -163,16 +161,24 @@ func (r *CampaignTargetRepository) FindCampaignIDsByPlayerCriteria(
 		  )
 	`
 
+	// 印出執行的SQL查詢
+	r.logger.InfoWithContext(ctx, "Executing SQL query",
+		r.logger.String("query", query),
+		r.logger.UInt64("merchant_id", merchantID),
+		r.logger.UInt64("player_id", playerID),
+		r.logger.UInt64("level_id", levelID),
+		r.logger.Any("tag_ids", tagIDStrings))
+
 	var campaignIDs []uint64
 	err := r.db.WithContext(ctx).Raw(query,
-		merchantID, playerAccount, levelID, tagIDStrings,
+		merchantID, playerID, levelID, tagIDStrings,
 	).Scan(&campaignIDs).Error
 
 	if err != nil {
 		r.tracingService.RecordSpanError(span, err)
 		r.logger.ErrorWithContext(ctx, "Failed to find campaign IDs by player criteria",
-			r.logger.String("player_account", playerAccount),
-			r.logger.String("level_id", levelID),
+			r.logger.UInt64("player_id", playerID),
+			r.logger.UInt64("level_id", levelID),
 			r.logger.Int("tag_count", len(tagIDs)),
 			r.logger.UInt64("merchant_id", merchantID),
 			r.logger.Error("err", err))
@@ -180,14 +186,14 @@ func (r *CampaignTargetRepository) FindCampaignIDsByPlayerCriteria(
 	}
 
 	r.tracingService.RecordSpanAttributes(span,
-		attribute.String("player_criteria.account", playerAccount),
-		attribute.String("player_criteria.level_id", levelID),
+		attribute.Int64("player_criteria.player_id", int64(playerID)),
+		attribute.Int64("player_criteria.level_id", int64(levelID)),
 		attribute.Int("player_criteria.tag_count", len(tagIDs)),
 		attribute.Int64("player_criteria.merchant_id", int64(merchantID)),
 		attribute.Int("result.campaign_count", len(campaignIDs)))
 
 	r.logger.InfoWithContext(ctx, "Found eligible campaigns for player",
-		r.logger.String("player_account", playerAccount),
+		r.logger.UInt64("player_id", playerID),
 		r.logger.Int("eligible_campaigns", len(campaignIDs)))
 
 	return campaignIDs, nil
@@ -201,23 +207,23 @@ func (r *CampaignTargetRepository) FindByTargetType(
 	ctx, span := r.tracingService.StartSpan(ctx, "CampaignTargetRepository.FindByTargetType")
 	defer r.tracingService.SpanEnd(span)
 
-	var models []*models.CampaignTarget
+	var campaignTargets []*models.CampaignTarget
 	query := r.db.WithContext(ctx).
 		Joins("INNER JOIN message_campaign mc ON campaign_targets.campaign_id = mc.id").
 		Where("campaign_targets.target_type = ? AND mc.merchant_id = ? AND mc.deleted_at IS NULL", targetType, merchantID)
 
-	if err := query.Find(&models).Error; err != nil {
+	if err := query.Find(&campaignTargets).Error; err != nil {
 		r.tracingService.RecordSpanError(span, err)
 		return nil, fmt.Errorf("find campaign targets by type: %w", err)
 	}
 
-	entities := make([]*entity.CampaignTarget, len(models))
-	for i, model := range models {
+	entities := make([]*entity.CampaignTarget, len(campaignTargets))
+	for i, campaignTarget := range campaignTargets {
 		entities[i] = &entity.CampaignTarget{
-			CampaignID: model.CampaignID,
-			TargetType: model.TargetType,
-			TargetID:   model.TargetID,
-			CreatedAt:  model.CreatedAt,
+			CampaignID: campaignTarget.CampaignID,
+			TargetType: campaignTarget.TargetType,
+			TargetID:   campaignTarget.TargetID,
+			CreatedAt:  campaignTarget.CreatedAt,
 		}
 	}
 

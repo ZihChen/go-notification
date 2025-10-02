@@ -740,119 +740,6 @@ func (u *MessageUseCase) processPlayerMessages(ctx context.Context, globalPlayer
 	return nil
 }
 
-// ProcessPlayer 處理玩家重新上線時同步符合條件的message_campaign
-func (u *MessageUseCase) ProcessPlayer(ctx context.Context, globalPlayerID string) error {
-	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.ProcessPlayer")
-	defer u.tracingService.SpanEnd(span)
-
-	u.tracingService.RecordSpanAttributes(
-		span,
-		attribute.String("global_player_id", globalPlayerID),
-	)
-
-	// 獲取玩家資訊
-	player, err := u.playerRepo.FindByGlobalID(ctx, globalPlayerID)
-	if err != nil {
-		u.tracingService.RecordSpanError(span, err)
-		return fmt.Errorf("find player: %w", err)
-	}
-
-	u.tracingService.RecordSpanAttributes(span,
-		attribute.String("player.account", player.Account),
-		attribute.Int64("player.level_id", int64(player.LevelID)),
-	)
-
-	// 查找符合該玩家條件的所有活躍campaigns
-	var eligibleCampaigns []*entity.MessageCampaign
-
-	// 1. 處理 TargetAll 類型的campaigns
-	allCampaigns, err := u.findCampaignsByTargetType(ctx, consts.TargetAll, nil, player.MerchantID)
-	if err != nil {
-		u.logger.WarnLog("Failed to find TargetAll campaigns",
-			u.logger.Error("err", err))
-	} else {
-		eligibleCampaigns = append(eligibleCampaigns, allCampaigns...)
-	}
-
-	// 2. 處理 TargetPlayer 類型的campaigns（包含該玩家帳號）
-	playerCampaigns, err := u.findCampaignsByPlayerAccount(ctx, player.Account, player.MerchantID)
-	if err != nil {
-		u.logger.WarnLog("Failed to find TargetPlayer campaigns",
-			u.logger.String("player.account", player.Account),
-			u.logger.Error("err", err))
-	} else {
-		eligibleCampaigns = append(eligibleCampaigns, playerCampaigns...)
-	}
-
-	// 3. 處理 TargetLevel 類型的campaigns（包含該玩家等級）
-	if player.LevelID > 0 {
-		levelCampaigns, err := u.findCampaignsByLevelID(ctx, player.LevelID, player.MerchantID)
-		if err != nil {
-			u.logger.WarnLog("Failed to find TargetLevel campaigns",
-				u.logger.Int64("player.level_id", int64(player.LevelID)),
-				u.logger.Error("err", err))
-		} else {
-			eligibleCampaigns = append(eligibleCampaigns, levelCampaigns...)
-		}
-	}
-
-	// 4. 處理 TargetTag 類型的campaigns（包含該玩家的tags）
-	tagCampaigns, err := u.findCampaignsByPlayerTags(ctx, player.ID, player.MerchantID)
-	if err != nil {
-		u.logger.WarnLog("Failed to find TargetTag campaigns",
-			u.logger.UInt64("player.id", player.ID),
-			u.logger.Error("err", err))
-	} else {
-		eligibleCampaigns = append(eligibleCampaigns, tagCampaigns...)
-	}
-
-	u.tracingService.RecordSpanAttributes(
-		span,
-		attribute.Int("eligible_campaigns", len(eligibleCampaigns)),
-	)
-
-	// 為符合條件的campaigns創建player_message（如果尚未存在）
-	var newMessages []*entity.PlayerMessage
-	for _, campaign := range eligibleCampaigns {
-		// 檢查是否已經存在該活動的訊息
-		exists, err := u.playerMessageRepo.CheckMessageExists(ctx, globalPlayerID, campaign.ID)
-		if err != nil {
-			u.logger.WarnLog("Failed to check message existence",
-				u.logger.String("global_player_id", globalPlayerID),
-				u.logger.Int64("campaign_id", int64(campaign.ID)),
-				u.logger.Error("err", err))
-			continue
-		}
-
-		if !exists {
-			message := &entity.PlayerMessage{
-				GlobalPlayerID: globalPlayerID,
-				CampaignID:     campaign.ID,
-				IsRead:         false,
-				CreatedAt:      time.Now(),
-			}
-			newMessages = append(newMessages, message)
-		}
-	}
-
-	// 批量創建新訊息
-	if len(newMessages) > 0 {
-		if err = u.playerMessageRepo.CreateBatch(ctx, newMessages); err != nil {
-			u.tracingService.RecordSpanError(span, err)
-			return fmt.Errorf("create batch messages: %w", err)
-		}
-
-		u.tracingService.TraceEvent(span, "New messages created for returning player",
-			attribute.Int("new_messages_count", len(newMessages)))
-
-		u.logger.InfoLog("New messages created for returning player",
-			u.logger.String("global_player_id", globalPlayerID),
-			u.logger.Int("new_messages_count", len(newMessages)))
-	}
-
-	return nil
-}
-
 // generateSummary 生成內容摘要：最多只顯示 300個字符，避免過長
 func generateSummary(content string) string {
 	content = strings.ReplaceAll(content, "<", "&lt;")
@@ -1007,190 +894,6 @@ func convertStringIDsToUint64(stringIDs []string) ([]uint64, error) {
 	return ids, nil
 }
 
-// findCampaignsByTargetType 根據目標類型查找活躍的campaigns
-func (u *MessageUseCase) findCampaignsByTargetType(
-	ctx context.Context,
-	targetType string,
-	targetDetail *string,
-	merchantID uint64,
-) ([]*entity.MessageCampaign, error) {
-	// 使用現有的FindActiveByTargetType方法或建立新的查詢
-	query := &dto.MessageCampaignsQuery{
-		MerchantID: merchantID,
-		Status: []string{
-			consts.MessageCampaignStatusScheduled,
-			consts.MessageCampaignStatusSent,
-		},
-		IncludeDeleted: false,
-		ShowAutoSend:   true,
-		Page:           1,
-		PageSize:       1000, // 設置一個較大的值來獲取所有符合條件的記錄
-	}
-
-	campaigns, _, err := u.campaignRepo.FindAllWithOptions(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("find campaigns: %w", err)
-	}
-
-	// 過濾出符合目標類型的campaigns
-	var filteredCampaigns []*entity.MessageCampaign
-	for _, campaign := range campaigns {
-		if campaign.Target == targetType {
-			filteredCampaigns = append(filteredCampaigns, campaign)
-		}
-	}
-
-	return filteredCampaigns, nil
-}
-
-// findCampaignsByPlayerAccount 查找包含特定玩家帳號的campaigns
-func (u *MessageUseCase) findCampaignsByPlayerAccount(
-	ctx context.Context,
-	playerAccount string,
-	merchantID uint64,
-) ([]*entity.MessageCampaign, error) {
-	// 查找所有TargetPlayer類型的活躍campaigns
-	allCampaigns, err := u.findCampaignsByTargetType(ctx, consts.TargetPlayer, nil, merchantID)
-	if err != nil {
-		return nil, err
-	}
-
-	var matchingCampaigns []*entity.MessageCampaign
-	for _, campaign := range allCampaigns {
-		if campaign.TargetDetail == nil {
-			continue
-		}
-
-		// 解析target_detail中的玩家帳號列表
-		var playerAccounts []string
-		if err := json.Unmarshal([]byte(*campaign.TargetDetail), &playerAccounts); err != nil {
-			u.logger.WarnLog("Failed to unmarshal player target detail",
-				u.logger.String("target_detail", *campaign.TargetDetail),
-				u.logger.Error("err", err))
-			continue
-		}
-
-		// 檢查玩家帳號是否在列表中
-		for _, account := range playerAccounts {
-			if account == playerAccount {
-				matchingCampaigns = append(matchingCampaigns, campaign)
-				break
-			}
-		}
-	}
-
-	return matchingCampaigns, nil
-}
-
-// findCampaignsByLevelID 查找包含特定等級ID的campaigns
-func (u *MessageUseCase) findCampaignsByLevelID(
-	ctx context.Context,
-	levelID uint64,
-	merchantID uint64,
-) ([]*entity.MessageCampaign, error) {
-	// 查找所有TargetLevel類型的活躍campaigns
-	allCampaigns, err := u.findCampaignsByTargetType(ctx, consts.TargetLevel, nil, merchantID)
-	if err != nil {
-		return nil, err
-	}
-
-	var matchingCampaigns []*entity.MessageCampaign
-	levelIDStr := fmt.Sprintf("%d", levelID)
-
-	for _, campaign := range allCampaigns {
-		if campaign.TargetDetail == nil {
-			continue
-		}
-
-		// 解析target_detail中的等級ID列表
-		var levelIDStrings []string
-		if err := json.Unmarshal([]byte(*campaign.TargetDetail), &levelIDStrings); err != nil {
-			u.logger.WarnLog("Failed to unmarshal level target detail",
-				u.logger.String("target_detail", *campaign.TargetDetail),
-				u.logger.Error("err", err))
-			continue
-		}
-
-		// 檢查等級ID是否在列表中
-		for _, idStr := range levelIDStrings {
-			if idStr == levelIDStr {
-				matchingCampaigns = append(matchingCampaigns, campaign)
-				break
-			}
-		}
-	}
-
-	return matchingCampaigns, nil
-}
-
-// findCampaignsByPlayerTags 查找包含特定玩家標籤的campaigns
-func (u *MessageUseCase) findCampaignsByPlayerTags(
-	ctx context.Context,
-	playerID uint64,
-	merchantID uint64,
-) ([]*entity.MessageCampaign, error) {
-	// 先獲取玩家的所有標籤ID
-	playerTagIDs, err := u.getPlayerTagIDs(ctx, playerID)
-	if err != nil {
-		return nil, fmt.Errorf("get player tag IDs: %w", err)
-	}
-
-	if len(playerTagIDs) == 0 {
-		return []*entity.MessageCampaign{}, nil
-	}
-
-	// 查找所有TargetTag類型的活躍campaigns
-	allCampaigns, err := u.findCampaignsByTargetType(ctx, consts.TargetTag, nil, merchantID)
-	if err != nil {
-		return nil, err
-	}
-
-	var matchingCampaigns []*entity.MessageCampaign
-	playerTagIDStrings := make([]string, len(playerTagIDs))
-	for i, id := range playerTagIDs {
-		playerTagIDStrings[i] = fmt.Sprintf("%d", id)
-	}
-
-	for _, campaign := range allCampaigns {
-		if campaign.TargetDetail == nil {
-			continue
-		}
-
-		// 解析target_detail中的標籤ID列表
-		var campaignTagIDStrings []string
-		if err := json.Unmarshal([]byte(*campaign.TargetDetail), &campaignTagIDStrings); err != nil {
-			u.logger.WarnLog("Failed to unmarshal tag target detail",
-				u.logger.String("target_detail", *campaign.TargetDetail),
-				u.logger.Error("err", err))
-			continue
-		}
-
-		// 檢查是否有交集
-		if hasIntersection(playerTagIDStrings, campaignTagIDStrings) {
-			matchingCampaigns = append(matchingCampaigns, campaign)
-		}
-	}
-
-	return matchingCampaigns, nil
-}
-
-// getPlayerTagIDs 獲取玩家的所有標籤ID (這個方法需要透過player_tags表查詢)
-func (u *MessageUseCase) getPlayerTagIDs(ctx context.Context, playerID uint64) ([]uint64, error) {
-	return u.playerRepo.GetPlayerTagIDs(ctx, playerID)
-}
-
-// hasIntersection 檢查兩個字符串切片是否有交集
-func hasIntersection(slice1, slice2 []string) bool {
-	for _, item1 := range slice1 {
-		for _, item2 := range slice2 {
-			if item1 == item2 {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // createCampaignTargets 創建活動目標關聯記錄（雙寫功能）
 func (u *MessageUseCase) createCampaignTargets(
 	ctx context.Context,
@@ -1274,9 +977,9 @@ func (u *MessageUseCase) updateCampaignTargets(
 	return nil
 }
 
-// ProcessPlayerV2 優化版本的ProcessPlayer，使用campaign_targets表進行高效能查詢
-func (u *MessageUseCase) ProcessPlayerV2(ctx context.Context, globalPlayerID string) error {
-	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.ProcessPlayerV2")
+// ProcessPlayer 處理玩家重新上線時同步符合條件的message_campaign，使用campaign_targets表進行高效能查詢
+func (u *MessageUseCase) ProcessPlayer(ctx context.Context, globalPlayerID string) error {
+	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.ProcessPlayer")
 	defer u.tracingService.SpanEnd(span)
 
 	// 獲取玩家資訊
@@ -1295,10 +998,10 @@ func (u *MessageUseCase) ProcessPlayerV2(ctx context.Context, globalPlayerID str
 
 	// 一次性查詢所有符合條件的 campaigns
 	eligibleCampaignIDs, err := u.campaignTargetRepo.FindCampaignIDsByPlayerCriteria(ctx,
-		player.Account,
-		fmt.Sprintf("%d", player.LevelID),
-		playerTagIDs,
 		player.MerchantID,
+		player.ID,
+		player.LevelID,
+		playerTagIDs,
 	)
 	if err != nil {
 		u.tracingService.RecordSpanError(span, err)
@@ -1309,13 +1012,13 @@ func (u *MessageUseCase) ProcessPlayerV2(ctx context.Context, globalPlayerID str
 		attribute.Int("eligible_campaigns", len(eligibleCampaignIDs)))
 
 	// 批量處理 player_message 創建
-	return u.processCampaignMessages(ctx, globalPlayerID, eligibleCampaignIDs)
+	return u.processCampaignMessages(ctx, player, eligibleCampaignIDs)
 }
 
 // processCampaignMessages 批量處理campaign訊息創建
 func (u *MessageUseCase) processCampaignMessages(
 	ctx context.Context,
-	globalPlayerID string,
+	player *entity.Player,
 	campaignIDs []uint64,
 ) error {
 	if len(campaignIDs) == 0 {
@@ -1324,7 +1027,7 @@ func (u *MessageUseCase) processCampaignMessages(
 
 	// 檢查已存在的訊息
 	existingMessageCampaignIDs, err := u.playerMessageRepo.FindExistingCampaignIDs(
-		ctx, globalPlayerID, campaignIDs,
+		ctx, player.GlobalPlayerID, campaignIDs,
 	)
 	if err != nil {
 		return fmt.Errorf("find existing messages: %w", err)
@@ -1351,7 +1054,8 @@ func (u *MessageUseCase) processCampaignMessages(
 	newMessages := make([]*entity.PlayerMessage, len(newCampaignIDs))
 	for i, campaignID := range newCampaignIDs {
 		newMessages[i] = &entity.PlayerMessage{
-			GlobalPlayerID: globalPlayerID,
+			GlobalPlayerID: player.GlobalPlayerID,
+			PlayerID:       player.ID,
 			CampaignID:     campaignID,
 			IsRead:         false,
 			CreatedAt:      time.Now(),
@@ -1362,8 +1066,8 @@ func (u *MessageUseCase) processCampaignMessages(
 		return fmt.Errorf("create batch messages: %w", err)
 	}
 
-	u.logger.InfoLog("New messages created for returning player",
-		u.logger.String("global_player_id", globalPlayerID),
+	u.logger.InfoWithContext(ctx, "New messages created for returning player",
+		u.logger.String("global_player_id", player.GlobalPlayerID),
 		u.logger.Int("new_messages_count", len(newMessages)))
 
 	return nil

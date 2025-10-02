@@ -92,7 +92,7 @@ func (r *PlayerMessageRepository) FindByPlayerIDWithCampaign(
 	// 計算總數
 	if err := r.db.WithContext(ctx).
 		Table(fmt.Sprintf("%s pm", pm.TableName())).
-		Joins("LEFT JOIN message_campaigns mc ON pm.campaign_id = mc.id").
+		Joins("LEFT JOIN message_campaign mc ON pm.campaign_id = mc.id").
 		Where("pm.global_player_id = ?", globalPlayerID).
 		Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -106,7 +106,7 @@ func (r *PlayerMessageRepository) FindByPlayerIDWithCampaign(
 			pm.created_at, pm.updated_at,
 			COALESCE(mc.title, '站內信') as campaign_title,
 			COALESCE(mc.content, '您有一封新的訊息') as campaign_content`).
-		Joins("LEFT JOIN message_campaigns mc ON pm.campaign_id = mc.id").
+		Joins("LEFT JOIN message_campaign mc ON pm.campaign_id = mc.id").
 		Where("pm.global_player_id = ?", globalPlayerID).
 		Order("pm.created_at DESC").
 		Offset(offset).
