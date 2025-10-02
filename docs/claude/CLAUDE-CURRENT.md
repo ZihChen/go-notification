@@ -1,17 +1,20 @@
 # CLAUDE-CURRENT.md
 
-## 當前任務階段：v1.10+ Campaign Targets 效能優化完成 
-v1.10+ Campaign Targets效能優化全面完成，O(n×m)→O(log n)查詢複雜度優化，關聯表正規化實現，系統達到生產級高性能標準
+## 當前任務階段：v1.10+ Campaign Targets 效能優化與代碼重構完成 
+v1.10+ Campaign Targets效能優化與代碼重構全面完成，O(n×m)→O(log n)查詢複雜度優化，關聯表正規化實現，舊版代碼清理，系統達到生產級高性能標準
 
 ### 最新完成任務
-- [x] ✅ **v1.10+ Campaign Targets 效能優化** (2025-10-01)
+- [x] ✅ **v1.10+ Campaign Targets 效能優化與代碼重構** (2025-10-02)
   - [x] 關聯表正規化：JSON解析瓶頸徹底解決，查詢效能提升99%
   - [x] 統一ID處理機制：所有target類型使用數值ID，消除字串轉換開銷
   - [x] 批量查詢優化：N+1查詢問題解決，資料庫IO減少95%
   - [x] 雙寫機制實現：向後兼容性與性能提升並存，零風險升級
   - [x] Wire依賴注入修復：CampaignTargetRepository正確注入架構
   - [x] 智能查詢路由：根據可用數據動態選擇最優查詢策略
-  - [x] ProcessPlayerV2高效能實作：支援大規模campaign處理
+  - [x] ProcessPlayer統一重構：移除舊版ProcessPlayer及所有輔助方法
+  - [x] 代碼清理完成：移除findCampaignsByTargetType等廢棄方法
+  - [x] 測試修正：更新所有Mock期待，確保測試通過
+  - [x] 接口統一：移除ProcessPlayerV2，統一使用高效能ProcessPlayer
   - [x] 系統達到生產級高性能標準，支援企業級擴展需求
 - [x] ✅ **v1.9 玩家訊息API系統** (2025-09-30)
   - [x] 前台玩家訊息列表查詢API實現，支援分頁（預設20筆/頁）

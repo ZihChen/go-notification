@@ -209,10 +209,10 @@ The project maintains structured documentation for development guidance:
 
 ## Development Specifications
 
-### Current Focus: Campaign Targets Performance Optimization Complete (2025-10-02)
+### Current Focus: Campaign Targets Performance Optimization & Code Cleanup Complete (2025-10-02)
 
 **Recently Completed:**
-- ✅ Campaign Targets 效能優化完成 (v1.10+, 2025-10-01)
+- ✅ Campaign Targets 效能優化與代碼重構完成 (v1.10+, 2025-10-02)
   - 完成O(n×m)→O(log n)查詢複雜度優化，解決JSON解析瓶頸，查詢效能提升99%
   - 實作campaign_targets關聯表正規化，支援數值ID儲存，徹底解決JSON解析開銷
   - 統一ID處理機制，所有target類型使用uint64陣列，消除字串轉換開銷
@@ -220,7 +220,7 @@ The project maintains structured documentation for development guidance:
   - Wire依賴注入修復，CampaignTargetRepository正確注入，確保架構完整性
   - 雙寫機制實現，確保向後兼容性同時提供性能提升，零風險升級
   - 智能路由選擇，根據可用數據自動選最優查詢路徑，效能達到最優
-  - ProcessPlayerV2高效能實作，支援大規模campaign處理，達到生產級性能標準
+  - ProcessPlayer統一重構：移除舊版低效能代碼，統一使用高效能campaign_targets查詢
 - ✅ App推播功能實作 (v1.8, 2025-09-22)
   - 新增message_campaigns表app_content和notification_types欄位
   - 建立merchant_push_api_keys表儲存商戶API金鑰
@@ -263,16 +263,17 @@ The project maintains structured documentation for development guidance:
 - ✅ 雙寫機制實現：向後兼容性與性能提升並存，零風險升級
 - ✅ Wire依賴注入修復：架構完整性確保，所有Repository正確注入
 - ✅ 智能查詢路由：根據可用數據動態選擇最優查詢策略
+- ✅ ProcessPlayer統一重構：移除舊版低效能代碼，統一高效能實作
+- ✅ 代碼清理完成：移除所有廢棄方法和測試，提升代碼維護性
 - ✅ 系統達到生產級高性能標準，支援大規模campaign處理
-- 🔄 進入Week 4測試驗證階段：單元測試、效能基準測試、A/B測試準備
-- 📋 技術文檔更新完成，進入系統穩定性監控與優化階段
+- ✅ 技術文檔更新完成，進入系統穩定性監控與優化階段
 
 For detailed current tasks, see `docs/claude/CLAUDE-CURRENT.md`.
 
 ### Completed Features
 
 #### Campaign Targets 效能優化系統 v1.10+ ✅
-- **Status**: Completed (2025-10-01)
+- **Status**: Completed (2025-10-02)
 - **Specification**: `docs/claude/features/message-campaign/CLAUDE-2025-09-30-v1.10.md`
 - **Key Components**:
   - O(n×m)→O(log n) query complexity optimization with 99% performance improvement
@@ -281,8 +282,9 @@ For detailed current tasks, see `docs/claude/CLAUDE-CURRENT.md`.
   - Batch query optimization eliminating N+1 query problems with 95% database IO reduction
   - Dual-write mechanism ensuring backward compatibility with zero-risk upgrade
   - Smart query routing automatically selecting optimal query paths based on available data
-  - ProcessPlayerV2 high-performance implementation supporting large-scale campaign processing
+  - ProcessPlayer unified implementation: eliminated legacy inefficient code, consolidated to high-performance campaign_targets queries
   - Wire dependency injection fixes ensuring architectural integrity
+  - Code cleanup: removed all deprecated methods and tests for improved maintainability
   - Production-grade performance standards achieved with enterprise-level scalability
 
 #### 玩家訊息API系統 v1.9 ✅
