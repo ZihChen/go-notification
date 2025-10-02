@@ -1490,7 +1490,6 @@ func TestHTTPHandler_GetPlayerMessages_Success(t *testing.T) {
 	router.GET("/api/v1/messages/player/:global_player_id", handler.GetPlayerMessages)
 
 	messagesResponse := createPlayerMessagesResponse()
-	messageUseCase.On("ProcessPlayer", mock.Anything, "FATCAT-PLAYER-001").Return(nil)
 	messageUseCase.On("GetPlayerMessages", mock.Anything, "FATCAT-PLAYER-001", 1, 10).
 		Return(messagesResponse, nil)
 
@@ -1557,7 +1556,6 @@ func TestHTTPHandler_GetPlayerMessages_WithDefaults(t *testing.T) {
 	router.GET("/api/v1/messages/player/:global_player_id", handler.GetPlayerMessages)
 
 	messagesResponse := createPlayerMessagesResponse()
-	messageUseCase.On("ProcessPlayer", mock.Anything, "FATCAT-PLAYER-001").Return(nil)
 	messageUseCase.On("GetPlayerMessages", mock.Anything, "FATCAT-PLAYER-001", 1, 10). // 預設值
 												Return(messagesResponse, nil)
 
