@@ -1598,7 +1598,7 @@ func TestHTTPHandler_SendAutoNotification_Success(t *testing.T) {
 	// 創建Mocks
 	messageUseCase := mocks.NewMessageUseCaseMock(t)
 	logger := helper.NewMockLogger()
-	
+
 	// 創建HTTP Handler
 	handler := createTestHandler(
 		mocks.NewMerchantUseCaseMock(t),
@@ -1612,7 +1612,7 @@ func TestHTTPHandler_SendAutoNotification_Success(t *testing.T) {
 	request := dto.SendAutoNotificationRequest{
 		GlobalPlayerID: "player-123e4567-e89b-12d3-a456-426614174000",
 		Category:       "member",
-		Item:           "registration", 
+		Item:           "registration",
 		TriggerType:    "success",
 	}
 
@@ -1633,7 +1633,7 @@ func TestHTTPHandler_SendAutoNotification_Success(t *testing.T) {
 
 	// 執行HTTP請求
 	req, _ := createJSONRequest("POST", "/api/v1/notifications/auto-send", request)
-	
+
 	w := httptest.NewRecorder()
 	router := setupTestRouter()
 	router.POST("/api/v1/notifications/auto-send", handler.SendAutoNotification)
@@ -1664,7 +1664,7 @@ func TestHTTPHandler_SendAutoNotification_InvalidRequest(t *testing.T) {
 	// 創建Mocks
 	messageUseCase := mocks.NewMessageUseCaseMock(t)
 	logger := helper.NewMockLogger()
-	
+
 	// 創建HTTP Handler
 	handler := createTestHandler(
 		mocks.NewMerchantUseCaseMock(t),
@@ -1676,15 +1676,15 @@ func TestHTTPHandler_SendAutoNotification_InvalidRequest(t *testing.T) {
 
 	// 準備無效請求 (缺少必填欄位)
 	invalidRequest := map[string]interface{}{
-		"global_player_id": "",  // 空值，應該失敗
-		"category":        "member",
-		"item":            "registration",
-		"trigger_type":    "success",
+		"global_player_id": "", // 空值，應該失敗
+		"category":         "member",
+		"item":             "registration",
+		"trigger_type":     "success",
 	}
 
 	// 執行HTTP請求
 	req, _ := createJSONRequest("POST", "/api/v1/notifications/auto-send", invalidRequest)
-	
+
 	w := httptest.NewRecorder()
 	router := setupTestRouter()
 	router.POST("/api/v1/notifications/auto-send", handler.SendAutoNotification)
@@ -1707,7 +1707,7 @@ func TestHTTPHandler_SendAutoNotification_UseCaseError(t *testing.T) {
 	// 創建Mocks
 	messageUseCase := mocks.NewMessageUseCaseMock(t)
 	logger := helper.NewMockLogger()
-	
+
 	// 創建HTTP Handler
 	handler := createTestHandler(
 		mocks.NewMerchantUseCaseMock(t),
@@ -1731,7 +1731,7 @@ func TestHTTPHandler_SendAutoNotification_UseCaseError(t *testing.T) {
 
 	// 執行HTTP請求
 	req, _ := createJSONRequest("POST", "/api/v1/notifications/auto-send", request)
-	
+
 	w := httptest.NewRecorder()
 	router := setupTestRouter()
 	router.POST("/api/v1/notifications/auto-send", handler.SendAutoNotification)

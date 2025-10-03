@@ -294,8 +294,9 @@ func TestSendAutoNotification_Success(t *testing.T) {
 		mock.Anything, player.MerchantID, "member", "registration", "success").
 		Return(campaign, nil).Once()
 
-	suite.playerMessageRepo.On("Create", mock.Anything, mock.AnythingOfType("*entity.PlayerMessage")).
-		Return(nil).Once()
+	suite.playerMessageRepo.On("CreateAutoNotification", mock.Anything, mock.AnythingOfType("*entity.PlayerMessage"), 5).
+		Return(nil).
+		Once()
 
 	// Mock PushKeyRepository for push notification
 	suite.pushKeyRepo.On("FindByMerchantID", mock.Anything, player.MerchantID).
@@ -303,7 +304,8 @@ func TestSendAutoNotification_Success(t *testing.T) {
 
 	// Mock PushNotificationService
 	suite.pushService.On("SendPushNotification", mock.Anything, pushApiKey.Key, mock.AnythingOfType("*service.PushNotificationRequest")).
-		Return(&service.PushNotificationResponse{Success: true}, nil).Once()
+		Return(&service.PushNotificationResponse{Success: true}, nil).
+		Once()
 
 	// Mock UpdateSentCount
 	suite.campaignRepo.On("UpdateSentCount", mock.Anything, campaign.ID, campaign.RealSentCount+1).
@@ -484,8 +486,9 @@ func TestSendAutoNotification_PlayerMessageCreateFailed(t *testing.T) {
 		Return(campaign, nil).Once()
 
 	// Mock PlayerMessage 創建失敗
-	suite.playerMessageRepo.On("Create", mock.Anything, mock.AnythingOfType("*entity.PlayerMessage")).
-		Return(errors.New("database error")).Once()
+	suite.playerMessageRepo.On("CreateAutoNotification", mock.Anything, mock.AnythingOfType("*entity.PlayerMessage"), 5).
+		Return(errors.New("database error")).
+		Once()
 
 	// 準備請求
 	req := &dto.SendAutoNotificationRequest{
@@ -504,6 +507,60 @@ func TestSendAutoNotification_PlayerMessageCreateFailed(t *testing.T) {
 	assert.NotNil(t, response)
 	assert.Equal(t, "failed", response.Status)
 	assert.Equal(t, "failed to create in-app message", response.Message)
+
+	// 驗證Mock調用
+	suite.playerRepo.AssertExpectations()
+	suite.campaignRepo.AssertExpectations()
+	suite.playerMessageRepo.AssertExpectations()
+}
+
+// TestSendAutoNotification_TimeWindowDuplicate 測試時間窗口內重複發送的情況
+func TestSendAutoNotification_TimeWindowDuplicate(t *testing.T) {
+	suite := setupMessageTestSuite(t)
+	defer suite.tearDown()
+
+	// 準備測試數據
+	player := suite.factory.CreatePlayer().Build()
+	campaign := suite.factory.CreateMessageCampaign().
+		WithMerchantID(player.MerchantID).
+		Build()
+	// 設置為僅站內信
+	campaign.Category = "member"
+	campaign.Item = "registration"
+	campaign.TriggerType = "success"
+	campaign.AutoSend = true
+	campaign.NotificationTypes = 1 // 僅站內信
+
+	// 設定Mock期望
+	suite.playerRepo.On("FindByGlobalID", mock.Anything, player.GlobalPlayerID).
+		Return(player, nil).Once()
+
+	suite.campaignRepo.On("FindAutoSettingByCategoryItemTrigger",
+		mock.Anything, player.MerchantID, "member", "registration", "success").
+		Return(campaign, nil).Once()
+
+	// Mock CreateAutoNotification 返回時間窗口重複錯誤
+	suite.playerMessageRepo.On("CreateAutoNotification", mock.Anything, mock.AnythingOfType("*entity.PlayerMessage"), 5).
+		Return(errors.New("duplicate auto notification within 5 minutes")).
+		Once()
+
+	// 準備請求
+	req := &dto.SendAutoNotificationRequest{
+		GlobalPlayerID: player.GlobalPlayerID,
+		Category:       "member",
+		Item:           "registration",
+		TriggerType:    "success",
+	}
+
+	// 執行測試
+	ctx := context.Background()
+	response, err := suite.useCase.SendAutoNotification(ctx, req)
+
+	// 驗證結果
+	require.NoError(t, err)
+	assert.NotNil(t, response)
+	assert.Equal(t, "skipped", response.Status)
+	assert.Equal(t, "duplicate notification within time window", response.Message)
 
 	// 驗證Mock調用
 	suite.playerRepo.AssertExpectations()

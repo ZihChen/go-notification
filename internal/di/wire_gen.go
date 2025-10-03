@@ -66,7 +66,7 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, redis
 	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger, tracingService)
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
 	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
-	playerMessageRepository := message.NewPlayerMessageRepository(db)
+	playerMessageRepository := providePlayerMessageRepository(db, redisManager)
 	tagRepository := repository.NewTagRepository(db)
 	pushKeyRepository := merchant.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
@@ -103,7 +103,7 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, re
 	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager, tracingService)
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
 	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
-	playerMessageRepository := message.NewPlayerMessageRepository(db)
+	playerMessageRepository := providePlayerMessageRepository(db, redisManager)
 	pushKeyRepository := merchant.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
 	messageUseCase := message2.NewMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
@@ -136,7 +136,7 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager, tracingService)
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
 	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
-	playerMessageRepository := message.NewPlayerMessageRepository(db)
+	playerMessageRepository := providePlayerMessageRepository(db, redisManager)
 	pushKeyRepository := merchant.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
 	messageUseCase := message2.NewMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
@@ -187,7 +187,7 @@ func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Log
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
 	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
 	merchantRepository := merchant.NewMerchantRepository(db)
-	playerMessageRepository := message.NewPlayerMessageRepository(db)
+	playerMessageRepository := providePlayerMessageRepository(db, redisManager)
 	playerRepository := repository.NewPlayerRepository(db)
 	levelRepository := repository.NewLevelRepository(db)
 	tagRepository := repository.NewTagRepository(db)
@@ -209,7 +209,7 @@ func InitializeMigrateHandler(cfg *config.Config, logger infrastructure.Logger, 
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
 	playerRepository := repository.NewPlayerRepository(db)
 	merchantRepository := merchant.NewMerchantRepository(db)
-	playerMessageRepository := message.NewPlayerMessageRepository(db)
+	playerMessageRepository := provideMigratePlayerMessageRepository(db)
 	pushKeyRepository := merchant.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
 	migrateUseCase := provideMigrateUseCase(legacyDB, messageCampaignRepository, playerRepository, merchantRepository, playerMessageRepository, pushKeyRepository, pushNotificationService, logger)
@@ -226,7 +226,7 @@ type WorkerComponents struct {
 }
 
 var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient,
-	provideTracingService, merchant.NewMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, message.NewMessageCampaignRepository, message.NewCampaignTargetRepository, message.NewPlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant.NewPushKeyRepository, service.NewEventService, providePushNotificationService, merchant2.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message2.NewMessageUseCase, level.NewLevelUseCase, player.NewTagUseCase,
+	provideTracingService, merchant.NewMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, message.NewMessageCampaignRepository, message.NewCampaignTargetRepository, providePlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant.NewPushKeyRepository, service.NewEventService, providePushNotificationService, merchant2.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message2.NewMessageUseCase, level.NewLevelUseCase, player.NewTagUseCase,
 )
 
 // 事件生產者提供者 (保留作為別名)
@@ -247,6 +247,16 @@ func provideTracingService() infrastructure.TracingService {
 // 提供 worker 服務器
 func provideWorkerServer(cfg *config.Config, logger infrastructure.Logger) (*asynq.Server, error) {
 	return queue.NewWorkerServer(cfg, logger)
+}
+
+// 提供 PlayerMessageRepository
+func providePlayerMessageRepository(db *gorm.DB, redisManager *redis.Manager) repository3.PlayerMessageRepository {
+	return message.NewPlayerMessageRepository(db, redisManager)
+}
+
+// 提供 PlayerMessageRepository (migrate 專用，不需要 redis)
+func provideMigratePlayerMessageRepository(db *gorm.DB) repository3.PlayerMessageRepository {
+	return message.NewPlayerMessageRepository(db, nil)
 }
 
 func provideRedisClient(manager2 *redis.Manager) (*redis2.Client, error) {

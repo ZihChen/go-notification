@@ -148,6 +148,7 @@ func (r *MessageCampaignRepository) FindActiveByFocus(
 	result := r.db.WithContext(ctx).
 		Where("target = ? OR target = ?", focus, consts.TargetAll).
 		Where("(send_start_time IS NULL OR send_start_time <= ?) AND (send_end_time IS NULL OR send_end_time >= ?)", now, now).
+		Where("auto_send = ?", false).
 		Find(&campaigns)
 
 	if result.Error != nil {

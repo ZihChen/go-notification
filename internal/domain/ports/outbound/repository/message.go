@@ -79,6 +79,17 @@ type PlayerMessageRepository interface {
 	CreateBatchOptimized(ctx context.Context, messages []*entity.PlayerMessage, batchSize int) error
 	MarkAsRead(ctx context.Context, globalPlayerID string, messageID uint64) error
 	CheckMessageExists(ctx context.Context, globalPlayerID string, campaignID uint64) (bool, error)
+	CheckAutoMessageExists(
+		ctx context.Context,
+		globalPlayerID string,
+		campaignID uint64,
+		withinMinutes int,
+	) (bool, error)
+	CreateAutoNotification(
+		ctx context.Context,
+		message *entity.PlayerMessage,
+		timeWindowMinutes int,
+	) error
 	CheckMessageExistsBatch(
 		ctx context.Context,
 		playerIDs []uint64,

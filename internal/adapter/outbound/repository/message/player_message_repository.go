@@ -4,24 +4,41 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+	"time"
 
+	"github.com/go-redsync/redsync/v4"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/aggregate"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/constants"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
+
+// playerCampaignKey 用於組合 player_id 和 campaign_id 的鍵
+type playerCampaignKey struct {
+	PlayerID   uint64
+	CampaignID uint64
+}
 
 // PlayerMessageRepository GORM實現的會員訊息資料庫
 type PlayerMessageRepository struct {
-	db *gorm.DB
+	db           *gorm.DB
+	redisManager *redis.Manager
 }
 
 // NewPlayerMessageRepository 創建會員訊息資料庫
-func NewPlayerMessageRepository(db *gorm.DB) repository.PlayerMessageRepository {
-	return &PlayerMessageRepository{db: db}
+func NewPlayerMessageRepository(
+	db *gorm.DB,
+	redisManager *redis.Manager,
+) repository.PlayerMessageRepository {
+	return &PlayerMessageRepository{
+		db:           db,
+		redisManager: redisManager,
+	}
 }
 
 // FindByID 通過ID查找會員訊息
@@ -242,7 +259,136 @@ func (r *PlayerMessageRepository) CheckMessageExists(
 	return count > 0, nil
 }
 
-// CreateBatchOptimized 優化的批次創建玩家訊息
+// CheckAutoMessageExists 檢查自動派發訊息在時間窗口內是否已存在
+func (r *PlayerMessageRepository) CheckAutoMessageExists(
+	ctx context.Context,
+	globalPlayerID string,
+	campaignID uint64,
+	withinMinutes int,
+) (bool, error) {
+	var count int64
+	timeThreshold := time.Now().Add(-time.Duration(withinMinutes) * time.Minute)
+
+	err := r.db.WithContext(ctx).Model(&models.PlayerMessage{}).
+		Where("global_player_id = ? AND campaign_id = ? AND created_at > ?",
+			globalPlayerID, campaignID, timeThreshold).
+		Count(&count).Error
+
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
+// executeWithDistributedLock 使用 Redsync 分佈式鎖執行操作（參考 player_tag_usecase 的實現）
+func (r *PlayerMessageRepository) executeWithDistributedLock(
+	ctx context.Context,
+	globalPlayerID string,
+	campaignID uint64,
+	fn func() error,
+) error {
+	// 如果沒有 redisManager（如 migrate 場景），直接執行函數
+	if r.redisManager == nil {
+		return fn()
+	}
+
+	mutexKey := fmt.Sprintf(constants.AutoNotificationMutexKey, globalPlayerID, campaignID)
+
+	mutex, err := r.redisManager.GetMutexWithOption(mutexKey,
+		redsync.WithExpiry(10*time.Second),           // 鎖的過期時間（比 player_tag 更長，因為涉及 DB 操作）
+		redsync.WithTries(3),                         // 獲取鎖的重試次數
+		redsync.WithRetryDelay(200*time.Millisecond), // 重試間隔
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to create mutex for auto notification %s:%d: %w",
+			globalPlayerID,
+			campaignID,
+			err,
+		)
+	}
+
+	if err = mutex.Lock(); err != nil {
+		return fmt.Errorf(
+			"failed to acquire lock for auto notification %s:%d: %w",
+			globalPlayerID,
+			campaignID,
+			err,
+		)
+	}
+
+	defer func() {
+		ok, unlockErr := mutex.Unlock()
+		if !ok || unlockErr != nil {
+			// 這裡應該使用 logger，但為了保持簡潔，暫時使用 fmt
+			fmt.Printf(
+				"Failed to unlock mutex: key=%s, success=%v, err=%v\n",
+				mutexKey,
+				ok,
+				unlockErr,
+			)
+		}
+	}()
+
+	return fn()
+}
+
+// CreateAutoNotification 創建自動派發訊息（使用 Redsync 分佈式鎖保證併發安全）
+func (r *PlayerMessageRepository) CreateAutoNotification(
+	ctx context.Context,
+	message *entity.PlayerMessage,
+	timeWindowMinutes int,
+) error {
+	return r.executeWithDistributedLock(
+		ctx,
+		message.GlobalPlayerID,
+		message.CampaignID,
+		func() error {
+			// 在分佈式鎖保護下執行原子操作
+			return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+				// 檢查時間窗口內是否已有相同訊息
+				if timeWindowMinutes > 0 {
+					exists, err := r.CheckAutoMessageExists(
+						ctx,
+						message.GlobalPlayerID,
+						message.CampaignID,
+						timeWindowMinutes,
+					)
+					if err != nil {
+						return fmt.Errorf("check auto message exists: %w", err)
+					}
+					if exists {
+						return fmt.Errorf(
+							"duplicate auto notification within %d minutes",
+							timeWindowMinutes,
+						)
+					}
+				}
+
+				// 直接創建記錄
+				messageModel := &models.PlayerMessage{
+					GlobalPlayerID: message.GlobalPlayerID,
+					PlayerID:       message.PlayerID,
+					CampaignID:     message.CampaignID,
+					IsRead:         message.IsRead,
+					CreatedAt:      message.CreatedAt,
+					UpdatedAt:      message.UpdatedAt,
+				}
+
+				if err := tx.Create(messageModel).Error; err != nil {
+					return fmt.Errorf("create auto notification: %w", err)
+				}
+
+				// 更新ID
+				message.ID = messageModel.ID
+				return nil
+			})
+		},
+	)
+}
+
+// CreateBatchOptimized 優化的批次創建玩家訊息（併發安全版本）
 func (r *PlayerMessageRepository) CreateBatchOptimized(
 	ctx context.Context,
 	messages []*entity.PlayerMessage,
@@ -260,30 +406,163 @@ func (r *PlayerMessageRepository) CreateBatchOptimized(
 		}
 
 		batch := messages[i:end]
-		messageModels := make([]*models.PlayerMessage, len(batch))
 
-		for j, message := range batch {
-			messageModels[j] = &models.PlayerMessage{
-				GlobalPlayerID: message.GlobalPlayerID,
-				PlayerID:       message.PlayerID,
-				CampaignID:     message.CampaignID,
-				IsRead:         message.IsRead,
-				CreatedAt:      message.CreatedAt,
-				UpdatedAt:      message.UpdatedAt,
-			}
-		}
-
-		// 使用 IGNORE 避免重複鍵錯誤，性能更好
-		result := r.db.WithContext(ctx).
-			Clauses(clause.OnConflict{DoNothing: true}).
-			Create(&messageModels)
-
-		if result.Error != nil {
-			return fmt.Errorf("batch create messages: %w", result.Error)
+		// 方案1：使用事務 + 預檢查防重複
+		if err := r.createBatchWithDuplicateCheck(ctx, batch); err != nil {
+			return fmt.Errorf("batch create messages: %w", err)
 		}
 	}
 
 	return nil
+}
+
+// createBatchWithDuplicateCheck 使用分佈式鎖保證併發安全的批次創建
+func (r *PlayerMessageRepository) createBatchWithDuplicateCheck(
+	ctx context.Context,
+	messages []*entity.PlayerMessage,
+) error {
+	if len(messages) == 0 {
+		return nil
+	}
+
+	// 按 player_id + campaign_id 分組
+	groups := make(map[playerCampaignKey][]*entity.PlayerMessage)
+	for _, msg := range messages {
+		key := playerCampaignKey{
+			PlayerID:   msg.PlayerID,
+			CampaignID: msg.CampaignID,
+		}
+		groups[key] = append(groups[key], msg)
+	}
+
+	// 併發處理每個組合，使用分佈式鎖保護
+	errChan := make(chan error, len(groups))
+	var wg sync.WaitGroup
+
+	for key, groupMessages := range groups {
+		wg.Add(1)
+		go func(k playerCampaignKey, msgs []*entity.PlayerMessage) {
+			defer wg.Done()
+
+			// 使用分佈式鎖保護該組合
+			mutexKey := fmt.Sprintf(constants.PlayerMessageBatchMutexKey, k.PlayerID, k.CampaignID)
+
+			err := r.executeWithBatchDistributedLock(ctx, mutexKey, func() error {
+				return r.processSingleGroupWithTransaction(ctx, msgs, k)
+			})
+
+			errChan <- err
+		}(key, groupMessages)
+	}
+
+	// 等待所有goroutine完成
+	wg.Wait()
+	close(errChan)
+
+	// 收集錯誤
+	var errors []error
+	for err := range errChan {
+		if err != nil {
+			errors = append(errors, err)
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf(
+			"batch create failed with %d errors, first error: %w",
+			len(errors),
+			errors[0],
+		)
+	}
+
+	return nil
+}
+
+// executeWithBatchDistributedLock 為批次操作執行分佈式鎖
+func (r *PlayerMessageRepository) executeWithBatchDistributedLock(
+	ctx context.Context,
+	mutexKey string,
+	fn func() error,
+) error {
+	// 如果沒有 redisManager（如 migrate 場景），直接執行
+	if r.redisManager == nil {
+		return fn()
+	}
+
+	mutex, err := r.redisManager.GetMutexWithOption(mutexKey,
+		redsync.WithExpiry(15*time.Second),           // 批次操作可能需要更長時間
+		redsync.WithTries(5),                         // 批次操作重試次數更多
+		redsync.WithRetryDelay(300*time.Millisecond), // 重試間隔稍長
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create batch mutex %s: %w", mutexKey, err)
+	}
+
+	if err = mutex.Lock(); err != nil {
+		return fmt.Errorf("failed to acquire batch lock %s: %w", mutexKey, err)
+	}
+
+	defer func() {
+		ok, unlockErr := mutex.Unlock()
+		if !ok || unlockErr != nil {
+			// 這裡應該使用 logger，但為了保持一致性，暫時使用 fmt
+			fmt.Printf(
+				"Failed to unlock batch mutex: key=%s, success=%v, err=%v\n",
+				mutexKey,
+				ok,
+				unlockErr,
+			)
+		}
+	}()
+
+	return fn()
+}
+
+// processSingleGroupWithTransaction 在分佈式鎖保護下處理單個組合的批次插入
+func (r *PlayerMessageRepository) processSingleGroupWithTransaction(
+	ctx context.Context,
+	messages []*entity.PlayerMessage,
+	key playerCampaignKey,
+) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 檢查是否已存在
+		var existingCount int64
+		err := tx.Model(&models.PlayerMessage{}).
+			Where("player_id = ? AND campaign_id = ?", key.PlayerID, key.CampaignID).
+			Count(&existingCount).Error
+
+		if err != nil {
+			return fmt.Errorf("check existence for player %d campaign %d: %w",
+				key.PlayerID, key.CampaignID, err)
+		}
+
+		// 如果已存在，跳過
+		if existingCount > 0 {
+			return nil
+		}
+
+		// 創建該組的所有訊息
+		for _, msg := range messages {
+			messageModel := &models.PlayerMessage{
+				GlobalPlayerID: msg.GlobalPlayerID,
+				PlayerID:       msg.PlayerID,
+				CampaignID:     msg.CampaignID,
+				IsRead:         msg.IsRead,
+				CreatedAt:      msg.CreatedAt,
+				UpdatedAt:      msg.UpdatedAt,
+			}
+
+			if err := tx.Create(messageModel).Error; err != nil {
+				return fmt.Errorf("create message for player %d campaign %d: %w",
+					msg.PlayerID, msg.CampaignID, err)
+			}
+
+			// 更新原始 entity 的 ID
+			msg.ID = messageModel.ID
+		}
+
+		return nil
+	})
 }
 
 // CheckMessageExistsBatch 批次檢查訊息是否存在

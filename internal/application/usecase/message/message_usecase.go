@@ -1179,7 +1179,7 @@ func (u *MessageUseCase) SendAutoNotification(
 
 	// 檢查是否發送站內信
 	if notificationType.HasInApp() {
-		// 創建玩家訊息記錄
+		// 創建玩家訊息記錄，使用時間窗口防重複（5分鐘）
 		playerMessage := &entity.PlayerMessage{
 			PlayerID:       player.ID,
 			GlobalPlayerID: req.GlobalPlayerID,
@@ -1189,13 +1189,30 @@ func (u *MessageUseCase) SendAutoNotification(
 			UpdatedAt:      time.Now(),
 		}
 
-		if err = u.playerMessageRepo.Create(ctx, playerMessage); err != nil {
+		if err = u.playerMessageRepo.CreateAutoNotification(ctx, playerMessage, 5); err != nil {
+			// 檢查是否為時間窗口重複錯誤
+			if strings.Contains(err.Error(), "duplicate auto notification within") {
+				u.logger.WarnWithContext(ctx, "Auto notification skipped due to time window",
+					u.logger.String("global_player_id", req.GlobalPlayerID),
+					u.logger.UInt64("campaign_id", campaign.ID),
+					u.logger.Error("error", err),
+				)
+				return &dto.SendAutoNotificationResponse{
+					PlayerID:    req.GlobalPlayerID,
+					Category:    req.Category,
+					Item:        req.Item,
+					TriggerType: req.TriggerType,
+					Status:      "skipped",
+					Message:     "duplicate notification within time window",
+				}, nil
+			}
+
 			u.logger.ErrorWithContext(ctx, "Failed to create player message",
 				u.logger.Error("error", err),
 				u.logger.String("global_player_id", req.GlobalPlayerID),
 				u.logger.UInt64("campaign_id", campaign.ID),
 			)
-			// 站內信創建失敗，返回錯誤
+			// 其他創建失敗錯誤
 			u.tracingService.RecordSpanError(span, err)
 			return &dto.SendAutoNotificationResponse{
 				PlayerID:    req.GlobalPlayerID,
@@ -1206,7 +1223,7 @@ func (u *MessageUseCase) SendAutoNotification(
 				Message:     "failed to create in-app message",
 			}, nil
 		}
-		
+
 		sentChannels = append(sentChannels, "in_app")
 		u.logger.InfoWithContext(ctx, "Auto notification in-app message sent",
 			u.logger.String("global_player_id", req.GlobalPlayerID),

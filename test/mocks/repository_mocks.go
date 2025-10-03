@@ -465,6 +465,25 @@ func (m *PlayerMessageRepositoryMock) CheckMessageExists(
 	return args.Bool(0), args.Error(1)
 }
 
+func (m *PlayerMessageRepositoryMock) CheckAutoMessageExists(
+	ctx context.Context,
+	globalPlayerID string,
+	campaignID uint64,
+	withinMinutes int,
+) (bool, error) {
+	args := m.Called(ctx, globalPlayerID, campaignID, withinMinutes)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *PlayerMessageRepositoryMock) CreateAutoNotification(
+	ctx context.Context,
+	message *entity.PlayerMessage,
+	timeWindowMinutes int,
+) error {
+	args := m.Called(ctx, message, timeWindowMinutes)
+	return args.Error(0)
+}
+
 func (m *PlayerMessageRepositoryMock) Create(
 	ctx context.Context,
 	message *entity.PlayerMessage,

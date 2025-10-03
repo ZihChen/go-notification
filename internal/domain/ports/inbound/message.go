@@ -32,5 +32,8 @@ type MessageUseCase interface {
 	ProcessPlayer(ctx context.Context, globalPlayerID string) error
 	ProcessScheduledCampaigns(ctx context.Context) error
 	SendCampaignToPlayersAsync(ctx context.Context, campaignID uint64) error
-	SendAutoNotification(ctx context.Context, req *dto.SendAutoNotificationRequest) (*dto.SendAutoNotificationResponse, error)
+	SendAutoNotification(
+		ctx context.Context,
+		req *dto.SendAutoNotificationRequest,
+	) (*dto.SendAutoNotificationResponse, error)
 }

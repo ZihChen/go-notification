@@ -58,7 +58,7 @@ var baseSet = wire.NewSet(
 	managerRepo.NewManagerRepository,
 	messageRepo.NewMessageCampaignRepository,
 	messageRepo.NewCampaignTargetRepository,
-	messageRepo.NewPlayerMessageRepository,
+	providePlayerMessageRepository,
 	playerRepo.NewLevelRepository,
 	playerRepo.NewTagRepository,
 	playerRepo.NewPlayerTagRepository,
@@ -129,6 +129,16 @@ func provideWorkerServer(cfg *config.Config, logger infrastructure.Logger) (*asy
 	return queue.NewWorkerServer(cfg, logger)
 }
 
+// 提供 PlayerMessageRepository
+func providePlayerMessageRepository(db *gorm.DB, redisManager *redisCache.Manager) repository.PlayerMessageRepository {
+	return messageRepo.NewPlayerMessageRepository(db, redisManager)
+}
+
+// 提供 PlayerMessageRepository (migrate 專用，不需要 redis)
+func provideMigratePlayerMessageRepository(db *gorm.DB) repository.PlayerMessageRepository {
+	return messageRepo.NewPlayerMessageRepository(db, nil)
+}
+
 // InitializeConsumer 初始化 Consumer 服務的 KDS 服務 (已廢棄)
 func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, redisManager *redisCache.Manager) (*kds.KDSService, error) {
 	wire.Build(
@@ -179,11 +189,12 @@ func InitializeMigrateHandler(cfg *config.Config, logger infrastructure.Logger, 
 	wire.Build(
 		// 需要額外的 legacy DB 連接
 		provideLegacyDB,
+		// 為 migrate 提供一個不需要 redis 的版本
+		provideMigratePlayerMessageRepository,
 		// 基礎設施層 (使用傳入的 db 作為目標資料庫)
 		merchantRepo.NewMerchantRepository,
 		playerRepo.NewPlayerRepository,
 		messageRepo.NewMessageCampaignRepository,
-		messageRepo.NewPlayerMessageRepository,
 		merchantRepo.NewPushKeyRepository,
 		providePushNotificationService,
 		// Use case 層
