@@ -27,132 +27,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	jobport "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/job"
 	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
+	"github.com/jvdiamondtech/ms-notification-cat/test/mocks"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
-// Mock MessageUseCase
-type MockMessageUseCase struct {
-	mock.Mock
-}
-
-func (m *MockMessageUseCase) CreateMessageCampaign(
-	ctx context.Context,
-	campaign *dto.CreateMessageCampaignRequest,
-) error {
-	args := m.Called(ctx, campaign)
-	return args.Error(0)
-}
-
-func (m *MockMessageUseCase) UpdateMessageCampaign(
-	ctx context.Context,
-	campaign *dto.UpdateMessageCampaignRequest,
-) error {
-	args := m.Called(ctx, campaign)
-	return args.Error(0)
-}
-
-func (m *MockMessageUseCase) DeleteMessageCampaign(ctx context.Context, globalID string) error {
-	args := m.Called(ctx, globalID)
-	return args.Error(0)
-}
-
-func (m *MockMessageUseCase) GetMessageCampaign(
-	ctx context.Context,
-	globalID string,
-) (*dto.MessageCampaignResponse, error) {
-	args := m.Called(ctx, globalID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.MessageCampaignResponse), args.Error(1)
-}
-
-func (m *MockMessageUseCase) ListMessageCampaigns(
-	ctx context.Context,
-	req *dto.ListMessageCampaignsRequest,
-) (*dto.MessageCampaignListResponse, error) {
-	args := m.Called(ctx, req)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.MessageCampaignListResponse), args.Error(1)
-}
-
-func (m *MockMessageUseCase) GetMerchantAutoSettings(
-	ctx context.Context,
-	globalMerchantID string,
-) (*dto.MerchantAutoSettingsResponse, error) {
-	args := m.Called(ctx, globalMerchantID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.MerchantAutoSettingsResponse), args.Error(1)
-}
-
-func (m *MockMessageUseCase) CreateOrUpdateMerchantAutoSettings(
-	ctx context.Context,
-	req *dto.MerchantAutoSettingsRequest,
-) (*dto.AutoSettingsOperationResponse, error) {
-	args := m.Called(ctx, req)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.AutoSettingsOperationResponse), args.Error(1)
-}
-
-func (m *MockMessageUseCase) GetPlayerMessages(
-	ctx context.Context,
-	globalPlayerID string,
-	page, pageSize int,
-) (*dto.MessageListResponse, error) {
-	args := m.Called(ctx, globalPlayerID, page, pageSize)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.MessageListResponse), args.Error(1)
-}
-
-func (m *MockMessageUseCase) MarkMessageAsRead(
-	ctx context.Context,
-	globalPlayerID string,
-	messageID uint64,
-) error {
-	args := m.Called(ctx, globalPlayerID, messageID)
-	return args.Error(0)
-}
-
-func (m *MockMessageUseCase) ProcessScheduledCampaigns(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
-
-func (m *MockMessageUseCase) SendCampaignToPlayers(ctx context.Context, campaignID uint64) error {
-	args := m.Called(ctx, campaignID)
-	return args.Error(0)
-}
-
-func (m *MockMessageUseCase) SendCampaignToPlayersAsync(
-	ctx context.Context,
-	campaignID uint64,
-) error {
-	args := m.Called(ctx, campaignID)
-	return args.Error(0)
-}
-
-func (m *MockMessageUseCase) ProcessPlayer(ctx context.Context, globalPlayerID string) error {
-	args := m.Called(ctx, globalPlayerID)
-	return args.Error(0)
-}
-
 // Test helper functions
-func createMockDependencies(t *testing.T) (*MockMessageUseCase, *helper.MockLogger) {
-	messageUseCase := new(MockMessageUseCase)
+func createMockDependencies(t *testing.T) (*mocks.MessageUseCaseMock, *helper.MockLogger) {
+	messageUseCase := mocks.NewMessageUseCaseMock(t)
 	logger := helper.NewMockLogger()
 	return messageUseCase, logger
 }
@@ -208,7 +93,7 @@ func TestMessageCampaignTriggerJob_Execute_Success(t *testing.T) {
 
 	// Verify
 	assert.NoError(t, err)
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 func TestMessageCampaignTriggerJob_Execute_Error(t *testing.T) {
@@ -228,7 +113,7 @@ func TestMessageCampaignTriggerJob_Execute_Error(t *testing.T) {
 	// Verify
 	assert.Error(t, err)
 	assert.Equal(t, expectedError, err)
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 func TestMessageCampaignTriggerJob_Execute_WithTimeout(t *testing.T) {
@@ -251,7 +136,7 @@ func TestMessageCampaignTriggerJob_Execute_WithTimeout(t *testing.T) {
 	// Verify
 	assert.NoError(t, err)
 	assert.True(t, duration < 5*time.Second, "Job should complete quickly")
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 func TestMessageCampaignTriggerJob_Execute_ContextCancellation(t *testing.T) {
@@ -272,7 +157,7 @@ func TestMessageCampaignTriggerJob_Execute_ContextCancellation(t *testing.T) {
 	// Verify
 	assert.Error(t, err)
 	assert.Equal(t, context.Canceled, err)
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 // ============================================================================
@@ -411,7 +296,7 @@ func TestMessageCampaignTriggerJob_FullWorkflow(t *testing.T) {
 	// Verify
 	assert.NoError(t, err)
 	assert.True(t, duration < 1*time.Second, "Job should execute quickly in test")
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 func TestMessageCampaignTriggerJob_MultipleExecutions(t *testing.T) {
@@ -431,7 +316,7 @@ func TestMessageCampaignTriggerJob_MultipleExecutions(t *testing.T) {
 	}
 
 	// Verify
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 // ============================================================================
@@ -458,7 +343,7 @@ func TestMessageCampaignTriggerJob_Execute_PanicRecovery(t *testing.T) {
 	// Verify
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "panic")
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 // ============================================================================

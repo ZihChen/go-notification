@@ -27,7 +27,6 @@ import (
 	"testing"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/job"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	jobport "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/job"
@@ -41,116 +40,6 @@ import (
 // Mock ScheduledJob
 type MockScheduledJob struct {
 	mock.Mock
-}
-
-// Mock MessageUseCase (簡化版，只需要構造 MessageCampaignTriggerJob)
-type MockMessageUseCase struct {
-	mock.Mock
-}
-
-func (m *MockMessageUseCase) ProcessScheduledCampaigns(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
-
-func (m *MockMessageUseCase) ProcessPlayer(ctx context.Context, globalPlayerID string) error {
-	args := m.Called(ctx, globalPlayerID)
-	return args.Error(0)
-}
-
-// CompleteMessageUseCaseMock - 完整實現 MessageUseCase 介面但方法都是空實現
-type CompleteMessageUseCaseMock struct{}
-
-func (m *CompleteMessageUseCaseMock) CreateMessageCampaign(
-	ctx context.Context,
-	campaign *dto.CreateMessageCampaignRequest,
-) error {
-	return nil
-}
-
-func (m *CompleteMessageUseCaseMock) UpdateMessageCampaign(
-	ctx context.Context,
-	campaign *dto.UpdateMessageCampaignRequest,
-) error {
-	return nil
-}
-
-func (m *CompleteMessageUseCaseMock) DeleteMessageCampaign(
-	ctx context.Context,
-	globalID string,
-) error {
-	return nil
-}
-
-func (m *CompleteMessageUseCaseMock) GetMessageCampaign(
-	ctx context.Context,
-	globalID string,
-) (*dto.MessageCampaignResponse, error) {
-	return nil, nil
-}
-
-func (m *CompleteMessageUseCaseMock) ListMessageCampaigns(
-	ctx context.Context,
-	req *dto.ListMessageCampaignsRequest,
-) (*dto.MessageCampaignListResponse, error) {
-	return nil, nil
-}
-
-func (m *CompleteMessageUseCaseMock) GetMerchantAutoSettings(
-	ctx context.Context,
-	globalMerchantID string,
-) (*dto.MerchantAutoSettingsResponse, error) {
-	return nil, nil
-}
-
-func (m *CompleteMessageUseCaseMock) CreateOrUpdateMerchantAutoSettings(
-	ctx context.Context,
-	req *dto.MerchantAutoSettingsRequest,
-) (*dto.AutoSettingsOperationResponse, error) {
-	return nil, nil
-}
-
-func (m *CompleteMessageUseCaseMock) GetPlayerMessages(
-	ctx context.Context,
-	globalPlayerID string,
-	page, pageSize int,
-) (*dto.MessageListResponse, error) {
-	return nil, nil
-}
-
-func (m *CompleteMessageUseCaseMock) MarkMessageAsRead(
-	ctx context.Context,
-	globalPlayerID string,
-	messageID uint64,
-) error {
-	return nil
-}
-
-func (m *CompleteMessageUseCaseMock) ProcessScheduledCampaigns(
-	ctx context.Context,
-) error {
-	return nil
-}
-
-func (m *CompleteMessageUseCaseMock) SendCampaignToPlayers(
-	ctx context.Context,
-	campaignID uint64,
-) error {
-	return nil
-}
-
-func (m *CompleteMessageUseCaseMock) SendCampaignToPlayersAsync(
-	ctx context.Context,
-	campaignID uint64,
-) error {
-	return nil
-}
-
-func (m *CompleteMessageUseCaseMock) ProcessPlayer(
-	ctx context.Context,
-	globalPlayerID string,
-) error {
-	return nil
 }
 
 func (m *MockScheduledJob) Execute(ctx context.Context) error {
@@ -178,7 +67,7 @@ func createMockDependencies(t *testing.T) (*helper.MockLogger, *MockScheduledJob
 func createTestJobRegistry(t *testing.T, jobs []jobport.ScheduledJob) *job.Registry {
 	// 創建一個測試用的 registry
 	// 創建一個最小實現的 MockMessageUseCase
-	mockMessageUseCase := &CompleteMessageUseCaseMock{}
+	mockMessageUseCase := mocks.NewMessageUseCaseMock(t)
 	mockLogger := new(helper.MockLogger)
 	campaignTriggerJob := job.NewMessageCampaignTriggerJob(mockMessageUseCase, mockLogger)
 

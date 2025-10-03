@@ -31,7 +31,6 @@ package api
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -45,290 +44,22 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
+	"github.com/jvdiamondtech/ms-notification-cat/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-// Mock UseCase interfaces
-type MockMerchantUseCase struct {
-	mock.Mock
-}
-
-func (m *MockMerchantUseCase) SyncMerchant(ctx context.Context, data *event.MerchantEvent) error {
-	args := m.Called(ctx, data)
-	return args.Error(0)
-}
-
-func (m *MockMerchantUseCase) GetMerchantByID(
-	ctx context.Context,
-	id uint64,
-) (*dto.MerchantResponse, error) {
-	args := m.Called(ctx, id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.MerchantResponse), args.Error(1)
-}
-
-func (m *MockMerchantUseCase) GetMerchantByGlobalID(
-	ctx context.Context,
-	globalID string,
-) (*dto.MerchantResponse, error) {
-	args := m.Called(ctx, globalID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.MerchantResponse), args.Error(1)
-}
-
-type MockPlayerUseCase struct {
-	mock.Mock
-}
-
-func (m *MockPlayerUseCase) SyncPlayer(ctx context.Context, data *event.PlayerEvent) error {
-	args := m.Called(ctx, data)
-	return args.Error(0)
-}
-
-func (m *MockPlayerUseCase) GetPlayerByID(
-	ctx context.Context,
-	id uint64,
-) (*dto.PlayerResponse, error) {
-	args := m.Called(ctx, id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.PlayerResponse), args.Error(1)
-}
-
-func (m *MockPlayerUseCase) GetPlayerByGlobalID(
-	ctx context.Context,
-	globalID string,
-) (*dto.PlayerResponse, error) {
-	args := m.Called(ctx, globalID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.PlayerResponse), args.Error(1)
-}
-
-func (m *MockPlayerUseCase) UpdatePlayerLastActive(ctx context.Context, id uint64) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-
-type MockManagerUseCase struct {
-	mock.Mock
-}
-
-func (m *MockManagerUseCase) SyncManager(ctx context.Context, data *event.ManagerEvent) error {
-	args := m.Called(ctx, data)
-	return args.Error(0)
-}
-
-func (m *MockManagerUseCase) GetManagerByID(
-	ctx context.Context,
-	id uint64,
-) (*dto.ManagerResponse, error) {
-	args := m.Called(ctx, id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.ManagerResponse), args.Error(1)
-}
-
-func (m *MockManagerUseCase) GetManagerByGlobalID(
-	ctx context.Context,
-	globalID string,
-) (*dto.ManagerResponse, error) {
-	args := m.Called(ctx, globalID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.ManagerResponse), args.Error(1)
-}
-
-type MockMessageUseCase struct {
-	mock.Mock
-}
-
-func (m *MockMessageUseCase) CreateMessageCampaign(
-	ctx context.Context,
-	campaign *dto.CreateMessageCampaignRequest,
-) error {
-	args := m.Called(ctx, campaign)
-	return args.Error(0)
-}
-
-func (m *MockMessageUseCase) UpdateMessageCampaign(
-	ctx context.Context,
-	campaign *dto.UpdateMessageCampaignRequest,
-) error {
-	args := m.Called(ctx, campaign)
-	return args.Error(0)
-}
-
-func (m *MockMessageUseCase) DeleteMessageCampaign(ctx context.Context, globalID string) error {
-	args := m.Called(ctx, globalID)
-	return args.Error(0)
-}
-
-func (m *MockMessageUseCase) GetMessageCampaign(
-	ctx context.Context,
-	globalID string,
-) (*dto.MessageCampaignResponse, error) {
-	args := m.Called(ctx, globalID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.MessageCampaignResponse), args.Error(1)
-}
-
-func (m *MockMessageUseCase) ListMessageCampaigns(
-	ctx context.Context,
-	req *dto.ListMessageCampaignsRequest,
-) (*dto.MessageCampaignListResponse, error) {
-	args := m.Called(ctx, req)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.MessageCampaignListResponse), args.Error(1)
-}
-
-func (m *MockMessageUseCase) GetPlayerMessages(
-	ctx context.Context,
-	globalPlayerID string,
-	page, pageSize int,
-) (*dto.MessageListResponse, error) {
-	args := m.Called(ctx, globalPlayerID, page, pageSize)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.MessageListResponse), args.Error(1)
-}
-
-func (m *MockMessageUseCase) MarkMessageAsRead(
-	ctx context.Context,
-	globalPlayerID string,
-	messageID uint64,
-) error {
-	args := m.Called(ctx, globalPlayerID, messageID)
-	return args.Error(0)
-}
-
-func (m *MockMessageUseCase) ProcessScheduledCampaigns(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
-
-func (m *MockMessageUseCase) SendCampaignToPlayers(ctx context.Context, campaignID uint64) error {
-	args := m.Called(ctx, campaignID)
-	return args.Error(0)
-}
-
-func (m *MockMessageUseCase) SendCampaignToPlayersAsync(
-	ctx context.Context,
-	campaignID uint64,
-) error {
-	args := m.Called(ctx, campaignID)
-	return args.Error(0)
-}
-
-func (m *MockMessageUseCase) ProcessPlayer(ctx context.Context, globalPlayerID string) error {
-	args := m.Called(ctx, globalPlayerID)
-	return args.Error(0)
-}
-
-func (m *MockMessageUseCase) GetMerchantAutoSettings(
-	ctx context.Context,
-	globalMerchantID string,
-) (*dto.MerchantAutoSettingsResponse, error) {
-	args := m.Called(ctx, globalMerchantID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.MerchantAutoSettingsResponse), args.Error(1)
-}
-
-func (m *MockMessageUseCase) CreateOrUpdateMerchantAutoSettings(
-	ctx context.Context,
-	req *dto.MerchantAutoSettingsRequest,
-) (*dto.AutoSettingsOperationResponse, error) {
-	args := m.Called(ctx, req)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.AutoSettingsOperationResponse), args.Error(1)
-}
-
-// MockPlayerLevelUseCase for testing
-type MockPlayerLevelUseCase struct {
-	mock.Mock
-}
-
-func (m *MockPlayerLevelUseCase) SyncPlayerLevel(
-	ctx context.Context,
-	data *event.IdentityPlayerLevelSyncEvent,
-) error {
-	args := m.Called(ctx, data)
-	return args.Error(0)
-}
-
-func (m *MockPlayerLevelUseCase) GetLevelsByMerchantID(
-	ctx context.Context,
-	merchantID uint64,
-) (*dto.LevelListResponse, error) {
-	args := m.Called(ctx, merchantID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.LevelListResponse), args.Error(1)
-}
-
-// MockPlayerTagUseCase for testing
-type MockPlayerTagUseCase struct {
-	mock.Mock
-}
-
-func (m *MockPlayerTagUseCase) SyncPlayerTags(
-	ctx context.Context,
-	data *event.IdentityPlayerTagSyncEvent,
-) error {
-	args := m.Called(ctx, data)
-	return args.Error(0)
-}
-
-func (m *MockPlayerTagUseCase) SyncTag(
-	ctx context.Context,
-	data *event.IdentityTagSyncEvent,
-) error {
-	args := m.Called(ctx, data)
-	return args.Error(0)
-}
-
-func (m *MockPlayerTagUseCase) GetTagsByMerchantID(
-	ctx context.Context,
-	merchantID uint64,
-) (*dto.TagListResponse, error) {
-	args := m.Called(ctx, merchantID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.TagListResponse), args.Error(1)
-}
-
 // Test helper functions
 func createMockDependencies(
 	t *testing.T,
-) (*MockMerchantUseCase, *MockPlayerUseCase, *MockManagerUseCase, *MockMessageUseCase, *helper.MockLogger) {
-	merchantUseCase := new(MockMerchantUseCase)
-	playerUseCase := new(MockPlayerUseCase)
-	managerUseCase := new(MockManagerUseCase)
-	messageUseCase := new(MockMessageUseCase)
+) (*mocks.MerchantUseCaseMock, *mocks.PlayerUseCaseMock, *mocks.ManagerUseCaseMock, *mocks.MessageUseCaseMock, *helper.MockLogger) {
+	merchantUseCase := mocks.NewMerchantUseCaseMock(t)
+	playerUseCase := mocks.NewPlayerUseCaseMock(t)
+	managerUseCase := mocks.NewManagerUseCaseMock(t)
+	messageUseCase := mocks.NewMessageUseCaseMock(t)
 	logger := helper.NewMockLogger()
 	return merchantUseCase, playerUseCase, managerUseCase, messageUseCase, logger
 }
@@ -349,8 +80,8 @@ func createTestHandler(
 	logger infrastructure.Logger,
 ) *HTTPHandler {
 	// 創建 mock level 和 tag use cases
-	levelUseCase := &MockPlayerLevelUseCase{}
-	tagUseCase := &MockPlayerTagUseCase{}
+	levelUseCase := mocks.NewPlayerLevelUseCaseMock(nil)
+	tagUseCase := mocks.NewPlayerTagUseCaseMock(nil)
 	return NewHTTPHandler(
 		merchantUseCase,
 		playerUseCase,
@@ -564,7 +295,7 @@ func TestHTTPHandler_HealthCheck_Success(t *testing.T) {
 	database := services["database"].(map[string]interface{})
 	assert.Equal(t, "healthy", database["status"])
 
-	merchantUseCase.AssertExpectations(t)
+	merchantUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_HealthCheck_DatabaseUnhealthy(t *testing.T) {
@@ -602,7 +333,7 @@ func TestHTTPHandler_HealthCheck_DatabaseUnhealthy(t *testing.T) {
 	assert.Equal(t, "unhealthy", response["status"])
 	assert.Equal(t, "database service unavailable", response["error"])
 
-	merchantUseCase.AssertExpectations(t)
+	merchantUseCase.AssertExpectations()
 }
 
 // ============================================================================
@@ -651,7 +382,7 @@ func TestHTTPHandler_GetMerchantByID_Success(t *testing.T) {
 	// 驗證錯誤處理中間件設置了 header
 	assert.Equal(t, "true", w.Header().Get("X-Response-Sent"))
 
-	merchantUseCase.AssertExpectations(t)
+	merchantUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_GetMerchantByID_InvalidID(t *testing.T) {
@@ -696,7 +427,7 @@ func TestHTTPHandler_GetMerchantByID_NotFound(t *testing.T) {
 	errorInfo := response["error"].(map[string]interface{})
 	assert.Equal(t, "merchant not found", errorInfo["message"])
 
-	merchantUseCase.AssertExpectations(t)
+	merchantUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_GetMerchantByID_InternalServerError(t *testing.T) {
@@ -739,7 +470,7 @@ func TestHTTPHandler_GetMerchantByGlobalID_Success(t *testing.T) {
 	data := response["data"].(map[string]interface{})
 	assert.Equal(t, merchantData.GlobalID, data["global_id"])
 
-	merchantUseCase.AssertExpectations(t)
+	merchantUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_GetMerchantByGlobalID_EmptyID(t *testing.T) {
@@ -809,7 +540,7 @@ func TestHTTPHandler_GetPlayerByID_Success(t *testing.T) {
 	assert.Equal(t, playerData.GlobalID, data["global_id"])
 	assert.Equal(t, playerData.Username, data["username"])
 
-	playerUseCase.AssertExpectations(t)
+	playerUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_GetPlayerByID_InvalidID(t *testing.T) {
@@ -885,7 +616,7 @@ func TestHTTPHandler_GetPlayerByGlobalID_Success(t *testing.T) {
 	data := response["data"].(map[string]interface{})
 	assert.Equal(t, playerData.GlobalID, data["global_id"])
 
-	playerUseCase.AssertExpectations(t)
+	playerUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_UpdatePlayerLastActive_Success(t *testing.T) {
@@ -920,7 +651,7 @@ func TestHTTPHandler_UpdatePlayerLastActive_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, true, response["success"])
 
-	playerUseCase.AssertExpectations(t)
+	playerUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_UpdatePlayerLastActive_InvalidID(t *testing.T) {
@@ -969,7 +700,7 @@ func TestHTTPHandler_GetManagerByID_Success(t *testing.T) {
 	assert.Equal(t, managerData.GlobalID, data["global_id"])
 	assert.Equal(t, managerData.Name, data["name"])
 
-	managerUseCase.AssertExpectations(t)
+	managerUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_GetManagerByID_InvalidID(t *testing.T) {
@@ -1012,7 +743,7 @@ func TestHTTPHandler_GetManagerByGlobalID_Success(t *testing.T) {
 	data := response["data"].(map[string]interface{})
 	assert.Equal(t, managerData.GlobalID, data["global_id"])
 
-	managerUseCase.AssertExpectations(t)
+	managerUseCase.AssertExpectations()
 }
 
 // ============================================================================
@@ -1059,7 +790,7 @@ func TestHTTPHandler_CreateMessageCampaign_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, true, response["success"])
 
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_CreateMessageCampaign_InvalidJSON(t *testing.T) {
@@ -1138,7 +869,7 @@ func TestHTTPHandler_CreateMessageCampaign_UseCaseError(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, false, response["success"])
 
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_UpdateMessageCampaign_Success(t *testing.T) {
@@ -1180,7 +911,7 @@ func TestHTTPHandler_UpdateMessageCampaign_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, true, response["success"])
 
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_UpdateMessageCampaign_EmptyID(t *testing.T) {
@@ -1247,7 +978,7 @@ func TestHTTPHandler_UpdateMessageCampaign_NotFound(t *testing.T) {
 	// Verify
 	assert.Equal(t, http.StatusNotFound, w.Code)
 
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_DeleteMessageCampaign_Success(t *testing.T) {
@@ -1282,7 +1013,7 @@ func TestHTTPHandler_DeleteMessageCampaign_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, true, response["success"])
 
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_DeleteMessageCampaign_NotFound(t *testing.T) {
@@ -1312,7 +1043,7 @@ func TestHTTPHandler_DeleteMessageCampaign_NotFound(t *testing.T) {
 	// Verify
 	assert.Equal(t, http.StatusNotFound, w.Code)
 
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_GetMessageCampaign_Success(t *testing.T) {
@@ -1353,7 +1084,7 @@ func TestHTTPHandler_GetMessageCampaign_Success(t *testing.T) {
 	assert.Equal(t, campaignData.GlobalID, data["global_id"])
 	assert.Equal(t, campaignData.Title, data["title"])
 
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_GetMessageCampaign_NotFound(t *testing.T) {
@@ -1383,7 +1114,7 @@ func TestHTTPHandler_GetMessageCampaign_NotFound(t *testing.T) {
 	// Verify
 	assert.Equal(t, http.StatusNotFound, w.Code)
 
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_ListMessageCampaigns_Success(t *testing.T) {
@@ -1428,7 +1159,7 @@ func TestHTTPHandler_ListMessageCampaigns_Success(t *testing.T) {
 	assert.Contains(t, response, "data")
 	assert.Contains(t, response, "meta")
 
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_ListMessageCampaigns_WithDefaults(t *testing.T) {
@@ -1466,7 +1197,7 @@ func TestHTTPHandler_ListMessageCampaigns_WithDefaults(t *testing.T) {
 	// Verify
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 // ============================================================================
@@ -1511,7 +1242,7 @@ func TestHTTPHandler_GetPlayerMessages_Success(t *testing.T) {
 	assert.Equal(t, true, response["success"])
 	assert.Contains(t, response, "data")
 
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_GetPlayerMessages_EmptyPlayerID(t *testing.T) {
@@ -1567,7 +1298,7 @@ func TestHTTPHandler_GetPlayerMessages_WithDefaults(t *testing.T) {
 	// Verify
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_MarkMessageAsRead_Success(t *testing.T) {
@@ -1605,7 +1336,7 @@ func TestHTTPHandler_MarkMessageAsRead_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, true, response["success"])
 
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_MarkMessageAsRead_InvalidMessageID(t *testing.T) {
@@ -1671,7 +1402,7 @@ func TestHTTPHandler_MarkMessageAsRead_NotFound(t *testing.T) {
 	// Verify
 	assert.Equal(t, http.StatusNotFound, w.Code)
 
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 // ============================================================================
@@ -1716,7 +1447,7 @@ func TestHTTPHandler_GetMerchantAutoSettings_Success(t *testing.T) {
 	assert.Equal(t, true, response["success"])
 	assert.Contains(t, response, "data")
 
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_GetMerchantAutoSettings_NotFound(t *testing.T) {
@@ -1750,7 +1481,7 @@ func TestHTTPHandler_GetMerchantAutoSettings_NotFound(t *testing.T) {
 	// Verify
 	assert.Equal(t, http.StatusNotFound, w.Code)
 
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_CreateOrUpdateMerchantAutoSettings_Create_Success(t *testing.T) {
@@ -1800,7 +1531,7 @@ func TestHTTPHandler_CreateOrUpdateMerchantAutoSettings_Create_Success(t *testin
 	assert.NoError(t, err)
 	assert.Equal(t, true, response["success"])
 
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_CreateOrUpdateMerchantAutoSettings_Update_Success(t *testing.T) {
@@ -1843,7 +1574,7 @@ func TestHTTPHandler_CreateOrUpdateMerchantAutoSettings_Update_Success(t *testin
 	// Verify
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	messageUseCase.AssertExpectations(t)
+	messageUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_CreateOrUpdateMerchantAutoSettings_EmptySettings(t *testing.T) {

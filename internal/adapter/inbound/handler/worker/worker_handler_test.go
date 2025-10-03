@@ -31,169 +31,16 @@ import (
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
 	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
+	"github.com/jvdiamondtech/ms-notification-cat/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.opentelemetry.io/otel/trace"
 )
-
-// Mock UseCase interfaces
-type MockMerchantUseCase struct {
-	mock.Mock
-}
-
-func (m *MockMerchantUseCase) SyncMerchant(ctx context.Context, data *event.MerchantEvent) error {
-	args := m.Called(ctx, data)
-	return args.Error(0)
-}
-
-func (m *MockMerchantUseCase) GetMerchantByID(
-	ctx context.Context,
-	id uint64,
-) (*dto.MerchantResponse, error) {
-	args := m.Called(ctx, id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.MerchantResponse), args.Error(1)
-}
-
-func (m *MockMerchantUseCase) GetMerchantByGlobalID(
-	ctx context.Context,
-	globalID string,
-) (*dto.MerchantResponse, error) {
-	args := m.Called(ctx, globalID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.MerchantResponse), args.Error(1)
-}
-
-type MockPlayerUseCase struct {
-	mock.Mock
-}
-
-func (m *MockPlayerUseCase) SyncPlayer(ctx context.Context, data *event.PlayerEvent) error {
-	args := m.Called(ctx, data)
-	return args.Error(0)
-}
-
-func (m *MockPlayerUseCase) GetPlayerByID(
-	ctx context.Context,
-	id uint64,
-) (*dto.PlayerResponse, error) {
-	args := m.Called(ctx, id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.PlayerResponse), args.Error(1)
-}
-
-func (m *MockPlayerUseCase) GetPlayerByGlobalID(
-	ctx context.Context,
-	globalID string,
-) (*dto.PlayerResponse, error) {
-	args := m.Called(ctx, globalID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.PlayerResponse), args.Error(1)
-}
-
-func (m *MockPlayerUseCase) UpdatePlayerLastActive(ctx context.Context, id uint64) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-
-type MockManagerUseCase struct {
-	mock.Mock
-}
-
-func (m *MockManagerUseCase) SyncManager(ctx context.Context, data *event.ManagerEvent) error {
-	args := m.Called(ctx, data)
-	return args.Error(0)
-}
-
-func (m *MockManagerUseCase) GetManagerByID(
-	ctx context.Context,
-	id uint64,
-) (*dto.ManagerResponse, error) {
-	args := m.Called(ctx, id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.ManagerResponse), args.Error(1)
-}
-
-func (m *MockManagerUseCase) GetManagerByGlobalID(
-	ctx context.Context,
-	globalID string,
-) (*dto.ManagerResponse, error) {
-	args := m.Called(ctx, globalID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.ManagerResponse), args.Error(1)
-}
-
-type MockPlayerLevelUseCase struct {
-	mock.Mock
-}
-
-func (m *MockPlayerLevelUseCase) SyncPlayerLevel(
-	ctx context.Context,
-	data *event.IdentityPlayerLevelSyncEvent,
-) error {
-	args := m.Called(ctx, data)
-	return args.Error(0)
-}
-
-func (m *MockPlayerLevelUseCase) GetLevelsByMerchantID(
-	ctx context.Context,
-	merchantID uint64,
-) (*dto.LevelListResponse, error) {
-	args := m.Called(ctx, merchantID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.LevelListResponse), args.Error(1)
-}
-
-type MockPlayerTagUseCase struct {
-	mock.Mock
-}
-
-func (m *MockPlayerTagUseCase) SyncPlayerTags(
-	ctx context.Context,
-	data *event.IdentityPlayerTagSyncEvent,
-) error {
-	args := m.Called(ctx, data)
-	return args.Error(0)
-}
-
-func (m *MockPlayerTagUseCase) SyncTag(
-	ctx context.Context,
-	data *event.IdentityTagSyncEvent,
-) error {
-	args := m.Called(ctx, data)
-	return args.Error(0)
-}
-
-func (m *MockPlayerTagUseCase) GetTagsByMerchantID(
-	ctx context.Context,
-	merchantID uint64,
-) (*dto.TagListResponse, error) {
-	args := m.Called(ctx, merchantID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*dto.TagListResponse), args.Error(1)
-}
 
 // Helper function for creating tasks
 func createMockTaskForHandler(taskType string, payload []byte) *asynq.Task {
@@ -201,104 +48,22 @@ func createMockTaskForHandler(taskType string, payload []byte) *asynq.Task {
 	return asynq.NewTask(taskType, payload)
 }
 
-// MockMessageUseCase Mock for MessageUseCase
-type MockMessageUseCase struct {
-	mock.Mock
-}
-
-func (m *MockMessageUseCase) ProcessPlayer(ctx context.Context, globalPlayerID string) error {
-	args := m.Called(ctx, globalPlayerID)
-	return args.Error(0)
-}
-
-// Additional methods to satisfy the interface (simplified implementations)
-func (m *MockMessageUseCase) CreateMessageCampaign(
-	ctx context.Context,
-	campaign *dto.CreateMessageCampaignRequest,
-) error {
-	return nil
-}
-
-func (m *MockMessageUseCase) UpdateMessageCampaign(
-	ctx context.Context,
-	campaign *dto.UpdateMessageCampaignRequest,
-) error {
-	return nil
-}
-func (m *MockMessageUseCase) DeleteMessageCampaign(ctx context.Context, globalID string) error {
-	return nil
-}
-
-func (m *MockMessageUseCase) GetMessageCampaign(
-	ctx context.Context,
-	globalID string,
-) (*dto.MessageCampaignResponse, error) {
-	return nil, nil
-}
-
-func (m *MockMessageUseCase) ListMessageCampaigns(
-	ctx context.Context,
-	req *dto.ListMessageCampaignsRequest,
-) (*dto.MessageCampaignListResponse, error) {
-	return nil, nil
-}
-
-func (m *MockMessageUseCase) GetMerchantAutoSettings(
-	ctx context.Context,
-	globalMerchantID string,
-) (*dto.MerchantAutoSettingsResponse, error) {
-	return nil, nil
-}
-
-func (m *MockMessageUseCase) CreateOrUpdateMerchantAutoSettings(
-	ctx context.Context,
-	req *dto.MerchantAutoSettingsRequest,
-) (*dto.AutoSettingsOperationResponse, error) {
-	return nil, nil
-}
-
-func (m *MockMessageUseCase) GetPlayerMessages(
-	ctx context.Context,
-	globalPlayerID string,
-	page, pageSize int,
-) (*dto.MessageListResponse, error) {
-	return nil, nil
-}
-
-func (m *MockMessageUseCase) MarkMessageAsRead(
-	ctx context.Context,
-	globalPlayerID string,
-	messageID uint64,
-) error {
-	return nil
-}
-func (m *MockMessageUseCase) ProcessScheduledCampaigns(ctx context.Context) error {
-	return nil
-}
-
-func (m *MockMessageUseCase) SendCampaignToPlayersAsync(
-	ctx context.Context,
-	campaignID uint64,
-) error {
-	return nil
-}
-
 // Test helper functions
 func createMockDependencies(t *testing.T) (
-	*MockMerchantUseCase,
-	*MockPlayerUseCase,
-	*MockManagerUseCase,
-	*MockPlayerLevelUseCase,
-	*MockPlayerTagUseCase,
-	*MockMessageUseCase,
+	*mocks.MerchantUseCaseMock,
+	*mocks.PlayerUseCaseMock,
+	*mocks.ManagerUseCaseMock,
+	*mocks.PlayerLevelUseCaseMock,
+	*mocks.PlayerTagUseCaseMock,
+	*mocks.MessageUseCaseMock,
 	*helper.MockLogger,
 ) {
-	merchantUseCase := new(MockMerchantUseCase)
-	playerUseCase := new(MockPlayerUseCase)
-	managerUseCase := new(MockManagerUseCase)
-	levelUseCase := new(MockPlayerLevelUseCase)
-	tagUseCase := new(MockPlayerTagUseCase)
-	messageUseCase := new(MockMessageUseCase)
+	merchantUseCase := mocks.NewMerchantUseCaseMock(t)
+	playerUseCase := mocks.NewPlayerUseCaseMock(t)
+	managerUseCase := mocks.NewManagerUseCaseMock(t)
+	levelUseCase := mocks.NewPlayerLevelUseCaseMock(t)
+	tagUseCase := mocks.NewPlayerTagUseCaseMock(t)
+	messageUseCase := mocks.NewMessageUseCaseMock(t)
 	logger := helper.NewMockLogger()
 	return merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, logger
 }
@@ -622,7 +387,7 @@ func TestWorkerHandler_HandleMerchantSync_Success(t *testing.T) {
 
 	// Verify
 	assert.NoError(t, err)
-	merchantUseCase.AssertExpectations(t)
+	merchantUseCase.AssertExpectations()
 }
 
 func TestWorkerHandler_HandleMerchantSync_InvalidJSON(t *testing.T) {
@@ -682,7 +447,7 @@ func TestWorkerHandler_HandleMerchantSync_SyncError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to sync merchant")
 	assert.Contains(t, err.Error(), "database connection failed")
-	merchantUseCase.AssertExpectations(t)
+	merchantUseCase.AssertExpectations()
 }
 
 // ============================================================================
@@ -718,8 +483,8 @@ func TestWorkerHandler_HandlePlayerSync_Success(t *testing.T) {
 
 	// Verify
 	assert.NoError(t, err)
-	playerUseCase.AssertExpectations(t)
-	messageUseCase.AssertExpectations(t)
+	playerUseCase.AssertExpectations()
+	messageUseCase.AssertExpectations()
 }
 
 func TestWorkerHandler_HandlePlayerSync_UnmarshalEventError(t *testing.T) {
@@ -783,7 +548,7 @@ func TestWorkerHandler_HandlePlayerSync_SyncError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to sync player")
 	assert.Contains(t, err.Error(), "player not found")
-	playerUseCase.AssertExpectations(t)
+	playerUseCase.AssertExpectations()
 }
 
 // ============================================================================
@@ -817,7 +582,7 @@ func TestWorkerHandler_HandleManagerSync_Success(t *testing.T) {
 
 	// Verify
 	assert.NoError(t, err)
-	managerUseCase.AssertExpectations(t)
+	managerUseCase.AssertExpectations()
 }
 
 func TestWorkerHandler_HandleManagerSync_SyncError(t *testing.T) {
@@ -851,7 +616,7 @@ func TestWorkerHandler_HandleManagerSync_SyncError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to sync manager")
 	assert.Contains(t, err.Error(), "permission denied")
-	managerUseCase.AssertExpectations(t)
+	managerUseCase.AssertExpectations()
 }
 
 // ============================================================================
@@ -885,7 +650,7 @@ func TestWorkerHandler_HandlePlayerLevelSync_Success(t *testing.T) {
 
 	// Verify
 	assert.NoError(t, err)
-	levelUseCase.AssertExpectations(t)
+	levelUseCase.AssertExpectations()
 }
 
 func TestWorkerHandler_HandlePlayerLevelSync_SyncError(t *testing.T) {
@@ -919,7 +684,7 @@ func TestWorkerHandler_HandlePlayerLevelSync_SyncError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to sync player level")
 	assert.Contains(t, err.Error(), "level already exists")
-	levelUseCase.AssertExpectations(t)
+	levelUseCase.AssertExpectations()
 }
 
 // ============================================================================
@@ -953,7 +718,7 @@ func TestWorkerHandler_HandlePlayerTagsSync_Success(t *testing.T) {
 
 	// Verify
 	assert.NoError(t, err)
-	tagUseCase.AssertExpectations(t)
+	tagUseCase.AssertExpectations()
 }
 
 func TestWorkerHandler_HandlePlayerTagsSync_SyncError(t *testing.T) {
@@ -987,7 +752,7 @@ func TestWorkerHandler_HandlePlayerTagsSync_SyncError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to sync player tags")
 	assert.Contains(t, err.Error(), "tag validation failed")
-	tagUseCase.AssertExpectations(t)
+	tagUseCase.AssertExpectations()
 }
 
 // ============================================================================
@@ -1021,7 +786,7 @@ func TestWorkerHandler_HandleTagSync_Success(t *testing.T) {
 
 	// Verify
 	assert.NoError(t, err)
-	tagUseCase.AssertExpectations(t)
+	tagUseCase.AssertExpectations()
 }
 
 func TestWorkerHandler_HandleTagSync_SyncError(t *testing.T) {
@@ -1055,7 +820,7 @@ func TestWorkerHandler_HandleTagSync_SyncError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to sync tag")
 	assert.Contains(t, err.Error(), "duplicate tag name")
-	tagUseCase.AssertExpectations(t)
+	tagUseCase.AssertExpectations()
 }
 
 // ============================================================================
