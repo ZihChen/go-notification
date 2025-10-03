@@ -70,4 +70,10 @@ func (r *APIRouter) RegisterRoutes(router *gin.Engine, authMiddleware gin.Handle
 		messages.GET("/player/:global_player_id", r.handler.GetPlayerMessages)
 		messages.PUT("/player/:global_player_id/:message_id/read", r.handler.MarkMessageAsRead)
 	}
+
+	// 系統自動推播
+	notifications := api.Group("/notifications")
+	{
+		notifications.POST("/auto-send", r.handler.SendAutoNotification)
+	}
 }

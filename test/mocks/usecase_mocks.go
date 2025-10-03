@@ -133,6 +133,17 @@ func (m *MessageUseCaseMock) CreateOrUpdateMerchantAutoSettings(
 	return args.Get(0).(*dto.AutoSettingsOperationResponse), args.Error(1)
 }
 
+func (m *MessageUseCaseMock) SendAutoNotification(
+	ctx context.Context,
+	req *dto.SendAutoNotificationRequest,
+) (*dto.SendAutoNotificationResponse, error) {
+	args := m.Called(ctx, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*dto.SendAutoNotificationResponse), args.Error(1)
+}
+
 func (m *MessageUseCaseMock) SetupSuccess() {
 	// Setup common success scenarios for MessageUseCase
 	m.On("CreateMessageCampaign", mock.Anything, mock.Anything).Return(nil)

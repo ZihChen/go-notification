@@ -121,6 +121,7 @@ type CampaignTarget struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
+
 // LoggerFiled 日誌欄位結構
 type LoggerFiled struct {
 	Key   string

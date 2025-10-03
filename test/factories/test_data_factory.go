@@ -301,3 +301,16 @@ func (f *TestDataFactory) CreateMerchant() *entity.Merchant {
 		UpdatedAt:        time.Now(),
 	}
 }
+
+// CreatePushKey 創建推播金鑰
+func (f *TestDataFactory) CreatePushKey() *entity.PushKey {
+	id := f.nextID()
+	return &entity.PushKey{
+		ID:               id,
+		GlobalMerchantID: fmt.Sprintf("merchant_%d", id),
+		MerchantID:       id,
+		Key:              fmt.Sprintf("test-push-api-key-%d", id),
+		CreatedAt:        time.Now(),
+		UpdatedAt:        time.Now(),
+	}
+}

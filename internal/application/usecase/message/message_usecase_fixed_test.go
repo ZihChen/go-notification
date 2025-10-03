@@ -7,6 +7,7 @@ import (
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/test/factories"
 	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
 	"github.com/jvdiamondtech/ms-notification-cat/test/mocks"
@@ -23,6 +24,8 @@ type MessageTestSuite struct {
 	playerRepo         *mocks.PlayerRepositoryMock
 	playerMessageRepo  *mocks.PlayerMessageRepositoryMock
 	merchantRepo       *mocks.MerchantRepositoryMock
+	pushKeyRepo        *mocks.PushKeyRepositoryMock
+	pushService        *mocks.PushNotificationServiceMock
 	factory            *factories.TestDataFactory
 	logger             *helper.MockLogger
 }
@@ -68,6 +71,8 @@ func setupMessageTestSuite(t *testing.T) *MessageTestSuite {
 		playerRepo:         playerRepo,
 		playerMessageRepo:  playerMessageRepo,
 		merchantRepo:       merchantRepo,
+		pushKeyRepo:        pushKeyRepo,
+		pushService:        pushService,
 		factory:            factory,
 		logger:             logger,
 	}
@@ -86,6 +91,12 @@ func (s *MessageTestSuite) tearDown() {
 	}
 	if s.merchantRepo != nil {
 		s.merchantRepo.Reset()
+	}
+	if s.pushKeyRepo != nil {
+		s.pushKeyRepo.Reset()
+	}
+	if s.pushService != nil {
+		s.pushService.Reset()
 	}
 }
 
@@ -251,4 +262,251 @@ func TestUpdateMessageCampaign_Success(t *testing.T) {
 	// 驗證結果
 	require.NoError(t, err)
 	suite.campaignRepo.AssertExpectations()
+}
+
+// TestSendAutoNotification_Success 測試發送自動推播成功
+func TestSendAutoNotification_Success(t *testing.T) {
+	suite := setupMessageTestSuite(t)
+	defer suite.tearDown()
+
+	// 準備測試數據
+	player := suite.factory.CreatePlayer().Build()
+	campaign := suite.factory.CreateMessageCampaign().
+		WithMerchantID(player.MerchantID).
+		Build()
+	// 直接設置需要的字段
+	campaign.Category = "member"
+	campaign.Item = "registration"
+	campaign.TriggerType = "success"
+	campaign.AutoSend = true
+	campaign.NotificationTypes = 3 // 站內信 + App推播
+	appContent := "歡迎註冊！"
+	campaign.AppContent = &appContent
+
+	pushApiKey := suite.factory.CreatePushKey()
+	pushApiKey.MerchantID = player.MerchantID
+
+	// 設定Mock期望
+	suite.playerRepo.On("FindByGlobalID", mock.Anything, player.GlobalPlayerID).
+		Return(player, nil).Once()
+
+	suite.campaignRepo.On("FindAutoSettingByCategoryItemTrigger",
+		mock.Anything, player.MerchantID, "member", "registration", "success").
+		Return(campaign, nil).Once()
+
+	suite.playerMessageRepo.On("Create", mock.Anything, mock.AnythingOfType("*entity.PlayerMessage")).
+		Return(nil).Once()
+
+	// Mock PushKeyRepository for push notification
+	suite.pushKeyRepo.On("FindByMerchantID", mock.Anything, player.MerchantID).
+		Return(pushApiKey, nil).Once()
+
+	// Mock PushNotificationService
+	suite.pushService.On("SendPushNotification", mock.Anything, pushApiKey.Key, mock.AnythingOfType("*service.PushNotificationRequest")).
+		Return(&service.PushNotificationResponse{Success: true}, nil).Once()
+
+	// Mock UpdateSentCount
+	suite.campaignRepo.On("UpdateSentCount", mock.Anything, campaign.ID, campaign.RealSentCount+1).
+		Return(nil).Once()
+
+	// 準備請求
+	req := &dto.SendAutoNotificationRequest{
+		GlobalPlayerID: player.GlobalPlayerID,
+		Category:       "member",
+		Item:           "registration",
+		TriggerType:    "success",
+	}
+
+	// 執行測試
+	ctx := context.Background()
+	response, err := suite.useCase.SendAutoNotification(ctx, req)
+
+	// 驗證結果
+	require.NoError(t, err)
+	assert.NotNil(t, response)
+	assert.Equal(t, "sent", response.Status)
+	assert.Equal(t, player.GlobalPlayerID, response.PlayerID)
+	assert.Equal(t, "member", response.Category)
+	assert.Equal(t, "registration", response.Item)
+	assert.Equal(t, "success", response.TriggerType)
+	assert.Contains(t, response.SentChannels, "in_app")
+	assert.Contains(t, response.SentChannels, "push")
+
+	// 驗證Mock調用
+	suite.playerRepo.AssertExpectations()
+	suite.campaignRepo.AssertExpectations()
+	suite.playerMessageRepo.AssertExpectations()
+	suite.pushKeyRepo.AssertExpectations()
+	suite.pushService.AssertExpectations()
+}
+
+// TestSendAutoNotification_PlayerNotFound 測試玩家不存在的情況
+func TestSendAutoNotification_PlayerNotFound(t *testing.T) {
+	suite := setupMessageTestSuite(t)
+	defer suite.tearDown()
+
+	// 設定Mock期望 - 玩家不存在
+	suite.playerRepo.On("FindByGlobalID", mock.Anything, "non-existent-player").
+		Return(nil, errors.New("record not found")).Once()
+
+	// 準備請求
+	req := &dto.SendAutoNotificationRequest{
+		GlobalPlayerID: "non-existent-player",
+		Category:       "member",
+		Item:           "registration",
+		TriggerType:    "success",
+	}
+
+	// 執行測試
+	ctx := context.Background()
+	response, err := suite.useCase.SendAutoNotification(ctx, req)
+
+	// 驗證結果
+	require.NoError(t, err)
+	assert.NotNil(t, response)
+	assert.Equal(t, "failed", response.Status)
+	assert.Equal(t, "player not found", response.Message)
+
+	// 驗證Mock調用
+	suite.playerRepo.AssertExpectations()
+}
+
+// TestSendAutoNotification_CampaignNotFound 測試找不到對應的自動設定
+func TestSendAutoNotification_CampaignNotFound(t *testing.T) {
+	suite := setupMessageTestSuite(t)
+	defer suite.tearDown()
+
+	// 準備測試數據
+	player := suite.factory.CreatePlayer().Build()
+
+	// 設定Mock期望
+	suite.playerRepo.On("FindByGlobalID", mock.Anything, player.GlobalPlayerID).
+		Return(player, nil).Once()
+
+	suite.campaignRepo.On("FindAutoSettingByCategoryItemTrigger",
+		mock.Anything, player.MerchantID, "member", "registration", "success").
+		Return(nil, errors.New("record not found")).Once()
+
+	// 準備請求
+	req := &dto.SendAutoNotificationRequest{
+		GlobalPlayerID: player.GlobalPlayerID,
+		Category:       "member",
+		Item:           "registration",
+		TriggerType:    "success",
+	}
+
+	// 執行測試
+	ctx := context.Background()
+	response, err := suite.useCase.SendAutoNotification(ctx, req)
+
+	// 驗證結果
+	require.NoError(t, err)
+	assert.NotNil(t, response)
+	assert.Equal(t, "not_found", response.Status)
+	assert.Equal(t, "no matching auto notification setting found", response.Message)
+
+	// 驗證Mock調用
+	suite.playerRepo.AssertExpectations()
+	suite.campaignRepo.AssertExpectations()
+}
+
+// TestSendAutoNotification_InvalidNotificationType 測試無效的通知類型
+func TestSendAutoNotification_InvalidNotificationType(t *testing.T) {
+	suite := setupMessageTestSuite(t)
+	defer suite.tearDown()
+
+	// 準備測試數據
+	player := suite.factory.CreatePlayer().Build()
+	campaign := suite.factory.CreateMessageCampaign().
+		WithMerchantID(player.MerchantID).
+		Build()
+	// 設置無效的 notification type (超出範圍)
+	campaign.Category = "member"
+	campaign.Item = "registration"
+	campaign.TriggerType = "success"
+	campaign.AutoSend = true
+	campaign.NotificationTypes = 255 // 無效值
+
+	// 設定Mock期望
+	suite.playerRepo.On("FindByGlobalID", mock.Anything, player.GlobalPlayerID).
+		Return(player, nil).Once()
+
+	suite.campaignRepo.On("FindAutoSettingByCategoryItemTrigger",
+		mock.Anything, player.MerchantID, "member", "registration", "success").
+		Return(campaign, nil).Once()
+
+	// 準備請求
+	req := &dto.SendAutoNotificationRequest{
+		GlobalPlayerID: player.GlobalPlayerID,
+		Category:       "member",
+		Item:           "registration",
+		TriggerType:    "success",
+	}
+
+	// 執行測試
+	ctx := context.Background()
+	response, err := suite.useCase.SendAutoNotification(ctx, req)
+
+	// 驗證結果
+	require.NoError(t, err)
+	assert.NotNil(t, response)
+	assert.Equal(t, "failed", response.Status)
+	assert.Equal(t, "invalid notification type configuration", response.Message)
+
+	// 驗證Mock調用
+	suite.playerRepo.AssertExpectations()
+	suite.campaignRepo.AssertExpectations()
+}
+
+// TestSendAutoNotification_PlayerMessageCreateFailed 測試站內信創建失敗的情況
+func TestSendAutoNotification_PlayerMessageCreateFailed(t *testing.T) {
+	suite := setupMessageTestSuite(t)
+	defer suite.tearDown()
+
+	// 準備測試數據
+	player := suite.factory.CreatePlayer().Build()
+	campaign := suite.factory.CreateMessageCampaign().
+		WithMerchantID(player.MerchantID).
+		Build()
+	// 設置為僅站內信
+	campaign.Category = "member"
+	campaign.Item = "registration"
+	campaign.TriggerType = "success"
+	campaign.AutoSend = true
+	campaign.NotificationTypes = 1 // 僅站內信
+
+	// 設定Mock期望
+	suite.playerRepo.On("FindByGlobalID", mock.Anything, player.GlobalPlayerID).
+		Return(player, nil).Once()
+
+	suite.campaignRepo.On("FindAutoSettingByCategoryItemTrigger",
+		mock.Anything, player.MerchantID, "member", "registration", "success").
+		Return(campaign, nil).Once()
+
+	// Mock PlayerMessage 創建失敗
+	suite.playerMessageRepo.On("Create", mock.Anything, mock.AnythingOfType("*entity.PlayerMessage")).
+		Return(errors.New("database error")).Once()
+
+	// 準備請求
+	req := &dto.SendAutoNotificationRequest{
+		GlobalPlayerID: player.GlobalPlayerID,
+		Category:       "member",
+		Item:           "registration",
+		TriggerType:    "success",
+	}
+
+	// 執行測試
+	ctx := context.Background()
+	response, err := suite.useCase.SendAutoNotification(ctx, req)
+
+	// 驗證結果
+	require.NoError(t, err)
+	assert.NotNil(t, response)
+	assert.Equal(t, "failed", response.Status)
+	assert.Equal(t, "failed to create in-app message", response.Message)
+
+	// 驗證Mock調用
+	suite.playerRepo.AssertExpectations()
+	suite.campaignRepo.AssertExpectations()
+	suite.playerMessageRepo.AssertExpectations()
 }

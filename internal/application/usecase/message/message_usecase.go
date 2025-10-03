@@ -1110,3 +1110,165 @@ func (u *MessageUseCase) validatePlayerAccounts(
 
 	return playerIDs, nil
 }
+
+// SendAutoNotification 發送系統自動推播訊息給特定玩家
+func (u *MessageUseCase) SendAutoNotification(
+	ctx context.Context,
+	req *dto.SendAutoNotificationRequest,
+) (*dto.SendAutoNotificationResponse, error) {
+	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.SendAutoNotification")
+	defer u.tracingService.SpanEnd(span)
+
+	u.tracingService.RecordSpanAttributes(span,
+		attribute.String("global_player_id", req.GlobalPlayerID),
+		attribute.String("category", req.Category),
+		attribute.String("item", req.Item),
+		attribute.String("trigger_type", req.TriggerType),
+	)
+
+	// 1. 根據 global_player_id 查找玩家
+	player, err := u.playerRepo.FindByGlobalID(ctx, req.GlobalPlayerID)
+	if err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return &dto.SendAutoNotificationResponse{
+			PlayerID:    req.GlobalPlayerID,
+			Category:    req.Category,
+			Item:        req.Item,
+			TriggerType: req.TriggerType,
+			Status:      "failed",
+			Message:     "player not found",
+		}, nil
+	}
+
+	// 2. 根據 merchant_id、category、item、trigger_type、auto_send = true 查找 message_campaign
+	campaign, err := u.campaignRepo.FindAutoSettingByCategoryItemTrigger(
+		ctx,
+		player.MerchantID,
+		req.Category,
+		req.Item,
+		req.TriggerType,
+	)
+	if err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return &dto.SendAutoNotificationResponse{
+			PlayerID:    req.GlobalPlayerID,
+			Category:    req.Category,
+			Item:        req.Item,
+			TriggerType: req.TriggerType,
+			Status:      "not_found",
+			Message:     "no matching auto notification setting found",
+		}, nil
+	}
+
+	// 3. 根據 notification_type 決定發送渠道，使用統一的業務邏輯處理
+	var sentChannels []string
+
+	// 將 notification_types 轉換為業務邏輯類型
+	notificationType, err := consts.NewNotificationType(campaign.NotificationTypes)
+	if err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return &dto.SendAutoNotificationResponse{
+			PlayerID:    req.GlobalPlayerID,
+			Category:    req.Category,
+			Item:        req.Item,
+			TriggerType: req.TriggerType,
+			Status:      "failed",
+			Message:     "invalid notification type configuration",
+		}, nil
+	}
+
+	// 檢查是否發送站內信
+	if notificationType.HasInApp() {
+		// 創建玩家訊息記錄
+		playerMessage := &entity.PlayerMessage{
+			PlayerID:       player.ID,
+			GlobalPlayerID: req.GlobalPlayerID,
+			CampaignID:     campaign.ID,
+			IsRead:         false,
+			CreatedAt:      time.Now(),
+			UpdatedAt:      time.Now(),
+		}
+
+		if err = u.playerMessageRepo.Create(ctx, playerMessage); err != nil {
+			u.logger.ErrorWithContext(ctx, "Failed to create player message",
+				u.logger.Error("error", err),
+				u.logger.String("global_player_id", req.GlobalPlayerID),
+				u.logger.UInt64("campaign_id", campaign.ID),
+			)
+			// 站內信創建失敗，返回錯誤
+			u.tracingService.RecordSpanError(span, err)
+			return &dto.SendAutoNotificationResponse{
+				PlayerID:    req.GlobalPlayerID,
+				Category:    req.Category,
+				Item:        req.Item,
+				TriggerType: req.TriggerType,
+				Status:      "failed",
+				Message:     "failed to create in-app message",
+			}, nil
+		}
+		
+		sentChannels = append(sentChannels, "in_app")
+		u.logger.InfoWithContext(ctx, "Auto notification in-app message sent",
+			u.logger.String("global_player_id", req.GlobalPlayerID),
+			u.logger.String("category", req.Category),
+			u.logger.String("item", req.Item),
+			u.logger.String("trigger_type", req.TriggerType),
+		)
+	}
+
+	// 檢查是否發送App推播
+	if notificationType.HasAppPush() && campaign.AppContent != nil {
+		// 獲取商戶推播API金鑰
+		pushApiKey, err := u.pushApiKeyRepo.FindByMerchantID(ctx, player.MerchantID)
+		if err != nil {
+			u.logger.WarnWithContext(ctx, "Push API key not found for merchant",
+				u.logger.UInt64("merchant_id", player.MerchantID),
+				u.logger.Error("error", err),
+			)
+		} else {
+			// 發送App推播
+			pushReq := &service.PushNotificationRequest{
+				Accounts: []string{player.Account},
+				MsgTitle: campaign.Title,
+				MsgBody:  *campaign.AppContent,
+			}
+
+			_, err = u.pushService.SendPushNotification(ctx, pushApiKey.Key, pushReq)
+			if err != nil {
+				u.logger.ErrorWithContext(ctx, "Failed to send push notification",
+					u.logger.Error("error", err),
+					u.logger.String("global_player_id", req.GlobalPlayerID),
+					u.logger.UInt64("campaign_id", campaign.ID),
+				)
+			} else {
+				sentChannels = append(sentChannels, "push")
+				u.logger.InfoWithContext(ctx, "Auto notification push message sent",
+					u.logger.String("global_player_id", req.GlobalPlayerID),
+					u.logger.String("category", req.Category),
+					u.logger.String("item", req.Item),
+					u.logger.String("trigger_type", req.TriggerType),
+				)
+			}
+		}
+	}
+
+	// 更新發送計數
+	if len(sentChannels) > 0 {
+		if err := u.campaignRepo.UpdateSentCount(ctx, campaign.ID, campaign.RealSentCount+1); err != nil {
+			u.logger.WarnWithContext(ctx, "Failed to update sent count",
+				u.logger.Error("error", err),
+				u.logger.UInt64("campaign_id", campaign.ID),
+			)
+		}
+	}
+
+	return &dto.SendAutoNotificationResponse{
+		PlayerID:     req.GlobalPlayerID,
+		Category:     req.Category,
+		Item:         req.Item,
+		TriggerType:  req.TriggerType,
+		Status:       "sent",
+		SentChannels: sentChannels,
+		Message:      fmt.Sprintf("notification sent via %v", sentChannels),
+	}, nil
+}

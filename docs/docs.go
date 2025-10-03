@@ -774,6 +774,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/notifications/auto-send": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "根據指定的category、item、trigger_type向特定玩家發送系統自動推播訊息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "系統自動推播"
+                ],
+                "summary": "發送系統自動推播訊息",
+                "parameters": [
+                    {
+                        "description": "自動推播訊息請求 - 包含玩家ID、訊息分類、項目和觸發類型",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SendAutoNotificationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SendAutoNotificationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/players/global/{global_id}": {
             "get": {
                 "security": [
@@ -1450,6 +1501,87 @@ const docTemplate = `{
                 },
                 "unread_count": {
                     "type": "integer"
+                }
+            }
+        },
+        "dto.SendAutoNotificationRequest": {
+            "type": "object",
+            "required": [
+                "category",
+                "global_player_id",
+                "item",
+                "trigger_type"
+            ],
+            "properties": {
+                "category": {
+                    "description": "訊息類別：member=會員訊息，bonus=紅利訊息",
+                    "type": "string",
+                    "enum": [
+                        "member",
+                        "bonus"
+                    ],
+                    "example": "member"
+                },
+                "global_player_id": {
+                    "description": "玩家全局ID，必填",
+                    "type": "string",
+                    "example": "player-123e4567-e89b-12d3-a456-426614174000"
+                },
+                "item": {
+                    "description": "訊息項目：registration=註冊，identity_verification=身分驗證，bank_card=銀行卡，mission=任務",
+                    "type": "string",
+                    "enum": [
+                        "registration",
+                        "identity_verification",
+                        "bank_card",
+                        "mission"
+                    ],
+                    "example": "registration"
+                },
+                "trigger_type": {
+                    "description": "觸發類型：success=成功，failure=失敗",
+                    "type": "string",
+                    "enum": [
+                        "success",
+                        "failure"
+                    ],
+                    "example": "success"
+                }
+            }
+        },
+        "dto.SendAutoNotificationResponse": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "description": "訊息類別",
+                    "type": "string"
+                },
+                "item": {
+                    "description": "訊息項目",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "狀態訊息",
+                    "type": "string"
+                },
+                "player_id": {
+                    "description": "玩家ID",
+                    "type": "string"
+                },
+                "sent_channels": {
+                    "description": "已發送的渠道：[\"in_app\", \"push\"]",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "status": {
+                    "description": "發送狀態：sent=已發送，not_found=找不到對應訊息設定，failed=發送失敗",
+                    "type": "string"
+                },
+                "trigger_type": {
+                    "description": "觸發類型",
+                    "type": "string"
                 }
             }
         },

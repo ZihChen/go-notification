@@ -50,6 +50,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 // Test helper functions
@@ -1587,6 +1588,169 @@ func TestHTTPHandler_CreateOrUpdateMerchantAutoSettings_TooManySettings(t *testi
 	// Skip test due to handler bug - multiple Return() calls cause double panic
 	// Handler has missing return statement after first BadRequest().Return()
 	t.Skip("Handler has bug: double panic from multiple Return() calls without return statements")
+}
+
+// ============================================================================
+// 系統自動推播 API 測試
+// ============================================================================
+
+func TestHTTPHandler_SendAutoNotification_Success(t *testing.T) {
+	// 創建Mocks
+	messageUseCase := mocks.NewMessageUseCaseMock(t)
+	logger := helper.NewMockLogger()
+	
+	// 創建HTTP Handler
+	handler := createTestHandler(
+		mocks.NewMerchantUseCaseMock(t),
+		mocks.NewPlayerUseCaseMock(t),
+		mocks.NewManagerUseCaseMock(t),
+		messageUseCase,
+		logger,
+	)
+
+	// 準備測試請求
+	request := dto.SendAutoNotificationRequest{
+		GlobalPlayerID: "player-123e4567-e89b-12d3-a456-426614174000",
+		Category:       "member",
+		Item:           "registration", 
+		TriggerType:    "success",
+	}
+
+	// 預期回應
+	expectedResponse := &dto.SendAutoNotificationResponse{
+		PlayerID:     "player-123e4567-e89b-12d3-a456-426614174000",
+		Category:     "member",
+		Item:         "registration",
+		TriggerType:  "success",
+		Status:       "sent",
+		SentChannels: []string{"in_app"},
+		Message:      "notification sent via [in_app]",
+	}
+
+	// 設定 MessageUseCase Mock
+	messageUseCase.On("SendAutoNotification", mock.Anything, &request).
+		Return(expectedResponse, nil).Once()
+
+	// 執行HTTP請求
+	req, _ := createJSONRequest("POST", "/api/v1/notifications/auto-send", request)
+	
+	w := httptest.NewRecorder()
+	router := setupTestRouter()
+	router.POST("/api/v1/notifications/auto-send", handler.SendAutoNotification)
+	router.ServeHTTP(w, req)
+
+	// 驗證HTTP響應
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	// 解析回應body
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+
+	// 驗證回應內容
+	data := response["data"].(map[string]interface{})
+	assert.Equal(t, expectedResponse.PlayerID, data["player_id"])
+	assert.Equal(t, expectedResponse.Category, data["category"])
+	assert.Equal(t, expectedResponse.Item, data["item"])
+	assert.Equal(t, expectedResponse.TriggerType, data["trigger_type"])
+	assert.Equal(t, expectedResponse.Status, data["status"])
+	assert.Equal(t, expectedResponse.Message, data["message"])
+
+	// 驗證Mock調用
+	messageUseCase.AssertExpectations()
+}
+
+func TestHTTPHandler_SendAutoNotification_InvalidRequest(t *testing.T) {
+	// 創建Mocks
+	messageUseCase := mocks.NewMessageUseCaseMock(t)
+	logger := helper.NewMockLogger()
+	
+	// 創建HTTP Handler
+	handler := createTestHandler(
+		mocks.NewMerchantUseCaseMock(t),
+		mocks.NewPlayerUseCaseMock(t),
+		mocks.NewManagerUseCaseMock(t),
+		messageUseCase,
+		logger,
+	)
+
+	// 準備無效請求 (缺少必填欄位)
+	invalidRequest := map[string]interface{}{
+		"global_player_id": "",  // 空值，應該失敗
+		"category":        "member",
+		"item":            "registration",
+		"trigger_type":    "success",
+	}
+
+	// 執行HTTP請求
+	req, _ := createJSONRequest("POST", "/api/v1/notifications/auto-send", invalidRequest)
+	
+	w := httptest.NewRecorder()
+	router := setupTestRouter()
+	router.POST("/api/v1/notifications/auto-send", handler.SendAutoNotification)
+	router.ServeHTTP(w, req)
+
+	// 驗證HTTP響應
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	// 解析回應body
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+
+	// 驗證錯誤訊息
+	errorInfo := response["error"].(map[string]interface{})
+	assert.Equal(t, "invalid request format", errorInfo["message"])
+}
+
+func TestHTTPHandler_SendAutoNotification_UseCaseError(t *testing.T) {
+	// 創建Mocks
+	messageUseCase := mocks.NewMessageUseCaseMock(t)
+	logger := helper.NewMockLogger()
+	
+	// 創建HTTP Handler
+	handler := createTestHandler(
+		mocks.NewMerchantUseCaseMock(t),
+		mocks.NewPlayerUseCaseMock(t),
+		mocks.NewManagerUseCaseMock(t),
+		messageUseCase,
+		logger,
+	)
+
+	// 準備測試請求
+	request := dto.SendAutoNotificationRequest{
+		GlobalPlayerID: "player-123e4567-e89b-12d3-a456-426614174000",
+		Category:       "member",
+		Item:           "registration",
+		TriggerType:    "success",
+	}
+
+	// 設定 MessageUseCase Mock 返回錯誤
+	messageUseCase.On("SendAutoNotification", mock.Anything, &request).
+		Return(nil, errors.New("internal error")).Once()
+
+	// 執行HTTP請求
+	req, _ := createJSONRequest("POST", "/api/v1/notifications/auto-send", request)
+	
+	w := httptest.NewRecorder()
+	router := setupTestRouter()
+	router.POST("/api/v1/notifications/auto-send", handler.SendAutoNotification)
+	router.ServeHTTP(w, req)
+
+	// 驗證HTTP響應
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+
+	// 解析回應body
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+
+	// 驗證錯誤訊息
+	errorInfo := response["error"].(map[string]interface{})
+	assert.Equal(t, "failed to send auto notification", errorInfo["message"])
+
+	// 驗證Mock調用
+	messageUseCase.AssertExpectations()
 }
 
 // ============================================================================

@@ -93,3 +93,22 @@ type AutoSettingsOperationResponse struct {
 	UpdatedCount     int    `json:"updated_count,omitempty"`
 	Operation        string `json:"operation"` // create, update
 }
+
+// SendAutoNotificationRequest 發送系統自動推播訊息請求
+type SendAutoNotificationRequest struct {
+	GlobalPlayerID string `json:"global_player_id" binding:"required"                            example:"player-123e4567-e89b-12d3-a456-426614174000"                         validate:"required"`                          // 玩家全局ID，必填
+	Category       string `json:"category"          binding:"required,oneof=member bonus"         example:"member"                                       enums:"member,bonus"         validate:"required,oneof=member bonus"`       // 訊息類別：member=會員訊息，bonus=紅利訊息
+	Item           string `json:"item"              binding:"required,oneof=registration identity_verification bank_card mission" example:"registration" enums:"registration,identity_verification,bank_card,mission" validate:"required"` // 訊息項目：registration=註冊，identity_verification=身分驗證，bank_card=銀行卡，mission=任務
+	TriggerType    string `json:"trigger_type"      binding:"required,oneof=success failure"      example:"success"                                      enums:"success,failure"      validate:"required,oneof=success failure"`    // 觸發類型：success=成功，failure=失敗
+}
+
+// SendAutoNotificationResponse 發送系統自動推播訊息回應
+type SendAutoNotificationResponse struct {
+	PlayerID       string `json:"player_id"`       // 玩家ID
+	Category       string `json:"category"`        // 訊息類別
+	Item           string `json:"item"`            // 訊息項目
+	TriggerType    string `json:"trigger_type"`    // 觸發類型
+	Status         string `json:"status"`          // 發送狀態：sent=已發送，not_found=找不到對應訊息設定，failed=發送失敗
+	SentChannels   []string `json:"sent_channels,omitempty"` // 已發送的渠道：["in_app", "push"]
+	Message        string `json:"message,omitempty"`        // 狀態訊息
+}

@@ -706,3 +706,40 @@ func (h *HTTPHandler) GetPlayerTags(c *gin.Context) {
 
 	response.OK(c).Data(tags).Return()
 }
+
+// SendAutoNotification 發送系統自動推播訊息
+// @Summary 發送系統自動推播訊息
+// @Description 根據指定的category、item、trigger_type向特定玩家發送系統自動推播訊息
+// @Tags 系統自動推播
+// @Accept json
+// @Produce json
+// @Param request body dto.SendAutoNotificationRequest true "自動推播訊息請求 - 包含玩家ID、訊息分類、項目和觸發類型"
+// @Success 200 {object} dto.SendAutoNotificationResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/notifications/auto-send [post]
+func (h *HTTPHandler) SendAutoNotification(c *gin.Context) {
+	var req dto.SendAutoNotificationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "invalid request format", err.Error()).Return()
+		return
+	}
+
+	result, err := h.messageUseCase.SendAutoNotification(c.Request.Context(), &req)
+	if err != nil {
+		h.logger.ErrorWithContext(
+			c.Request.Context(),
+			"failed to send auto notification",
+			h.logger.Error("err", err),
+			h.logger.String("global_player_id", req.GlobalPlayerID),
+			h.logger.String("category", req.Category),
+			h.logger.String("item", req.Item),
+			h.logger.String("trigger_type", req.TriggerType),
+		)
+		response.InternalServerError(c, "failed to send auto notification", err.Error()).Return()
+		return
+	}
+
+	response.OK(c).Data(result).Return()
+}
