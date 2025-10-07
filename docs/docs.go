@@ -200,7 +200,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "分頁列出會員訊息活動",
+                "description": "分頁列出會員訊息活動，支持多條件篩選\n查詢參數說明：\n- page: 頁碼，從1開始，預設為1\n- page_size: 每頁數量，範圍1-100，預設為10\n- category: 消息類型篩選，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)\n- item: 消息項目篩選，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)\n- status: 狀態篩選，可選值：draft(草稿)、scheduled(已排程)、sent(已發送)、cancelled(已取消)、failed(發送失敗)，支持多選\n- show_auto_send: 是否顯示系統自動創建的訊息，預設為false\n- created_by: 創建者篩選\n- start_at: 創建時間起始篩選，格式：2024-01-01T00:00:00Z\n- end_at: 創建時間結束篩選，格式：2024-01-01T23:59:59Z",
                 "tags": [
                     "會員訊息活動"
                 ],
@@ -211,7 +211,7 @@ const docTemplate = `{
                         "type": "integer",
                         "default": 1,
                         "example": 1,
-                        "description": "頁碼 - 分頁查詢的第几頁，必須大於0",
+                        "description": "頁碼",
                         "name": "page",
                         "in": "query"
                     },
@@ -221,32 +221,93 @@ const docTemplate = `{
                         "type": "integer",
                         "default": 10,
                         "example": 10,
-                        "description": "每頁數量 - 每頁返回的記錄數，範圍1-100",
+                        "description": "每頁數量",
                         "name": "page_size",
                         "in": "query"
                     },
                     {
-                        "type": "boolean",
-                        "default": false,
-                        "example": false,
-                        "description": "是否包含已刪除的活動 - true:包含已刪除的記錄，false:僅顯示正常記錄",
-                        "name": "include_deleted",
+                        "enum": [
+                            "member",
+                            "bonus",
+                            "others"
+                        ],
+                        "type": "string",
+                        "example": "\"member\"",
+                        "description": "消息類型",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "registration",
+                            "identity_verification",
+                            "bank_card",
+                            "others",
+                            "event",
+                            "all",
+                            "mission"
+                        ],
+                        "type": "string",
+                        "example": "\"registration\"",
+                        "description": "消息項目",
+                        "name": "item",
                         "in": "query"
                     },
                     {
                         "type": "array",
                         "items": {
                             "enum": [
-                                1,
-                                2,
-                                3,
-                                4
+                                "draft",
+                                "scheduled",
+                                "sent",
+                                "cancelled",
+                                "failed"
                             ],
-                            "type": "integer"
+                            "type": "string"
                         },
                         "collectionFormat": "csv",
-                        "description": "狀態篩選 - 活動狀態篩選條件，可多選：1=草稿，2=已排程，3=已發送，4=已取消",
+                        "example": "\"scheduled,sent\"",
+                        "description": "狀態篩選",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "default": false,
+                        "example": false,
+                        "description": "是否顯示系統自動創建",
+                        "name": "show_auto_send",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"admin@example.com\"",
+                        "description": "創建者",
+                        "name": "created_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "\"2024-01-01T00:00:00Z\"",
+                        "description": "創建起始時間",
+                        "name": "start_at",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "\"2024-01-01T23:59:59Z\"",
+                        "description": "創建結束時間",
+                        "name": "end_at",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "default": false,
+                        "example": false,
+                        "description": "是否包含已刪除記錄",
+                        "name": "include_deleted",
                         "in": "query"
                     }
                 ],
@@ -271,7 +332,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "創建新的會員訊息活動",
+                "description": "創建新的會員訊息活動，支持站內信和App推播兩種通知方式\n參數說明：\n- category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)\n- item: 消息項目，可選值：registration(註冊)、identity_verification(身分驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)\n- trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)，可選參數\n- notification_types: 推送類型位元遮罩，1=站內信，2=App推播，3=兩者皆有，範圍1-7\n- target: 目標用戶，可選值：high_activity(高活躍)、low_activity(低活躍)、not_activity(無活躍)、player(指定玩家)、level(玩家等級)、tag(玩家標籤)、all(全部用戶)\n- target_detail: 目標詳情，當target為player時填入玩家賬號數組，當target為level/tag時填入對應ID字符串數組\n- status: 活動狀態，可選值：draft(草稿)、scheduled(已排程)",
                 "consumes": [
                     "application/json"
                 ],
@@ -284,7 +345,7 @@ const docTemplate = `{
                 "summary": "創建會員訊息活動",
                 "parameters": [
                     {
-                        "description": "創建消息活動請求 - 包含消息標題、內容、類型等完整資訊",
+                        "description": "創建消息活動請求",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -375,7 +436,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "為特定商戶建立或更新會員訊息自動派發設定",
+                "description": "為特定商戶建立或更新會員訊息自動派發設定，支持批量設定多個自動發送規則\n參數說明：\n- settings: 自動設定項目列表，最少1個最多10個\n- category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)\n- item: 消息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)\n- trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)\n- title: 消息標題，必填，最大255個字符\n- content: 消息內容，必填",
                 "consumes": [
                     "application/json"
                 ],
@@ -388,7 +449,7 @@ const docTemplate = `{
                 "summary": "新增或更新商戶自動設定",
                 "parameters": [
                     {
-                        "description": "商戶自動設定請求 - 包含多個自動設定項目，最多10個設定",
+                        "description": "商戶自動設定請求",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -430,7 +491,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "為特定商戶建立或更新會員訊息自動派發設定",
+                "description": "為特定商戶建立或更新會員訊息自動派發設定，支持批量設定多個自動發送規則\n參數說明：\n- settings: 自動設定項目列表，最少1個最多10個\n- category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)\n- item: 消息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)\n- trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)\n- title: 消息標題，必填，最大255個字符\n- content: 消息內容，必填",
                 "consumes": [
                     "application/json"
                 ],
@@ -443,7 +504,7 @@ const docTemplate = `{
                 "summary": "新增或更新商戶自動設定",
                 "parameters": [
                     {
-                        "description": "商戶自動設定請求 - 包含多個自動設定項目，最多10個設定",
+                        "description": "商戶自動設定請求",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -535,7 +596,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "更新指定GlobalID的會員訊息活動",
+                "description": "更新指定GlobalID的會員訊息活動，支持站內信和App推播兩種通知方式\n參數說明：\n- category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)\n- item: 消息項目，可選值：registration(註冊)、identity_verification(身分驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)\n- trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)，可選參數\n- notification_types: 推送類型位元遮罩，1=站內信，2=App推播，4=其他，可組合使用，範圍1-7，可選參數\n- target: 目標用戶，可選值：high_activity(高活躍)、low_activity(低活躍)、not_activity(無活躍)、player(指定玩家)、level(玩家等級)、tag(玩家標籤)、all(全部用戶)\n- target_detail: 目標詳情，當target為player時填入玩家賬號數組，當target為level/tag時填入對應ID字符串數組，可選參數\n- status: 活動狀態，可選值：draft(草稿)、scheduled(已排程)",
                 "consumes": [
                     "application/json"
                 ],
@@ -549,13 +610,14 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Campaign Global ID",
-                        "name": "id",
+                        "example": "\"msg-550e8400-e29b-41d4-a716-446655440000\"",
+                        "description": "訊息活動全局ID - 跨系統唯一識別符，用於標識特定訊息活動",
+                        "name": "global_id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "更新消息活動請求 - 包含需要更新的消息標題、內容、類型等資訊",
+                        "description": "更新消息活動請求",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -781,7 +843,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "根據指定的category、item、trigger_type向特定玩家發送系統自動推播訊息",
+                "description": "根據指定的category、item、trigger_type向特定玩家發送系統自動推播訊息\n參數說明：\n- global_player_id: 玩家全局ID，必填，格式為UUID\n- category: 訊息類別，可選值：member(會員訊息)、bonus(紅利訊息)\n- item: 訊息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、mission(任務)\n- trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)",
                 "consumes": [
                     "application/json"
                 ],
@@ -794,7 +856,7 @@ const docTemplate = `{
                 "summary": "發送系統自動推播訊息",
                 "parameters": [
                     {
-                        "description": "自動推播訊息請求 - 包含玩家ID、訊息分類、項目和觸發類型",
+                        "description": "自動推播訊息請求",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -1114,7 +1176,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "category": {
-                    "description": "消息类型：member=会员消息，bonus=红利消息，others=其他消息",
+                    "description": "消息类型：member=会员消息，bonus=红利消息，others=其他消息。可選值：member, bonus, others",
                     "type": "string",
                     "enum": [
                         "member",
@@ -1129,7 +1191,7 @@ const docTemplate = `{
                     "example": "恭喜您成功注册成为我们的会员！"
                 },
                 "item": {
-                    "description": "消息项目",
+                    "description": "消息项目。可選值：registration(註冊), identity_verification(身份驗證), bank_card(銀行卡), others(其他), event(活動), all(全部), mission(任務)",
                     "type": "string",
                     "enum": [
                         "registration",
@@ -1149,7 +1211,7 @@ const docTemplate = `{
                     "example": "欢迎新用户"
                 },
                 "trigger_type": {
-                    "description": "触发类型：success=成功，failure=失败",
+                    "description": "触发类型：success=成功，failure=失败。可選值：success, failure",
                     "type": "string",
                     "enum": [
                         "success",
@@ -1197,7 +1259,7 @@ const docTemplate = `{
                     "example": "恭喜您成功注册！"
                 },
                 "category": {
-                    "description": "消息类型：member=会员消息，bonus=红利消息，others=其他消息",
+                    "description": "消息类型：member=会员消息，bonus=红利消息，others=其他消息。可選值：member, bonus, others",
                     "type": "string",
                     "enum": [
                         "member",
@@ -1218,7 +1280,7 @@ const docTemplate = `{
                     "example": "admin@example.com"
                 },
                 "item": {
-                    "description": "消息项目",
+                    "description": "消息项目。可選值：registration(註冊), identity_verification(身份驗證), bank_card(銀行卡), others(其他), event(活動), all(全部), mission(任務)",
                     "type": "string",
                     "enum": [
                         "registration",
@@ -1232,7 +1294,7 @@ const docTemplate = `{
                     "example": "registration"
                 },
                 "notification_types": {
-                    "description": "推送類型位元遮罩：1=站內信，2=App推播，3=兩者皆有，可組合至7，必填",
+                    "description": "推送類型位元遮罩：1=站內信，2=App推播，4=其他，可組合使用，範圍1-7，必填。示例：1(僅站內信), 2(僅App推播), 3(站內信+App推播)",
                     "type": "integer",
                     "maximum": 7,
                     "minimum": 1,
@@ -1251,7 +1313,7 @@ const docTemplate = `{
                     "example": "2024-01-01T10:00:00Z"
                 },
                 "status": {
-                    "description": "活动状态",
+                    "description": "活动状态。可選值：draft(草稿), scheduled(已排程)",
                     "type": "string",
                     "enum": [
                         "draft",
@@ -1260,7 +1322,7 @@ const docTemplate = `{
                     "example": "scheduled"
                 },
                 "target": {
-                    "description": "目标用户",
+                    "description": "目标用户。可選值：high_activity(高活躍), low_activity(低活躍), not_activity(無活躍), player(指定玩家), level(玩家等級), tag(玩家標籤), all(全部用戶)",
                     "type": "string",
                     "enum": [
                         "high_activity",
@@ -1291,7 +1353,7 @@ const docTemplate = `{
                     "example": "欢迎新用户"
                 },
                 "trigger_type": {
-                    "description": "触发类型：success=成功，failure=失败（可选）",
+                    "description": "触发类型：success=成功，failure=失败（可选）。可選值：success, failure",
                     "type": "string",
                     "enum": [
                         "success",
@@ -1514,7 +1576,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "category": {
-                    "description": "訊息類別：member=會員訊息，bonus=紅利訊息",
+                    "description": "訊息類別：member=會員訊息，bonus=紅利訊息。可選值：member, bonus",
                     "type": "string",
                     "enum": [
                         "member",
@@ -1523,12 +1585,12 @@ const docTemplate = `{
                     "example": "member"
                 },
                 "global_player_id": {
-                    "description": "玩家全局ID，必填",
+                    "description": "玩家全局ID，必填，格式為UUID",
                     "type": "string",
                     "example": "player-123e4567-e89b-12d3-a456-426614174000"
                 },
                 "item": {
-                    "description": "訊息項目：registration=註冊，identity_verification=身分驗證，bank_card=銀行卡，mission=任務",
+                    "description": "訊息項目：registration=註冊，identity_verification=身分驗證，bank_card=銀行卡，mission=任務。可選值：registration, identity_verification, bank_card, mission",
                     "type": "string",
                     "enum": [
                         "registration",
@@ -1539,7 +1601,7 @@ const docTemplate = `{
                     "example": "registration"
                 },
                 "trigger_type": {
-                    "description": "觸發類型：success=成功，failure=失敗",
+                    "description": "觸發類型：success=成功，failure=失敗。可選值：success, failure",
                     "type": "string",
                     "enum": [
                         "success",
@@ -1629,7 +1691,7 @@ const docTemplate = `{
                     "example": "恭喜您成功注册！"
                 },
                 "category": {
-                    "description": "消息类型：member=会员消息，bonus=红利消息，others=其他消息",
+                    "description": "消息类型：member=会员消息，bonus=红利消息，others=其他消息。可選值：member, bonus, others",
                     "type": "string",
                     "enum": [
                         "member",
@@ -1644,7 +1706,7 @@ const docTemplate = `{
                     "example": "恭喜您成功注册成为我们的会员！"
                 },
                 "item": {
-                    "description": "消息项目",
+                    "description": "消息项目。可選值：registration(註冊), identity_verification(身份驗證), bank_card(銀行卡), others(其他), event(活動), all(全部), mission(任務)",
                     "type": "string",
                     "enum": [
                         "registration",
@@ -1658,7 +1720,7 @@ const docTemplate = `{
                     "example": "registration"
                 },
                 "notification_types": {
-                    "description": "推送類型位元遮罩：1=站內信，2=App推播，4=其他，可選",
+                    "description": "推送類型位元遮罩：1=站內信，2=App推播，4=其他，可組合使用，範圍1-7，可選。示例：1(僅站內信), 2(僅App推播), 3(站內信+App推播)",
                     "type": "integer",
                     "maximum": 7,
                     "minimum": 1,
@@ -1677,7 +1739,7 @@ const docTemplate = `{
                     "example": "2024-01-01T10:00:00Z"
                 },
                 "status": {
-                    "description": "活动状态",
+                    "description": "活动状态。可選值：draft(草稿), scheduled(已排程)",
                     "type": "string",
                     "enum": [
                         "draft",
@@ -1686,7 +1748,7 @@ const docTemplate = `{
                     "example": "scheduled"
                 },
                 "target": {
-                    "description": "目标用户",
+                    "description": "目标用户。可選值：high_activity(高活躍), low_activity(低活躍), not_activity(無活躍), player(指定玩家), level(玩家等級), tag(玩家標籤), all(全部用戶)",
                     "type": "string",
                     "enum": [
                         "high_activity",
@@ -1717,7 +1779,7 @@ const docTemplate = `{
                     "example": "欢迎新用户"
                 },
                 "trigger_type": {
-                    "description": "触发类型：success=成功，failure=失败（可选）",
+                    "description": "触发类型：success=成功，failure=失败（可选）。可選值：success, failure",
                     "type": "string",
                     "enum": [
                         "success",

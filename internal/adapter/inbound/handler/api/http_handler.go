@@ -313,11 +313,19 @@ func (h *HTTPHandler) GetManagerByGlobalID(c *gin.Context) {
 
 // CreateMessageCampaign 創建會員訊息活動
 // @Summary 創建會員訊息活動
-// @Description 創建新的會員訊息活動
+// @Description 創建新的會員訊息活動，支持站內信和App推播兩種通知方式
+// @Description 參數說明：
+// @Description - category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)
+// @Description - item: 消息項目，可選值：registration(註冊)、identity_verification(身分驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)
+// @Description - trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)，可選參數
+// @Description - notification_types: 推送類型位元遮罩，1=站內信，2=App推播，3=兩者皆有，範圍1-7
+// @Description - target: 目標用戶，可選值：high_activity(高活躍)、low_activity(低活躍)、not_activity(無活躍)、player(指定玩家)、level(玩家等級)、tag(玩家標籤)、all(全部用戶)
+// @Description - target_detail: 目標詳情，當target為player時填入玩家賬號數組，當target為level/tag時填入對應ID字符串數組
+// @Description - status: 活動狀態，可選值：draft(草稿)、scheduled(已排程)
 // @Tags 會員訊息活動
 // @Accept json
 // @Produce json
-// @Param request body dto.CreateMessageCampaignRequest true "創建消息活動請求 - 包含消息標題、內容、類型等完整資訊"
+// @Param request body dto.CreateMessageCampaignRequest true "創建消息活動請求"
 // @Success 201 {object} entity.MessageCampaign
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
@@ -344,12 +352,20 @@ func (h *HTTPHandler) CreateMessageCampaign(c *gin.Context) {
 
 // UpdateMessageCampaign 更新會員訊息活動
 // @Summary 更新會員訊息活動
-// @Description 更新指定GlobalID的會員訊息活動
+// @Description 更新指定GlobalID的會員訊息活動，支持站內信和App推播兩種通知方式
+// @Description 參數說明：
+// @Description - category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)
+// @Description - item: 消息項目，可選值：registration(註冊)、identity_verification(身分驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)
+// @Description - trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)，可選參數
+// @Description - notification_types: 推送類型位元遮罩，1=站內信，2=App推播，4=其他，可組合使用，範圍1-7，可選參數
+// @Description - target: 目標用戶，可選值：high_activity(高活躍)、low_activity(低活躍)、not_activity(無活躍)、player(指定玩家)、level(玩家等級)、tag(玩家標籤)、all(全部用戶)
+// @Description - target_detail: 目標詳情，當target為player時填入玩家賬號數組，當target為level/tag時填入對應ID字符串數組，可選參數
+// @Description - status: 活動狀態，可選值：draft(草稿)、scheduled(已排程)
 // @Tags 會員訊息活動
 // @Accept json
 // @Produce json
-// @Param id path string true "Campaign Global ID"
-// @Param request body dto.UpdateMessageCampaignRequest true "更新消息活動請求 - 包含需要更新的消息標題、內容、類型等資訊"
+// @Param global_id path string true "訊息活動全局ID - 跨系統唯一識別符，用於標識特定訊息活動" example("msg-550e8400-e29b-41d4-a716-446655440000")
+// @Param request body dto.UpdateMessageCampaignRequest true "更新消息活動請求"
 // @Success 200 {object} entity.MessageCampaign
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
@@ -439,12 +455,28 @@ func (h *HTTPHandler) GetMessageCampaign(c *gin.Context) {
 
 // ListMessageCampaigns 列出會員訊息活動
 // @Summary 列出會員訊息活動
-// @Description 分頁列出會員訊息活動
+// @Description 分頁列出會員訊息活動，支持多條件篩選
+// @Description 查詢參數說明：
+// @Description - page: 頁碼，從1開始，預設為1
+// @Description - page_size: 每頁數量，範圍1-100，預設為10
+// @Description - category: 消息類型篩選，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)
+// @Description - item: 消息項目篩選，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)
+// @Description - status: 狀態篩選，可選值：draft(草稿)、scheduled(已排程)、sent(已發送)、cancelled(已取消)、failed(發送失敗)，支持多選
+// @Description - show_auto_send: 是否顯示系統自動創建的訊息，預設為false
+// @Description - created_by: 創建者篩選
+// @Description - start_at: 創建時間起始篩選，格式：2024-01-01T00:00:00Z
+// @Description - end_at: 創建時間結束篩選，格式：2024-01-01T23:59:59Z
 // @Tags 會員訊息活動
-// @Param page query int false "頁碼 - 分頁查詢的第几頁，必須大於0" minimum(1) default(1) example(1)
-// @Param page_size query int false "每頁數量 - 每頁返回的記錄數，範圍1-100" minimum(1) maximum(100) default(10) example(10)
-// @Param include_deleted query bool false "是否包含已刪除的活動 - true:包含已刪除的記錄，false:僅顯示正常記錄" default(false) example(false)
-// @Param status query []int false "狀態篩選 - 活動狀態篩選條件，可多選：1=草稿，2=已排程，3=已發送，4=已取消" enums(1,2,3,4) example(1,2)
+// @Param page query int false "頁碼" minimum(1) default(1) example(1)
+// @Param page_size query int false "每頁數量" minimum(1) maximum(100) default(10) example(10)
+// @Param category query string false "消息類型" Enums(member, bonus, others) example("member")
+// @Param item query string false "消息項目" Enums(registration, identity_verification, bank_card, others, event, all, mission) example("registration")
+// @Param status query []string false "狀態篩選" Enums(draft, scheduled, sent, cancelled, failed) example("scheduled,sent")
+// @Param show_auto_send query bool false "是否顯示系統自動創建" default(false) example(false)
+// @Param created_by query string false "創建者" example("admin@example.com")
+// @Param start_at query string false "創建起始時間" format(date-time) example("2024-01-01T00:00:00Z")
+// @Param end_at query string false "創建結束時間" format(date-time) example("2024-01-01T23:59:59Z")
+// @Param include_deleted query bool false "是否包含已刪除記錄" default(false) example(false)
 // @Success 200 {object} dto.MessageCampaignListResponse
 // @Failure 500 {object} ErrorResponse
 // @Security ApiKeyAuth
@@ -590,12 +622,19 @@ func (h *HTTPHandler) GetMerchantAutoSettings(c *gin.Context) {
 
 // CreateOrUpdateMerchantAutoSettings 新增或更新商戶自動設定
 // @Summary 新增或更新商戶自動設定
-// @Description 為特定商戶建立或更新會員訊息自動派發設定
+// @Description 為特定商戶建立或更新會員訊息自動派發設定，支持批量設定多個自動發送規則
+// @Description 參數說明：
+// @Description - settings: 自動設定項目列表，最少1個最多10個
+// @Description   - category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)
+// @Description   - item: 消息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)
+// @Description   - trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)
+// @Description   - title: 消息標題，必填，最大255個字符
+// @Description   - content: 消息內容，必填
 // @Tags 會員訊息自動設定
 // @Accept json
 // @Produce json
-// @Param merchant_id path string true "商戶ID"
-// @Param request body dto.MerchantAutoSettingsRequest true "商戶自動設定請求 - 包含多個自動設定項目，最多10個設定"
+// @Param merchant_id path string true "商戶ID" example("merchant-123e4567-e89b-12d3-a456-426614174000")
+// @Param request body dto.MerchantAutoSettingsRequest true "商戶自動設定請求"
 // @Success 200 {object} dto.AutoSettingsOperationResponse "更新成功"
 // @Success 201 {object} dto.AutoSettingsOperationResponse "建立成功"
 // @Failure 400 {object} ErrorResponse
@@ -710,10 +749,15 @@ func (h *HTTPHandler) GetPlayerTags(c *gin.Context) {
 // SendAutoNotification 發送系統自動推播訊息
 // @Summary 發送系統自動推播訊息
 // @Description 根據指定的category、item、trigger_type向特定玩家發送系統自動推播訊息
+// @Description 參數說明：
+// @Description - global_player_id: 玩家全局ID，必填，格式為UUID
+// @Description - category: 訊息類別，可選值：member(會員訊息)、bonus(紅利訊息)
+// @Description - item: 訊息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、mission(任務)
+// @Description - trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)
 // @Tags 系統自動推播
 // @Accept json
 // @Produce json
-// @Param request body dto.SendAutoNotificationRequest true "自動推播訊息請求 - 包含玩家ID、訊息分類、項目和觸發類型"
+// @Param request body dto.SendAutoNotificationRequest true "自動推播訊息請求"
 // @Success 200 {object} dto.SendAutoNotificationResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse

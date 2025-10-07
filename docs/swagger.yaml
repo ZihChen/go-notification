@@ -14,7 +14,7 @@ definitions:
   dto.AutoSettingItem:
     properties:
       category:
-        description: 消息类型：member=会员消息，bonus=红利消息，others=其他消息
+        description: 消息类型：member=会员消息，bonus=红利消息，others=其他消息。可選值：member, bonus, others
         enum:
         - member
         - bonus
@@ -26,7 +26,8 @@ definitions:
         example: 恭喜您成功注册成为我们的会员！
         type: string
       item:
-        description: 消息项目
+        description: 消息项目。可選值：registration(註冊), identity_verification(身份驗證), bank_card(銀行卡),
+          others(其他), event(活動), all(全部), mission(任務)
         enum:
         - registration
         - identity_verification
@@ -43,7 +44,7 @@ definitions:
         maxLength: 255
         type: string
       trigger_type:
-        description: 触发类型：success=成功，failure=失败
+        description: 触发类型：success=成功，failure=失败。可選值：success, failure
         enum:
         - success
         - failure
@@ -76,7 +77,7 @@ definitions:
         maxLength: 255
         type: string
       category:
-        description: 消息类型：member=会员消息，bonus=红利消息，others=其他消息
+        description: 消息类型：member=会员消息，bonus=红利消息，others=其他消息。可選值：member, bonus, others
         enum:
         - member
         - bonus
@@ -93,7 +94,8 @@ definitions:
         maxLength: 100
         type: string
       item:
-        description: 消息项目
+        description: 消息项目。可選值：registration(註冊), identity_verification(身份驗證), bank_card(銀行卡),
+          others(其他), event(活動), all(全部), mission(任務)
         enum:
         - registration
         - identity_verification
@@ -105,7 +107,8 @@ definitions:
         example: registration
         type: string
       notification_types:
-        description: 推送類型位元遮罩：1=站內信，2=App推播，3=兩者皆有，可組合至7，必填
+        description: 推送類型位元遮罩：1=站內信，2=App推播，4=其他，可組合使用，範圍1-7，必填。示例：1(僅站內信), 2(僅App推播),
+          3(站內信+App推播)
         example: 3
         maximum: 7
         minimum: 1
@@ -121,14 +124,15 @@ definitions:
         format: date-time
         type: string
       status:
-        description: 活动状态
+        description: 活动状态。可選值：draft(草稿), scheduled(已排程)
         enum:
         - draft
         - scheduled
         example: scheduled
         type: string
       target:
-        description: 目标用户
+        description: 目标用户。可選值：high_activity(高活躍), low_activity(低活躍), not_activity(無活躍),
+          player(指定玩家), level(玩家等級), tag(玩家標籤), all(全部用戶)
         enum:
         - high_activity
         - low_activity
@@ -153,7 +157,7 @@ definitions:
         maxLength: 255
         type: string
       trigger_type:
-        description: 触发类型：success=成功，failure=失败（可选）
+        description: 触发类型：success=成功，failure=失败（可选）。可選值：success, failure
         enum:
         - success
         - failure
@@ -306,18 +310,19 @@ definitions:
   dto.SendAutoNotificationRequest:
     properties:
       category:
-        description: 訊息類別：member=會員訊息，bonus=紅利訊息
+        description: 訊息類別：member=會員訊息，bonus=紅利訊息。可選值：member, bonus
         enum:
         - member
         - bonus
         example: member
         type: string
       global_player_id:
-        description: 玩家全局ID，必填
+        description: 玩家全局ID，必填，格式為UUID
         example: player-123e4567-e89b-12d3-a456-426614174000
         type: string
       item:
-        description: 訊息項目：registration=註冊，identity_verification=身分驗證，bank_card=銀行卡，mission=任務
+        description: 訊息項目：registration=註冊，identity_verification=身分驗證，bank_card=銀行卡，mission=任務。可選值：registration,
+          identity_verification, bank_card, mission
         enum:
         - registration
         - identity_verification
@@ -326,7 +331,7 @@ definitions:
         example: registration
         type: string
       trigger_type:
-        description: 觸發類型：success=成功，failure=失敗
+        description: 觸發類型：success=成功，failure=失敗。可選值：success, failure
         enum:
         - success
         - failure
@@ -388,7 +393,7 @@ definitions:
         maxLength: 255
         type: string
       category:
-        description: 消息类型：member=会员消息，bonus=红利消息，others=其他消息
+        description: 消息类型：member=会员消息，bonus=红利消息，others=其他消息。可選值：member, bonus, others
         enum:
         - member
         - bonus
@@ -400,7 +405,8 @@ definitions:
         example: 恭喜您成功注册成为我们的会员！
         type: string
       item:
-        description: 消息项目
+        description: 消息项目。可選值：registration(註冊), identity_verification(身份驗證), bank_card(銀行卡),
+          others(其他), event(活動), all(全部), mission(任務)
         enum:
         - registration
         - identity_verification
@@ -412,7 +418,8 @@ definitions:
         example: registration
         type: string
       notification_types:
-        description: 推送類型位元遮罩：1=站內信，2=App推播，4=其他，可選
+        description: 推送類型位元遮罩：1=站內信，2=App推播，4=其他，可組合使用，範圍1-7，可選。示例：1(僅站內信), 2(僅App推播),
+          3(站內信+App推播)
         example: 3
         maximum: 7
         minimum: 1
@@ -428,14 +435,15 @@ definitions:
         format: date-time
         type: string
       status:
-        description: 活动状态
+        description: 活动状态。可選值：draft(草稿), scheduled(已排程)
         enum:
         - draft
         - scheduled
         example: scheduled
         type: string
       target:
-        description: 目标用户
+        description: 目标用户。可選值：high_activity(高活躍), low_activity(低活躍), not_activity(無活躍),
+          player(指定玩家), level(玩家等級), tag(玩家標籤), all(全部用戶)
         enum:
         - high_activity
         - low_activity
@@ -460,7 +468,7 @@ definitions:
         maxLength: 255
         type: string
       trigger_type:
-        description: 触发类型：success=成功，failure=失败（可选）
+        description: 触发类型：success=成功，failure=失败（可选）。可選值：success, failure
         enum:
         - success
         - failure
@@ -733,41 +741,99 @@ paths:
       - 商戶
   /api/v1/message-campaigns:
     get:
-      description: 分頁列出會員訊息活動
+      description: |-
+        分頁列出會員訊息活動，支持多條件篩選
+        查詢參數說明：
+        - page: 頁碼，從1開始，預設為1
+        - page_size: 每頁數量，範圍1-100，預設為10
+        - category: 消息類型篩選，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)
+        - item: 消息項目篩選，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)
+        - status: 狀態篩選，可選值：draft(草稿)、scheduled(已排程)、sent(已發送)、cancelled(已取消)、failed(發送失敗)，支持多選
+        - show_auto_send: 是否顯示系統自動創建的訊息，預設為false
+        - created_by: 創建者篩選
+        - start_at: 創建時間起始篩選，格式：2024-01-01T00:00:00Z
+        - end_at: 創建時間結束篩選，格式：2024-01-01T23:59:59Z
       parameters:
       - default: 1
-        description: 頁碼 - 分頁查詢的第几頁，必須大於0
+        description: 頁碼
         example: 1
         in: query
         minimum: 1
         name: page
         type: integer
       - default: 10
-        description: 每頁數量 - 每頁返回的記錄數，範圍1-100
+        description: 每頁數量
         example: 10
         in: query
         maximum: 100
         minimum: 1
         name: page_size
         type: integer
+      - description: 消息類型
+        enum:
+        - member
+        - bonus
+        - others
+        example: '"member"'
+        in: query
+        name: category
+        type: string
+      - description: 消息項目
+        enum:
+        - registration
+        - identity_verification
+        - bank_card
+        - others
+        - event
+        - all
+        - mission
+        example: '"registration"'
+        in: query
+        name: item
+        type: string
+      - collectionFormat: csv
+        description: 狀態篩選
+        example: '"scheduled,sent"'
+        in: query
+        items:
+          enum:
+          - draft
+          - scheduled
+          - sent
+          - cancelled
+          - failed
+          type: string
+        name: status
+        type: array
       - default: false
-        description: 是否包含已刪除的活動 - true:包含已刪除的記錄，false:僅顯示正常記錄
+        description: 是否顯示系統自動創建
+        example: false
+        in: query
+        name: show_auto_send
+        type: boolean
+      - description: 創建者
+        example: '"admin@example.com"'
+        in: query
+        name: created_by
+        type: string
+      - description: 創建起始時間
+        example: '"2024-01-01T00:00:00Z"'
+        format: date-time
+        in: query
+        name: start_at
+        type: string
+      - description: 創建結束時間
+        example: '"2024-01-01T23:59:59Z"'
+        format: date-time
+        in: query
+        name: end_at
+        type: string
+      - default: false
+        description: 是否包含已刪除記錄
         example: false
         in: query
         name: include_deleted
         type: boolean
-      - collectionFormat: csv
-        description: 狀態篩選 - 活動狀態篩選條件，可多選：1=草稿，2=已排程，3=已發送，4=已取消
-        in: query
-        items:
-          enum:
-          - 1
-          - 2
-          - 3
-          - 4
-          type: integer
-        name: status
-        type: array
       responses:
         "200":
           description: OK
@@ -785,9 +851,18 @@ paths:
     post:
       consumes:
       - application/json
-      description: 創建新的會員訊息活動
+      description: |-
+        創建新的會員訊息活動，支持站內信和App推播兩種通知方式
+        參數說明：
+        - category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)
+        - item: 消息項目，可選值：registration(註冊)、identity_verification(身分驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)
+        - trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)，可選參數
+        - notification_types: 推送類型位元遮罩，1=站內信，2=App推播，3=兩者皆有，範圍1-7
+        - target: 目標用戶，可選值：high_activity(高活躍)、low_activity(低活躍)、not_activity(無活躍)、player(指定玩家)、level(玩家等級)、tag(玩家標籤)、all(全部用戶)
+        - target_detail: 目標詳情，當target為player時填入玩家賬號數組，當target為level/tag時填入對應ID字符串數組
+        - status: 活動狀態，可選值：draft(草稿)、scheduled(已排程)
       parameters:
-      - description: 創建消息活動請求 - 包含消息標題、內容、類型等完整資訊
+      - description: 創建消息活動請求
         in: body
         name: request
         required: true
@@ -879,14 +954,24 @@ paths:
     put:
       consumes:
       - application/json
-      description: 更新指定GlobalID的會員訊息活動
+      description: |-
+        更新指定GlobalID的會員訊息活動，支持站內信和App推播兩種通知方式
+        參數說明：
+        - category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)
+        - item: 消息項目，可選值：registration(註冊)、identity_verification(身分驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)
+        - trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)，可選參數
+        - notification_types: 推送類型位元遮罩，1=站內信，2=App推播，4=其他，可組合使用，範圍1-7，可選參數
+        - target: 目標用戶，可選值：high_activity(高活躍)、low_activity(低活躍)、not_activity(無活躍)、player(指定玩家)、level(玩家等級)、tag(玩家標籤)、all(全部用戶)
+        - target_detail: 目標詳情，當target為player時填入玩家賬號數組，當target為level/tag時填入對應ID字符串數組，可選參數
+        - status: 活動狀態，可選值：draft(草稿)、scheduled(已排程)
       parameters:
-      - description: Campaign Global ID
+      - description: 訊息活動全局ID - 跨系統唯一識別符，用於標識特定訊息活動
+        example: '"msg-550e8400-e29b-41d4-a716-446655440000"'
         in: path
-        name: id
+        name: global_id
         required: true
         type: string
-      - description: 更新消息活動請求 - 包含需要更新的消息標題、內容、類型等資訊
+      - description: 更新消息活動請求
         in: body
         name: request
         required: true
@@ -954,9 +1039,17 @@ paths:
     post:
       consumes:
       - application/json
-      description: 為特定商戶建立或更新會員訊息自動派發設定
+      description: |-
+        為特定商戶建立或更新會員訊息自動派發設定，支持批量設定多個自動發送規則
+        參數說明：
+        - settings: 自動設定項目列表，最少1個最多10個
+        - category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)
+        - item: 消息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)
+        - trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)
+        - title: 消息標題，必填，最大255個字符
+        - content: 消息內容，必填
       parameters:
-      - description: 商戶自動設定請求 - 包含多個自動設定項目，最多10個設定
+      - description: 商戶自動設定請求
         in: body
         name: request
         required: true
@@ -989,9 +1082,17 @@ paths:
     put:
       consumes:
       - application/json
-      description: 為特定商戶建立或更新會員訊息自動派發設定
+      description: |-
+        為特定商戶建立或更新會員訊息自動派發設定，支持批量設定多個自動發送規則
+        參數說明：
+        - settings: 自動設定項目列表，最少1個最多10個
+        - category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)
+        - item: 消息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)
+        - trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)
+        - title: 消息標題，必填，最大255個字符
+        - content: 消息內容，必填
       parameters:
-      - description: 商戶自動設定請求 - 包含多個自動設定項目，最多10個設定
+      - description: 商戶自動設定請求
         in: body
         name: request
         required: true
@@ -1115,9 +1216,15 @@ paths:
     post:
       consumes:
       - application/json
-      description: 根據指定的category、item、trigger_type向特定玩家發送系統自動推播訊息
+      description: |-
+        根據指定的category、item、trigger_type向特定玩家發送系統自動推播訊息
+        參數說明：
+        - global_player_id: 玩家全局ID，必填，格式為UUID
+        - category: 訊息類別，可選值：member(會員訊息)、bonus(紅利訊息)
+        - item: 訊息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、mission(任務)
+        - trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)
       parameters:
-      - description: 自動推播訊息請求 - 包含玩家ID、訊息分類、項目和觸發類型
+      - description: 自動推播訊息請求
         in: body
         name: request
         required: true
