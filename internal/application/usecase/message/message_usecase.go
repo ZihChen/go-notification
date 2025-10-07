@@ -100,6 +100,9 @@ func (u *MessageUseCase) CreateMessageCampaign(
 		return fmt.Errorf("copy campaign failed: %w", err)
 	}
 
+	// 自動設定 TriggerType 為 "success"
+	campaignEntity.TriggerType = consts.TriggerTypeSuccess
+
 	// 使用領域方法驗證通知類型
 	if err := campaignEntity.ValidateNotificationTypes(true); err != nil {
 		u.tracingService.RecordSpanError(span, err)

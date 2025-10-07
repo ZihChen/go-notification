@@ -332,7 +332,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "創建新的會員訊息活動，支持站內信和App推播兩種通知方式\n參數說明：\n- category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)\n- item: 消息項目，可選值：registration(註冊)、identity_verification(身分驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)\n- trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)，可選參數\n- notification_types: 推送類型位元遮罩，1=站內信，2=App推播，3=兩者皆有，範圍1-7\n- target: 目標用戶，可選值：high_activity(高活躍)、low_activity(低活躍)、not_activity(無活躍)、player(指定玩家)、level(玩家等級)、tag(玩家標籤)、all(全部用戶)\n- target_detail: 目標詳情，當target為player時填入玩家賬號數組，當target為level/tag時填入對應ID字符串數組\n- status: 活動狀態，可選值：draft(草稿)、scheduled(已排程)",
+                "description": "創建新的會員訊息活動，支持站內信和App推播兩種通知方式\n參數說明：\n- category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)\n- item: 消息項目，可選值：registration(註冊)、identity_verification(身分驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)\n- notification_types: 推送類型位元遮罩，1=站內信，2=App推播，3=兩者皆有，範圍1-7\n- target: 目標用戶，可選值：high_activity(高活躍)、low_activity(低活躍)、not_activity(無活躍)、player(指定玩家)、level(玩家等級)、tag(玩家標籤)、all(全部用戶)\n- target_detail: 目標詳情，當target為player時填入玩家賬號數組，當target為level/tag時填入對應ID字符串數組\n- status: 活動狀態，可選值：draft(草稿)、scheduled(已排程)",
                 "consumes": [
                     "application/json"
                 ],
@@ -596,7 +596,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "更新指定GlobalID的會員訊息活動，支持站內信和App推播兩種通知方式\n參數說明：\n- category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)\n- item: 消息項目，可選值：registration(註冊)、identity_verification(身分驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)\n- trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)，可選參數\n- notification_types: 推送類型位元遮罩，1=站內信，2=App推播，4=其他，可組合使用，範圍1-7，可選參數\n- target: 目標用戶，可選值：high_activity(高活躍)、low_activity(低活躍)、not_activity(無活躍)、player(指定玩家)、level(玩家等級)、tag(玩家標籤)、all(全部用戶)\n- target_detail: 目標詳情，當target為player時填入玩家賬號數組，當target為level/tag時填入對應ID字符串數組，可選參數\n- status: 活動狀態，可選值：draft(草稿)、scheduled(已排程)",
+                "description": "更新指定GlobalID的會員訊息活動，支持站內信和App推播兩種通知方式\n參數說明：\n- category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)\n- item: 消息項目，可選值：registration(註冊)、identity_verification(身分驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)\n- notification_types: 推送類型位元遮罩，1=站內信，2=App推播，4=其他，可組合使用，範圍1-7，可選參數\n- target: 目標用戶，可選值：high_activity(高活躍)、low_activity(低活躍)、not_activity(無活躍)、player(指定玩家)、level(玩家等級)、tag(玩家標籤)、all(全部用戶)\n- target_detail: 目標詳情，當target為player時填入玩家賬號數組，當target為level/tag時填入對應ID字符串數組，可選參數\n- status: 活動狀態，可選值：draft(草稿)、scheduled(已排程)",
                 "consumes": [
                     "application/json"
                 ],
@@ -1351,15 +1351,6 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "example": "欢迎新用户"
-                },
-                "trigger_type": {
-                    "description": "触发类型：success=成功，failure=失败（可选）。可選值：success, failure",
-                    "type": "string",
-                    "enum": [
-                        "success",
-                        "failure"
-                    ],
-                    "example": "success"
                 }
             }
         },
@@ -1777,15 +1768,6 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255,
                     "example": "欢迎新用户"
-                },
-                "trigger_type": {
-                    "description": "触发类型：success=成功，failure=失败（可选）。可選值：success, failure",
-                    "type": "string",
-                    "enum": [
-                        "success",
-                        "failure"
-                    ],
-                    "example": "success"
                 },
                 "updated_by": {
                     "description": "更新者，最大100个字符",

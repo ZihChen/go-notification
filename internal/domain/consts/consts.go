@@ -37,3 +37,9 @@ const (
 	MessageCampaignStatusCancelled = "cancelled" // 已取消
 	MessageCampaignStatusFailed    = "failed"    // 處理失敗
 )
+
+// MessageCampaign TriggerType 觸發類型常數
+const (
+	TriggerTypeSuccess = "success"
+	TriggerTypeFailure = "failure"
+)
