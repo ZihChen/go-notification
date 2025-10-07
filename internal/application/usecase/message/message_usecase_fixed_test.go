@@ -567,3 +567,271 @@ func TestSendAutoNotification_TimeWindowDuplicate(t *testing.T) {
 	suite.campaignRepo.AssertExpectations()
 	suite.playerMessageRepo.AssertExpectations()
 }
+
+// TestValidateAutoSettingsCompleteness 測試自動設定完整性驗證
+func TestValidateAutoSettingsCompleteness(t *testing.T) {
+	useCase := &MessageUseCase{}
+
+	tests := []struct {
+		name        string
+		settings    []dto.AutoSettingItem
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "完整的六種組合 - 成功",
+			settings: []dto.AutoSettingItem{
+				{
+					Category:    "member",
+					Item:        "registration",
+					TriggerType: "success",
+					Title:       "註冊成功",
+					Content:     "恭喜，註冊成功",
+				},
+				{
+					Category:    "member",
+					Item:        "identity_verification",
+					TriggerType: "success",
+					Title:       "實名驗證成功",
+					Content:     "恭喜，實名驗證成功",
+				},
+				{
+					Category:    "member",
+					Item:        "identity_verification",
+					TriggerType: "failure",
+					Title:       "實名驗證失敗",
+					Content:     "抱歉，實名驗證失敗",
+				},
+				{
+					Category:    "member",
+					Item:        "bank_card",
+					TriggerType: "failure",
+					Title:       "取款方式綁定失敗",
+					Content:     "抱歉，取款方式綁定失敗",
+				},
+				{
+					Category:    "bonus",
+					Item:        "mission",
+					TriggerType: "success",
+					Title:       "優惠派發成功",
+					Content:     "恭喜，優惠派發成功",
+				},
+				{
+					Category:    "bonus",
+					Item:        "mission",
+					TriggerType: "failure",
+					Title:       "優惠活動派發失敗",
+					Content:     "抱歉，優惠活動派發失敗",
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "缺少必需組合 - 失敗",
+			settings: []dto.AutoSettingItem{
+				{
+					Category:    "member",
+					Item:        "registration",
+					TriggerType: "success",
+					Title:       "註冊成功",
+					Content:     "歡迎加入",
+				},
+				{
+					Category:    "member",
+					Item:        "identity_verification",
+					TriggerType: "success",
+					Title:       "實名驗證成功",
+					Content:     "驗證完成",
+				},
+			},
+			expectError: true,
+			errorMsg:    "missing required combinations",
+		},
+		{
+			name: "標題為空 - 失敗",
+			settings: []dto.AutoSettingItem{
+				{
+					Category:    "member",
+					Item:        "registration",
+					TriggerType: "success",
+					Title:       "",
+					Content:     "歡迎加入",
+				},
+				{
+					Category:    "member",
+					Item:        "identity_verification",
+					TriggerType: "success",
+					Title:       "實名驗證成功",
+					Content:     "驗證完成",
+				},
+				{
+					Category:    "member",
+					Item:        "identity_verification",
+					TriggerType: "failure",
+					Title:       "實名驗證失敗",
+					Content:     "驗證失敗",
+				},
+				{
+					Category:    "member",
+					Item:        "bank_card",
+					TriggerType: "failure",
+					Title:       "銀行卡綁定失敗",
+					Content:     "綁定失敗",
+				},
+				{
+					Category:    "bonus",
+					Item:        "mission",
+					TriggerType: "success",
+					Title:       "優惠派發成功",
+					Content:     "優惠已發放",
+				},
+				{
+					Category:    "bonus",
+					Item:        "mission",
+					TriggerType: "failure",
+					Title:       "優惠派發失敗",
+					Content:     "發放失敗",
+				},
+			},
+			expectError: true,
+			errorMsg:    "title is required",
+		},
+		{
+			name: "內容為空 - 失敗",
+			settings: []dto.AutoSettingItem{
+				{
+					Category:    "member",
+					Item:        "registration",
+					TriggerType: "success",
+					Title:       "註冊成功",
+					Content:     "",
+				},
+				{
+					Category:    "member",
+					Item:        "identity_verification",
+					TriggerType: "success",
+					Title:       "實名驗證成功",
+					Content:     "驗證完成",
+				},
+				{
+					Category:    "member",
+					Item:        "identity_verification",
+					TriggerType: "failure",
+					Title:       "實名驗證失敗",
+					Content:     "驗證失敗",
+				},
+				{
+					Category:    "member",
+					Item:        "bank_card",
+					TriggerType: "failure",
+					Title:       "銀行卡綁定失敗",
+					Content:     "綁定失敗",
+				},
+				{
+					Category:    "bonus",
+					Item:        "mission",
+					TriggerType: "success",
+					Title:       "優惠派發成功",
+					Content:     "優惠已發放",
+				},
+				{
+					Category:    "bonus",
+					Item:        "mission",
+					TriggerType: "failure",
+					Title:       "優惠派發失敗",
+					Content:     "發放失敗",
+				},
+			},
+			expectError: true,
+			errorMsg:    "content is required",
+		},
+		{
+			name: "無效的category - 失敗",
+			settings: []dto.AutoSettingItem{
+				{
+					Category:    "invalid",
+					Item:        "registration",
+					TriggerType: "success",
+					Title:       "註冊成功",
+					Content:     "歡迎加入",
+				},
+			},
+			expectError: true,
+			errorMsg:    "invalid category",
+		},
+		{
+			name: "無效的item - 失敗",
+			settings: []dto.AutoSettingItem{
+				{
+					Category:    "member",
+					Item:        "invalid",
+					TriggerType: "success",
+					Title:       "註冊成功",
+					Content:     "歡迎加入",
+				},
+			},
+			expectError: true,
+			errorMsg:    "invalid item",
+		},
+		{
+			name: "使用mission作為item值 - 成功",
+			settings: []dto.AutoSettingItem{
+				{
+					Category:    "member",
+					Item:        "registration",
+					TriggerType: "success",
+					Title:       "註冊成功",
+					Content:     "歡迎加入",
+				},
+				{
+					Category:    "member",
+					Item:        "identity_verification",
+					TriggerType: "success",
+					Title:       "實名驗證成功",
+					Content:     "驗證完成",
+				},
+				{
+					Category:    "member",
+					Item:        "identity_verification",
+					TriggerType: "failure",
+					Title:       "實名驗證失敗",
+					Content:     "驗證失敗",
+				},
+				{
+					Category:    "member",
+					Item:        "bank_card",
+					TriggerType: "failure",
+					Title:       "銀行卡綁定失敗",
+					Content:     "綁定失敗",
+				},
+				{
+					Category:    "bonus",
+					Item:        "mission",
+					TriggerType: "success",
+					Title:       "優惠派發成功",
+					Content:     "優惠已發放",
+				}, // mission映射到6
+				{
+					Category:    "bonus",
+					Item:        "mission",
+					TriggerType: "failure",
+					Title:       "優惠派發失敗",
+					Content:     "發放失敗",
+				}, // mission映射到6
+			},
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := useCase.validateAutoSettingsCompleteness(tt.settings)
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

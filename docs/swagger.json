@@ -428,7 +428,7 @@
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "為特定商戶建立或更新會員訊息自動派發設定，支持批量設定多個自動發送規則\n參數說明：\n- settings: 自動設定項目列表，最少1個最多10個\n- category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)\n- item: 消息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)\n- trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)\n- title: 消息標題，必填，最大255個字符\n- content: 消息內容，必填",
+                "description": "為特定商戶建立或更新會員訊息自動派發設定，支持批量設定多個自動發送規則\n\n**必需包含所有6種組合：**\n1. member + registration + success (註冊成功)\n2. member + identity_verification + success (實名驗證成功)\n3. member + identity_verification + failure (實名驗證失敗)\n4. member + bank_card + failure (取款方式綁定失敗)\n5. bonus + mission + success (優惠派發成功)\n6. bonus + mission + failure (優惠派發失敗)\n\n**完整範例：**\n```json\n{\n\"settings\": [\n{\"category\": \"member\", \"item\": \"registration\", \"trigger_type\": \"success\", \"title\": \"註冊成功\", \"content\": \"恭喜，註冊成功\"},\n{\"category\": \"member\", \"item\": \"identity_verification\", \"trigger_type\": \"success\", \"title\": \"身分驗證成功\", \"content\": \"恭喜，身分驗證成功\"},\n{\"category\": \"member\", \"item\": \"identity_verification\", \"trigger_type\": \"failure\", \"title\": \"身分驗證失敗\", \"content\": \"抱歉，身分驗證失敗\"},\n{\"category\": \"member\", \"item\": \"bank_card\", \"trigger_type\": \"failure\", \"title\": \"銀行卡綁定失敗\", \"content\": \"抱歉，銀行卡綁定失敗\"},\n{\"category\": \"bonus\", \"item\": \"mission\", \"trigger_type\": \"success\", \"title\": \"任務完成\", \"content\": \"恭喜，任務完成\"},\n{\"category\": \"bonus\", \"item\": \"mission\", \"trigger_type\": \"failure\", \"title\": \"任務失敗\", \"content\": \"抱歉，任務失敗\"}\n]\n}\n```\n\n**參數說明：**\n- settings: 自動設定項目列表，必須包含上述6種組合\n- category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)\n- item: 消息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、mission(任務)\n- trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)\n- title: 消息標題，必填，最大255個字符\n- content: 消息內容，必填",
                 "consumes": [
                     "application/json"
                 ],
@@ -483,7 +483,7 @@
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "為特定商戶建立或更新會員訊息自動派發設定，支持批量設定多個自動發送規則\n參數說明：\n- settings: 自動設定項目列表，最少1個最多10個\n- category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)\n- item: 消息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)\n- trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)\n- title: 消息標題，必填，最大255個字符\n- content: 消息內容，必填",
+                "description": "為特定商戶建立或更新會員訊息自動派發設定，支持批量設定多個自動發送規則\n\n**必需包含所有6種組合：**\n1. member + registration + success (註冊成功)\n2. member + identity_verification + success (實名驗證成功)\n3. member + identity_verification + failure (實名驗證失敗)\n4. member + bank_card + failure (取款方式綁定失敗)\n5. bonus + mission + success (優惠派發成功)\n6. bonus + mission + failure (優惠派發失敗)\n\n**完整範例：**\n```json\n{\n\"settings\": [\n{\"category\": \"member\", \"item\": \"registration\", \"trigger_type\": \"success\", \"title\": \"註冊成功\", \"content\": \"恭喜，註冊成功\"},\n{\"category\": \"member\", \"item\": \"identity_verification\", \"trigger_type\": \"success\", \"title\": \"身分驗證成功\", \"content\": \"恭喜，身分驗證成功\"},\n{\"category\": \"member\", \"item\": \"identity_verification\", \"trigger_type\": \"failure\", \"title\": \"身分驗證失敗\", \"content\": \"抱歉，身分驗證失敗\"},\n{\"category\": \"member\", \"item\": \"bank_card\", \"trigger_type\": \"failure\", \"title\": \"銀行卡綁定失敗\", \"content\": \"抱歉，銀行卡綁定失敗\"},\n{\"category\": \"bonus\", \"item\": \"mission\", \"trigger_type\": \"success\", \"title\": \"任務完成\", \"content\": \"恭喜，任務完成\"},\n{\"category\": \"bonus\", \"item\": \"mission\", \"trigger_type\": \"failure\", \"title\": \"任務失敗\", \"content\": \"抱歉，任務失敗\"}\n]\n}\n```\n\n**參數說明：**\n- settings: 自動設定項目列表，必須包含上述6種組合\n- category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)\n- item: 消息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、mission(任務)\n- trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)\n- title: 消息標題，必填，最大255個字符\n- content: 消息內容，必填",
                 "consumes": [
                     "application/json"
                 ],
@@ -1180,7 +1180,7 @@
                 "content": {
                     "description": "消息内容，必填",
                     "type": "string",
-                    "example": "恭喜您成功注册成为我们的会员！"
+                    "example": "恭喜，註冊成功"
                 },
                 "item": {
                     "description": "消息项目。可選值：registration(註冊), identity_verification(身份驗證), bank_card(銀行卡), others(其他), event(活動), all(全部), mission(任務)",
@@ -1200,7 +1200,7 @@
                     "description": "消息标题，最大255个字符",
                     "type": "string",
                     "maxLength": 255,
-                    "example": "欢迎新用户"
+                    "example": "註冊成功"
                 },
                 "trigger_type": {
                     "description": "触发类型：success=成功，failure=失败。可選值：success, failure",
@@ -1380,13 +1380,14 @@
             }
         },
         "dto.MerchantAutoSettingsRequest": {
+            "description": "需要提供全部6種組合：member+registration+success, member+identity_verification+success, member+identity_verification+failure, member+bank_card+failure, bonus+mission+success, bonus+mission+failure",
             "type": "object",
             "required": [
                 "settings"
             ],
             "properties": {
                 "settings": {
-                    "description": "自动设置项目列表，最少1个，最多10个",
+                    "description": "自动设置项目列表，必須包含全部6種組合",
                     "type": "array",
                     "maxItems": 10,
                     "minItems": 1,

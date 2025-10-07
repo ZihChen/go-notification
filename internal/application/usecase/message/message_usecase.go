@@ -794,6 +794,12 @@ func (u *MessageUseCase) CreateOrUpdateMerchantAutoSettings(
 	)
 	defer u.tracingService.SpanEnd(span)
 
+	// 驗證設定完整性
+	if err := u.validateAutoSettingsCompleteness(req.Settings); err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return nil, fmt.Errorf("validate auto settings completeness: %w", err)
+	}
+
 	// 獲取商戶資訊
 	merchant, err := u.merchantRepo.FindByGlobalID(ctx, req.GlobalMerchantID)
 	if err != nil {
@@ -1291,4 +1297,84 @@ func (u *MessageUseCase) SendAutoNotification(
 		SentChannels: sentChannels,
 		Message:      fmt.Sprintf("notification sent via %v", sentChannels),
 	}, nil
+}
+
+// validateAutoSettingsCompleteness 驗證自動設定是否包含所有必需的組合
+func (u *MessageUseCase) validateAutoSettingsCompleteness(settings []dto.AutoSettingItem) error {
+	// 定義所有必需的組合 (category-item-trigger_type)
+	requiredCombinations := map[string]bool{
+		"member-registration-success":          false, // 會員註冊成功
+		"member-identity_verification-success": false, // 會員身份驗證成功
+		"member-identity_verification-failure": false, // 會員身份驗證失敗
+		"member-bank_card-failure":             false, // 會員銀行卡綁定失敗
+		"bonus-mission-success":                false, // 紅利任務成功
+		"bonus-mission-failure":                false, // 紅利任務失敗
+	}
+
+	// 定義有效的 category 和 item 值
+	validCategories := map[string]bool{
+		"member": true,
+		"bonus":  true,
+		"others": true,
+	}
+	validItems := map[string]bool{
+		"registration":          true,
+		"identity_verification": true,
+		"bank_card":             true,
+		"others":                true,
+		"event":                 true,
+		"all":                   true,
+		"mission":               true,
+	}
+
+	// 檢查每個設定項目
+	for _, setting := range settings {
+		// 驗證 category 和 item 的有效性
+		if !validCategories[setting.Category] {
+			return fmt.Errorf("invalid category: %s", setting.Category)
+		}
+		if !validItems[setting.Item] {
+			return fmt.Errorf("invalid item: %s", setting.Item)
+		}
+
+		// 驗證標題和內容不能為空
+		if strings.TrimSpace(setting.Title) == "" {
+			return fmt.Errorf("title is required for %s-%s-%s",
+				setting.Category, setting.Item, setting.TriggerType)
+		}
+		if strings.TrimSpace(setting.Content) == "" {
+			return fmt.Errorf("content is required for %s-%s-%s",
+				setting.Category, setting.Item, setting.TriggerType)
+		}
+
+		// 生成語意化組合鍵
+		combinationKey := fmt.Sprintf(
+			"%s-%s-%s",
+			setting.Category,
+			setting.Item,
+			setting.TriggerType,
+		)
+
+		// 檢查是否為必需的組合
+		if _, exists := requiredCombinations[combinationKey]; exists {
+			requiredCombinations[combinationKey] = true
+		}
+	}
+
+	// 檢查是否所有必需的組合都存在
+	var missingCombinations []string
+	for combo, present := range requiredCombinations {
+		if !present {
+			missingCombinations = append(missingCombinations, combo)
+		}
+	}
+
+	if len(missingCombinations) > 0 {
+		return fmt.Errorf(
+			"missing required combinations: %v. Required combinations are: member-registration-success, member-identity_verification-success, member-identity_verification-failure, member-bank_card-failure, bonus-mission-success, bonus-mission-failure",
+			missingCombinations,
+		)
+	}
+
+	return nil
 }

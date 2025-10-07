@@ -621,10 +621,33 @@ func (h *HTTPHandler) GetMerchantAutoSettings(c *gin.Context) {
 // CreateOrUpdateMerchantAutoSettings 新增或更新商戶自動設定
 // @Summary 新增或更新商戶自動設定
 // @Description 為特定商戶建立或更新會員訊息自動派發設定，支持批量設定多個自動發送規則
-// @Description 參數說明：
-// @Description - settings: 自動設定項目列表，最少1個最多10個
-// @Description   - category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)
-// @Description   - item: 消息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)
+// @Description
+// @Description **必需包含所有6種組合：**
+// @Description 1. member + registration + success (註冊成功)
+// @Description 2. member + identity_verification + success (實名驗證成功)
+// @Description 3. member + identity_verification + failure (實名驗證失敗)
+// @Description 4. member + bank_card + failure (取款方式綁定失敗)
+// @Description 5. bonus + mission + success (優惠派發成功)
+// @Description 6. bonus + mission + failure (優惠派發失敗)
+// @Description
+// @Description **完整範例：**
+// @Description ```json
+// @Description {
+// @Description   "settings": [
+// @Description     {"category": "member", "item": "registration", "trigger_type": "success", "title": "註冊成功", "content": "恭喜，註冊成功"},
+// @Description     {"category": "member", "item": "identity_verification", "trigger_type": "success", "title": "身分驗證成功", "content": "恭喜，身分驗證成功"},
+// @Description     {"category": "member", "item": "identity_verification", "trigger_type": "failure", "title": "身分驗證失敗", "content": "抱歉，身分驗證失敗"},
+// @Description     {"category": "member", "item": "bank_card", "trigger_type": "failure", "title": "銀行卡綁定失敗", "content": "抱歉，銀行卡綁定失敗"},
+// @Description     {"category": "bonus", "item": "mission", "trigger_type": "success", "title": "任務完成", "content": "恭喜，任務完成"},
+// @Description     {"category": "bonus", "item": "mission", "trigger_type": "failure", "title": "任務失敗", "content": "抱歉，任務失敗"}
+// @Description   ]
+// @Description }
+// @Description ```
+// @Description
+// @Description **參數說明：**
+// @Description - settings: 自動設定項目列表，必須包含上述6種組合
+// @Description   - category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)
+// @Description   - item: 消息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、mission(任務)
 // @Description   - trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)
 // @Description   - title: 消息標題，必填，最大255個字符
 // @Description   - content: 消息內容，必填
