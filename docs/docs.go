@@ -394,15 +394,6 @@ const docTemplate = `{
                     "會員訊息自動設定"
                 ],
                 "summary": "獲取商戶自動設定",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "商戶ID",
-                        "name": "merchant_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -436,7 +427,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "為特定商戶建立或更新會員訊息自動派發設定，支持批量設定多個自動發送規則\n\n**必需包含所有6種組合：**\n1. member + registration + success (註冊成功)\n2. member + identity_verification + success (實名驗證成功)\n3. member + identity_verification + failure (實名驗證失敗)\n4. member + bank_card + failure (取款方式綁定失敗)\n5. bonus + mission + success (優惠派發成功)\n6. bonus + mission + failure (優惠派發失敗)\n\n**完整範例：**\n` + "`" + `` + "`" + `` + "`" + `json\n{\n\"settings\": [\n{\"category\": \"member\", \"item\": \"registration\", \"trigger_type\": \"success\", \"title\": \"註冊成功\", \"content\": \"恭喜，註冊成功\"},\n{\"category\": \"member\", \"item\": \"identity_verification\", \"trigger_type\": \"success\", \"title\": \"身分驗證成功\", \"content\": \"恭喜，身分驗證成功\"},\n{\"category\": \"member\", \"item\": \"identity_verification\", \"trigger_type\": \"failure\", \"title\": \"身分驗證失敗\", \"content\": \"抱歉，身分驗證失敗\"},\n{\"category\": \"member\", \"item\": \"bank_card\", \"trigger_type\": \"failure\", \"title\": \"銀行卡綁定失敗\", \"content\": \"抱歉，銀行卡綁定失敗\"},\n{\"category\": \"bonus\", \"item\": \"mission\", \"trigger_type\": \"success\", \"title\": \"任務完成\", \"content\": \"恭喜，任務完成\"},\n{\"category\": \"bonus\", \"item\": \"mission\", \"trigger_type\": \"failure\", \"title\": \"任務失敗\", \"content\": \"抱歉，任務失敗\"}\n]\n}\n` + "`" + `` + "`" + `` + "`" + `\n\n**參數說明：**\n- settings: 自動設定項目列表，必須包含上述6種組合\n- category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)\n- item: 消息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、mission(任務)\n- trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)\n- title: 消息標題，必填，最大255個字符\n- content: 消息內容，必填",
+                "description": "為特定商戶建立或更新會員訊息自動派發設定，支持批量設定多個自動發送規則\n\n**必需包含所有6種組合：**\n1. member + registration + success (註冊成功)\n2. member + identity_verification + success (實名驗證成功)\n3. member + identity_verification + failure (實名驗證失敗)\n4. member + bank_card + failure (取款方式綁定失敗)\n5. bonus + mission + success (優惠派發成功)\n6. bonus + mission + failure (優惠派發失敗)\n\n**完整範例：**\n` + "`" + `` + "`" + `` + "`" + `json\n{\n\"settings\": [\n{\"category\": \"member\", \"item\": \"registration\", \"trigger_type\": \"success\", \"title\": \"註冊成功\", \"content\": \"恭喜，註冊成功\", \"active\": true},\n{\"category\": \"member\", \"item\": \"identity_verification\", \"trigger_type\": \"success\", \"title\": \"身分驗證成功\", \"content\": \"恭喜，身分驗證成功\", \"active\": true},\n{\"category\": \"member\", \"item\": \"identity_verification\", \"trigger_type\": \"failure\", \"title\": \"身分驗證失敗\", \"content\": \"抱歉，身分驗證失敗\", \"active\": false},\n{\"category\": \"member\", \"item\": \"bank_card\", \"trigger_type\": \"failure\", \"title\": \"銀行卡綁定失敗\", \"content\": \"抱歉，銀行卡綁定失敗\", \"active\": true},\n{\"category\": \"bonus\", \"item\": \"mission\", \"trigger_type\": \"success\", \"title\": \"任務完成\", \"content\": \"恭喜，任務完成\", \"active\": true},\n{\"category\": \"bonus\", \"item\": \"mission\", \"trigger_type\": \"failure\", \"title\": \"任務失敗\", \"content\": \"抱歉，任務失敗\", \"active\": false}\n]\n}\n` + "`" + `` + "`" + `` + "`" + `\n\n**參數說明：**\n- settings: 自動設定項目列表，必須包含上述6種組合\n- category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)\n- item: 消息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、mission(任務)\n- trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)\n- title: 消息標題，必填，最大255個字符\n- content: 消息內容，必填\n- active: 是否啟用自動發送，必填，設定為false時該項目將不會自動發送通知",
                 "consumes": [
                     "application/json"
                 ],
@@ -491,7 +482,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "為特定商戶建立或更新會員訊息自動派發設定，支持批量設定多個自動發送規則\n\n**必需包含所有6種組合：**\n1. member + registration + success (註冊成功)\n2. member + identity_verification + success (實名驗證成功)\n3. member + identity_verification + failure (實名驗證失敗)\n4. member + bank_card + failure (取款方式綁定失敗)\n5. bonus + mission + success (優惠派發成功)\n6. bonus + mission + failure (優惠派發失敗)\n\n**完整範例：**\n` + "`" + `` + "`" + `` + "`" + `json\n{\n\"settings\": [\n{\"category\": \"member\", \"item\": \"registration\", \"trigger_type\": \"success\", \"title\": \"註冊成功\", \"content\": \"恭喜，註冊成功\"},\n{\"category\": \"member\", \"item\": \"identity_verification\", \"trigger_type\": \"success\", \"title\": \"身分驗證成功\", \"content\": \"恭喜，身分驗證成功\"},\n{\"category\": \"member\", \"item\": \"identity_verification\", \"trigger_type\": \"failure\", \"title\": \"身分驗證失敗\", \"content\": \"抱歉，身分驗證失敗\"},\n{\"category\": \"member\", \"item\": \"bank_card\", \"trigger_type\": \"failure\", \"title\": \"銀行卡綁定失敗\", \"content\": \"抱歉，銀行卡綁定失敗\"},\n{\"category\": \"bonus\", \"item\": \"mission\", \"trigger_type\": \"success\", \"title\": \"任務完成\", \"content\": \"恭喜，任務完成\"},\n{\"category\": \"bonus\", \"item\": \"mission\", \"trigger_type\": \"failure\", \"title\": \"任務失敗\", \"content\": \"抱歉，任務失敗\"}\n]\n}\n` + "`" + `` + "`" + `` + "`" + `\n\n**參數說明：**\n- settings: 自動設定項目列表，必須包含上述6種組合\n- category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)\n- item: 消息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、mission(任務)\n- trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)\n- title: 消息標題，必填，最大255個字符\n- content: 消息內容，必填",
+                "description": "為特定商戶建立或更新會員訊息自動派發設定，支持批量設定多個自動發送規則\n\n**必需包含所有6種組合：**\n1. member + registration + success (註冊成功)\n2. member + identity_verification + success (實名驗證成功)\n3. member + identity_verification + failure (實名驗證失敗)\n4. member + bank_card + failure (取款方式綁定失敗)\n5. bonus + mission + success (優惠派發成功)\n6. bonus + mission + failure (優惠派發失敗)\n\n**完整範例：**\n` + "`" + `` + "`" + `` + "`" + `json\n{\n\"settings\": [\n{\"category\": \"member\", \"item\": \"registration\", \"trigger_type\": \"success\", \"title\": \"註冊成功\", \"content\": \"恭喜，註冊成功\", \"active\": true},\n{\"category\": \"member\", \"item\": \"identity_verification\", \"trigger_type\": \"success\", \"title\": \"身分驗證成功\", \"content\": \"恭喜，身分驗證成功\", \"active\": true},\n{\"category\": \"member\", \"item\": \"identity_verification\", \"trigger_type\": \"failure\", \"title\": \"身分驗證失敗\", \"content\": \"抱歉，身分驗證失敗\", \"active\": false},\n{\"category\": \"member\", \"item\": \"bank_card\", \"trigger_type\": \"failure\", \"title\": \"銀行卡綁定失敗\", \"content\": \"抱歉，銀行卡綁定失敗\", \"active\": true},\n{\"category\": \"bonus\", \"item\": \"mission\", \"trigger_type\": \"success\", \"title\": \"任務完成\", \"content\": \"恭喜，任務完成\", \"active\": true},\n{\"category\": \"bonus\", \"item\": \"mission\", \"trigger_type\": \"failure\", \"title\": \"任務失敗\", \"content\": \"抱歉，任務失敗\", \"active\": false}\n]\n}\n` + "`" + `` + "`" + `` + "`" + `\n\n**參數說明：**\n- settings: 自動設定項目列表，必須包含上述6種組合\n- category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)\n- item: 消息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、mission(任務)\n- trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)\n- title: 消息標題，必填，最大255個字符\n- content: 消息內容，必填\n- active: 是否啟用自動發送，必填，設定為false時該項目將不會自動發送通知",
                 "consumes": [
                     "application/json"
                 ],
@@ -1168,6 +1159,7 @@ const docTemplate = `{
         "dto.AutoSettingItem": {
             "type": "object",
             "required": [
+                "active",
                 "category",
                 "content",
                 "item",
@@ -1175,6 +1167,11 @@ const docTemplate = `{
                 "trigger_type"
             ],
             "properties": {
+                "active": {
+                    "description": "是否啟用自動發送，必填",
+                    "type": "boolean",
+                    "example": true
+                },
                 "category": {
                     "description": "消息类型：member=会员消息，bonus=红利消息，others=其他消息。可選值：member, bonus, others",
                     "type": "string",
@@ -1839,6 +1836,10 @@ const docTemplate = `{
         "entity.MessageCampaign": {
             "type": "object",
             "properties": {
+                "active": {
+                    "description": "是否啟用自動發送（僅適用於AutoSend=true的訊息）",
+                    "type": "boolean"
+                },
                 "app_content": {
                     "description": "App推播內容",
                     "type": "string"

@@ -593,7 +593,6 @@ func (h *HTTPHandler) MarkMessageAsRead(c *gin.Context) {
 // @Tags 會員訊息自動設定
 // @Accept json
 // @Produce json
-// @Param merchant_id path string true "商戶ID"
 // @Success 200 {object} dto.MerchantAutoSettingsResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
@@ -634,12 +633,12 @@ func (h *HTTPHandler) GetMerchantAutoSettings(c *gin.Context) {
 // @Description ```json
 // @Description {
 // @Description   "settings": [
-// @Description     {"category": "member", "item": "registration", "trigger_type": "success", "title": "註冊成功", "content": "恭喜，註冊成功"},
-// @Description     {"category": "member", "item": "identity_verification", "trigger_type": "success", "title": "身分驗證成功", "content": "恭喜，身分驗證成功"},
-// @Description     {"category": "member", "item": "identity_verification", "trigger_type": "failure", "title": "身分驗證失敗", "content": "抱歉，身分驗證失敗"},
-// @Description     {"category": "member", "item": "bank_card", "trigger_type": "failure", "title": "銀行卡綁定失敗", "content": "抱歉，銀行卡綁定失敗"},
-// @Description     {"category": "bonus", "item": "mission", "trigger_type": "success", "title": "任務完成", "content": "恭喜，任務完成"},
-// @Description     {"category": "bonus", "item": "mission", "trigger_type": "failure", "title": "任務失敗", "content": "抱歉，任務失敗"}
+// @Description     {"category": "member", "item": "registration", "trigger_type": "success", "title": "註冊成功", "content": "恭喜，註冊成功", "active": true},
+// @Description     {"category": "member", "item": "identity_verification", "trigger_type": "success", "title": "身分驗證成功", "content": "恭喜，身分驗證成功", "active": true},
+// @Description     {"category": "member", "item": "identity_verification", "trigger_type": "failure", "title": "身分驗證失敗", "content": "抱歉，身分驗證失敗", "active": false},
+// @Description     {"category": "member", "item": "bank_card", "trigger_type": "failure", "title": "銀行卡綁定失敗", "content": "抱歉，銀行卡綁定失敗", "active": true},
+// @Description     {"category": "bonus", "item": "mission", "trigger_type": "success", "title": "任務完成", "content": "恭喜，任務完成", "active": true},
+// @Description     {"category": "bonus", "item": "mission", "trigger_type": "failure", "title": "任務失敗", "content": "抱歉，任務失敗", "active": false}
 // @Description   ]
 // @Description }
 // @Description ```
@@ -651,6 +650,7 @@ func (h *HTTPHandler) GetMerchantAutoSettings(c *gin.Context) {
 // @Description   - trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)
 // @Description   - title: 消息標題，必填，最大255個字符
 // @Description   - content: 消息內容，必填
+// @Description   - active: 是否啟用自動發送，必填，設定為false時該項目將不會自動發送通知
 // @Tags 會員訊息自動設定
 // @Accept json
 // @Produce json

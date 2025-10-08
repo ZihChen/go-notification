@@ -13,6 +13,10 @@ definitions:
     type: object
   dto.AutoSettingItem:
     properties:
+      active:
+        description: 是否啟用自動發送，必填
+        example: true
+        type: boolean
       category:
         description: 消息类型：member=会员消息，bonus=红利消息，others=其他消息。可選值：member, bonus, others
         enum:
@@ -51,6 +55,7 @@ definitions:
         example: success
         type: string
     required:
+    - active
     - category
     - content
     - item
@@ -517,6 +522,9 @@ definitions:
     type: object
   entity.MessageCampaign:
     properties:
+      active:
+        description: 是否啟用自動發送（僅適用於AutoSend=true的訊息）
+        type: boolean
       app_content:
         description: App推播內容
         type: string
@@ -993,12 +1001,6 @@ paths:
       consumes:
       - application/json
       description: 根據商戶ID獲取會員訊息自動派發設定
-      parameters:
-      - description: 商戶ID
-        in: path
-        name: merchant_id
-        required: true
-        type: string
       produces:
       - application/json
       responses:
@@ -1041,12 +1043,12 @@ paths:
         ```json
         {
         "settings": [
-        {"category": "member", "item": "registration", "trigger_type": "success", "title": "註冊成功", "content": "恭喜，註冊成功"},
-        {"category": "member", "item": "identity_verification", "trigger_type": "success", "title": "身分驗證成功", "content": "恭喜，身分驗證成功"},
-        {"category": "member", "item": "identity_verification", "trigger_type": "failure", "title": "身分驗證失敗", "content": "抱歉，身分驗證失敗"},
-        {"category": "member", "item": "bank_card", "trigger_type": "failure", "title": "銀行卡綁定失敗", "content": "抱歉，銀行卡綁定失敗"},
-        {"category": "bonus", "item": "mission", "trigger_type": "success", "title": "任務完成", "content": "恭喜，任務完成"},
-        {"category": "bonus", "item": "mission", "trigger_type": "failure", "title": "任務失敗", "content": "抱歉，任務失敗"}
+        {"category": "member", "item": "registration", "trigger_type": "success", "title": "註冊成功", "content": "恭喜，註冊成功", "active": true},
+        {"category": "member", "item": "identity_verification", "trigger_type": "success", "title": "身分驗證成功", "content": "恭喜，身分驗證成功", "active": true},
+        {"category": "member", "item": "identity_verification", "trigger_type": "failure", "title": "身分驗證失敗", "content": "抱歉，身分驗證失敗", "active": false},
+        {"category": "member", "item": "bank_card", "trigger_type": "failure", "title": "銀行卡綁定失敗", "content": "抱歉，銀行卡綁定失敗", "active": true},
+        {"category": "bonus", "item": "mission", "trigger_type": "success", "title": "任務完成", "content": "恭喜，任務完成", "active": true},
+        {"category": "bonus", "item": "mission", "trigger_type": "failure", "title": "任務失敗", "content": "抱歉，任務失敗", "active": false}
         ]
         }
         ```
@@ -1058,6 +1060,7 @@ paths:
         - trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)
         - title: 消息標題，必填，最大255個字符
         - content: 消息內容，必填
+        - active: 是否啟用自動發送，必填，設定為false時該項目將不會自動發送通知
       parameters:
       - description: 商戶自動設定請求
         in: body
@@ -1107,12 +1110,12 @@ paths:
         ```json
         {
         "settings": [
-        {"category": "member", "item": "registration", "trigger_type": "success", "title": "註冊成功", "content": "恭喜，註冊成功"},
-        {"category": "member", "item": "identity_verification", "trigger_type": "success", "title": "身分驗證成功", "content": "恭喜，身分驗證成功"},
-        {"category": "member", "item": "identity_verification", "trigger_type": "failure", "title": "身分驗證失敗", "content": "抱歉，身分驗證失敗"},
-        {"category": "member", "item": "bank_card", "trigger_type": "failure", "title": "銀行卡綁定失敗", "content": "抱歉，銀行卡綁定失敗"},
-        {"category": "bonus", "item": "mission", "trigger_type": "success", "title": "任務完成", "content": "恭喜，任務完成"},
-        {"category": "bonus", "item": "mission", "trigger_type": "failure", "title": "任務失敗", "content": "抱歉，任務失敗"}
+        {"category": "member", "item": "registration", "trigger_type": "success", "title": "註冊成功", "content": "恭喜，註冊成功", "active": true},
+        {"category": "member", "item": "identity_verification", "trigger_type": "success", "title": "身分驗證成功", "content": "恭喜，身分驗證成功", "active": true},
+        {"category": "member", "item": "identity_verification", "trigger_type": "failure", "title": "身分驗證失敗", "content": "抱歉，身分驗證失敗", "active": false},
+        {"category": "member", "item": "bank_card", "trigger_type": "failure", "title": "銀行卡綁定失敗", "content": "抱歉，銀行卡綁定失敗", "active": true},
+        {"category": "bonus", "item": "mission", "trigger_type": "success", "title": "任務完成", "content": "恭喜，任務完成", "active": true},
+        {"category": "bonus", "item": "mission", "trigger_type": "failure", "title": "任務失敗", "content": "抱歉，任務失敗", "active": false}
         ]
         }
         ```
@@ -1124,6 +1127,7 @@ paths:
         - trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)
         - title: 消息標題，必填，最大255個字符
         - content: 消息內容，必填
+        - active: 是否啟用自動發送，必填，設定為false時該項目將不會自動發送通知
       parameters:
       - description: 商戶自動設定請求
         in: body

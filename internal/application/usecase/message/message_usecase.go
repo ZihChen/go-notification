@@ -811,18 +811,20 @@ func (u *MessageUseCase) CreateOrUpdateMerchantAutoSettings(
 	campaigns := make([]*entity.MessageCampaign, len(req.Settings))
 	for i, setting := range req.Settings {
 		campaign := &entity.MessageCampaign{
-			MerchantID:    merchant.ID,
-			GlobalID:      uuid.NewString(),
-			Category:      setting.Category,
-			Item:          setting.Item,
-			TriggerType:   setting.TriggerType,
-			Title:         setting.Title,
-			Content:       setting.Content,
-			Target:        consts.TargetAll,                      // 預設為所有玩家
-			Status:        consts.MessageCampaignStatusScheduled, // 預設為已排程
-			AutoSend:      true,
-			RealSentCount: 0,
-			CreatedBy:     "auto_system",
+			MerchantID:        merchant.ID,
+			GlobalID:          uuid.NewString(),
+			Category:          setting.Category,
+			Item:              setting.Item,
+			TriggerType:       setting.TriggerType,
+			Title:             setting.Title,
+			Content:           setting.Content,
+			Target:            consts.TargetAll,                      // 預設為所有玩家
+			Status:            consts.MessageCampaignStatusScheduled, // 預設為已排程
+			AutoSend:          true,
+			Active:            setting.Active,                          // 設定自動發送開關狀態
+			NotificationTypes: uint8(consts.NotificationTypeInAppOnly), // 自動派發訊息統一為App推播
+			RealSentCount:     0,
+			CreatedBy:         "auto_system",
 		}
 		campaigns[i] = campaign
 	}
@@ -1169,7 +1171,26 @@ func (u *MessageUseCase) SendAutoNotification(
 		}, nil
 	}
 
-	// 3. 根據 notification_type 決定發送渠道，使用統一的業務邏輯處理
+	// 3. 檢查自動發送設定是否啟用
+	if !campaign.Active {
+		u.logger.WarnWithContext(ctx, "Auto notification disabled",
+			u.logger.String("global_player_id", req.GlobalPlayerID),
+			u.logger.UInt64("campaign_id", campaign.ID),
+			u.logger.String("category", req.Category),
+			u.logger.String("item", req.Item),
+			u.logger.String("trigger_type", req.TriggerType),
+		)
+		return &dto.SendAutoNotificationResponse{
+			PlayerID:    req.GlobalPlayerID,
+			Category:    req.Category,
+			Item:        req.Item,
+			TriggerType: req.TriggerType,
+			Status:      "disabled",
+			Message:     "auto notification is disabled for this setting",
+		}, nil
+	}
+
+	// 4. 根據 notification_type 決定發送渠道，使用統一的業務邏輯處理
 	var sentChannels []string
 
 	// 將 notification_types 轉換為業務邏輯類型

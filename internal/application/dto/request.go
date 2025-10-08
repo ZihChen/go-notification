@@ -70,6 +70,7 @@ type AutoSettingItem struct {
 	TriggerType string `json:"trigger_type" binding:"required,oneof=success failure"                                                       example:"success"      enums:"success,failure"`                                                                                                     // 触发类型：success=成功，failure=失败。可選值：success, failure
 	Title       string `json:"title"        binding:"required,max=255"                                                                     example:"註冊成功"                                                                                       validate:"required,max=255"`                   // 消息标题，最大255个字符
 	Content     string `json:"content"      binding:"required"                                                                             example:"恭喜，註冊成功"                                                                                    validate:"required"`                           // 消息内容，必填
+	Active      bool   `json:"active"       binding:"required"                                                                             example:"true"`                                                                                                                                     // 是否啟用自動發送，必填
 }
 
 // MerchantAutoSettingsRequest 商戶自動設定請求

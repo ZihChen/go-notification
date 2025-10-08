@@ -23,6 +23,7 @@ type MessageCampaign struct {
 	Target            string         `json:"target"                    gorm:"column:target;size:255;not null"`                       // high_activity, low_activity, not_activity, player, level, tag, all
 	TargetDetail      *string        `json:"target_detail"             gorm:"column:target_detail;size:512"`                         // JSON string containing target-specific details (player accounts, level names, tag names)
 	AutoSend          bool           `json:"auto_send"                 gorm:"column:auto_send;not null;default:false"`               // 是否為系統自動訊息
+	Active            bool           `json:"active"                    gorm:"column:active;not null;default:true"`                   // 是否啟用自動發送（僅適用於AutoSend=true的訊息）
 	RealSentCount     int64          `json:"real_sent_count"           gorm:"column:real_sent_count;default:0"`                      // 實際成功發送人數
 	SendStartTime     *time.Time     `json:"send_start_time,omitempty" gorm:"type:datetime;column:send_start_time"`
 	SendEndTime       *time.Time     `json:"send_end_time,omitempty"   gorm:"type:datetime;column:send_end_time"`

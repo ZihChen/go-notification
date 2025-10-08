@@ -49,6 +49,7 @@ func (f *TestDataFactory) CreateMessageCampaign() *MessageCampaignBuilder {
 		SendStartTime:     &now,
 		RealSentCount:     0,
 		AutoSend:          false,
+		Active:            true, // 預設為啟用狀態
 		TriggerType:       "manual",
 		CreatedBy:         "test",
 		CreatedAt:         now,
@@ -95,6 +96,11 @@ func (b *MessageCampaignBuilder) WithStatus(status string) *MessageCampaignBuild
 
 func (b *MessageCampaignBuilder) WithSentCount(count int64) *MessageCampaignBuilder {
 	b.campaign.RealSentCount = count
+	return b
+}
+
+func (b *MessageCampaignBuilder) WithActive(active bool) *MessageCampaignBuilder {
+	b.campaign.Active = active
 	return b
 }
 

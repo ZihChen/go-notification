@@ -27,6 +27,7 @@ type MessageCampaign struct {
 	TargetDetail      *string    `json:"target_detail,omitempty"` // JSON string containing target-specific details (player accounts, level names, tag names)
 	Status            string     `json:"status"`                  // draft, scheduled, sent, cancelled, failed
 	AutoSend          bool       `json:"auto_send"`               // 是否為系統自動訊息
+	Active            bool       `json:"active"`                  // 是否啟用自動發送（僅適用於AutoSend=true的訊息）
 	RealSentCount     int64      `json:"real_sent_count"`         // 實際成功發送人數
 	SendStartTime     *time.Time `json:"send_start_time,omitempty"`
 	SendEndTime       *time.Time `json:"send_end_time,omitempty"`
