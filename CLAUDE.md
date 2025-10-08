@@ -195,6 +195,7 @@ The project maintains structured documentation for development guidance:
 - **docs/claude/archive/** - Completed feature archives
 
 ### Current Status
+**v1.12商戶自動設定Active開關完成**: 自動推送精細控制功能實現，提供靈活的訊息管理能力 ✅  
 **v1.11併發安全+v1.10+效能優化完成**: 企業級架構標準達成，支援高併發、高性能、高可用生產部署 ✅  
 **併發安全**: Redsync分佈式鎖機制，100%保障多goroutine操作安全，智能分組避免鎖競爭 ✅  
 **效能優化**: O(n×m)→O(log n)查詢優化，效能提升99%，資料庫IO減少95%，JSON解析瓶頸解決 ✅  
