@@ -43,7 +43,6 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/middleware"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
@@ -225,11 +224,10 @@ func createPlayerMessagesResponse() *dto.MessageListResponse {
 func createMerchantAutoSettingsResponse() *dto.MerchantAutoSettingsResponse {
 	return &dto.MerchantAutoSettingsResponse{
 		GlobalMerchantID: "FATCAT-MERCHANT-001",
-		Settings: []*entity.MessageCampaign{
+		Settings: []*dto.AutoSettingSummary{
 			{
-				GlobalID: "FATCAT-CAMPAIGN-AUTO-001",
-				Title:    "Auto Campaign",
-				Content:  "Auto message content",
+				Title:   "Auto Campaign",
+				Content: "Auto message content",
 			},
 		},
 	}

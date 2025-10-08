@@ -383,7 +383,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "根據商戶ID獲取會員訊息自動派發設定",
+                "description": "根據商戶ID獲取會員訊息自動派發設定，返回簡化格式只包含必要欄位\n\n**回應格式說明：**\n只返回前端需要的核心欄位，已移除 merchant_id、notification_types、target、status、auto_send、real_sent_count 等內部欄位\n\n**範例回應：**\n` + "`" + `` + "`" + `` + "`" + `json\n{\n\"global_merchant_id\": \"merchant-123e4567-e89b-12d3-a456-426614174000\",\n\"settings\": [\n{\n\"id\": 1,\n\"category\": \"member\",\n\"item\": \"registration\",\n\"trigger_type\": \"success\",\n\"title\": \"註冊成功\",\n\"content\": \"恭喜，註冊成功！\",\n\"active\": true,\n\"created_at\": \"2024-10-08T10:30:00+08:00\",\n\"updated_at\": \"2024-10-08T11:15:00+08:00\"\n},\n{\n\"id\": 2,\n\"category\": \"member\",\n\"item\": \"identity_verification\",\n\"trigger_type\": \"success\",\n\"title\": \"身分驗證成功\",\n\"content\": \"恭喜，身分驗證成功！\",\n\"active\": true,\n\"created_at\": \"2024-10-08T10:30:00+08:00\",\n\"updated_at\": \"2024-10-08T11:15:00+08:00\"\n},\n{\n\"id\": 3,\n\"category\": \"member\",\n\"item\": \"identity_verification\",\n\"trigger_type\": \"failure\",\n\"title\": \"身分驗證失敗\",\n\"content\": \"抱歉，身分驗證失敗，請重新提交\",\n\"active\": false,\n\"created_at\": \"2024-10-08T10:30:00+08:00\",\n\"updated_at\": \"2024-10-08T11:15:00+08:00\"\n}\n]\n}\n` + "`" + `` + "`" + `` + "`" + `",
                 "consumes": [
                     "application/json"
                 ],
@@ -396,7 +396,7 @@ const docTemplate = `{
                 "summary": "獲取商戶自動設定",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "成功獲取自動設定",
                         "schema": {
                             "$ref": "#/definitions/dto.MerchantAutoSettingsResponse"
                         }
@@ -1218,6 +1218,47 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.AutoSettingSummary": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "description": "是否啟用",
+                    "type": "boolean"
+                },
+                "category": {
+                    "description": "消息類型",
+                    "type": "string"
+                },
+                "content": {
+                    "description": "消息內容",
+                    "type": "string"
+                },
+                "created_at": {
+                    "description": "創建時間",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "設定ID",
+                    "type": "integer"
+                },
+                "item": {
+                    "description": "消息項目",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "消息標題",
+                    "type": "string"
+                },
+                "trigger_type": {
+                    "description": "觸發類型",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "更新時間",
+                    "type": "string"
+                }
+            }
+        },
         "dto.AutoSettingsOperationResponse": {
             "type": "object",
             "properties": {
@@ -1411,7 +1452,7 @@ const docTemplate = `{
                 "settings": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/entity.MessageCampaign"
+                        "$ref": "#/definitions/dto.AutoSettingSummary"
                     }
                 }
             }

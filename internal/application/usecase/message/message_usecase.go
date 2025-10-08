@@ -777,9 +777,25 @@ func (u *MessageUseCase) GetMerchantAutoSettings(
 		return nil, fmt.Errorf("find auto settings: %w", err)
 	}
 
+	// 格式化回應，只包含必要的欄位
+	settings := make([]*dto.AutoSettingSummary, len(campaigns))
+	for i, campaign := range campaigns {
+		settings[i] = &dto.AutoSettingSummary{
+			ID:          campaign.ID,
+			Category:    campaign.Category,
+			Item:        campaign.Item,
+			TriggerType: campaign.TriggerType,
+			Title:       campaign.Title,
+			Content:     campaign.Content,
+			Active:      campaign.Active,
+			CreatedAt:   campaign.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt:   campaign.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		}
+	}
+
 	return &dto.MerchantAutoSettingsResponse{
 		GlobalMerchantID: globalMerchantID,
-		Settings:         campaigns,
+		Settings:         settings,
 	}, nil
 }
 

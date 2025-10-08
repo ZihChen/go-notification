@@ -2,8 +2,6 @@ package dto
 
 import (
 	"time"
-
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 )
 
 // CreateMessageCampaignRequest 创建消息活动请求
@@ -80,10 +78,23 @@ type MerchantAutoSettingsRequest struct {
 	Settings         []AutoSettingItem `json:"settings"                                binding:"required,min=1,max=10" validate:"required,min=1,max=10"` // 自动设置项目列表，必須包含全部6種組合
 }
 
+// AutoSettingSummary 自動設定摘要 - 用於 GetMerchantAutoSettings 回應
+type AutoSettingSummary struct {
+	ID          uint64 `json:"id"`           // 設定ID
+	Category    string `json:"category"`     // 消息類型
+	Item        string `json:"item"`         // 消息項目
+	TriggerType string `json:"trigger_type"` // 觸發類型
+	Title       string `json:"title"`        // 消息標題
+	Content     string `json:"content"`      // 消息內容
+	Active      bool   `json:"active"`       // 是否啟用
+	CreatedAt   string `json:"created_at"`   // 創建時間
+	UpdatedAt   string `json:"updated_at"`   // 更新時間
+}
+
 // MerchantAutoSettingsResponse 商戶自動設定回應
 type MerchantAutoSettingsResponse struct {
-	GlobalMerchantID string                    `json:"global_merchant_id"`
-	Settings         []*entity.MessageCampaign `json:"settings"`
+	GlobalMerchantID string                `json:"global_merchant_id"`
+	Settings         []*AutoSettingSummary `json:"settings"`
 }
 
 // AutoSettingsOperationResponse 自動設定操作回應

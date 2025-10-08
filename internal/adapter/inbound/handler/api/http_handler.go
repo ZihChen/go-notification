@@ -593,7 +593,7 @@ func (h *HTTPHandler) MarkMessageAsRead(c *gin.Context) {
 // @Tags 會員訊息自動設定
 // @Accept json
 // @Produce json
-// @Success 200 {object} dto.MerchantAutoSettingsResponse
+// @Success 200 {object} dto.MerchantAutoSettingsResponse "成功獲取自動設定"
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse

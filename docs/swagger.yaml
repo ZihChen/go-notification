@@ -62,6 +62,36 @@ definitions:
     - title
     - trigger_type
     type: object
+  dto.AutoSettingSummary:
+    properties:
+      active:
+        description: 是否啟用
+        type: boolean
+      category:
+        description: 消息類型
+        type: string
+      content:
+        description: 消息內容
+        type: string
+      created_at:
+        description: 創建時間
+        type: string
+      id:
+        description: 設定ID
+        type: integer
+      item:
+        description: 消息項目
+        type: string
+      title:
+        description: 消息標題
+        type: string
+      trigger_type:
+        description: 觸發類型
+        type: string
+      updated_at:
+        description: 更新時間
+        type: string
+    type: object
   dto.AutoSettingsOperationResponse:
     properties:
       created_count:
@@ -213,7 +243,7 @@ definitions:
         type: string
       settings:
         items:
-          $ref: '#/definitions/entity.MessageCampaign'
+          $ref: '#/definitions/dto.AutoSettingSummary'
         type: array
     type: object
   dto.MessageCampaignListResponse:
@@ -1000,12 +1030,58 @@ paths:
     get:
       consumes:
       - application/json
-      description: 根據商戶ID獲取會員訊息自動派發設定
+      description: |-
+        根據商戶ID獲取會員訊息自動派發設定，返回簡化格式只包含必要欄位
+
+        **回應格式說明：**
+        只返回前端需要的核心欄位，已移除 merchant_id、notification_types、target、status、auto_send、real_sent_count 等內部欄位
+
+        **範例回應：**
+        ```json
+        {
+        "global_merchant_id": "merchant-123e4567-e89b-12d3-a456-426614174000",
+        "settings": [
+        {
+        "id": 1,
+        "category": "member",
+        "item": "registration",
+        "trigger_type": "success",
+        "title": "註冊成功",
+        "content": "恭喜，註冊成功！",
+        "active": true,
+        "created_at": "2024-10-08T10:30:00+08:00",
+        "updated_at": "2024-10-08T11:15:00+08:00"
+        },
+        {
+        "id": 2,
+        "category": "member",
+        "item": "identity_verification",
+        "trigger_type": "success",
+        "title": "身分驗證成功",
+        "content": "恭喜，身分驗證成功！",
+        "active": true,
+        "created_at": "2024-10-08T10:30:00+08:00",
+        "updated_at": "2024-10-08T11:15:00+08:00"
+        },
+        {
+        "id": 3,
+        "category": "member",
+        "item": "identity_verification",
+        "trigger_type": "failure",
+        "title": "身分驗證失敗",
+        "content": "抱歉，身分驗證失敗，請重新提交",
+        "active": false,
+        "created_at": "2024-10-08T10:30:00+08:00",
+        "updated_at": "2024-10-08T11:15:00+08:00"
+        }
+        ]
+        }
+        ```
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: 成功獲取自動設定
           schema:
             $ref: '#/definitions/dto.MerchantAutoSettingsResponse'
         "400":
