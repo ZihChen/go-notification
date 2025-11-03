@@ -46,15 +46,14 @@ type AgentMessage struct {
 	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
-// AgentRelationship 代理關係 (用於高效查詢代理樹結構)
+// AgentRelationship 代理關係 (用於高效查詢代理樹結構) - 雙主鍵設計
 type AgentRelationship struct {
-	ID         uint64 `json:"id"`
-	ParentID   uint64 `json:"parent_id"`   // 父代理 ID (數值ID優化)
-	ChildID    uint64 `json:"child_id"`    // 子代理 ID
-	DepthLevel int    `json:"depth_level"` // 相對深度
-	PathHash   string `json:"path_hash"`   // 路徑hash，用於快速比對
-	MerchantID uint64 `json:"merchant_id"`
+	ParentID   uint64    `json:"parent_id"`   // 父代理 ID (複合主鍵1)
+	ChildID    uint64    `json:"child_id"`    // 子代理 ID (複合主鍵2)
+	DepthLevel int       `json:"depth_level"` // 相對深度
+	PathHash   string    `json:"path_hash"`   // 路徑hash，用於快速比對
 	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // AgentHierarchy 代理層級結構 (用於返回完整層級查詢結果)
