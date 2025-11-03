@@ -168,13 +168,19 @@ type AgentCampaignResponse struct {
 
 // AgentCampaignsQuery 代理訊息活動查詢參數 DTO
 type AgentCampaignsQuery struct {
-	Page           int      `json:"page"`
-	PageSize       int      `json:"page_size"`
-	MerchantID     uint64   `json:"merchant_id"`
-	Status         []string `json:"status"`
-	TargetType     string   `json:"target_type"`
-	IncludeDeleted bool     `json:"include_deleted"`
-	CreatedBy      string   `json:"created_by"`
+	Page           int       `json:"page"`
+	PageSize       int       `json:"page_size"`
+	Limit          int       `json:"limit"`
+	Offset         int       `json:"offset"`
+	MerchantID     uint64    `json:"merchant_id"`
+	Status         string    `json:"status"`
+	TargetType     string    `json:"target_type"`
+	IncludeDeleted bool      `json:"include_deleted"`
+	CreatedBy      string    `json:"created_by"`
+	StartDate      time.Time `json:"start_date"`
+	EndDate        time.Time `json:"end_date"`
+	OrderBy        string    `json:"order_by"`
+	OrderDirection string    `json:"order_direction"`
 }
 
 // AgentCampaignListResponse 代理訊息活動列表回應 DTO
@@ -187,12 +193,18 @@ type AgentCampaignListResponse struct {
 
 // AgentMessagesQuery 代理站內信查詢參數 DTO
 type AgentMessagesQuery struct {
-	Page           int    `json:"page"`
-	PageSize       int    `json:"page_size"`
-	AgentID        uint64 `json:"agent_id"`
-	GlobalAgentID  string `json:"global_agent_id"`
-	IsRead         *bool  `json:"is_read,omitempty"`
-	CampaignID     uint64 `json:"campaign_id,omitempty"`
+	Page           int       `json:"page"`
+	PageSize       int       `json:"page_size"`
+	Limit          int       `json:"limit"`
+	Offset         int       `json:"offset"`
+	AgentID        uint64    `json:"agent_id"`
+	GlobalAgentID  string    `json:"global_agent_id"`
+	IsRead         *bool     `json:"is_read,omitempty"`
+	CampaignID     uint64    `json:"campaign_id,omitempty"`
+	StartDate      time.Time `json:"start_date"`
+	EndDate        time.Time `json:"end_date"`
+	OrderBy        string    `json:"order_by"`
+	OrderDirection string    `json:"order_direction"`
 }
 
 // AgentMessageResponse 代理站內信回應 DTO
@@ -221,7 +233,7 @@ type AgentMessageListResponse struct {
 
 // AgentMessageStats 代理訊息統計 DTO
 type AgentMessageStats struct {
-	ReadCount   int `json:"read_count"`
-	UnreadCount int `json:"unread_count"`
-	TotalCount  int `json:"total_count"`
+	ReadCount   int64 `json:"read_count"`
+	UnreadCount int64 `json:"unread_count"`
+	TotalCount  int64 `json:"total_count"`
 }

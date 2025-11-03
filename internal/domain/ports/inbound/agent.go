@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/fatcat-dev/fat-notification-cat/internal/application/dto"
-	"github.com/fatcat-dev/fat-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 )
 
 // AgentUseCase 代理業務用例接口 (業務流程協調層)
@@ -39,12 +39,12 @@ type AgentUseCase interface {
 // AgentSyncEvent KDS 代理同步事件結構
 type AgentSyncEvent struct {
 	Agents struct {
-		GlobalAgentID     string    `json:"global_agent_id"`
-		Account           string    `json:"account"`
-		Ancestry          string    `json:"ancestry"`
-		CurrentSignInAt   time.Time `json:"current_sign_in_at"`
-		CreatedAt         time.Time `json:"created_at"`
-		UpdatedAt         time.Time `json:"updated_at"`
+		GlobalAgentID   string    `json:"global_agent_id"`
+		Account         string    `json:"account"`
+		Ancestry        string    `json:"ancestry"`
+		CurrentSignInAt time.Time `json:"current_sign_in_at"`
+		CreatedAt       time.Time `json:"created_at"`
+		UpdatedAt       time.Time `json:"updated_at"`
 	} `json:"agents"`
 	Merchant struct {
 		ID               uint64 `json:"id"`

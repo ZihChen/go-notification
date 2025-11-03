@@ -65,3 +65,18 @@ type AgentMessageRepository interface {
 	// 統計操作
 	GetMessageStats(ctx context.Context, agentID uint64) (*dto.AgentMessageStats, error)
 }
+
+// AgentRelationshipRepository 代理關係倉儲接口
+type AgentRelationshipRepository interface {
+	// 批次更新操作 (併發安全)
+	BatchUpdate(ctx context.Context, parentID uint64, relationships []*entity.AgentRelationship) error
+	
+	// 查詢操作
+	GetByParentID(ctx context.Context, parentID uint64) ([]*entity.AgentRelationship, error)
+	GetByChildID(ctx context.Context, childID uint64) ([]*entity.AgentRelationship, error)
+	FindDescendants(ctx context.Context, parentID uint64, maxDepth int) ([]*entity.AgentRelationship, error)
+	FindAncestors(ctx context.Context, childID uint64, maxDepth int) ([]*entity.AgentRelationship, error)
+	
+	// 路徑查詢
+	FindByPathHash(ctx context.Context, pathHash string) ([]*entity.AgentRelationship, error)
+}

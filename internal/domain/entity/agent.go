@@ -41,8 +41,7 @@ type AgentMessage struct {
 	AgentID         uint64     `json:"agent_id"`          // 關聯 agents.id (數值ID優化)
 	IsRead          bool       `json:"is_read"`           // 已讀狀態
 	ReadAt          *time.Time `json:"read_at"`           // 已讀時間
-	SentAt          time.Time  `json:"sent_at"`           // 發送時間
-	CreatedAt       time.Time  `json:"created_at"`
+	CreatedAt       time.Time  `json:"created_at"`        // 創建時間即發送時間
 	UpdatedAt       time.Time  `json:"updated_at"`
 }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/scheduler"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/worker"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/job"
+	agentRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/agent"
 	managerRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/manager"
 	merchantRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/merchant"
 	messageRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/message"
@@ -51,6 +52,7 @@ var baseSet = wire.NewSet(
 	queue.NewQueueService,
 	provideRedisClient,
 	provideTracingService,
+	provideDistributedLockManager,
 
 	// 資料庫
 	merchantRepo.NewMerchantRepository,
@@ -63,6 +65,11 @@ var baseSet = wire.NewSet(
 	playerRepo.NewTagRepository,
 	playerRepo.NewPlayerTagRepository,
 	merchantRepo.NewPushKeyRepository,
+	// Agent repositories
+	agentRepo.NewAgentRepository,
+	agentRepo.NewAgentCampaignRepository,
+	agentRepo.NewAgentMessageRepository,
+	provideAgentRelationshipRepository,
 
 	// 服務
 	service.NewEventService,
@@ -132,6 +139,16 @@ func provideWorkerServer(cfg *config.Config, logger infrastructure.Logger) (*asy
 // 提供 PlayerMessageRepository
 func providePlayerMessageRepository(db *gorm.DB, redisManager *redisCache.Manager) repository.PlayerMessageRepository {
 	return messageRepo.NewPlayerMessageRepository(db, redisManager)
+}
+
+// 提供 AgentRelationshipRepository
+func provideAgentRelationshipRepository(db *gorm.DB, lockManager infrastructure.DistributedLockManager) repository.AgentRelationshipRepository {
+	return agentRepo.NewAgentRelationshipRepository(db, lockManager)
+}
+
+// 提供 DistributedLockManager
+func provideDistributedLockManager(redisManager *redisCache.Manager) infrastructure.DistributedLockManager {
+	return redisCache.NewRedisDistributedLockManager(redisManager)
 }
 
 // 提供 PlayerMessageRepository (migrate 專用，不需要 redis)

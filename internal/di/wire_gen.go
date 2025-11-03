@@ -16,6 +16,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/scheduler"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/worker"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/job"
+	repository3 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/agent"
 	repository2 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/manager"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/merchant"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/message"
@@ -30,7 +31,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/player"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
-	repository3 "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
+	repository4 "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	service2 "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
@@ -226,7 +227,8 @@ type WorkerComponents struct {
 }
 
 var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient,
-	provideTracingService, merchant.NewMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, message.NewMessageCampaignRepository, message.NewCampaignTargetRepository, providePlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant.NewPushKeyRepository, service.NewEventService, providePushNotificationService, merchant2.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message2.NewMessageUseCase, level.NewLevelUseCase, player.NewTagUseCase,
+	provideTracingService,
+	provideDistributedLockManager, merchant.NewMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, message.NewMessageCampaignRepository, message.NewCampaignTargetRepository, providePlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant.NewPushKeyRepository, repository3.NewAgentRepository, repository3.NewAgentCampaignRepository, repository3.NewAgentMessageRepository, provideAgentRelationshipRepository, service.NewEventService, providePushNotificationService, merchant2.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message2.NewMessageUseCase, level.NewLevelUseCase, player.NewTagUseCase,
 )
 
 // 事件生產者提供者 (保留作為別名)
@@ -250,12 +252,22 @@ func provideWorkerServer(cfg *config.Config, logger infrastructure.Logger) (*asy
 }
 
 // 提供 PlayerMessageRepository
-func providePlayerMessageRepository(db *gorm.DB, redisManager *redis.Manager) repository3.PlayerMessageRepository {
+func providePlayerMessageRepository(db *gorm.DB, redisManager *redis.Manager) repository4.PlayerMessageRepository {
 	return message.NewPlayerMessageRepository(db, redisManager)
 }
 
+// 提供 AgentRelationshipRepository
+func provideAgentRelationshipRepository(db *gorm.DB, lockManager infrastructure.DistributedLockManager) repository4.AgentRelationshipRepository {
+	return repository3.NewAgentRelationshipRepository(db, lockManager)
+}
+
+// 提供 DistributedLockManager
+func provideDistributedLockManager(redisManager *redis.Manager) infrastructure.DistributedLockManager {
+	return redis.NewRedisDistributedLockManager(redisManager)
+}
+
 // 提供 PlayerMessageRepository (migrate 專用，不需要 redis)
-func provideMigratePlayerMessageRepository(db *gorm.DB) repository3.PlayerMessageRepository {
+func provideMigratePlayerMessageRepository(db *gorm.DB) repository4.PlayerMessageRepository {
 	return message.NewPlayerMessageRepository(db, nil)
 }
 
@@ -275,11 +287,11 @@ type LegacyDB struct {
 // provideMigrateUseCase 創建 migrate use case，明確區分兩個資料庫連接
 func provideMigrateUseCase(
 	legacyDB *LegacyDB,
-	messageRepo repository3.MessageCampaignRepository,
-	playerRepo repository3.PlayerRepository,
-	merchantRepo repository3.MerchantRepository,
-	playerMessageRepo repository3.PlayerMessageRepository,
-	pushKeyRepo repository3.PushKeyRepository,
+	messageRepo repository4.MessageCampaignRepository,
+	playerRepo repository4.PlayerRepository,
+	merchantRepo repository4.MerchantRepository,
+	playerMessageRepo repository4.PlayerMessageRepository,
+	pushKeyRepo repository4.PushKeyRepository,
 	pushService service2.PushNotificationService,
 	logger infrastructure.Logger,
 ) inbound.MigrateUseCase {
