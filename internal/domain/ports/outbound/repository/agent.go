@@ -3,8 +3,8 @@ package repository
 import (
 	"context"
 
-	"github.com/fatcat-dev/fat-notification-cat/internal/application/dto"
-	"github.com/fatcat-dev/fat-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 )
 
 // AgentRepository 代理資料倉儲接口
