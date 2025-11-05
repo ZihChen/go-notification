@@ -12,6 +12,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type AgentRelationshipRepository struct {
@@ -27,7 +28,6 @@ func NewAgentRelationshipRepository(db *gorm.DB, lockManager infrastructure.Dist
 }
 
 // BatchUpdate 併發安全的批次更新代理關係
-// 此方法會完全替換指定代理的所有關係，刪除舊關係並新增新關係
 func (r *AgentRelationshipRepository) BatchUpdate(ctx context.Context, targetAgentID uint64, relationships []*entity.AgentRelationship) error {
 	if len(relationships) == 0 {
 		// 如果沒有新關係，則刪除所有相關的舊關係
@@ -51,7 +51,7 @@ func (r *AgentRelationshipRepository) batchUpdateWithDistributedLock(ctx context
 	// 設定鎖選項
 	lockOptions := infrastructure.LockOptions{
 		Expiry:     30 * time.Second,       // 鎖過期時間 30 秒
-		Tries:      3,                      // 最多嘗試 3 次
+		Tries:      5,                      // 最多嘗試 3 次
 		RetryDelay: 100 * time.Millisecond, // 重試間隔 100ms
 	}
 
@@ -89,8 +89,7 @@ func (r *AgentRelationshipRepository) batchUpdateWithTransaction(ctx context.Con
 	})
 
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// 1. 刪除所有與目標代理相關的舊關係
-		// 包括目標代理作為子代理的關係，以及目標代理祖先鏈中的關係
+		// 1. 只清除以目標代理為子代理的直接關係
 		if err := r.clearTargetAgentRelationships(tx, targetAgentID); err != nil {
 			return fmt.Errorf("clear target agent relationships failed: %w", err)
 		}
@@ -109,15 +108,14 @@ func (r *AgentRelationshipRepository) batchUpdateWithTransaction(ctx context.Con
 				}
 			}
 
-			// 直接插入新關係（舊關係已被清除）
-			if err := tx.CreateInBatches(insertModels, 100).Error; err != nil {
-				return fmt.Errorf("insert new agent relationships failed: %w", err)
-			}
-
-			// 更新實體的時間戳
-			for i, model := range insertModels {
-				relationships[i].CreatedAt = model.CreatedAt
-				relationships[i].UpdatedAt = model.UpdatedAt
+			// 使用UPSERT插入新關係，處理共同父代理關係的重複問題
+			if err := tx.Clauses(clause.OnConflict{
+				Columns: []clause.Column{{Name: "parent_id"}, {Name: "child_id"}},
+				DoUpdates: clause.AssignmentColumns([]string{
+					"depth_level", "path_hash", "updated_at",
+				}),
+			}).CreateInBatches(insertModels, 100).Error; err != nil {
+				return fmt.Errorf("upsert agent relationships failed: %w", err)
 			}
 		}
 
@@ -240,83 +238,65 @@ func (r *AgentRelationshipRepository) GenerateLockKey(parentID uint64) string {
 
 // clearAgentRelationships 清除指定代理的所有關係
 func (r *AgentRelationshipRepository) clearAgentRelationships(ctx context.Context, targetAgentID uint64) error {
+	// 使用與BatchUpdate相同的鎖定策略確保併發安全
+	lockKey := fmt.Sprintf("agent_relationship:batch_update:%d", targetAgentID)
+
+	// 如果分佈式鎖管理器可用，使用分佈式鎖
+	if r.lockManager != nil && r.lockManager.IsAvailable() {
+		return r.clearWithDistributedLock(ctx, targetAgentID, lockKey)
+	}
+
+	// 分佈式鎖不可用時，降級到單純事務模式
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		return r.clearTargetAgentRelationships(tx, targetAgentID)
 	})
 }
 
+// clearWithDistributedLock 使用分佈式鎖的清理操作
+func (r *AgentRelationshipRepository) clearWithDistributedLock(ctx context.Context, targetAgentID uint64, lockKey string) error {
+	// 設定鎖選項
+	lockOptions := infrastructure.LockOptions{
+		Expiry:     30 * time.Second,       // 鎖過期時間 30 秒
+		Tries:      5,                      // 最多嘗試 3 次
+		RetryDelay: 100 * time.Millisecond, // 重試間隔 100ms
+	}
+
+	// 取得分佈式鎖
+	mutex, err := r.lockManager.GetLockWithOptions(ctx, lockKey, lockOptions)
+	if err != nil {
+		return fmt.Errorf("failed to get distributed lock for clear: %w", err)
+	}
+
+	// 獲取鎖
+	if err = mutex.Lock(); err != nil {
+		return fmt.Errorf("failed to acquire distributed lock for clear: %w", err)
+	}
+
+	defer func() {
+		if unlocked, unlockErr := mutex.Unlock(); unlockErr != nil || !unlocked {
+			// 記錄解鎖失敗，但不影響主流程
+			fmt.Printf("Failed to release distributed lock %s: unlocked=%v, err=%v\n", lockKey, unlocked, unlockErr)
+		}
+	}()
+
+	// 在鎖保護下執行清理操作
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return r.clearTargetAgentRelationships(tx, targetAgentID)
+	})
+}
+
+// 清理策略：只清除以目標代理為子代理的直接關係
+// 不進行遞歸清理，避免影響其他代理的共同祖先關係
+// 例如：
+// - H代理：A→B→C→H
+// - G代理：A→B→G
+// 當清理H時，只刪除C→H關係，保留A→B→C（因為G代理可能還需要A→B）
 // clearTargetAgentRelationships 在事務中清除目標代理的相關關係
 func (r *AgentRelationshipRepository) clearTargetAgentRelationships(tx *gorm.DB, targetAgentID uint64) error {
-	// 策略：清除目標代理作為子代理的所有關係鏈
-	// 這意味著如果A代理的ancestry從"B/C/D"變成"E/G"，我們需要：
-	// 1. 刪除所有以A為最終子代理的關係鏈 (B→C, C→D, D→A)
-	// 2. 保留其他不相關的關係
-	
-	// 首先找到所有以目標代理為子代理的直接關係
-	var directParents []uint64
-	if err := tx.Model(&models.AgentRelationship{}).
-		Where("child_id = ?", targetAgentID).
-		Pluck("parent_id", &directParents).Error; err != nil {
-		return fmt.Errorf("query direct parents failed: %w", err)
-	}
-	
-	// 如果沒有直接父代理，則沒有需要清除的關係
-	if len(directParents) == 0 {
-		return nil
-	}
-	
-	// 刪除以目標代理為子代理的所有關係
 	if err := tx.Where("child_id = ?", targetAgentID).
 		Delete(&models.AgentRelationship{}).Error; err != nil {
 		return fmt.Errorf("delete relationships with target as child failed: %w", err)
 	}
-	
-	// 遞歸清除失去子代理的父代理關係
-	// 如果父代理沒有其他子代理了，也要清除它們的關係鏈
-	for _, parentID := range directParents {
-		if err := r.cleanupOrphanedParent(tx, parentID); err != nil {
-			return fmt.Errorf("cleanup orphaned parent %d failed: %w", parentID, err)
-		}
-	}
-	
-	return nil
-}
 
-// cleanupOrphanedParent 清理孤立的父代理關係
-func (r *AgentRelationshipRepository) cleanupOrphanedParent(tx *gorm.DB, parentID uint64) error {
-	// 檢查這個父代理是否還有其他子代理
-	var childCount int64
-	if err := tx.Model(&models.AgentRelationship{}).
-		Where("parent_id = ?", parentID).
-		Count(&childCount).Error; err != nil {
-		return fmt.Errorf("count children for parent %d failed: %w", parentID, err)
-	}
-	
-	// 如果還有其他子代理，則不需要清理
-	if childCount > 0 {
-		return nil
-	}
-	
-	// 如果這個父代理沒有子代理了，找到它的父代理
-	var grandparents []uint64
-	if err := tx.Model(&models.AgentRelationship{}).
-		Where("child_id = ?", parentID).
-		Pluck("parent_id", &grandparents).Error; err != nil {
-		return fmt.Errorf("query grandparents for parent %d failed: %w", parentID, err)
-	}
-	
-	// 刪除這個父代理作為子代理的關係
-	if err := tx.Where("child_id = ?", parentID).
-		Delete(&models.AgentRelationship{}).Error; err != nil {
-		return fmt.Errorf("delete parent %d relationships failed: %w", parentID, err)
-	}
-	
-	// 遞歸處理祖父代理
-	for _, grandparentID := range grandparents {
-		if err := r.cleanupOrphanedParent(tx, grandparentID); err != nil {
-			return fmt.Errorf("recursive cleanup grandparent %d failed: %w", grandparentID, err)
-		}
-	}
-	
 	return nil
 }

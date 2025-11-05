@@ -110,10 +110,19 @@ func (s *AgentService) SyncAgentRelationshipsUpsert(ctx context.Context, agentEv
 		// 生成路徑Hash (演算法實作)
 		pathHash := s.GeneratePathHash(fullPath[:i+2])
 
+		// 計算層級深度：從0開始，每一層+1
+		depthLevel := i + 1
+
+		s.tracingService.RecordSpanAttributes(span,
+			attribute.String("relationship.parent_global_id", parentGlobalID),
+			attribute.String("relationship.child_global_id", childGlobalID),
+			attribute.Int("relationship.depth_level", depthLevel))
+
 		relationships = append(relationships, &entity.AgentRelationship{
-			ParentID: parentID,
-			ChildID:  childID,
-			PathHash: pathHash,
+			ParentID:   parentID,
+			ChildID:    childID,
+			DepthLevel: depthLevel,
+			PathHash:   pathHash,
 		})
 	}
 
@@ -125,7 +134,7 @@ func (s *AgentService) SyncAgentRelationshipsUpsert(ctx context.Context, agentEv
 
 	// 批量更新關係 (效能優化)
 	s.tracingService.TraceEvent(span, "Batch updating agent relationships")
-	if err := s.relationRepo.BatchUpdate(ctx, currentAgentID, relationships); err != nil {
+	if err = s.relationRepo.BatchUpdate(ctx, currentAgentID, relationships); err != nil {
 		s.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("batch update relationships: %w", err)
 	}

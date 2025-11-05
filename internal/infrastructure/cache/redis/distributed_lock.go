@@ -49,7 +49,7 @@ func NewRedisDistributedLockManager(manager *Manager) infrastructure.Distributed
 func (r *RedisDistributedLockManager) GetLock(ctx context.Context, key string) (infrastructure.DistributedMutex, error) {
 	defaultOptions := infrastructure.LockOptions{
 		Expiry:     30 * time.Second,
-		Tries:      1,
+		Tries:      5,
 		RetryDelay: 100 * time.Millisecond,
 	}
 	return r.GetLockWithOptions(ctx, key, defaultOptions)
