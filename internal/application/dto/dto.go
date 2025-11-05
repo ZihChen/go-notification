@@ -132,38 +132,38 @@ type TagListResponse struct {
 
 // CreateAgentCampaignRequest 創建代理訊息活動請求 DTO
 type CreateAgentCampaignRequest struct {
-	Title         string     `json:"title" validate:"required,max=255"`
-	Content       string     `json:"content" validate:"required"`
+	Title         string     `json:"title"                    validate:"required,max=255"`
+	Content       string     `json:"content"                  validate:"required"`
 	ScheduledAt   *time.Time `json:"scheduled_at,omitempty"`
-	TargetType    string     `json:"target_type" validate:"required,oneof=all specific line"`
+	TargetType    string     `json:"target_type"              validate:"required,oneof=all specific line"`
 	TargetDetails string     `json:"target_details,omitempty"`
 }
 
 // UpdateAgentCampaignRequest 更新代理訊息活動請求 DTO
 type UpdateAgentCampaignRequest struct {
-	Title         *string    `json:"title,omitempty" validate:"omitempty,max=255"`
+	Title         *string    `json:"title,omitempty"          validate:"omitempty,max=255"`
 	Content       *string    `json:"content,omitempty"`
 	ScheduledAt   *time.Time `json:"scheduled_at,omitempty"`
-	TargetType    *string    `json:"target_type,omitempty" validate:"omitempty,oneof=all specific line"`
+	TargetType    *string    `json:"target_type,omitempty"    validate:"omitempty,oneof=all specific line"`
 	TargetDetails *string    `json:"target_details,omitempty"`
 }
 
 // AgentCampaignResponse 代理訊息活動回應 DTO
 type AgentCampaignResponse struct {
-	ID            uint64     `json:"id"`
-	MerchantID    uint64     `json:"merchant_id"`
-	Title         string     `json:"title"`
-	Content       string     `json:"content"`
-	ScheduledAt   time.Time  `json:"scheduled_at"`
-	Status        string     `json:"status"`
-	TargetType    string     `json:"target_type"`
-	TargetDetails string     `json:"target_details"`
-	TargetCount   int64      `json:"target_count"`
-	RealSentCount int64      `json:"real_sent_count"`
-	CreatedBy     string     `json:"created_by"`
-	UpdatedBy     string     `json:"updated_by"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
+	ID            uint64    `json:"id"`
+	MerchantID    uint64    `json:"merchant_id"`
+	Title         string    `json:"title"`
+	Content       string    `json:"content"`
+	ScheduledAt   time.Time `json:"scheduled_at"`
+	Status        string    `json:"status"`
+	TargetType    string    `json:"target_type"`
+	TargetDetails string    `json:"target_details"`
+	TargetCount   int64     `json:"target_count"`
+	RealSentCount int64     `json:"real_sent_count"`
+	CreatedBy     string    `json:"created_by"`
+	UpdatedBy     string    `json:"updated_by"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 // AgentCampaignsQuery 代理訊息活動查詢參數 DTO
@@ -212,9 +212,9 @@ type AgentMessageResponse struct {
 	ID              uint64     `json:"id"`
 	AgentCampaignID uint64     `json:"agent_campaign_id"`
 	AgentID         uint64     `json:"agent_id"`
-	GlobalAgentID   string     `json:"global_agent_id"`   // 通過關聯取得
-	Title           string     `json:"title"`             // 通過關聯取得
-	Content         string     `json:"content"`           // 通過關聯取得
+	GlobalAgentID   string     `json:"global_agent_id"` // 通過關聯取得
+	Title           string     `json:"title"`           // 通過關聯取得
+	Content         string     `json:"content"`         // 通過關聯取得
 	IsRead          bool       `json:"is_read"`
 	ReadAt          *time.Time `json:"read_at"`
 	SentAt          time.Time  `json:"sent_at"`

@@ -46,7 +46,10 @@ func NewRedisDistributedLockManager(manager *Manager) infrastructure.Distributed
 }
 
 // GetLock 獲取分佈式鎖實例
-func (r *RedisDistributedLockManager) GetLock(ctx context.Context, key string) (infrastructure.DistributedMutex, error) {
+func (r *RedisDistributedLockManager) GetLock(
+	ctx context.Context,
+	key string,
+) (infrastructure.DistributedMutex, error) {
 	defaultOptions := infrastructure.LockOptions{
 		Expiry:     30 * time.Second,
 		Tries:      5,
@@ -56,7 +59,11 @@ func (r *RedisDistributedLockManager) GetLock(ctx context.Context, key string) (
 }
 
 // GetLockWithOptions 獲取帶選項的分佈式鎖實例
-func (r *RedisDistributedLockManager) GetLockWithOptions(ctx context.Context, key string, options infrastructure.LockOptions) (infrastructure.DistributedMutex, error) {
+func (r *RedisDistributedLockManager) GetLockWithOptions(
+	ctx context.Context,
+	key string,
+	options infrastructure.LockOptions,
+) (infrastructure.DistributedMutex, error) {
 	// 轉換為 redsync 選項
 	redisyncOptions := []redsync.Option{
 		redsync.WithExpiry(options.Expiry),

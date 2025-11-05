@@ -26,7 +26,11 @@ type DistributedLockManager interface {
 	GetLock(ctx context.Context, key string) (DistributedMutex, error)
 
 	// GetLockWithOptions 獲取帶選項的分佈式鎖實例
-	GetLockWithOptions(ctx context.Context, key string, options LockOptions) (DistributedMutex, error)
+	GetLockWithOptions(
+		ctx context.Context,
+		key string,
+		options LockOptions,
+	) (DistributedMutex, error)
 
 	// IsAvailable 檢查分佈式鎖服務是否可用
 	IsAvailable() bool

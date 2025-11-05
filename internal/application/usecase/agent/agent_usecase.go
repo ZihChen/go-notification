@@ -55,7 +55,10 @@ func NewAgentUseCase(
 }
 
 // SyncAgentDataWithRelationships 完整的代理同步邏輯 (資料同步 + 關係建立)
-func (u *AgentUseCase) SyncAgentDataWithRelationships(ctx context.Context, agentEvent *event.AgentSyncEvent) error {
+func (u *AgentUseCase) SyncAgentDataWithRelationships(
+	ctx context.Context,
+	agentEvent *event.AgentSyncEvent,
+) error {
 	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.SyncAgentDataWithRelationships")
 	defer u.tracingService.SpanEnd(span)
 
@@ -89,7 +92,10 @@ func (u *AgentUseCase) SyncAgentDataWithRelationships(ctx context.Context, agent
 }
 
 // SyncCurrentAgentUpsert 同步當前代理資料
-func (u *AgentUseCase) SyncCurrentAgentUpsert(ctx context.Context, agentEvent *event.AgentSyncEvent) error {
+func (u *AgentUseCase) SyncCurrentAgentUpsert(
+	ctx context.Context,
+	agentEvent *event.AgentSyncEvent,
+) error {
 	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.SyncCurrentAgentUpsert")
 	defer u.tracingService.SpanEnd(span)
 
@@ -134,9 +140,11 @@ func (u *AgentUseCase) SyncCurrentAgentUpsert(ctx context.Context, agentEvent *e
 	return nil
 }
 
-
 // GetAgentByGlobalID 通過全局ID獲取代理
-func (u *AgentUseCase) GetAgentByGlobalID(ctx context.Context, globalAgentID string) (*entity.Agent, error) {
+func (u *AgentUseCase) GetAgentByGlobalID(
+	ctx context.Context,
+	globalAgentID string,
+) (*entity.Agent, error) {
 	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.GetAgentByGlobalID")
 	defer u.tracingService.SpanEnd(span)
 
@@ -152,7 +160,11 @@ func (u *AgentUseCase) GetAgentByGlobalID(ctx context.Context, globalAgentID str
 }
 
 // GetActiveAgents 獲取活躍代理列表
-func (u *AgentUseCase) GetActiveAgents(ctx context.Context, merchantID uint64, limit, offset int) ([]*entity.Agent, error) {
+func (u *AgentUseCase) GetActiveAgents(
+	ctx context.Context,
+	merchantID uint64,
+	limit, offset int,
+) ([]*entity.Agent, error) {
 	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.GetActiveAgents")
 	defer u.tracingService.SpanEnd(span)
 
@@ -171,36 +183,49 @@ func (u *AgentUseCase) GetActiveAgents(ctx context.Context, merchantID uint64, l
 }
 
 // CreateAgentCampaign 創建代理訊息活動
-func (u *AgentUseCase) CreateAgentCampaign(ctx context.Context, req *dto.CreateAgentCampaignRequest) (*entity.AgentCampaign, error) {
-	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.CreateAgentCampaign")
-	defer u.tracingService.SpanEnd(span)
+func (u *AgentUseCase) CreateAgentCampaign(
+	ctx context.Context,
+	req *dto.CreateAgentCampaignRequest,
+) (*entity.AgentCampaign, error) {
+	//ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.CreateAgentCampaign")
+	//defer u.tracingService.SpanEnd(span)
 
 	// TODO: 實作創建代理活動邏輯
 	return nil, fmt.Errorf("not implemented yet")
 }
 
 // UpdateAgentCampaign 更新代理訊息活動
-func (u *AgentUseCase) UpdateAgentCampaign(ctx context.Context, id uint64, req *dto.UpdateAgentCampaignRequest) (*entity.AgentCampaign, error) {
-	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.UpdateAgentCampaign")
-	defer u.tracingService.SpanEnd(span)
+func (u *AgentUseCase) UpdateAgentCampaign(
+	ctx context.Context,
+	id uint64,
+	req *dto.UpdateAgentCampaignRequest,
+) (*entity.AgentCampaign, error) {
+	//ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.UpdateAgentCampaign")
+	//defer u.tracingService.SpanEnd(span)
 
 	// TODO: 實作更新代理活動邏輯
 	return nil, fmt.Errorf("not implemented yet")
 }
 
 // GetAgentCampaign 獲取代理訊息活動
-func (u *AgentUseCase) GetAgentCampaign(ctx context.Context, id uint64) (*entity.AgentCampaign, error) {
-	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.GetAgentCampaign")
-	defer u.tracingService.SpanEnd(span)
+func (u *AgentUseCase) GetAgentCampaign(
+	ctx context.Context,
+	id uint64,
+) (*entity.AgentCampaign, error) {
+	//ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.GetAgentCampaign")
+	//defer u.tracingService.SpanEnd(span)
 
 	// TODO: 實作獲取代理活動邏輯
 	return nil, fmt.Errorf("not implemented yet")
 }
 
 // GetAgentCampaigns 獲取代理訊息活動列表
-func (u *AgentUseCase) GetAgentCampaigns(ctx context.Context, query *dto.AgentCampaignsQuery) (*dto.AgentCampaignListResponse, error) {
-	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.GetAgentCampaigns")
-	defer u.tracingService.SpanEnd(span)
+func (u *AgentUseCase) GetAgentCampaigns(
+	ctx context.Context,
+	query *dto.AgentCampaignsQuery,
+) (*dto.AgentCampaignListResponse, error) {
+	//ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.GetAgentCampaigns")
+	//defer u.tracingService.SpanEnd(span)
 
 	// TODO: 實作獲取代理活動列表邏輯
 	return nil, fmt.Errorf("not implemented yet")
@@ -208,35 +233,45 @@ func (u *AgentUseCase) GetAgentCampaigns(ctx context.Context, query *dto.AgentCa
 
 // DeleteAgentCampaign 刪除代理訊息活動
 func (u *AgentUseCase) DeleteAgentCampaign(ctx context.Context, id uint64) error {
-	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.DeleteAgentCampaign")
-	defer u.tracingService.SpanEnd(span)
+	//ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.DeleteAgentCampaign")
+	//defer u.tracingService.SpanEnd(span)
 
 	// TODO: 實作刪除代理活動邏輯
 	return fmt.Errorf("not implemented yet")
 }
 
 // GetAgentMessages 獲取代理站內信列表
-func (u *AgentUseCase) GetAgentMessages(ctx context.Context, query *dto.AgentMessagesQuery) (*dto.AgentMessageListResponse, error) {
-	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.GetAgentMessages")
-	defer u.tracingService.SpanEnd(span)
+func (u *AgentUseCase) GetAgentMessages(
+	ctx context.Context,
+	query *dto.AgentMessagesQuery,
+) (*dto.AgentMessageListResponse, error) {
+	//ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.GetAgentMessages")
+	//defer u.tracingService.SpanEnd(span)
 
 	// TODO: 實作獲取代理站內信列表邏輯
 	return nil, fmt.Errorf("not implemented yet")
 }
 
 // MarkMessageAsRead 標記訊息為已讀
-func (u *AgentUseCase) MarkMessageAsRead(ctx context.Context, messageID uint64, agentID uint64) error {
-	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.MarkMessageAsRead")
-	defer u.tracingService.SpanEnd(span)
+func (u *AgentUseCase) MarkMessageAsRead(
+	ctx context.Context,
+	messageID uint64,
+	agentID uint64,
+) error {
+	//ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.MarkMessageAsRead")
+	//defer u.tracingService.SpanEnd(span)
 
 	// TODO: 實作標記訊息已讀邏輯
 	return fmt.Errorf("not implemented yet")
 }
 
 // SendMessageToCampaignTargets 發送訊息給活動目標
-func (u *AgentUseCase) SendMessageToCampaignTargets(ctx context.Context, campaign *entity.AgentCampaign) error {
-	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.SendMessageToCampaignTargets")
-	defer u.tracingService.SpanEnd(span)
+func (u *AgentUseCase) SendMessageToCampaignTargets(
+	ctx context.Context,
+	campaign *entity.AgentCampaign,
+) error {
+	//ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.SendMessageToCampaignTargets")
+	//defer u.tracingService.SpanEnd(span)
 
 	// TODO: 實作發送訊息給活動目標邏輯
 	return fmt.Errorf("not implemented yet")
@@ -244,8 +279,8 @@ func (u *AgentUseCase) SendMessageToCampaignTargets(ctx context.Context, campaig
 
 // GetScheduledCampaigns 獲取排程活動
 func (u *AgentUseCase) GetScheduledCampaigns(ctx context.Context) ([]*entity.AgentCampaign, error) {
-	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.GetScheduledCampaigns")
-	defer u.tracingService.SpanEnd(span)
+	//ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.GetScheduledCampaigns")
+	//defer u.tracingService.SpanEnd(span)
 
 	// TODO: 實作獲取排程活動邏輯
 	return nil, fmt.Errorf("not implemented yet")

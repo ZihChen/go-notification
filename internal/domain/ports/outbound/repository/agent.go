@@ -23,9 +23,13 @@ type AgentRepository interface {
 	FindAgents(ctx context.Context, merchantID uint64, limit, offset int) ([]*entity.Agent, error)
 	QueryAgentsByPath(ctx context.Context, targetAgentID string) ([]string, error)
 	GetAgentIDByGlobalID(ctx context.Context, globalID string, merchantID uint64) (uint64, error)
-	
+
 	// 批量操作
-	BatchGetOrCreateAgentsByGlobalIDs(ctx context.Context, globalIDs []string, merchantID uint64) (map[string]uint64, error)
+	BatchGetOrCreateAgentsByGlobalIDs(
+		ctx context.Context,
+		globalIDs []string,
+		merchantID uint64,
+	) (map[string]uint64, error)
 
 	// 關係操作
 	UpsertRelationship(ctx context.Context, rel *entity.AgentRelationship) error
@@ -59,10 +63,17 @@ type AgentMessageRepository interface {
 
 	// 批量操作
 	CreateBatch(ctx context.Context, messages []*entity.AgentMessage) error
-	CheckMessageExistsBatch(ctx context.Context, agentIDs []uint64, campaignID uint64) (map[uint64]bool, error)
+	CheckMessageExistsBatch(
+		ctx context.Context,
+		agentIDs []uint64,
+		campaignID uint64,
+	) (map[uint64]bool, error)
 
 	// 查詢操作
-	ListByAgent(ctx context.Context, query *dto.AgentMessagesQuery) ([]*entity.AgentMessage, int, error)
+	ListByAgent(
+		ctx context.Context,
+		query *dto.AgentMessagesQuery,
+	) ([]*entity.AgentMessage, int, error)
 	MarkAsRead(ctx context.Context, messageID uint64, agentID uint64) error
 
 	// 統計操作
@@ -72,14 +83,26 @@ type AgentMessageRepository interface {
 // AgentRelationshipRepository 代理關係倉儲接口
 type AgentRelationshipRepository interface {
 	// 批次更新操作 (併發安全)
-	BatchUpdate(ctx context.Context, parentID uint64, relationships []*entity.AgentRelationship) error
-	
+	BatchUpdate(
+		ctx context.Context,
+		parentID uint64,
+		relationships []*entity.AgentRelationship,
+	) error
+
 	// 查詢操作
 	GetByParentID(ctx context.Context, parentID uint64) ([]*entity.AgentRelationship, error)
 	GetByChildID(ctx context.Context, childID uint64) ([]*entity.AgentRelationship, error)
-	FindDescendants(ctx context.Context, parentID uint64, maxDepth int) ([]*entity.AgentRelationship, error)
-	FindAncestors(ctx context.Context, childID uint64, maxDepth int) ([]*entity.AgentRelationship, error)
-	
+	FindDescendants(
+		ctx context.Context,
+		parentID uint64,
+		maxDepth int,
+	) ([]*entity.AgentRelationship, error)
+	FindAncestors(
+		ctx context.Context,
+		childID uint64,
+		maxDepth int,
+	) ([]*entity.AgentRelationship, error)
+
 	// 路徑查詢
 	FindByPathHash(ctx context.Context, pathHash string) ([]*entity.AgentRelationship, error)
 }

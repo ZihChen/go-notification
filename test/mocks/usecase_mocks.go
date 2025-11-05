@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/stretchr/testify/mock"
@@ -418,5 +419,161 @@ func (m *PlayerTagUseCaseMock) SetupSuccess() {}
 func (m *PlayerTagUseCaseMock) SetupError()   {}
 func (m *PlayerTagUseCaseMock) SetupEmpty()   {}
 func (m *PlayerTagUseCaseMock) Reset() {
+	m.Mock = mock.Mock{}
+}
+
+// AgentUseCaseMock 統一的 AgentUseCase Mock
+type AgentUseCaseMock struct {
+	*BaseMock
+}
+
+var _ inbound.AgentUseCase = (*AgentUseCaseMock)(nil)
+
+// NewAgentUseCaseMock 創建新的 AgentUseCase Mock
+func NewAgentUseCaseMock(t *testing.T) *AgentUseCaseMock {
+	return &AgentUseCaseMock{
+		BaseMock: NewBaseMock(t),
+	}
+}
+
+func (m *AgentUseCaseMock) SyncAgentDataWithRelationships(
+	ctx context.Context,
+	agentEvent *event.AgentSyncEvent,
+) error {
+	args := m.Called(ctx, agentEvent)
+	return args.Error(0)
+}
+
+func (m *AgentUseCaseMock) SyncCurrentAgentUpsert(
+	ctx context.Context,
+	agentEvent *event.AgentSyncEvent,
+) error {
+	args := m.Called(ctx, agentEvent)
+	return args.Error(0)
+}
+
+func (m *AgentUseCaseMock) GetAgentByGlobalID(
+	ctx context.Context,
+	globalAgentID string,
+) (*entity.Agent, error) {
+	args := m.Called(ctx, globalAgentID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.Agent), args.Error(1)
+}
+
+func (m *AgentUseCaseMock) GetActiveAgents(
+	ctx context.Context,
+	merchantID uint64,
+	limit, offset int,
+) ([]*entity.Agent, error) {
+	args := m.Called(ctx, merchantID, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.Agent), args.Error(1)
+}
+
+func (m *AgentUseCaseMock) CreateAgentCampaign(
+	ctx context.Context,
+	req *dto.CreateAgentCampaignRequest,
+) (*entity.AgentCampaign, error) {
+	args := m.Called(ctx, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.AgentCampaign), args.Error(1)
+}
+
+func (m *AgentUseCaseMock) UpdateAgentCampaign(
+	ctx context.Context,
+	id uint64,
+	req *dto.UpdateAgentCampaignRequest,
+) (*entity.AgentCampaign, error) {
+	args := m.Called(ctx, id, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.AgentCampaign), args.Error(1)
+}
+
+func (m *AgentUseCaseMock) GetAgentCampaign(
+	ctx context.Context,
+	id uint64,
+) (*entity.AgentCampaign, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.AgentCampaign), args.Error(1)
+}
+
+func (m *AgentUseCaseMock) GetAgentCampaigns(
+	ctx context.Context,
+	query *dto.AgentCampaignsQuery,
+) (*dto.AgentCampaignListResponse, error) {
+	args := m.Called(ctx, query)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*dto.AgentCampaignListResponse), args.Error(1)
+}
+
+func (m *AgentUseCaseMock) DeleteAgentCampaign(ctx context.Context, id uint64) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+func (m *AgentUseCaseMock) GetAgentMessages(
+	ctx context.Context,
+	query *dto.AgentMessagesQuery,
+) (*dto.AgentMessageListResponse, error) {
+	args := m.Called(ctx, query)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*dto.AgentMessageListResponse), args.Error(1)
+}
+
+func (m *AgentUseCaseMock) MarkMessageAsRead(
+	ctx context.Context,
+	messageID uint64,
+	agentID uint64,
+) error {
+	args := m.Called(ctx, messageID, agentID)
+	return args.Error(0)
+}
+
+func (m *AgentUseCaseMock) SendMessageToCampaignTargets(
+	ctx context.Context,
+	campaign *entity.AgentCampaign,
+) error {
+	args := m.Called(ctx, campaign)
+	return args.Error(0)
+}
+
+func (m *AgentUseCaseMock) GetScheduledCampaigns(
+	ctx context.Context,
+) ([]*entity.AgentCampaign, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.AgentCampaign), args.Error(1)
+}
+
+func (m *AgentUseCaseMock) FilterActiveAgents(agentIDs []string) []string {
+	args := m.Called(agentIDs)
+	if args.Get(0) == nil {
+		return nil
+	}
+	return args.Get(0).([]string)
+}
+
+func (m *AgentUseCaseMock) SetupSuccess() {}
+func (m *AgentUseCaseMock) SetupError()   {}
+func (m *AgentUseCaseMock) SetupEmpty()   {}
+func (m *AgentUseCaseMock) Reset() {
 	m.Mock = mock.Mock{}
 }

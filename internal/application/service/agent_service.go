@@ -47,7 +47,10 @@ func NewAgentService(
 }
 
 // SyncAgentRelationshipsUpsert 複雜的代理關聯同步邏輯 (Service職責)
-func (s *AgentService) SyncAgentRelationshipsUpsert(ctx context.Context, agentEvent *event.AgentSyncEvent) error {
+func (s *AgentService) SyncAgentRelationshipsUpsert(
+	ctx context.Context,
+	agentEvent *event.AgentSyncEvent,
+) error {
 	ctx, span := s.tracingService.StartSpan(ctx, "AgentService.SyncAgentRelationshipsUpsert")
 	defer s.tracingService.SpanEnd(span)
 
@@ -151,7 +154,10 @@ func (s *AgentService) SyncAgentRelationshipsUpsert(ctx context.Context, agentEv
 }
 
 // GetAgentLineDescendants 複雜的代理線查詢邏輯 (Service職責)
-func (s *AgentService) GetAgentLineDescendants(ctx context.Context, globalAgentID string) ([]string, error) {
+func (s *AgentService) GetAgentLineDescendants(
+	ctx context.Context,
+	globalAgentID string,
+) ([]string, error) {
 	ctx, span := s.tracingService.StartSpan(ctx, "AgentService.GetAgentLineDescendants")
 	defer s.tracingService.SpanEnd(span)
 
@@ -187,7 +193,10 @@ func (s *AgentService) GetAgentLineDescendants(ctx context.Context, globalAgentI
 }
 
 // GetAgentLineAncestors 代理祖先查詢邏輯
-func (s *AgentService) GetAgentLineAncestors(ctx context.Context, globalAgentID string) ([]string, error) {
+func (s *AgentService) GetAgentLineAncestors(
+	ctx context.Context,
+	globalAgentID string,
+) ([]string, error) {
 	ctx, span := s.tracingService.StartSpan(ctx, "AgentService.GetAgentLineAncestors")
 	defer s.tracingService.SpanEnd(span)
 
@@ -220,7 +229,10 @@ func (s *AgentService) GetAgentLineAncestors(ctx context.Context, globalAgentID 
 }
 
 // GetAgentHierarchy 完整代理層級查詢 (Service職責：並發優化)
-func (s *AgentService) GetAgentHierarchy(ctx context.Context, globalAgentID string) (*servicePort.AgentHierarchy, error) {
+func (s *AgentService) GetAgentHierarchy(
+	ctx context.Context,
+	globalAgentID string,
+) (*servicePort.AgentHierarchy, error) {
 	ctx, span := s.tracingService.StartSpan(ctx, "AgentService.GetAgentHierarchy")
 	defer s.tracingService.SpanEnd(span)
 

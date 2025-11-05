@@ -16,17 +16,34 @@ type AgentUseCase interface {
 
 	// 代理查詢相關
 	GetAgentByGlobalID(ctx context.Context, globalAgentID string) (*entity.Agent, error)
-	GetActiveAgents(ctx context.Context, merchantID uint64, limit, offset int) ([]*entity.Agent, error)
+	GetActiveAgents(
+		ctx context.Context,
+		merchantID uint64,
+		limit, offset int,
+	) ([]*entity.Agent, error)
 
 	// 代理訊息活動相關
-	CreateAgentCampaign(ctx context.Context, req *dto.CreateAgentCampaignRequest) (*entity.AgentCampaign, error)
-	UpdateAgentCampaign(ctx context.Context, id uint64, req *dto.UpdateAgentCampaignRequest) (*entity.AgentCampaign, error)
+	CreateAgentCampaign(
+		ctx context.Context,
+		req *dto.CreateAgentCampaignRequest,
+	) (*entity.AgentCampaign, error)
+	UpdateAgentCampaign(
+		ctx context.Context,
+		id uint64,
+		req *dto.UpdateAgentCampaignRequest,
+	) (*entity.AgentCampaign, error)
 	GetAgentCampaign(ctx context.Context, id uint64) (*entity.AgentCampaign, error)
-	GetAgentCampaigns(ctx context.Context, query *dto.AgentCampaignsQuery) (*dto.AgentCampaignListResponse, error)
+	GetAgentCampaigns(
+		ctx context.Context,
+		query *dto.AgentCampaignsQuery,
+	) (*dto.AgentCampaignListResponse, error)
 	DeleteAgentCampaign(ctx context.Context, id uint64) error
 
 	// 代理站內信相關
-	GetAgentMessages(ctx context.Context, query *dto.AgentMessagesQuery) (*dto.AgentMessageListResponse, error)
+	GetAgentMessages(
+		ctx context.Context,
+		query *dto.AgentMessagesQuery,
+	) (*dto.AgentMessageListResponse, error)
 	MarkMessageAsRead(ctx context.Context, messageID uint64, agentID uint64) error
 
 	// 代理訊息發送相關
@@ -34,4 +51,3 @@ type AgentUseCase interface {
 	GetScheduledCampaigns(ctx context.Context) ([]*entity.AgentCampaign, error)
 	FilterActiveAgents(agentIDs []string) []string
 }
-

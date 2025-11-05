@@ -20,7 +20,10 @@ type AgentRelationshipRepository struct {
 	lockManager infrastructure.DistributedLockManager
 }
 
-func NewAgentRelationshipRepository(db *gorm.DB, lockManager infrastructure.DistributedLockManager) repository.AgentRelationshipRepository {
+func NewAgentRelationshipRepository(
+	db *gorm.DB,
+	lockManager infrastructure.DistributedLockManager,
+) repository.AgentRelationshipRepository {
 	return &AgentRelationshipRepository{
 		db:          db,
 		lockManager: lockManager,
@@ -28,7 +31,11 @@ func NewAgentRelationshipRepository(db *gorm.DB, lockManager infrastructure.Dist
 }
 
 // BatchUpdate 併發安全的批次更新代理關係
-func (r *AgentRelationshipRepository) BatchUpdate(ctx context.Context, targetAgentID uint64, relationships []*entity.AgentRelationship) error {
+func (r *AgentRelationshipRepository) BatchUpdate(
+	ctx context.Context,
+	targetAgentID uint64,
+	relationships []*entity.AgentRelationship,
+) error {
 	if len(relationships) == 0 {
 		// 如果沒有新關係，則刪除所有相關的舊關係
 		return r.clearAgentRelationships(ctx, targetAgentID)
@@ -47,7 +54,12 @@ func (r *AgentRelationshipRepository) BatchUpdate(ctx context.Context, targetAge
 }
 
 // batchUpdateWithDistributedLock 使用分佈式鎖的批次更新
-func (r *AgentRelationshipRepository) batchUpdateWithDistributedLock(ctx context.Context, targetAgentID uint64, relationships []*entity.AgentRelationship, lockKey string) error {
+func (r *AgentRelationshipRepository) batchUpdateWithDistributedLock(
+	ctx context.Context,
+	targetAgentID uint64,
+	relationships []*entity.AgentRelationship,
+	lockKey string,
+) error {
 	// 設定鎖選項
 	lockOptions := infrastructure.LockOptions{
 		Expiry:     30 * time.Second,       // 鎖過期時間 30 秒
@@ -69,7 +81,12 @@ func (r *AgentRelationshipRepository) batchUpdateWithDistributedLock(ctx context
 	defer func() {
 		if unlocked, unlockErr := mutex.Unlock(); unlockErr != nil || !unlocked {
 			// 記錄解鎖失敗，但不影響主流程
-			fmt.Printf("Failed to release distributed lock %s: unlocked=%v, err=%v\n", lockKey, unlocked, unlockErr)
+			fmt.Printf(
+				"Failed to release distributed lock %s: unlocked=%v, err=%v\n",
+				lockKey,
+				unlocked,
+				unlockErr,
+			)
 		}
 	}()
 
@@ -79,7 +96,11 @@ func (r *AgentRelationshipRepository) batchUpdateWithDistributedLock(ctx context
 
 // batchUpdateWithTransaction 使用事務的批次更新
 // 完全替換指定代理的關係鏈：刪除舊關係，新增新關係
-func (r *AgentRelationshipRepository) batchUpdateWithTransaction(ctx context.Context, targetAgentID uint64, relationships []*entity.AgentRelationship) error {
+func (r *AgentRelationshipRepository) batchUpdateWithTransaction(
+	ctx context.Context,
+	targetAgentID uint64,
+	relationships []*entity.AgentRelationship,
+) error {
 	// 對關係列表進行排序，確保一致的操作順序
 	sort.Slice(relationships, func(i, j int) bool {
 		if relationships[i].ParentID != relationships[j].ParentID {
@@ -124,7 +145,10 @@ func (r *AgentRelationshipRepository) batchUpdateWithTransaction(ctx context.Con
 }
 
 // GetByParentID 根據父代理ID獲取所有關係
-func (r *AgentRelationshipRepository) GetByParentID(ctx context.Context, parentID uint64) ([]*entity.AgentRelationship, error) {
+func (r *AgentRelationshipRepository) GetByParentID(
+	ctx context.Context,
+	parentID uint64,
+) ([]*entity.AgentRelationship, error) {
 	var relationModels []models.AgentRelationship
 	if err := r.db.WithContext(ctx).
 		Where("parent_id = ?", parentID).
@@ -142,7 +166,10 @@ func (r *AgentRelationshipRepository) GetByParentID(ctx context.Context, parentI
 }
 
 // GetByChildID 根據子代理ID獲取所有關係
-func (r *AgentRelationshipRepository) GetByChildID(ctx context.Context, childID uint64) ([]*entity.AgentRelationship, error) {
+func (r *AgentRelationshipRepository) GetByChildID(
+	ctx context.Context,
+	childID uint64,
+) ([]*entity.AgentRelationship, error) {
 	var relationModels []models.AgentRelationship
 	if err := r.db.WithContext(ctx).
 		Where("child_id = ?", childID).
@@ -160,7 +187,11 @@ func (r *AgentRelationshipRepository) GetByChildID(ctx context.Context, childID 
 }
 
 // FindDescendants 查詢後代關係 (支援深度限制)
-func (r *AgentRelationshipRepository) FindDescendants(ctx context.Context, parentID uint64, maxDepth int) ([]*entity.AgentRelationship, error) {
+func (r *AgentRelationshipRepository) FindDescendants(
+	ctx context.Context,
+	parentID uint64,
+	maxDepth int,
+) ([]*entity.AgentRelationship, error) {
 	var relationModels []models.AgentRelationship
 
 	query := r.db.WithContext(ctx).Where("parent_id = ?", parentID)
@@ -181,7 +212,11 @@ func (r *AgentRelationshipRepository) FindDescendants(ctx context.Context, paren
 }
 
 // FindAncestors 查詢祖先關係 (支援深度限制)
-func (r *AgentRelationshipRepository) FindAncestors(ctx context.Context, childID uint64, maxDepth int) ([]*entity.AgentRelationship, error) {
+func (r *AgentRelationshipRepository) FindAncestors(
+	ctx context.Context,
+	childID uint64,
+	maxDepth int,
+) ([]*entity.AgentRelationship, error) {
 	var relationModels []models.AgentRelationship
 
 	query := r.db.WithContext(ctx).Where("child_id = ?", childID)
@@ -202,7 +237,10 @@ func (r *AgentRelationshipRepository) FindAncestors(ctx context.Context, childID
 }
 
 // FindByPathHash 根據路徑Hash查詢關係
-func (r *AgentRelationshipRepository) FindByPathHash(ctx context.Context, pathHash string) ([]*entity.AgentRelationship, error) {
+func (r *AgentRelationshipRepository) FindByPathHash(
+	ctx context.Context,
+	pathHash string,
+) ([]*entity.AgentRelationship, error) {
 	var relationModels []models.AgentRelationship
 	if err := r.db.WithContext(ctx).
 		Where("path_hash = ?", pathHash).
@@ -220,7 +258,9 @@ func (r *AgentRelationshipRepository) FindByPathHash(ctx context.Context, pathHa
 }
 
 // modelToEntity 將模型轉換為實體
-func (r *AgentRelationshipRepository) modelToEntity(model *models.AgentRelationship) *entity.AgentRelationship {
+func (r *AgentRelationshipRepository) modelToEntity(
+	model *models.AgentRelationship,
+) *entity.AgentRelationship {
 	return &entity.AgentRelationship{
 		ParentID:   model.ParentID,
 		ChildID:    model.ChildID,
@@ -237,7 +277,10 @@ func (r *AgentRelationshipRepository) GenerateLockKey(parentID uint64) string {
 }
 
 // clearAgentRelationships 清除指定代理的所有關係
-func (r *AgentRelationshipRepository) clearAgentRelationships(ctx context.Context, targetAgentID uint64) error {
+func (r *AgentRelationshipRepository) clearAgentRelationships(
+	ctx context.Context,
+	targetAgentID uint64,
+) error {
 	// 使用與BatchUpdate相同的鎖定策略確保併發安全
 	lockKey := fmt.Sprintf("agent_relationship:batch_update:%d", targetAgentID)
 
@@ -253,7 +296,11 @@ func (r *AgentRelationshipRepository) clearAgentRelationships(ctx context.Contex
 }
 
 // clearWithDistributedLock 使用分佈式鎖的清理操作
-func (r *AgentRelationshipRepository) clearWithDistributedLock(ctx context.Context, targetAgentID uint64, lockKey string) error {
+func (r *AgentRelationshipRepository) clearWithDistributedLock(
+	ctx context.Context,
+	targetAgentID uint64,
+	lockKey string,
+) error {
 	// 設定鎖選項
 	lockOptions := infrastructure.LockOptions{
 		Expiry:     30 * time.Second,       // 鎖過期時間 30 秒
@@ -275,7 +322,12 @@ func (r *AgentRelationshipRepository) clearWithDistributedLock(ctx context.Conte
 	defer func() {
 		if unlocked, unlockErr := mutex.Unlock(); unlockErr != nil || !unlocked {
 			// 記錄解鎖失敗，但不影響主流程
-			fmt.Printf("Failed to release distributed lock %s: unlocked=%v, err=%v\n", lockKey, unlocked, unlockErr)
+			fmt.Printf(
+				"Failed to release distributed lock %s: unlocked=%v, err=%v\n",
+				lockKey,
+				unlocked,
+				unlockErr,
+			)
 		}
 	}()
 
@@ -292,7 +344,10 @@ func (r *AgentRelationshipRepository) clearWithDistributedLock(ctx context.Conte
 // - G代理：A→B→G
 // 當清理H時，只刪除C→H關係，保留A→B→C（因為G代理可能還需要A→B）
 // clearTargetAgentRelationships 在事務中清除目標代理的相關關係
-func (r *AgentRelationshipRepository) clearTargetAgentRelationships(tx *gorm.DB, targetAgentID uint64) error {
+func (r *AgentRelationshipRepository) clearTargetAgentRelationships(
+	tx *gorm.DB,
+	targetAgentID uint64,
+) error {
 	if err := tx.Where("child_id = ?", targetAgentID).
 		Delete(&models.AgentRelationship{}).Error; err != nil {
 		return fmt.Errorf("delete relationships with target as child failed: %w", err)

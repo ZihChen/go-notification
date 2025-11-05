@@ -8,7 +8,7 @@ type Agent struct {
 	MerchantID      uint64     `json:"merchant_id"`
 	GlobalAgentID   string     `json:"global_agent_id"`
 	Account         string     `json:"account"`
-	Ancestry        string     `json:"ancestry"`          // 父代理層級路徑
+	Ancestry        string     `json:"ancestry"`           // 父代理層級路徑
 	CurrentSignInAt *time.Time `json:"current_sign_in_at"` // 當前登入時間
 	CreatedAt       time.Time  `json:"created_at"`
 	UpdatedAt       time.Time  `json:"updated_at"`
@@ -17,21 +17,21 @@ type Agent struct {
 
 // AgentCampaign 代理訊息活動
 type AgentCampaign struct {
-	ID              uint64     `json:"id"`
-	MerchantID      uint64     `json:"merchant_id"`
-	Title           string     `json:"title"`
-	Content         string     `json:"content"`
-	ScheduledAt     time.Time  `json:"scheduled_at"`
-	Status          string     `json:"status"`           // draft, scheduled, sending, completed, failed, cancelled
-	TargetType      string     `json:"target_type"`      // all, specific, line
-	TargetDetails   string     `json:"target_details"`   // 目標詳情 (account列表或line路徑)
-	TargetCount     int64      `json:"target_count"`     // 目標代理數量
-	RealSentCount   int64      `json:"real_sent_count"`  // 實際發送數量
-	CreatedBy       string     `json:"created_by"`       // 建立者
-	UpdatedBy       string     `json:"updated_by"`       // 修改者
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
-	DeletedAt       *time.Time `json:"deleted_at,omitempty"`
+	ID            uint64     `json:"id"`
+	MerchantID    uint64     `json:"merchant_id"`
+	Title         string     `json:"title"`
+	Content       string     `json:"content"`
+	ScheduledAt   time.Time  `json:"scheduled_at"`
+	Status        string     `json:"status"`          // draft, scheduled, sending, completed, failed, cancelled
+	TargetType    string     `json:"target_type"`     // all, specific, line
+	TargetDetails string     `json:"target_details"`  // 目標詳情 (account列表或line路徑)
+	TargetCount   int64      `json:"target_count"`    // 目標代理數量
+	RealSentCount int64      `json:"real_sent_count"` // 實際發送數量
+	CreatedBy     string     `json:"created_by"`      // 建立者
+	UpdatedBy     string     `json:"updated_by"`      // 修改者
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+	DeletedAt     *time.Time `json:"deleted_at,omitempty"`
 }
 
 // AgentMessage 代理站內信

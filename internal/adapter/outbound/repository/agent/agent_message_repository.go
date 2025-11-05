@@ -22,7 +22,10 @@ func NewAgentMessageRepository(db *gorm.DB) repository.AgentMessageRepository {
 }
 
 // Create 創建代理站內信
-func (r *AgentMessageRepository) Create(ctx context.Context, message *entity.AgentMessage) (*entity.AgentMessage, error) {
+func (r *AgentMessageRepository) Create(
+	ctx context.Context,
+	message *entity.AgentMessage,
+) (*entity.AgentMessage, error) {
 	messageModel := &models.AgentMessage{
 		AgentCampaignID: message.AgentCampaignID,
 		AgentID:         message.AgentID,
@@ -41,7 +44,10 @@ func (r *AgentMessageRepository) Create(ctx context.Context, message *entity.Age
 }
 
 // GetByID 根據ID獲取代理站內信
-func (r *AgentMessageRepository) GetByID(ctx context.Context, id uint64) (*entity.AgentMessage, error) {
+func (r *AgentMessageRepository) GetByID(
+	ctx context.Context,
+	id uint64,
+) (*entity.AgentMessage, error) {
 	var messageModel models.AgentMessage
 	if err := r.db.WithContext(ctx).First(&messageModel, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -80,7 +86,10 @@ func (r *AgentMessageRepository) Delete(ctx context.Context, id uint64) error {
 }
 
 // CreateBatch 批量創建代理站內信
-func (r *AgentMessageRepository) CreateBatch(ctx context.Context, messages []*entity.AgentMessage) error {
+func (r *AgentMessageRepository) CreateBatch(
+	ctx context.Context,
+	messages []*entity.AgentMessage,
+) error {
 	if len(messages) == 0 {
 		return nil
 	}
@@ -111,7 +120,11 @@ func (r *AgentMessageRepository) CreateBatch(ctx context.Context, messages []*en
 }
 
 // CheckMessageExistsBatch 批量檢查訊息是否存在
-func (r *AgentMessageRepository) CheckMessageExistsBatch(ctx context.Context, agentIDs []uint64, campaignID uint64) (map[uint64]bool, error) {
+func (r *AgentMessageRepository) CheckMessageExistsBatch(
+	ctx context.Context,
+	agentIDs []uint64,
+	campaignID uint64,
+) (map[uint64]bool, error) {
 	if len(agentIDs) == 0 {
 		return make(map[uint64]bool), nil
 	}
@@ -143,7 +156,10 @@ func (r *AgentMessageRepository) CheckMessageExistsBatch(ctx context.Context, ag
 }
 
 // ListByAgent 根據代理查詢訊息列表
-func (r *AgentMessageRepository) ListByAgent(ctx context.Context, query *dto.AgentMessagesQuery) ([]*entity.AgentMessage, int, error) {
+func (r *AgentMessageRepository) ListByAgent(
+	ctx context.Context,
+	query *dto.AgentMessagesQuery,
+) ([]*entity.AgentMessage, int, error) {
 	var messageModels []models.AgentMessage
 	var total int64
 
@@ -208,7 +224,11 @@ func (r *AgentMessageRepository) ListByAgent(ctx context.Context, query *dto.Age
 }
 
 // MarkAsRead 標記訊息為已讀
-func (r *AgentMessageRepository) MarkAsRead(ctx context.Context, messageID uint64, agentID uint64) error {
+func (r *AgentMessageRepository) MarkAsRead(
+	ctx context.Context,
+	messageID uint64,
+	agentID uint64,
+) error {
 	now := time.Now()
 
 	result := r.db.WithContext(ctx).
@@ -232,7 +252,10 @@ func (r *AgentMessageRepository) MarkAsRead(ctx context.Context, messageID uint6
 }
 
 // GetMessageStats 獲取代理訊息統計
-func (r *AgentMessageRepository) GetMessageStats(ctx context.Context, agentID uint64) (*dto.AgentMessageStats, error) {
+func (r *AgentMessageRepository) GetMessageStats(
+	ctx context.Context,
+	agentID uint64,
+) (*dto.AgentMessageStats, error) {
 	type statsResult struct {
 		TotalCount  int64 `json:"total_count"`
 		ReadCount   int64 `json:"read_count"`

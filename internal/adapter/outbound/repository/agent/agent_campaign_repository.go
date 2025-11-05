@@ -21,7 +21,10 @@ func NewAgentCampaignRepository(db *gorm.DB) repository.AgentCampaignRepository 
 }
 
 // Create 創建代理訊息活動
-func (r *AgentCampaignRepository) Create(ctx context.Context, campaign *entity.AgentCampaign) (*entity.AgentCampaign, error) {
+func (r *AgentCampaignRepository) Create(
+	ctx context.Context,
+	campaign *entity.AgentCampaign,
+) (*entity.AgentCampaign, error) {
 	model := &models.AgentCampaign{
 		MerchantID:    campaign.MerchantID,
 		Title:         campaign.Title,
@@ -47,7 +50,10 @@ func (r *AgentCampaignRepository) Create(ctx context.Context, campaign *entity.A
 }
 
 // GetByID 根據ID獲取代理訊息活動
-func (r *AgentCampaignRepository) GetByID(ctx context.Context, id uint64) (*entity.AgentCampaign, error) {
+func (r *AgentCampaignRepository) GetByID(
+	ctx context.Context,
+	id uint64,
+) (*entity.AgentCampaign, error) {
 	var campaignModel models.AgentCampaign
 	if err := r.db.WithContext(ctx).First(&campaignModel, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -60,7 +66,10 @@ func (r *AgentCampaignRepository) GetByID(ctx context.Context, id uint64) (*enti
 }
 
 // Update 更新代理訊息活動
-func (r *AgentCampaignRepository) Update(ctx context.Context, campaign *entity.AgentCampaign) error {
+func (r *AgentCampaignRepository) Update(
+	ctx context.Context,
+	campaign *entity.AgentCampaign,
+) error {
 	campaignModel := &models.AgentCampaign{
 		ID:            campaign.ID,
 		MerchantID:    campaign.MerchantID,
@@ -93,7 +102,10 @@ func (r *AgentCampaignRepository) Delete(ctx context.Context, id uint64) error {
 }
 
 // List 分頁查詢代理訊息活動列表
-func (r *AgentCampaignRepository) List(ctx context.Context, query *dto.AgentCampaignsQuery) ([]*entity.AgentCampaign, int, error) {
+func (r *AgentCampaignRepository) List(
+	ctx context.Context,
+	query *dto.AgentCampaignsQuery,
+) ([]*entity.AgentCampaign, int, error) {
 	var campaignModels []models.AgentCampaign
 	var total int64
 
@@ -162,7 +174,9 @@ func (r *AgentCampaignRepository) List(ctx context.Context, query *dto.AgentCamp
 }
 
 // GetScheduledCampaigns 獲取待發送的排程活動
-func (r *AgentCampaignRepository) GetScheduledCampaigns(ctx context.Context) ([]*entity.AgentCampaign, error) {
+func (r *AgentCampaignRepository) GetScheduledCampaigns(
+	ctx context.Context,
+) ([]*entity.AgentCampaign, error) {
 	var campaignModels []models.AgentCampaign
 
 	if err := r.db.WithContext(ctx).

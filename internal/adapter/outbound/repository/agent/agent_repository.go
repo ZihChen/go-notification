@@ -54,7 +54,10 @@ func (r *AgentRepository) GetByID(ctx context.Context, id uint64) (*entity.Agent
 }
 
 // GetByGlobalID 根據全局代理ID獲取代理
-func (r *AgentRepository) GetByGlobalID(ctx context.Context, globalAgentID string) (*entity.Agent, error) {
+func (r *AgentRepository) GetByGlobalID(
+	ctx context.Context,
+	globalAgentID string,
+) (*entity.Agent, error) {
 	var agentModel models.Agent
 	if err := r.db.WithContext(ctx).Where("global_agent_id = ?", globalAgentID).First(&agentModel).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -124,7 +127,11 @@ func (r *AgentRepository) Upsert(ctx context.Context, agent *entity.Agent) error
 }
 
 // FindAgents 分頁查詢代理列表
-func (r *AgentRepository) FindAgents(ctx context.Context, merchantID uint64, limit, offset int) ([]*entity.Agent, error) {
+func (r *AgentRepository) FindAgents(
+	ctx context.Context,
+	merchantID uint64,
+	limit, offset int,
+) ([]*entity.Agent, error) {
 	var agentModels []models.Agent
 
 	query := r.db.WithContext(ctx).Where("merchant_id = ?", merchantID)
@@ -141,7 +148,10 @@ func (r *AgentRepository) FindAgents(ctx context.Context, merchantID uint64, lim
 }
 
 // QueryAgentsByPath 根據路徑查詢代理ID列表 (legacy 支援)
-func (r *AgentRepository) QueryAgentsByPath(ctx context.Context, targetAgentID string) ([]string, error) {
+func (r *AgentRepository) QueryAgentsByPath(
+	ctx context.Context,
+	targetAgentID string,
+) ([]string, error) {
 	var agentModels []models.Agent
 
 	// 查詢包含目標代理ID的ancestry路徑
@@ -160,7 +170,11 @@ func (r *AgentRepository) QueryAgentsByPath(ctx context.Context, targetAgentID s
 }
 
 // GetAgentIDByGlobalID 根據全局ID獲取數值ID
-func (r *AgentRepository) GetAgentIDByGlobalID(ctx context.Context, globalID string, merchantID uint64) (uint64, error) {
+func (r *AgentRepository) GetAgentIDByGlobalID(
+	ctx context.Context,
+	globalID string,
+	merchantID uint64,
+) (uint64, error) {
 	var agentModel models.Agent
 	if err := r.db.WithContext(ctx).
 		Select("id").
@@ -176,7 +190,10 @@ func (r *AgentRepository) GetAgentIDByGlobalID(ctx context.Context, globalID str
 }
 
 // UpsertRelationship 創建或更新代理關係 (legacy 支援)
-func (r *AgentRepository) UpsertRelationship(ctx context.Context, rel *entity.AgentRelationship) error {
+func (r *AgentRepository) UpsertRelationship(
+	ctx context.Context,
+	rel *entity.AgentRelationship,
+) error {
 	relationModel := &models.AgentRelationship{
 		ParentID:   rel.ParentID,
 		ChildID:    rel.ChildID,
@@ -199,7 +216,10 @@ func (r *AgentRepository) UpsertRelationship(ctx context.Context, rel *entity.Ag
 }
 
 // QueryAgentsByRelationship 根據關係查詢子代理 (legacy 支援)
-func (r *AgentRepository) QueryAgentsByRelationship(ctx context.Context, parentAgentID string) ([]string, error) {
+func (r *AgentRepository) QueryAgentsByRelationship(
+	ctx context.Context,
+	parentAgentID string,
+) ([]string, error) {
 	// 首先獲取父代理的數值ID
 	var parentAgent models.Agent
 	if err := r.db.WithContext(ctx).
@@ -247,7 +267,10 @@ func (r *AgentRepository) QueryAgentsByRelationship(ctx context.Context, parentA
 }
 
 // QueryAgentAncestorsByRelationship 根據關係查詢祖先代理 (legacy 支援)
-func (r *AgentRepository) QueryAgentAncestorsByRelationship(ctx context.Context, childAgentID string) ([]string, error) {
+func (r *AgentRepository) QueryAgentAncestorsByRelationship(
+	ctx context.Context,
+	childAgentID string,
+) ([]string, error) {
 	// 首先獲取子代理的數值ID
 	var childAgent models.Agent
 	if err := r.db.WithContext(ctx).
@@ -308,7 +331,11 @@ func (r *AgentRepository) AgentExists(ctx context.Context, agentID uint64) (bool
 }
 
 // BatchGetOrCreateAgentsByGlobalIDs 批量獲取或創建代理，避免N+1查詢
-func (r *AgentRepository) BatchGetOrCreateAgentsByGlobalIDs(ctx context.Context, globalIDs []string, merchantID uint64) (map[string]uint64, error) {
+func (r *AgentRepository) BatchGetOrCreateAgentsByGlobalIDs(
+	ctx context.Context,
+	globalIDs []string,
+	merchantID uint64,
+) (map[string]uint64, error) {
 	if len(globalIDs) == 0 {
 		return make(map[string]uint64), nil
 	}
