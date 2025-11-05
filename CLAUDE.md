@@ -22,6 +22,7 @@ The application consists of four main services that can be run independently:
 - **Merchant** - Business entities in the system
 - **Player** - End users/customers
 - **Manager** - Administrative users
+- **Agent** - Hierarchical agent system with relationship management ✨ **NEW**
 - **Message Campaign** - Notification campaigns and messaging
 - **Tags/Levels** - User categorization and hierarchy
 
@@ -173,6 +174,15 @@ Modular router architecture with separated concerns:
 ### Event-Driven Architecture
 System uses events for inter-service communication via KDS and Redis queues
 
+### Agent Relationship Management Pattern ✨ **NEW**
+Enterprise-grade agent hierarchy system with concurrent safety:
+- **Distributed Locking** - Redsync-based distributed locks for concurrent operations
+- **Batch Operations** - N+1 query elimination through batch agent creation and relationship updates
+- **Intelligent Grouping** - Agent-ID based lock grouping to avoid unnecessary lock contention
+- **Graceful Degradation** - Automatic fallback to transaction mode when distributed locks unavailable
+- **UPSERT Strategy** - Conflict resolution for shared ancestor relationships
+- **Ancestry Parsing** - Complex agent hierarchy path parsing and validation
+
 ### Testing Architecture Pattern ✨ **NEW**
 Unified testing infrastructure with improved maintainability:
 - **Unified Mock Framework** - All repository mocks use consistent BaseMock pattern in `test/mocks/`
@@ -195,6 +205,7 @@ The project maintains structured documentation for development guidance:
 - **docs/claude/archive/** - Completed feature archives
 
 ### Current Status
+**🎯 代理訊息系統v1.1完成**: 代理關係同步邏輯與併發安全機制全面實現，Agent系統核心架構完成 ✅  
 **v1.12商戶自動設定Active開關完成**: 自動推送精細控制功能實現，提供靈活的訊息管理能力 ✅  
 **v1.11併發安全+v1.10+效能優化完成**: 企業級架構標準達成，支援高併發、高性能、高可用生產部署 ✅  
 **併發安全**: Redsync分佈式鎖機制，100%保障多goroutine操作安全，智能分組避免鎖競爭 ✅  
