@@ -23,6 +23,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/player"
 	service3 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/service"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/agent"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/level"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/manager"
 	merchant2 "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/merchant"
@@ -108,7 +109,14 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, re
 	pushKeyRepository := merchant.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
 	messageUseCase := message2.NewMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
-	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, messageUseCase, logger, tracingService)
+	agentRepository := repository3.NewAgentRepository(db)
+	agentCampaignRepository := repository3.NewAgentCampaignRepository(db)
+	agentMessageRepository := repository3.NewAgentMessageRepository(db)
+	distributedLockManager := provideDistributedLockManager(redisManager)
+	agentRelationshipRepository := provideAgentRelationshipRepository(db, distributedLockManager)
+	agentService := service.NewAgentService(agentRepository, agentRelationshipRepository, merchantRepository, logger, tracingService)
+	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService)
+	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, messageUseCase, agentUseCase, logger, tracingService)
 	return workerHandler, nil
 }
 
@@ -141,7 +149,14 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 	pushKeyRepository := merchant.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
 	messageUseCase := message2.NewMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
-	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, messageUseCase, logger, tracingService)
+	agentRepository := repository3.NewAgentRepository(db)
+	agentCampaignRepository := repository3.NewAgentCampaignRepository(db)
+	agentMessageRepository := repository3.NewAgentMessageRepository(db)
+	distributedLockManager := provideDistributedLockManager(redisManager)
+	agentRelationshipRepository := provideAgentRelationshipRepository(db, distributedLockManager)
+	agentService := service.NewAgentService(agentRepository, agentRelationshipRepository, merchantRepository, logger, tracingService)
+	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService)
+	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, messageUseCase, agentUseCase, logger, tracingService)
 	server, err := provideWorkerServer(cfg, logger)
 	if err != nil {
 		return nil, err
@@ -228,7 +243,7 @@ type WorkerComponents struct {
 
 var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient,
 	provideTracingService,
-	provideDistributedLockManager, merchant.NewMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, message.NewMessageCampaignRepository, message.NewCampaignTargetRepository, providePlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant.NewPushKeyRepository, repository3.NewAgentRepository, repository3.NewAgentCampaignRepository, repository3.NewAgentMessageRepository, provideAgentRelationshipRepository, service.NewEventService, providePushNotificationService, merchant2.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message2.NewMessageUseCase, level.NewLevelUseCase, player.NewTagUseCase,
+	provideDistributedLockManager, merchant.NewMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, message.NewMessageCampaignRepository, message.NewCampaignTargetRepository, providePlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant.NewPushKeyRepository, repository3.NewAgentRepository, repository3.NewAgentCampaignRepository, repository3.NewAgentMessageRepository, provideAgentRelationshipRepository, service.NewEventService, service.NewAgentService, providePushNotificationService, merchant2.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message2.NewMessageUseCase, level.NewLevelUseCase, player.NewTagUseCase, agent.NewAgentUseCase,
 )
 
 // 事件生產者提供者 (保留作為別名)

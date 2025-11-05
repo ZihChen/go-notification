@@ -27,25 +27,27 @@ func NewAgentRelationshipRepository(db *gorm.DB, lockManager infrastructure.Dist
 }
 
 // BatchUpdate 併發安全的批次更新代理關係
-func (r *AgentRelationshipRepository) BatchUpdate(ctx context.Context, parentID uint64, relationships []*entity.AgentRelationship) error {
+// 此方法會完全替換指定代理的所有關係，刪除舊關係並新增新關係
+func (r *AgentRelationshipRepository) BatchUpdate(ctx context.Context, targetAgentID uint64, relationships []*entity.AgentRelationship) error {
 	if len(relationships) == 0 {
-		return nil
+		// 如果沒有新關係，則刪除所有相關的舊關係
+		return r.clearAgentRelationships(ctx, targetAgentID)
 	}
 
-	// 智能分組策略：依據 parent_id 進行分組鎖定
-	lockKey := fmt.Sprintf("agent_relationship:batch_update:%d", parentID)
+	// 智能分組策略：依據目標代理 ID 進行分組鎖定
+	lockKey := fmt.Sprintf("agent_relationship:batch_update:%d", targetAgentID)
 
 	// 如果分佈式鎖管理器可用，使用分佈式鎖
 	if r.lockManager != nil && r.lockManager.IsAvailable() {
-		return r.batchUpdateWithDistributedLock(ctx, parentID, relationships, lockKey)
+		return r.batchUpdateWithDistributedLock(ctx, targetAgentID, relationships, lockKey)
 	}
 
 	// 分佈式鎖不可用時，降級到單純事務模式
-	return r.batchUpdateWithTransaction(ctx, parentID, relationships)
+	return r.batchUpdateWithTransaction(ctx, targetAgentID, relationships)
 }
 
 // batchUpdateWithDistributedLock 使用分佈式鎖的批次更新
-func (r *AgentRelationshipRepository) batchUpdateWithDistributedLock(ctx context.Context, parentID uint64, relationships []*entity.AgentRelationship, lockKey string) error {
+func (r *AgentRelationshipRepository) batchUpdateWithDistributedLock(ctx context.Context, targetAgentID uint64, relationships []*entity.AgentRelationship, lockKey string) error {
 	// 設定鎖選項
 	lockOptions := infrastructure.LockOptions{
 		Expiry:     30 * time.Second,       // 鎖過期時間 30 秒
@@ -72,11 +74,12 @@ func (r *AgentRelationshipRepository) batchUpdateWithDistributedLock(ctx context
 	}()
 
 	// 在鎖保護下執行批次更新
-	return r.batchUpdateWithTransaction(ctx, parentID, relationships)
+	return r.batchUpdateWithTransaction(ctx, targetAgentID, relationships)
 }
 
 // batchUpdateWithTransaction 使用事務的批次更新
-func (r *AgentRelationshipRepository) batchUpdateWithTransaction(ctx context.Context, parentID uint64, relationships []*entity.AgentRelationship) error {
+// 完全替換指定代理的關係鏈：刪除舊關係，新增新關係
+func (r *AgentRelationshipRepository) batchUpdateWithTransaction(ctx context.Context, targetAgentID uint64, relationships []*entity.AgentRelationship) error {
 	// 對關係列表進行排序，確保一致的操作順序
 	sort.Slice(relationships, func(i, j int) bool {
 		if relationships[i].ParentID != relationships[j].ParentID {
@@ -86,12 +89,13 @@ func (r *AgentRelationshipRepository) batchUpdateWithTransaction(ctx context.Con
 	})
 
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// 1. 批次刪除指定父代理的所有關係
-		if err := tx.Where("parent_id = ?", parentID).Delete(&models.AgentRelationship{}).Error; err != nil {
-			return fmt.Errorf("delete agent relationships failed: %w", err)
+		// 1. 刪除所有與目標代理相關的舊關係
+		// 包括目標代理作為子代理的關係，以及目標代理祖先鏈中的關係
+		if err := r.clearTargetAgentRelationships(tx, targetAgentID); err != nil {
+			return fmt.Errorf("clear target agent relationships failed: %w", err)
 		}
 
-		// 2. 批次插入新的關係
+		// 2. 新增新的關係鏈
 		if len(relationships) > 0 {
 			insertModels := make([]*models.AgentRelationship, len(relationships))
 			for i, rel := range relationships {
@@ -105,9 +109,9 @@ func (r *AgentRelationshipRepository) batchUpdateWithTransaction(ctx context.Con
 				}
 			}
 
-			// 批次創建，每批100筆
+			// 直接插入新關係（舊關係已被清除）
 			if err := tx.CreateInBatches(insertModels, 100).Error; err != nil {
-				return fmt.Errorf("insert agent relationships failed: %w", err)
+				return fmt.Errorf("insert new agent relationships failed: %w", err)
 			}
 
 			// 更新實體的時間戳
@@ -232,4 +236,87 @@ func (r *AgentRelationshipRepository) modelToEntity(model *models.AgentRelations
 // GenerateLockKey 產生鎖定鍵 (提供給外部使用)
 func (r *AgentRelationshipRepository) GenerateLockKey(parentID uint64) string {
 	return fmt.Sprintf("agent_relationship:batch_update:%s", strconv.FormatUint(parentID, 10))
+}
+
+// clearAgentRelationships 清除指定代理的所有關係
+func (r *AgentRelationshipRepository) clearAgentRelationships(ctx context.Context, targetAgentID uint64) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return r.clearTargetAgentRelationships(tx, targetAgentID)
+	})
+}
+
+// clearTargetAgentRelationships 在事務中清除目標代理的相關關係
+func (r *AgentRelationshipRepository) clearTargetAgentRelationships(tx *gorm.DB, targetAgentID uint64) error {
+	// 策略：清除目標代理作為子代理的所有關係鏈
+	// 這意味著如果A代理的ancestry從"B/C/D"變成"E/G"，我們需要：
+	// 1. 刪除所有以A為最終子代理的關係鏈 (B→C, C→D, D→A)
+	// 2. 保留其他不相關的關係
+	
+	// 首先找到所有以目標代理為子代理的直接關係
+	var directParents []uint64
+	if err := tx.Model(&models.AgentRelationship{}).
+		Where("child_id = ?", targetAgentID).
+		Pluck("parent_id", &directParents).Error; err != nil {
+		return fmt.Errorf("query direct parents failed: %w", err)
+	}
+	
+	// 如果沒有直接父代理，則沒有需要清除的關係
+	if len(directParents) == 0 {
+		return nil
+	}
+	
+	// 刪除以目標代理為子代理的所有關係
+	if err := tx.Where("child_id = ?", targetAgentID).
+		Delete(&models.AgentRelationship{}).Error; err != nil {
+		return fmt.Errorf("delete relationships with target as child failed: %w", err)
+	}
+	
+	// 遞歸清除失去子代理的父代理關係
+	// 如果父代理沒有其他子代理了，也要清除它們的關係鏈
+	for _, parentID := range directParents {
+		if err := r.cleanupOrphanedParent(tx, parentID); err != nil {
+			return fmt.Errorf("cleanup orphaned parent %d failed: %w", parentID, err)
+		}
+	}
+	
+	return nil
+}
+
+// cleanupOrphanedParent 清理孤立的父代理關係
+func (r *AgentRelationshipRepository) cleanupOrphanedParent(tx *gorm.DB, parentID uint64) error {
+	// 檢查這個父代理是否還有其他子代理
+	var childCount int64
+	if err := tx.Model(&models.AgentRelationship{}).
+		Where("parent_id = ?", parentID).
+		Count(&childCount).Error; err != nil {
+		return fmt.Errorf("count children for parent %d failed: %w", parentID, err)
+	}
+	
+	// 如果還有其他子代理，則不需要清理
+	if childCount > 0 {
+		return nil
+	}
+	
+	// 如果這個父代理沒有子代理了，找到它的父代理
+	var grandparents []uint64
+	if err := tx.Model(&models.AgentRelationship{}).
+		Where("child_id = ?", parentID).
+		Pluck("parent_id", &grandparents).Error; err != nil {
+		return fmt.Errorf("query grandparents for parent %d failed: %w", parentID, err)
+	}
+	
+	// 刪除這個父代理作為子代理的關係
+	if err := tx.Where("child_id = ?", parentID).
+		Delete(&models.AgentRelationship{}).Error; err != nil {
+		return fmt.Errorf("delete parent %d relationships failed: %w", parentID, err)
+	}
+	
+	// 遞歸處理祖父代理
+	for _, grandparentID := range grandparents {
+		if err := r.cleanupOrphanedParent(tx, grandparentID); err != nil {
+			return fmt.Errorf("recursive cleanup grandparent %d failed: %w", grandparentID, err)
+		}
+	}
+	
+	return nil
 }

@@ -21,4 +21,7 @@ type QueueService interface {
 
 	// EnqueueTagSync 將標籤同步任務加入佇列
 	EnqueueTagSync(ctx context.Context, data []byte) error
+
+	// EnqueueAgentSync 將代理同步任務加入佇列
+	EnqueueAgentSync(ctx context.Context, data []byte) error
 }

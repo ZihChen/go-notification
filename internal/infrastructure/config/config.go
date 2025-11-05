@@ -102,6 +102,7 @@ type EventsConfig struct {
 	IdentityTagSync         string
 	IdentityPlayerLevelSync string
 	IdentityPlayerTagsSync  string
+	IdentityAgentSync       string
 }
 
 // AuthConfig API認證配置
@@ -225,6 +226,7 @@ func LoadConfig() (*Config, error) {
 			IdentityTagSync:         viper.GetString("EVENT_IDENTITY_TAG_SYNC"),
 			IdentityPlayerLevelSync: viper.GetString("EVENT_IDENTITY_PLAYER_LEVEL_SYNC"),
 			IdentityPlayerTagsSync:  viper.GetString("EVENT_IDENTITY_PLAYER_TAGS_SYNC"),
+			IdentityAgentSync:       viper.GetString("EVENT_IDENTITY_AGENT_SYNC"),
 		},
 		Auth: AuthConfig{
 			Enabled:        viper.GetBool("AUTH_ENABLED"),

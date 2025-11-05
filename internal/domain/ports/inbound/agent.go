@@ -2,18 +2,17 @@ package inbound
 
 import (
 	"context"
-	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 )
 
 // AgentUseCase 代理業務用例接口 (業務流程協調層)
 type AgentUseCase interface {
 	// 代理同步相關
-	SyncAgentDataWithRelationships(ctx context.Context, event *AgentSyncEvent) error
-	SyncCurrentAgentUpsert(ctx context.Context, event *AgentSyncEvent) error
-	EnsureParentAgentsExistUpsert(ctx context.Context, event *AgentSyncEvent) error
+	SyncAgentDataWithRelationships(ctx context.Context, agentEvent *event.AgentSyncEvent) error
+	SyncCurrentAgentUpsert(ctx context.Context, agentEvent *event.AgentSyncEvent) error
 
 	// 代理查詢相關
 	GetAgentByGlobalID(ctx context.Context, globalAgentID string) (*entity.Agent, error)
@@ -36,19 +35,3 @@ type AgentUseCase interface {
 	FilterActiveAgents(agentIDs []string) []string
 }
 
-// AgentSyncEvent KDS 代理同步事件結構
-type AgentSyncEvent struct {
-	Agents struct {
-		GlobalAgentID   string    `json:"global_agent_id"`
-		Account         string    `json:"account"`
-		Ancestry        string    `json:"ancestry"`
-		CurrentSignInAt time.Time `json:"current_sign_in_at"`
-		CreatedAt       time.Time `json:"created_at"`
-		UpdatedAt       time.Time `json:"updated_at"`
-	} `json:"agents"`
-	Merchant struct {
-		ID               uint64 `json:"id"`
-		Name             string `json:"name"`
-		GlobalMerchantID string `json:"global_merchant_id"`
-	} `json:"merchant"`
-}

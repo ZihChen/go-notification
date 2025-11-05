@@ -23,6 +23,9 @@ type AgentRepository interface {
 	FindAgents(ctx context.Context, merchantID uint64, limit, offset int) ([]*entity.Agent, error)
 	QueryAgentsByPath(ctx context.Context, targetAgentID string) ([]string, error)
 	GetAgentIDByGlobalID(ctx context.Context, globalID string, merchantID uint64) (uint64, error)
+	
+	// 批量操作
+	BatchGetOrCreateAgentsByGlobalIDs(ctx context.Context, globalIDs []string, merchantID uint64) (map[string]uint64, error)
 
 	// 關係操作
 	UpsertRelationship(ctx context.Context, rel *entity.AgentRelationship) error

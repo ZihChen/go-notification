@@ -307,6 +307,91 @@ func (r *AgentRepository) AgentExists(ctx context.Context, agentID uint64) (bool
 	return count > 0, nil
 }
 
+// BatchGetOrCreateAgentsByGlobalIDs 批量獲取或創建代理，避免N+1查詢
+func (r *AgentRepository) BatchGetOrCreateAgentsByGlobalIDs(ctx context.Context, globalIDs []string, merchantID uint64) (map[string]uint64, error) {
+	if len(globalIDs) == 0 {
+		return make(map[string]uint64), nil
+	}
+
+	// 去重處理
+	uniqueGlobalIDs := make([]string, 0, len(globalIDs))
+	seen := make(map[string]bool)
+	for _, id := range globalIDs {
+		if !seen[id] {
+			uniqueGlobalIDs = append(uniqueGlobalIDs, id)
+			seen[id] = true
+		}
+	}
+
+	// 1. 批量查詢已存在的代理
+	var existingAgents []models.Agent
+	if err := r.db.WithContext(ctx).
+		Where("global_agent_id IN ? AND merchant_id = ?", uniqueGlobalIDs, merchantID).
+		Find(&existingAgents).Error; err != nil {
+		return nil, fmt.Errorf("batch query existing agents failed: %w", err)
+	}
+
+	// 建立結果映射
+	result := make(map[string]uint64)
+	existingGlobalIDs := make(map[string]bool)
+
+	for _, agent := range existingAgents {
+		result[agent.GlobalAgentID] = agent.ID
+		existingGlobalIDs[agent.GlobalAgentID] = true
+	}
+
+	// 2. 找出需要創建的代理
+	var toCreateGlobalIDs []string
+	for _, globalID := range uniqueGlobalIDs {
+		if !existingGlobalIDs[globalID] {
+			toCreateGlobalIDs = append(toCreateGlobalIDs, globalID)
+		}
+	}
+
+	// 3. 批量創建不存在的代理 (使用冪等操作避免併發衝突)
+	if len(toCreateGlobalIDs) > 0 {
+		var toCreate []models.Agent
+		for _, globalID := range toCreateGlobalIDs {
+			toCreate = append(toCreate, models.Agent{
+				MerchantID:    merchantID,
+				GlobalAgentID: globalID,
+			})
+		}
+
+		// 使用 GORM 的 Clauses 來處理重複鍵衝突
+		if err := r.db.WithContext(ctx).
+			Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "global_agent_id"}, {Name: "merchant_id"}},
+				DoNothing: true, // 如果已存在則不做任何操作
+			}).
+			Create(&toCreate).Error; err != nil {
+			return nil, fmt.Errorf("batch create agents failed: %w", err)
+		}
+
+		// 重新查詢所有需要創建的代理以獲取正確的ID
+		var createdAgents []models.Agent
+		if err := r.db.WithContext(ctx).
+			Where("global_agent_id IN ? AND merchant_id = ?", toCreateGlobalIDs, merchantID).
+			Find(&createdAgents).Error; err != nil {
+			return nil, fmt.Errorf("query created agents failed: %w", err)
+		}
+
+		// 將代理ID添加到結果中
+		for _, agent := range createdAgents {
+			result[agent.GlobalAgentID] = agent.ID
+		}
+	}
+
+	// 最後驗證：確保所有請求的globalID都有對應的結果
+	for _, globalID := range uniqueGlobalIDs {
+		if _, exists := result[globalID]; !exists {
+			return nil, fmt.Errorf("failed to get or create agent for global_id: %s", globalID)
+		}
+	}
+
+	return result, nil
+}
+
 // modelToEntity 將模型轉換為實體
 func (r *AgentRepository) modelToEntity(model *models.Agent) *entity.Agent {
 	agent := &entity.Agent{

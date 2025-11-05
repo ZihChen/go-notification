@@ -187,3 +187,16 @@ type IdentityTagDataSyncEvent struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 	DeletedAt   string    `json:"deleted_at,omitempty"`
 }
+
+// AgentSyncEvent 代理同步事件數據 (根據新的KDS事件結構)
+type AgentSyncEvent struct {
+	GlobalAgentID     string     `json:"global_agent_id"`
+	Account           string     `json:"account"`
+	Ancestry          string     `json:"ancestry"`
+	GlobalMerchantID  string     `json:"global_merchant_id"`
+	ID                uint64     `json:"id"`
+	MerchantID        uint64     `json:"merchant_id"`
+	CurrentSignInAt   *time.Time `json:"current_sign_in_at"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
+}

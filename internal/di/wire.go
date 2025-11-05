@@ -20,6 +20,7 @@ import (
 	playerRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/player"
 	outboundService "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/service"
+	agentUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/agent"
 	levelUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/level"
 	managerUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/manager"
 	merchantUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/merchant"
@@ -73,6 +74,7 @@ var baseSet = wire.NewSet(
 
 	// 服務
 	service.NewEventService,
+	service.NewAgentService,
 	providePushNotificationService,
 
 	// 用例層
@@ -82,6 +84,7 @@ var baseSet = wire.NewSet(
 	messageUseCase.NewMessageUseCase,
 	levelUseCase.NewLevelUseCase,
 	playerUseCase.NewTagUseCase,
+	agentUseCase.NewAgentUseCase,
 )
 
 // 事件生產者提供者 (保留作為別名)

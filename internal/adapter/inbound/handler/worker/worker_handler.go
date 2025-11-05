@@ -34,6 +34,7 @@ type WorkerHandler struct {
 	levelUseCase     inbound.PlayerLevelUseCase
 	playerTagUseCase inbound.PlayerTagUseCase
 	messageUseCase   inbound.MessageUseCase
+	agentUseCase     inbound.AgentUseCase
 	logger           infrastructure.Logger
 	tracingService   infrastructure.TracingService
 }
@@ -46,6 +47,7 @@ func NewWorkerHandler(
 	levelUseCase inbound.PlayerLevelUseCase,
 	playerTagUseCase inbound.PlayerTagUseCase,
 	messageUseCase inbound.MessageUseCase,
+	agentUseCase inbound.AgentUseCase,
 	logger infrastructure.Logger,
 	tracingService infrastructure.TracingService,
 ) *WorkerHandler {
@@ -56,6 +58,7 @@ func NewWorkerHandler(
 		levelUseCase:     levelUseCase,
 		playerTagUseCase: playerTagUseCase,
 		messageUseCase:   messageUseCase,
+		agentUseCase:     agentUseCase,
 		logger:           logger,
 		tracingService:   tracingService,
 	}
@@ -87,6 +90,10 @@ func (h *WorkerHandler) RegisterHandlers(mux *asynq.ServeMux) {
 		queue.TypeTagSync,
 		queue.WrapHandlerWithTracing(h.tracingService, asynq.HandlerFunc(h.HandleTagSync)),
 	)
+	mux.Handle(
+		queue.TypeAgentSync,
+		queue.WrapHandlerWithTracing(h.tracingService, asynq.HandlerFunc(h.HandleAgentSync)),
+	)
 
 	h.logger.InfoLog("Registered worker handlers",
 		h.logger.String("handler.merchant_sync", queue.TypeMerchantSync),
@@ -94,7 +101,8 @@ func (h *WorkerHandler) RegisterHandlers(mux *asynq.ServeMux) {
 		h.logger.String("handler.manager_sync", queue.TypeManagerSync),
 		h.logger.String("handler.player_level_sync", queue.TypePlayerLevelSync),
 		h.logger.String("handler.player_tags_sync", queue.TypePlayerTagsSync),
-		h.logger.String("handler.tag_sync", queue.TypeTagSync))
+		h.logger.String("handler.tag_sync", queue.TypeTagSync),
+		h.logger.String("handler.agent_sync", queue.TypeAgentSync))
 }
 
 // HandleMerchantSync 處理商戶同步任務
@@ -455,6 +463,66 @@ func (h *WorkerHandler) HandleTagSync(ctx context.Context, task *asynq.Task) err
 	h.tracingService.TraceEvent(span, "Tag sync completed successfully")
 	h.logger.InfoWithContext(ctx, "Tag sync task completed successfully",
 		h.logger.String("task_id", taskID))
+	return nil
+}
+
+// HandleAgentSync 處理代理同步任務
+func (h *WorkerHandler) HandleAgentSync(ctx context.Context, task *asynq.Task) error {
+	taskID := getTaskID(task)
+
+	ctx, span := h.tracingService.TraceWorkerProcessing(ctx, queue.TypeAgentSync, taskID)
+	defer h.tracingService.SpanEnd(span)
+
+	h.logger.InfoWithContext(ctx, "Processing agent sync task",
+		h.logger.String("task_id", taskID),
+		h.logger.Int("payload_size", len(task.Payload())))
+
+	cloudEvent, err := parseCloudEvent(task.Payload(), span, h.tracingService)
+	if err != nil {
+		h.tracingService.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to parse cloud event",
+			h.logger.Error("err", err),
+			h.logger.String("task_id", taskID),
+			h.logger.String("data", string(task.Payload())))
+		return err
+	}
+
+	dataBytes, err := jsoniter.Marshal(cloudEvent.Data)
+	if err != nil {
+		h.tracingService.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to marshal event data",
+			h.logger.Error("err", err),
+			h.logger.String("task_id", taskID),
+			h.logger.Any("data", cloudEvent.Data))
+		return fmt.Errorf("marshal event data: %w", err)
+	}
+
+	var agentEvent event.AgentSyncEvent
+	if err = jsoniter.Unmarshal(dataBytes, &agentEvent); err != nil {
+		h.tracingService.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to unmarshal agent event",
+			h.logger.Error("err", err),
+			h.logger.String("task_id", taskID),
+			h.logger.String("data", string(dataBytes)))
+		return fmt.Errorf("unmarshal agent event: %w", err)
+	}
+
+	h.tracingService.TraceEvent(span, "Starting agent sync processing")
+
+	// 執行完整的代理同步邏輯 (資料同步 + 關係建立)
+	if err = h.agentUseCase.SyncAgentDataWithRelationships(ctx, &agentEvent); err != nil {
+		h.tracingService.RecordSpanError(span, err)
+		h.logger.ErrorWithContext(ctx, "Failed to sync agent data and relationships",
+			h.logger.Error("err", err),
+			h.logger.String("task_id", taskID),
+			h.logger.String("global_agent_id", agentEvent.GlobalAgentID))
+		return fmt.Errorf("failed to sync agent data and relationships: %w", err)
+	}
+
+	h.tracingService.TraceEvent(span, "Agent sync completed successfully")
+	h.logger.InfoWithContext(ctx, "Agent sync task completed successfully",
+		h.logger.String("task_id", taskID),
+		h.logger.String("global_agent_id", agentEvent.GlobalAgentID))
 	return nil
 }
 
