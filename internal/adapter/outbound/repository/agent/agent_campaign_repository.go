@@ -85,13 +85,10 @@ func (r *AgentCampaignRepository) List(
 	var campaignModels []models.AgentCampaign
 	var total int64
 
-	db := r.db.WithContext(ctx).Model(&models.AgentCampaign{})
+	db := r.db.WithContext(ctx).Model(&models.AgentCampaign{}).
+		Where("merchant_id = ?", query.MerchantID)
 
 	// 添加查詢條件
-	if query.MerchantID > 0 {
-		db = db.Where("merchant_id = ?", query.MerchantID)
-	}
-
 	if query.Status != "" {
 		db = db.Where("status = ?", query.Status)
 	}

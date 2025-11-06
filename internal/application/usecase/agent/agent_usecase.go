@@ -351,6 +351,13 @@ func (u *AgentUseCase) GetAgentCampaigns(
 		attribute.String("status", query.Status),
 		attribute.String("target_type", query.TargetType))
 
+	merchant, err := u.merchantRepo.FindByGlobalID(ctx, query.GlobalMerchantID)
+	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
+		u.tracingService.RecordSpanError(span, err)
+		return nil, fmt.Errorf("find merchant: %w", err)
+	}
+	query.MerchantID = merchant.ID
+
 	// 設定預設值
 	if query.Limit == 0 {
 		query.Limit = query.PageSize
@@ -359,15 +366,13 @@ func (u *AgentUseCase) GetAgentCampaigns(
 		query.Offset = (query.Page - 1) * query.PageSize
 	}
 
-	u.tracingService.TraceEvent(span, "Getting agent campaigns list")
-	// TODO: Implement FindCampaigns method in repository
 	campaigns := []*entity.AgentCampaign{}
-	total := int64(0)
-	// campaigns, total, err := u.agentCampaignRepo.FindCampaigns(ctx, query)
-	// if err != nil {
-	//	u.tracingService.RecordSpanError(span, err)
-	//	return nil, fmt.Errorf("find agent campaigns: %w", err)
-	// }
+	campaigns, total, err := u.agentCampaignRepo.List(ctx, query)
+	if err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return nil, fmt.Errorf("find agent campaigns: %w", err)
+	}
+	u.tracingService.TraceEvent(span, "Getting agent campaigns list")
 
 	// 轉換為回應DTO
 	campaignResponses := make([]dto.AgentCampaignResponse, len(campaigns))
@@ -394,7 +399,7 @@ func (u *AgentUseCase) GetAgentCampaigns(
 		Campaigns: campaignResponses,
 		Page:      query.Page,
 		PageSize:  query.PageSize,
-		Total:     int(total),
+		Total:     total,
 	}
 
 	u.tracingService.TraceEvent(span, "Agent campaigns list retrieved successfully")

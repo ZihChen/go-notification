@@ -202,10 +202,11 @@ func (h *AgentHandler) GetAgentCampaign(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Router /api/v1/agent-campaigns [get]
 func (h *AgentHandler) GetAgentCampaigns(c *gin.Context) {
-	var query dto.AgentCampaignsQuery
-	if err := c.ShouldBindQuery(&query); err != nil {
+	query := &dto.AgentCampaignsQuery{
+		GlobalMerchantID: c.GetString("global_merchant_id"),
+	}
+	if err := c.ShouldBindQuery(query); err != nil {
 		response.BadRequest(c, "invalid query parameters", err.Error()).Return()
-		return
 	}
 
 	// 設定預設值
@@ -218,7 +219,7 @@ func (h *AgentHandler) GetAgentCampaigns(c *gin.Context) {
 
 	campaignsResponse, err := h.agentUseCase.GetAgentCampaigns(
 		c.Request.Context(),
-		&query,
+		query,
 	)
 	if err != nil {
 		h.logger.ErrorWithContext(
@@ -227,7 +228,6 @@ func (h *AgentHandler) GetAgentCampaigns(c *gin.Context) {
 			h.logger.Error("err", err),
 		)
 		response.InternalServerError(c, "failed to get agent campaigns", err.Error()).Return()
-		return
 	}
 
 	response.OK(c).
