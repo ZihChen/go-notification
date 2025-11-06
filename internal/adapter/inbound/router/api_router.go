@@ -7,13 +7,15 @@ import (
 
 // APIRouter 處理API路由註冊
 type APIRouter struct {
-	handler *api.HTTPHandler
+	handler      *api.HTTPHandler
+	agentHandler *api.AgentHandler
 }
 
 // NewAPIRouter 創建API路由器
-func NewAPIRouter(handler *api.HTTPHandler) *APIRouter {
+func NewAPIRouter(handler *api.HTTPHandler, agentHandler *api.AgentHandler) *APIRouter {
 	return &APIRouter{
-		handler: handler,
+		handler:      handler,
+		agentHandler: agentHandler,
 	}
 }
 
@@ -75,5 +77,24 @@ func (r *APIRouter) RegisterRoutes(router *gin.Engine, authMiddleware gin.Handle
 	notifications := api.Group("/notifications")
 	{
 		notifications.POST("/auto-send", r.handler.SendAutoNotification)
+	}
+
+	// ========== 代理相關路由 ==========
+	
+	// 代理端 - 站內信查看
+	agents := api.Group("/agents")
+	{
+		agents.GET("/:global_agent_id/messages", r.agentHandler.GetAgentMessages)
+		agents.PUT("/:global_agent_id/messages/:message_id/read", r.agentHandler.MarkMessageAsRead)
+	}
+
+	// 管理端 - 代理訊息活動管理
+	agentCampaigns := api.Group("/agent-campaigns")
+	{
+		agentCampaigns.POST("", r.agentHandler.CreateAgentCampaign)
+		agentCampaigns.GET("", r.agentHandler.GetAgentCampaigns)
+		agentCampaigns.GET("/:id", r.agentHandler.GetAgentCampaign)
+		agentCampaigns.PUT("/:id", r.agentHandler.UpdateAgentCampaign)
+		agentCampaigns.DELETE("/:id", r.agentHandler.DeleteAgentCampaign)
 	}
 }

@@ -11,6 +11,104 @@ definitions:
         example: success
         type: string
     type: object
+  dto.AgentCampaignListResponse:
+    properties:
+      campaigns:
+        items:
+          $ref: '#/definitions/dto.AgentCampaignResponse'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  dto.AgentCampaignResponse:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: string
+      id:
+        type: integer
+      merchant_id:
+        type: integer
+      real_sent_count:
+        type: integer
+      scheduled_at:
+        type: string
+      status:
+        type: string
+      target_count:
+        type: integer
+      target_details:
+        items:
+          type: string
+        type: array
+      target_type:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+      updated_by:
+        type: string
+    type: object
+  dto.AgentMessageListResponse:
+    properties:
+      messages:
+        items:
+          $ref: '#/definitions/dto.AgentMessageResponse'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      stats:
+        $ref: '#/definitions/dto.AgentMessageStats'
+      total:
+        type: integer
+    type: object
+  dto.AgentMessageResponse:
+    properties:
+      agent_campaign_id:
+        type: integer
+      agent_id:
+        type: integer
+      content:
+        description: 通過關聯取得
+        type: string
+      created_at:
+        type: string
+      global_agent_id:
+        description: 通過關聯取得
+        type: string
+      id:
+        type: integer
+      is_read:
+        type: boolean
+      read_at:
+        type: string
+      sent_at:
+        type: string
+      title:
+        description: 通過關聯取得
+        type: string
+      updated_at:
+        type: string
+    type: object
+  dto.AgentMessageStats:
+    properties:
+      read_count:
+        type: integer
+      total_count:
+        type: integer
+      unread_count:
+        type: integer
+    type: object
   dto.AutoSettingItem:
     properties:
       active:
@@ -103,6 +201,35 @@ definitions:
         type: string
       updated_count:
         type: integer
+    type: object
+  dto.CreateAgentCampaignRequest:
+    properties:
+      content:
+        type: string
+      created_by:
+        description: 创建者，最大100个字符
+        maxLength: 100
+        type: string
+      scheduled_at:
+        type: string
+      target_details:
+        items:
+          type: string
+        type: array
+      target_type:
+        enum:
+        - all
+        - specific
+        - line
+        type: string
+      title:
+        maxLength: 255
+        type: string
+    required:
+    - content
+    - created_by
+    - target_type
+    - title
     type: object
   dto.CreateMessageCampaignRequest:
     properties:
@@ -416,6 +543,33 @@ definitions:
       name:
         type: string
     type: object
+  dto.UpdateAgentCampaignRequest:
+    properties:
+      content:
+        type: string
+      id:
+        type: integer
+      scheduled_at:
+        type: string
+      target_details:
+        items:
+          type: string
+        type: array
+      target_type:
+        enum:
+        - all
+        - specific
+        - line
+        type: string
+      title:
+        maxLength: 255
+        type: string
+      updated_by:
+        maxLength: 100
+        type: string
+    required:
+    - updated_by
+    type: object
   dto.UpdateMessageCampaignRequest:
     properties:
       app_content:
@@ -511,6 +665,48 @@ definitions:
     - target
     - title
     - updated_by
+    type: object
+  entity.AgentCampaign:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        description: 建立者
+        type: string
+      deleted_at:
+        type: string
+      id:
+        type: integer
+      merchant_id:
+        type: integer
+      real_sent_count:
+        description: 實際發送數量
+        type: integer
+      scheduled_at:
+        type: string
+      status:
+        description: draft, scheduled, sending, completed, failed, cancelled
+        type: string
+      target_count:
+        description: 目標代理數量
+        type: integer
+      target_details:
+        description: 目標詳情 (account列表或line路徑)
+        items:
+          type: string
+        type: array
+      target_type:
+        description: all, specific, line
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+      updated_by:
+        description: 修改者
+        type: string
     type: object
   entity.Manager:
     properties:
@@ -657,6 +853,345 @@ info:
   title: Notification Service API
   version: "1.0"
 paths:
+  /api/v1/agent-campaigns:
+    get:
+      description: |-
+        分頁列出代理訊息活動，支持多條件篩選
+        查詢參數說明：
+        - page: 頁碼，從1開始，預設為1
+        - page_size: 每頁數量，範圍1-100，預設為10
+        - status: 狀態篩選，可選值：draft(草稿)、scheduled(已排程)、sent(已發送)、cancelled(已取消)、failed(發送失敗)
+        - target_type: 目標類型篩選，可選值：all(全部代理)、specific(指定代理)、line(代理線)
+        - created_by: 創建者篩選
+        - include_deleted: 是否包含已刪除記錄，預設為false
+      parameters:
+      - default: 1
+        description: 頁碼
+        example: 1
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - default: 10
+        description: 每頁數量
+        example: 10
+        in: query
+        maximum: 100
+        minimum: 1
+        name: page_size
+        type: integer
+      - description: 狀態篩選
+        enum:
+        - draft
+        - scheduled
+        - sent
+        - cancelled
+        - failed
+        example: '"scheduled"'
+        in: query
+        name: status
+        type: string
+      - description: 目標類型篩選
+        enum:
+        - all
+        - specific
+        - line
+        example: '"all"'
+        in: query
+        name: target_type
+        type: string
+      - description: 創建者
+        example: '"admin@example.com"'
+        in: query
+        name: created_by
+        type: string
+      - default: false
+        description: 是否包含已刪除記錄
+        example: false
+        in: query
+        name: include_deleted
+        type: boolean
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.AgentCampaignListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 列出代理訊息活動
+      tags:
+      - 代理訊息活動
+    post:
+      consumes:
+      - application/json
+      description: |-
+        創建新的代理訊息活動，支持全代理、指定代理、代理線等目標類型
+        參數說明：
+        - target_type: 目標類型，可選值：all(全部代理)、specific(指定代理)、line(代理線)
+        - target_details: 目標詳情，當target_type為specific時填入代理帳號陣列，當target_type為line時填入上級代理帳號
+        - scheduled_at: 排程時間，可選，不填則立即發送
+
+        範例請求：
+        ```json
+        {
+        "title": "Test title",
+        "content": "test45678",
+        "target_type": "all",
+        "target_details": [],
+        "scheduled_at": "2025-11-11T18:00:00Z",
+        "created_by": "winston888"
+        }
+        ```
+      parameters:
+      - description: 創建代理訊息活動請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateAgentCampaignRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/entity.AgentCampaign'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 創建代理訊息活動
+      tags:
+      - 代理訊息活動
+  /api/v1/agent-campaigns/{id}:
+    delete:
+      description: 刪除指定ID的代理訊息活動
+      parameters:
+      - description: 代理訊息活動ID - 系統內部唯一識別碼，必須為正整數
+        example: 12345
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 刪除代理訊息活動
+      tags:
+      - 代理訊息活動
+    get:
+      description: 根據ID獲取代理訊息活動詳情
+      parameters:
+      - description: 代理訊息活動ID - 系統內部唯一識別碼，必須為正整數
+        example: 12345
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.AgentCampaign'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 獲取代理訊息活動
+      tags:
+      - 代理訊息活動
+    put:
+      consumes:
+      - application/json
+      description: |-
+        更新指定ID的代理訊息活動
+        參數說明：
+        - target_type: 目標類型，可選值：all(全部代理)、specific(指定代理)、line(代理線)
+        - target_details: 目標詳情，當target_type為specific時填入代理帳號陣列，當target_type為line時填入上級代理帳號
+        - scheduled_at: 排程時間，可選，不填則立即發送
+
+        範例請求：
+        ```json
+        {
+        "title": "Test update",
+        "content": "hello mey friend",
+        "target_type": "specific",
+        "target_details": ["fatcat-john01", "fatcat-yoyo"],
+        "scheduled_at": "2025-11-11T18:00:00Z",
+        "updated_by": "winston888"
+        }
+        ```
+      parameters:
+      - description: 代理訊息活動ID - 系統內部唯一識別碼，必須為正整數
+        example: 12345
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 更新代理訊息活動請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateAgentCampaignRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.AgentCampaign'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 更新代理訊息活動
+      tags:
+      - 代理訊息活動
+  /api/v1/agents/{global_agent_id}/messages:
+    get:
+      consumes:
+      - application/json
+      description: 分頁獲取指定代理的站內信列表
+      parameters:
+      - description: 全域代理ID - 跨系統代理唯一識別符，用於標識特定代理
+        example: '"agent-123e4567-e89b-12d3-a456-426614174000"'
+        in: path
+        name: global_agent_id
+        required: true
+        type: string
+      - default: 1
+        description: 頁碼 - 分頁查詢的第几頁，必須大於0
+        example: 1
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - default: 10
+        description: 每頁數量 - 每頁返回的記錄數，範圍1-50
+        example: 10
+        in: query
+        maximum: 50
+        minimum: 1
+        name: page_size
+        type: integer
+      - description: 已讀狀態篩選 - true只顯示已讀，false只顯示未讀，不填顯示全部
+        example: false
+        in: query
+        name: is_read
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.AgentMessageListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 獲取代理站內信列表
+      tags:
+      - 代理站內信
+  /api/v1/agents/{global_agent_id}/messages/{message_id}/read:
+    put:
+      consumes:
+      - application/json
+      description: 將指定代理的指定訊息標記為已讀
+      parameters:
+      - description: 全域代理ID - 跨系統代理唯一識別符，用於標識特定代理
+        example: '"agent-123e4567-e89b-12d3-a456-426614174000"'
+        in: path
+        name: global_agent_id
+        required: true
+        type: string
+      - description: 訊息ID - 系統內部訊息唯一識別碼，必須為正整數
+        example: 98765
+        format: int64
+        in: path
+        name: message_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 標記訊息為已讀
+      tags:
+      - 代理站內信
   /api/v1/managers/global/{global_id}:
     get:
       consumes:
@@ -1030,53 +1565,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: |-
-        根據商戶ID獲取會員訊息自動派發設定，返回簡化格式只包含必要欄位
-
-        **回應格式說明：**
-        只返回前端需要的核心欄位，已移除 merchant_id、notification_types、target、status、auto_send、real_sent_count 等內部欄位
-
-        **範例回應：**
-        ```json
-        {
-        "global_merchant_id": "merchant-123e4567-e89b-12d3-a456-426614174000",
-        "settings": [
-        {
-        "id": 1,
-        "category": "member",
-        "item": "registration",
-        "trigger_type": "success",
-        "title": "註冊成功",
-        "content": "恭喜，註冊成功！",
-        "active": true,
-        "created_at": "2024-10-08T10:30:00+08:00",
-        "updated_at": "2024-10-08T11:15:00+08:00"
-        },
-        {
-        "id": 2,
-        "category": "member",
-        "item": "identity_verification",
-        "trigger_type": "success",
-        "title": "身分驗證成功",
-        "content": "恭喜，身分驗證成功！",
-        "active": true,
-        "created_at": "2024-10-08T10:30:00+08:00",
-        "updated_at": "2024-10-08T11:15:00+08:00"
-        },
-        {
-        "id": 3,
-        "category": "member",
-        "item": "identity_verification",
-        "trigger_type": "failure",
-        "title": "身分驗證失敗",
-        "content": "抱歉，身分驗證失敗，請重新提交",
-        "active": false,
-        "created_at": "2024-10-08T10:30:00+08:00",
-        "updated_at": "2024-10-08T11:15:00+08:00"
-        }
-        ]
-        }
-        ```
+      description: 根據商戶ID獲取會員訊息自動派發設定
       produces:
       - application/json
       responses:

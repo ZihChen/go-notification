@@ -8,6 +8,7 @@ import (
 	_ "github.com/jvdiamondtech/ms-notification-cat/cmd/scheduler"
 	_ "github.com/jvdiamondtech/ms-notification-cat/cmd/web"
 	_ "github.com/jvdiamondtech/ms-notification-cat/cmd/worker"
+	_ "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/api"
 )
 
 // @title Notification Service API

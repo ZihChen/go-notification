@@ -12,7 +12,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jvdiamondtech/ms-notification-cat/cmd"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/api"
 	routermgr "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/router"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/di"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
@@ -34,10 +33,10 @@ var (
 
 // services 包含所有需要清理的服務
 type services struct {
-	tracer       *tracing.Tracer
-	db           *mysql.Database
-	redisManager *redis.Manager
-	httpHandler  *api.HTTPHandler
+	tracer        *tracing.Tracer
+	db            *mysql.Database
+	redisManager  *redis.Manager
+	webComponents *di.WebComponents
 }
 
 // Command 創建並返回web子命令
@@ -89,7 +88,7 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	router := gin.Default()
 
 	// 使用路由管理器配置所有中間件並註冊路由
-	routerManager := routermgr.NewRouterManager(svc.httpHandler)
+	routerManager := routermgr.NewRouterManager(svc.webComponents.HTTPHandler, svc.webComponents.AgentHandler)
 	routerManager.SetupRoutersWithMiddleware(router, cfg)
 
 	// 創建HTTP服務器
@@ -184,23 +183,23 @@ func initializeServices(
 	}
 	logger.InfoWithContext(ctx, "Successfully initialized Redis connection!")
 
-	// 使用Wire初始化HTTP處理器
-	httpHandler, err := di.InitializeWebServer(
+	// 使用Wire初始化Web組件
+	webComponents, err := di.InitializeWebComponents(
 		cfg,
 		logger,
 		redisManager,
 		db.GetDBConnection(),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize web server: %w", err)
+		return nil, fmt.Errorf("failed to initialize web components: %w", err)
 	}
-	logger.InfoWithContext(ctx, "Successfully initialized web server!")
+	logger.InfoWithContext(ctx, "Successfully initialized web components!")
 
 	return &services{
-		tracer:       tracer,
-		db:           db,
-		redisManager: redisManager,
-		httpHandler:  httpHandler,
+		tracer:        tracer,
+		db:            db,
+		redisManager:  redisManager,
+		webComponents: webComponents,
 	}, nil
 }
 

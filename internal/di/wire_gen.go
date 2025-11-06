@@ -80,6 +80,75 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, redis
 	return httpHandler, nil
 }
 
+// InitializeAgentHandler 初始化代理處理器
+func InitializeAgentHandler(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager, db *gorm.DB) (*api.AgentHandler, error) {
+	agentRepository := repository3.NewAgentRepository(db)
+	agentCampaignRepository := repository3.NewAgentCampaignRepository(db)
+	agentMessageRepository := repository3.NewAgentMessageRepository(db)
+	distributedLockManager := provideDistributedLockManager(redisManager)
+	agentRelationshipRepository := provideAgentRelationshipRepository(db, distributedLockManager)
+	merchantRepository := merchant.NewMerchantRepository(db)
+	tracingService := provideTracingService()
+	agentService := service.NewAgentService(agentRepository, agentRelationshipRepository, merchantRepository, logger, tracingService)
+	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
+	if err != nil {
+		return nil, err
+	}
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger, tracingService)
+	if err != nil {
+		return nil, err
+	}
+	eventProducer := service.NewEventService(kdsService, logger)
+	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService)
+	agentHandler := api.NewAgentHandler(agentUseCase, logger)
+	return agentHandler, nil
+}
+
+// InitializeWebComponents 初始化 Web 服務的所有組件
+func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager, db *gorm.DB) (*WebComponents, error) {
+	merchantRepository := merchant.NewMerchantRepository(db)
+	tracingService := provideTracingService()
+	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
+	if err != nil {
+		return nil, err
+	}
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger, tracingService)
+	if err != nil {
+		return nil, err
+	}
+	eventProducer := service.NewEventService(kdsService, logger)
+	merchantUseCase := merchant2.NewMerchantUseCase(merchantRepository, eventProducer, logger, tracingService)
+	playerRepository := repository.NewPlayerRepository(db)
+	levelRepository := repository.NewLevelRepository(db)
+	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger, tracingService)
+	managerRepository := repository2.NewManagerRepository(db)
+	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger, tracingService)
+	messageCampaignRepository := message.NewMessageCampaignRepository(db)
+	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
+	playerMessageRepository := providePlayerMessageRepository(db, redisManager)
+	tagRepository := repository.NewTagRepository(db)
+	pushKeyRepository := merchant.NewPushKeyRepository(db)
+	pushNotificationService := providePushNotificationService(cfg, logger)
+	messageUseCase := message2.NewMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
+	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger, tracingService)
+	playerTagRepository := repository.NewPlayerTagRepository(db)
+	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, redisManager, tracingService)
+	httpHandler := api.NewHTTPHandler(merchantUseCase, playerUseCase, managerUseCase, messageUseCase, playerLevelUseCase, playerTagUseCase, logger)
+	agentRepository := repository3.NewAgentRepository(db)
+	agentCampaignRepository := repository3.NewAgentCampaignRepository(db)
+	agentMessageRepository := repository3.NewAgentMessageRepository(db)
+	distributedLockManager := provideDistributedLockManager(redisManager)
+	agentRelationshipRepository := provideAgentRelationshipRepository(db, distributedLockManager)
+	agentService := service.NewAgentService(agentRepository, agentRelationshipRepository, merchantRepository, logger, tracingService)
+	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService)
+	agentHandler := api.NewAgentHandler(agentUseCase, logger)
+	webComponents := &WebComponents{
+		HTTPHandler:  httpHandler,
+		AgentHandler: agentHandler,
+	}
+	return webComponents, nil
+}
+
 // InitializeWorkerServer 初始化 Worker 服務的處理器
 func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager, db *gorm.DB) (*worker.WorkerHandler, error) {
 	merchantRepository := merchant.NewMerchantRepository(db)
@@ -239,6 +308,12 @@ func InitializeMigrateHandler(cfg *config.Config, logger infrastructure.Logger, 
 type WorkerComponents struct {
 	Handler *worker.WorkerHandler
 	Server  *asynq.Server
+}
+
+// WebComponents 包含 web 服務所需的所有組件
+type WebComponents struct {
+	HTTPHandler  *api.HTTPHandler
+	AgentHandler *api.AgentHandler
 }
 
 var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient,

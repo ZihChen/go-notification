@@ -16,6 +16,450 @@
         "version": "1.0"
     },
     "paths": {
+        "/api/v1/agent-campaigns": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "分頁列出代理訊息活動，支持多條件篩選\n查詢參數說明：\n- page: 頁碼，從1開始，預設為1\n- page_size: 每頁數量，範圍1-100，預設為10\n- status: 狀態篩選，可選值：draft(草稿)、scheduled(已排程)、sent(已發送)、cancelled(已取消)、failed(發送失敗)\n- target_type: 目標類型篩選，可選值：all(全部代理)、specific(指定代理)、line(代理線)\n- created_by: 創建者篩選\n- include_deleted: 是否包含已刪除記錄，預設為false",
+                "tags": [
+                    "代理訊息活動"
+                ],
+                "summary": "列出代理訊息活動",
+                "parameters": [
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "example": 1,
+                        "description": "頁碼",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 10,
+                        "example": 10,
+                        "description": "每頁數量",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "draft",
+                            "scheduled",
+                            "sent",
+                            "cancelled",
+                            "failed"
+                        ],
+                        "type": "string",
+                        "example": "\"scheduled\"",
+                        "description": "狀態篩選",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "all",
+                            "specific",
+                            "line"
+                        ],
+                        "type": "string",
+                        "example": "\"all\"",
+                        "description": "目標類型篩選",
+                        "name": "target_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"admin@example.com\"",
+                        "description": "創建者",
+                        "name": "created_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "default": false,
+                        "example": false,
+                        "description": "是否包含已刪除記錄",
+                        "name": "include_deleted",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AgentCampaignListResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "創建新的代理訊息活動，支持全代理、指定代理、代理線等目標類型\n參數說明：\n- target_type: 目標類型，可選值：all(全部代理)、specific(指定代理)、line(代理線)\n- target_details: 目標詳情，當target_type為specific時填入代理帳號陣列，當target_type為line時填入上級代理帳號\n- scheduled_at: 排程時間，可選，不填則立即發送\n\n範例請求：\n```json\n{\n\"title\": \"Test title\",\n\"content\": \"test45678\",\n\"target_type\": \"all\",\n\"target_details\": [],\n\"scheduled_at\": \"2025-11-11T18:00:00Z\",\n\"created_by\": \"winston888\"\n}\n```",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "代理訊息活動"
+                ],
+                "summary": "創建代理訊息活動",
+                "parameters": [
+                    {
+                        "description": "創建代理訊息活動請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateAgentCampaignRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/entity.AgentCampaign"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent-campaigns/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "根據ID獲取代理訊息活動詳情",
+                "tags": [
+                    "代理訊息活動"
+                ],
+                "summary": "獲取代理訊息活動",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 12345,
+                        "description": "代理訊息活動ID - 系統內部唯一識別碼，必須為正整數",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/entity.AgentCampaign"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "更新指定ID的代理訊息活動\n參數說明：\n- target_type: 目標類型，可選值：all(全部代理)、specific(指定代理)、line(代理線)\n- target_details: 目標詳情，當target_type為specific時填入代理帳號陣列，當target_type為line時填入上級代理帳號\n- scheduled_at: 排程時間，可選，不填則立即發送\n\n範例請求：\n```json\n{\n\"title\": \"Test update\",\n\"content\": \"hello mey friend\",\n\"target_type\": \"specific\",\n\"target_details\": [\"fatcat-john01\", \"fatcat-yoyo\"],\n\"scheduled_at\": \"2025-11-11T18:00:00Z\",\n\"updated_by\": \"winston888\"\n}\n```",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "代理訊息活動"
+                ],
+                "summary": "更新代理訊息活動",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 12345,
+                        "description": "代理訊息活動ID - 系統內部唯一識別碼，必須為正整數",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新代理訊息活動請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateAgentCampaignRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/entity.AgentCampaign"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "刪除指定ID的代理訊息活動",
+                "tags": [
+                    "代理訊息活動"
+                ],
+                "summary": "刪除代理訊息活動",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 12345,
+                        "description": "代理訊息活動ID - 系統內部唯一識別碼，必須為正整數",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agents/{global_agent_id}/messages": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "分頁獲取指定代理的站內信列表",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "代理站內信"
+                ],
+                "summary": "獲取代理站內信列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"agent-123e4567-e89b-12d3-a456-426614174000\"",
+                        "description": "全域代理ID - 跨系統代理唯一識別符，用於標識特定代理",
+                        "name": "global_agent_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "example": 1,
+                        "description": "頁碼 - 分頁查詢的第几頁，必須大於0",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 50,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 10,
+                        "example": 10,
+                        "description": "每頁數量 - 每頁返回的記錄數，範圍1-50",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "example": false,
+                        "description": "已讀狀態篩選 - true只顯示已讀，false只顯示未讀，不填顯示全部",
+                        "name": "is_read",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AgentMessageListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agents/{global_agent_id}/messages/{message_id}/read": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "將指定代理的指定訊息標記為已讀",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "代理站內信"
+                ],
+                "summary": "標記訊息為已讀",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"agent-123e4567-e89b-12d3-a456-426614174000\"",
+                        "description": "全域代理ID - 跨系統代理唯一識別符，用於標識特定代理",
+                        "name": "global_agent_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 98765,
+                        "description": "訊息ID - 系統內部訊息唯一識別碼，必須為正整數",
+                        "name": "message_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/managers/global/{global_id}": {
             "get": {
                 "security": [
@@ -375,7 +819,7 @@
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "根據商戶ID獲取會員訊息自動派發設定，返回簡化格式只包含必要欄位\n\n**回應格式說明：**\n只返回前端需要的核心欄位，已移除 merchant_id、notification_types、target、status、auto_send、real_sent_count 等內部欄位\n\n**範例回應：**\n```json\n{\n\"global_merchant_id\": \"merchant-123e4567-e89b-12d3-a456-426614174000\",\n\"settings\": [\n{\n\"id\": 1,\n\"category\": \"member\",\n\"item\": \"registration\",\n\"trigger_type\": \"success\",\n\"title\": \"註冊成功\",\n\"content\": \"恭喜，註冊成功！\",\n\"active\": true,\n\"created_at\": \"2024-10-08T10:30:00+08:00\",\n\"updated_at\": \"2024-10-08T11:15:00+08:00\"\n},\n{\n\"id\": 2,\n\"category\": \"member\",\n\"item\": \"identity_verification\",\n\"trigger_type\": \"success\",\n\"title\": \"身分驗證成功\",\n\"content\": \"恭喜，身分驗證成功！\",\n\"active\": true,\n\"created_at\": \"2024-10-08T10:30:00+08:00\",\n\"updated_at\": \"2024-10-08T11:15:00+08:00\"\n},\n{\n\"id\": 3,\n\"category\": \"member\",\n\"item\": \"identity_verification\",\n\"trigger_type\": \"failure\",\n\"title\": \"身分驗證失敗\",\n\"content\": \"抱歉，身分驗證失敗，請重新提交\",\n\"active\": false,\n\"created_at\": \"2024-10-08T10:30:00+08:00\",\n\"updated_at\": \"2024-10-08T11:15:00+08:00\"\n}\n]\n}\n```",
+                "description": "根據商戶ID獲取會員訊息自動派發設定",
                 "consumes": [
                     "application/json"
                 ],
@@ -1148,6 +1592,154 @@
                 }
             }
         },
+        "dto.AgentCampaignListResponse": {
+            "type": "object",
+            "properties": {
+                "campaigns": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.AgentCampaignResponse"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.AgentCampaignResponse": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "merchant_id": {
+                    "type": "integer"
+                },
+                "real_sent_count": {
+                    "type": "integer"
+                },
+                "scheduled_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "target_count": {
+                    "type": "integer"
+                },
+                "target_details": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "target_type": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "updated_by": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.AgentMessageListResponse": {
+            "type": "object",
+            "properties": {
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.AgentMessageResponse"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "stats": {
+                    "$ref": "#/definitions/dto.AgentMessageStats"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.AgentMessageResponse": {
+            "type": "object",
+            "properties": {
+                "agent_campaign_id": {
+                    "type": "integer"
+                },
+                "agent_id": {
+                    "type": "integer"
+                },
+                "content": {
+                    "description": "通過關聯取得",
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "global_agent_id": {
+                    "description": "通過關聯取得",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_read": {
+                    "type": "boolean"
+                },
+                "read_at": {
+                    "type": "string"
+                },
+                "sent_at": {
+                    "type": "string"
+                },
+                "title": {
+                    "description": "通過關聯取得",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.AgentMessageStats": {
+            "type": "object",
+            "properties": {
+                "read_count": {
+                    "type": "integer"
+                },
+                "total_count": {
+                    "type": "integer"
+                },
+                "unread_count": {
+                    "type": "integer"
+                }
+            }
+        },
         "dto.AutoSettingItem": {
             "type": "object",
             "required": [
@@ -1266,6 +1858,46 @@
                 },
                 "updated_count": {
                     "type": "integer"
+                }
+            }
+        },
+        "dto.CreateAgentCampaignRequest": {
+            "type": "object",
+            "required": [
+                "content",
+                "created_by",
+                "target_type",
+                "title"
+            ],
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "description": "创建者，最大100个字符",
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "scheduled_at": {
+                    "type": "string"
+                },
+                "target_details": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "target_type": {
+                    "type": "string",
+                    "enum": [
+                        "all",
+                        "specific",
+                        "line"
+                    ]
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 255
                 }
             }
         },
@@ -1694,6 +2326,45 @@
                 }
             }
         },
+        "dto.UpdateAgentCampaignRequest": {
+            "type": "object",
+            "required": [
+                "updated_by"
+            ],
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "scheduled_at": {
+                    "type": "string"
+                },
+                "target_details": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "target_type": {
+                    "type": "string",
+                    "enum": [
+                        "all",
+                        "specific",
+                        "line"
+                    ]
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "updated_by": {
+                    "type": "string",
+                    "maxLength": 100
+                }
+            }
+        },
         "dto.UpdateMessageCampaignRequest": {
             "type": "object",
             "required": [
@@ -1805,6 +2476,66 @@
                     "type": "string",
                     "maxLength": 100,
                     "example": "admin@example.com"
+                }
+            }
+        },
+        "entity.AgentCampaign": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "description": "建立者",
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "merchant_id": {
+                    "type": "integer"
+                },
+                "real_sent_count": {
+                    "description": "實際發送數量",
+                    "type": "integer"
+                },
+                "scheduled_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "draft, scheduled, sending, completed, failed, cancelled",
+                    "type": "string"
+                },
+                "target_count": {
+                    "description": "目標代理數量",
+                    "type": "integer"
+                },
+                "target_details": {
+                    "description": "目標詳情 (account列表或line路徑)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "target_type": {
+                    "description": "all, specific, line",
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "updated_by": {
+                    "description": "修改者",
+                    "type": "string"
                 }
             }
         },

@@ -29,7 +29,6 @@ type AgentUseCase interface {
 	) (*entity.AgentCampaign, error)
 	UpdateAgentCampaign(
 		ctx context.Context,
-		id uint64,
 		req *dto.UpdateAgentCampaignRequest,
 	) (*entity.AgentCampaign, error)
 	GetAgentCampaign(ctx context.Context, id uint64) (*entity.AgentCampaign, error)

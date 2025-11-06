@@ -30,7 +30,7 @@ type AgentCampaign struct {
 	MerchantID    uint64         `gorm:"index;not null"                                                                            json:"merchant_id"`
 	Title         string         `gorm:"size:255;not null"                                                                         json:"title"`
 	Content       string         `gorm:"type:text;not null"                                                                        json:"content"`
-	ScheduledAt   time.Time      `gorm:"type:datetime;not null;index"                                                              json:"scheduled_at"`
+	ScheduledAt   *time.Time     `gorm:"type:datetime;index"                                                                       json:"scheduled_at,omitempty"`
 	Status        string         `gorm:"type:enum('draft','scheduled','sent','failed','cancelled');not null;default:'draft';index" json:"status"`
 	TargetType    string         `gorm:"type:enum('all','specific','line');not null"                                               json:"target_type"`
 	TargetDetails string         `gorm:"type:text"                                                                                 json:"target_details"`  // JSON格式的目標詳情

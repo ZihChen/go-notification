@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -25,19 +26,7 @@ func (r *AgentCampaignRepository) Create(
 	ctx context.Context,
 	campaign *entity.AgentCampaign,
 ) (*entity.AgentCampaign, error) {
-	model := &models.AgentCampaign{
-		MerchantID:    campaign.MerchantID,
-		Title:         campaign.Title,
-		Content:       campaign.Content,
-		ScheduledAt:   campaign.ScheduledAt,
-		Status:        campaign.Status,
-		TargetType:    campaign.TargetType,
-		TargetDetails: campaign.TargetDetails,
-		TargetCount:   campaign.TargetCount,
-		RealSentCount: campaign.RealSentCount,
-		CreatedBy:     campaign.CreatedBy,
-		UpdatedBy:     campaign.UpdatedBy,
-	}
+	model := r.entityToModel(campaign)
 
 	if err := r.db.WithContext(ctx).Create(model).Error; err != nil {
 		return nil, fmt.Errorf("create agent campaign failed: %w", err)
@@ -70,20 +59,7 @@ func (r *AgentCampaignRepository) Update(
 	ctx context.Context,
 	campaign *entity.AgentCampaign,
 ) error {
-	campaignModel := &models.AgentCampaign{
-		ID:            campaign.ID,
-		MerchantID:    campaign.MerchantID,
-		Title:         campaign.Title,
-		Content:       campaign.Content,
-		ScheduledAt:   campaign.ScheduledAt,
-		Status:        campaign.Status,
-		TargetType:    campaign.TargetType,
-		TargetDetails: campaign.TargetDetails,
-		TargetCount:   campaign.TargetCount,
-		RealSentCount: campaign.RealSentCount,
-		CreatedBy:     campaign.CreatedBy,
-		UpdatedBy:     campaign.UpdatedBy,
-	}
+	campaignModel := r.entityToModel(campaign)
 
 	if err := r.db.WithContext(ctx).Save(campaignModel).Error; err != nil {
 		return fmt.Errorf("update agent campaign failed: %w", err)
@@ -204,7 +180,6 @@ func (r *AgentCampaignRepository) modelToEntity(model *models.AgentCampaign) *en
 		ScheduledAt:   model.ScheduledAt,
 		Status:        model.Status,
 		TargetType:    model.TargetType,
-		TargetDetails: model.TargetDetails,
 		TargetCount:   model.TargetCount,
 		RealSentCount: model.RealSentCount,
 		CreatedBy:     model.CreatedBy,
@@ -213,10 +188,55 @@ func (r *AgentCampaignRepository) modelToEntity(model *models.AgentCampaign) *en
 		UpdatedAt:     model.UpdatedAt,
 	}
 
+	// 處理TargetDetails JSON反序列化
+	if model.TargetDetails != "" {
+		var targetDetails []string
+		if err := json.Unmarshal([]byte(model.TargetDetails), &targetDetails); err != nil {
+			// 如果JSON解析失敗，可能是舊的字符串格式，嘗試作為單個字符串處理
+			if model.TargetDetails != "" {
+				campaign.TargetDetails = []string{model.TargetDetails}
+			}
+		} else {
+			campaign.TargetDetails = targetDetails
+		}
+	}
+
 	if model.DeletedAt.Valid {
 		deletedAt := model.DeletedAt.Time
 		campaign.DeletedAt = &deletedAt
 	}
 
 	return campaign
+}
+
+// entityToModel 將實體轉換為模型
+func (r *AgentCampaignRepository) entityToModel(campaign *entity.AgentCampaign) *models.AgentCampaign {
+	model := &models.AgentCampaign{
+		ID:            campaign.ID,
+		MerchantID:    campaign.MerchantID,
+		Title:         campaign.Title,
+		Content:       campaign.Content,
+		ScheduledAt:   campaign.ScheduledAt,
+		Status:        campaign.Status,
+		TargetType:    campaign.TargetType,
+		TargetCount:   campaign.TargetCount,
+		RealSentCount: campaign.RealSentCount,
+		CreatedBy:     campaign.CreatedBy,
+		UpdatedBy:     campaign.UpdatedBy,
+		CreatedAt:     campaign.CreatedAt,
+		UpdatedAt:     campaign.UpdatedAt,
+	}
+
+	// 處理TargetDetails JSON序列化
+	if len(campaign.TargetDetails) > 0 {
+		if targetDetailsBytes, err := json.Marshal(campaign.TargetDetails); err == nil {
+			model.TargetDetails = string(targetDetailsBytes)
+		}
+	}
+
+	if campaign.DeletedAt != nil {
+		model.DeletedAt = gorm.DeletedAt{Time: *campaign.DeletedAt, Valid: true}
+	}
+
+	return model
 }

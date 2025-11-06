@@ -1,6 +1,11 @@
 package entity
 
-import "time"
+import (
+	"fmt"
+	"time"
+
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
+)
 
 // Agent 代理實體
 type Agent struct {
@@ -21,10 +26,10 @@ type AgentCampaign struct {
 	MerchantID    uint64     `json:"merchant_id"`
 	Title         string     `json:"title"`
 	Content       string     `json:"content"`
-	ScheduledAt   time.Time  `json:"scheduled_at"`
+	ScheduledAt   *time.Time `json:"scheduled_at,omitempty"`
 	Status        string     `json:"status"`          // draft, scheduled, sending, completed, failed, cancelled
 	TargetType    string     `json:"target_type"`     // all, specific, line
-	TargetDetails string     `json:"target_details"`  // 目標詳情 (account列表或line路徑)
+	TargetDetails []string   `json:"target_details"`  // 目標詳情 (account列表或line路徑)
 	TargetCount   int64      `json:"target_count"`    // 目標代理數量
 	RealSentCount int64      `json:"real_sent_count"` // 實際發送數量
 	CreatedBy     string     `json:"created_by"`      // 建立者
@@ -32,6 +37,55 @@ type AgentCampaign struct {
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
 	DeletedAt     *time.Time `json:"deleted_at,omitempty"`
+}
+
+// CanUpdate 檢查活動是否允許更新
+func (ac *AgentCampaign) CanUpdate() error {
+	if ac.Status == "sent" {
+		return fmt.Errorf("cannot update campaign that has already been sent")
+	}
+	return nil
+}
+
+// UpdateFromRequest 從DTO更新實體 (只更新非nil的欄位)
+func (ac *AgentCampaign) UpdateFromRequest(req *dto.UpdateAgentCampaignRequest) {
+	if req.Title != nil {
+		ac.Title = *req.Title
+	}
+	if req.Content != nil {
+		ac.Content = *req.Content
+	}
+	if req.ScheduledAt != nil {
+		ac.ScheduledAt = req.ScheduledAt
+	}
+	if req.TargetType != nil {
+		ac.TargetType = *req.TargetType
+	}
+	if req.TargetDetails != nil {
+		ac.TargetDetails = req.TargetDetails
+	}
+
+	ac.UpdatedBy = req.UpdatedBy
+	ac.UpdatedAt = time.Now()
+}
+
+// ValidateTargetDetails 根據TargetType驗證TargetDetails
+func (ac *AgentCampaign) ValidateTargetDetails() error {
+	if ac.TargetType == "specific" || ac.TargetType == "line" {
+		if len(ac.TargetDetails) == 0 {
+			return fmt.Errorf("target_details is required for target_type: %s", ac.TargetType)
+		}
+	}
+	return nil
+}
+
+// UpdateStatus 更新狀態邏輯
+func (ac *AgentCampaign) UpdateStatus() {
+	if ac.ScheduledAt != nil {
+		ac.Status = "scheduled"
+	} else if ac.Status == "scheduled" {
+		ac.Status = "draft" // 如果移除了排程時間，改回草稿狀態
+	}
 }
 
 // AgentMessage 代理站內信

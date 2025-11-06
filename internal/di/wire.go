@@ -48,6 +48,12 @@ type WorkerComponents struct {
 	Server  *asynq.Server
 }
 
+// WebComponents 包含 web 服務所需的所有組件
+type WebComponents struct {
+	HTTPHandler  *api.HTTPHandler
+	AgentHandler *api.AgentHandler
+}
+
 var baseSet = wire.NewSet(
 	// 基礎設施層
 	queue.NewQueueService,
@@ -108,6 +114,28 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, redis
 		baseSet,
 		kds.NewKDSService,
 		api.NewHTTPHandler,
+	)
+	return nil, nil
+}
+
+// InitializeAgentHandler 初始化代理處理器
+func InitializeAgentHandler(cfg *config.Config, logger infrastructure.Logger, redisManager *redisCache.Manager, db *gorm.DB) (*api.AgentHandler, error) {
+	wire.Build(
+		baseSet,
+		kds.NewKDSService,
+		api.NewAgentHandler,
+	)
+	return nil, nil
+}
+
+// InitializeWebComponents 初始化 Web 服務的所有組件
+func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, redisManager *redisCache.Manager, db *gorm.DB) (*WebComponents, error) {
+	wire.Build(
+		wire.Struct(new(WebComponents), "*"),
+		baseSet,
+		kds.NewKDSService,
+		api.NewHTTPHandler,
+		api.NewAgentHandler,
 	)
 	return nil, nil
 }

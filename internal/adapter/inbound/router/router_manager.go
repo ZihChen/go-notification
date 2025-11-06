@@ -19,9 +19,9 @@ type Manager struct {
 }
 
 // NewRouterManager 創建路由管理器
-func NewRouterManager(handler *api.HTTPHandler) *Manager {
+func NewRouterManager(handler *api.HTTPHandler, agentHandler *api.AgentHandler) *Manager {
 	return &Manager{
-		apiRouter:     NewAPIRouter(handler),
+		apiRouter:     NewAPIRouter(handler, agentHandler),
 		swaggerRouter: NewSwaggerRouter(),
 		healthRouter:  NewHealthRouter(handler),
 		pprofRouter:   NewPprofRouter(),
