@@ -7,6 +7,7 @@ import (
 
 	"github.com/jinzhu/copier"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
@@ -206,13 +207,6 @@ func (u *AgentUseCase) CreateAgentCampaign(
 		return nil, fmt.Errorf("target_type is required")
 	}
 
-	// 根據TargetType驗證TargetDetails
-	if req.TargetType == "specific" || req.TargetType == "line" {
-		if len(req.TargetDetails) == 0 {
-			return nil, fmt.Errorf("target_details is required for target_type: %s", req.TargetType)
-		}
-	}
-
 	merchant, err := u.merchantRepo.FindByGlobalID(ctx, req.GlobalMerchantID)
 	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
 		u.tracingService.RecordSpanError(span, err)
@@ -228,16 +222,21 @@ func (u *AgentUseCase) CreateAgentCampaign(
 		MerchantID:    merchant.ID,
 		TargetType:    req.TargetType,
 		TargetDetails: req.TargetDetails,
-		Status:        "draft", // 預設狀態為草稿
-		TargetCount:   0,       // 將在排程時計算
+		Status:        consts.AgentCampaignStatusDraft, // 預設狀態為草稿
+		TargetCount:   0,                               // 將在排程時計算
 		RealSentCount: 0,
 		CreatedBy:     req.CreatedBy,
 		UpdatedBy:     req.CreatedBy,
 	}
 
+	// 根據TargetType驗證TargetDetails
+	if err = campaign.ValidateTargetDetails(); err != nil {
+		return nil, err
+	}
+
 	// 如果設定了排程時間，狀態改為scheduled
 	if req.ScheduledAt != nil {
-		campaign.Status = "scheduled"
+		campaign.Status = consts.AgentCampaignStatusScheduled
 	}
 
 	u.tracingService.TraceEvent(span, "Creating agent campaign")
@@ -357,6 +356,7 @@ func (u *AgentUseCase) GetAgentCampaigns(
 		return nil, fmt.Errorf("find merchant: %w", err)
 	}
 	query.MerchantID = merchant.ID
+	query.IncludeDeleted = true
 
 	// 設定預設值
 	if query.Limit == 0 {
@@ -421,12 +421,22 @@ func (u *AgentUseCase) DeleteAgentCampaign(ctx context.Context, id uint64) error
 	}
 
 	// 檢查活動狀態是否允許刪除
-	if campaign.Status == "sent" {
-		return fmt.Errorf("cannot delete campaign that has already been sent")
+	if err = campaign.CanDelete(); err != nil {
+		return err
+	}
+
+	// 先更新狀態為 cancelled
+	u.tracingService.TraceEvent(span, "Updating campaign status to cancelled before deletion")
+	setColumn := map[string]interface{}{
+		"status": consts.MessageCampaignStatusCancelled,
+	}
+	if err = u.agentCampaignRepo.UpdateFields(ctx, id, setColumn); err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return fmt.Errorf("update campaign status to cancelled: %w", err)
 	}
 
 	u.tracingService.TraceEvent(span, "Deleting agent campaign")
-	if err := u.agentCampaignRepo.Delete(ctx, id); err != nil {
+	if err = u.agentCampaignRepo.Delete(ctx, id); err != nil {
 		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("delete agent campaign: %w", err)
 	}

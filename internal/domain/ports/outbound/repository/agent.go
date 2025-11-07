@@ -47,6 +47,11 @@ type AgentCampaignRepository interface {
 	GetByID(ctx context.Context, id uint64) (*entity.AgentCampaign, error)
 	Update(ctx context.Context, campaign *entity.AgentCampaign) error
 	Delete(ctx context.Context, id uint64) error
+	UpdateFields(
+		ctx context.Context,
+		id uint64,
+		columns map[string]interface{},
+	) error
 
 	// 查詢操作
 	List(ctx context.Context, query *dto.AgentCampaignsQuery) ([]*entity.AgentCampaign, int, error)

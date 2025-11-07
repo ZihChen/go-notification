@@ -251,13 +251,11 @@ func (h *AgentHandler) DeleteAgentCampaign(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		response.BadRequest(c, "invalid campaign ID", err.Error()).Return()
-		return
 	}
 
-	if err := h.agentUseCase.DeleteAgentCampaign(c.Request.Context(), id); err != nil {
+	if err = h.agentUseCase.DeleteAgentCampaign(c.Request.Context(), id); err != nil {
 		if err.Error() == "record not found" {
 			response.NotFound(c, "agent campaign not found", err.Error()).Return()
-			return
 		}
 		h.logger.ErrorWithContext(
 			c.Request.Context(),
@@ -265,7 +263,6 @@ func (h *AgentHandler) DeleteAgentCampaign(c *gin.Context) {
 			h.logger.Error("err", err),
 		)
 		response.InternalServerError(c, "failed to delete agent campaign", err.Error()).Return()
-		return
 	}
 
 	response.DeletedSuccess(c).Return()

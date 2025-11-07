@@ -77,6 +77,28 @@ func (r *AgentCampaignRepository) Delete(ctx context.Context, id uint64) error {
 	return nil
 }
 
+// UpdateFields 更新代理訊息活動特定欄位
+func (r *AgentCampaignRepository) UpdateFields(
+	ctx context.Context,
+	id uint64,
+	columns map[string]interface{},
+) error {
+	if len(columns) == 0 {
+		return fmt.Errorf("no fields to update")
+	}
+	builder := r.db.WithContext(ctx).Model(&models.AgentCampaign{})
+	result := builder.Where("id = ?", id).
+		Updates(columns)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("record not found")
+	}
+	return nil
+}
+
 // List 分頁查詢代理訊息活動列表
 func (r *AgentCampaignRepository) List(
 	ctx context.Context,
@@ -87,6 +109,11 @@ func (r *AgentCampaignRepository) List(
 
 	db := r.db.WithContext(ctx).Model(&models.AgentCampaign{}).
 		Where("merchant_id = ?", query.MerchantID)
+
+	// 是否包含已刪除的記錄
+	if query.IncludeDeleted {
+		db = db.Unscoped()
+	}
 
 	// 添加查詢條件
 	if query.Status != "" {

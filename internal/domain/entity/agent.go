@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 )
 
 // Agent 代理實體
@@ -41,8 +42,20 @@ type AgentCampaign struct {
 
 // CanUpdate 檢查活動是否允許更新
 func (ac *AgentCampaign) CanUpdate() error {
-	if ac.Status == "sent" {
+	if ac.Status == consts.AgentCampaignStatusSent {
 		return fmt.Errorf("cannot update campaign that has already been sent")
+	}
+	return nil
+}
+
+// CanDelete 檢查活動是否允許刪除
+func (ac *AgentCampaign) CanDelete() error {
+	if ac.Status != consts.AgentCampaignStatusDraft &&
+		ac.Status != consts.AgentCampaignStatusScheduled {
+		return fmt.Errorf(
+			"cannot delete campaign with status: %s. Only draft and scheduled campaigns can be deleted",
+			ac.Status,
+		)
 	}
 	return nil
 }
@@ -71,7 +84,8 @@ func (ac *AgentCampaign) UpdateFromRequest(req *dto.UpdateAgentCampaignRequest) 
 
 // ValidateTargetDetails 根據TargetType驗證TargetDetails
 func (ac *AgentCampaign) ValidateTargetDetails() error {
-	if ac.TargetType == "specific" || ac.TargetType == "line" {
+	if ac.TargetType == consts.AgentTargetTypeSpecific ||
+		ac.TargetType == consts.AgentTargetTypeLine {
 		if len(ac.TargetDetails) == 0 {
 			return fmt.Errorf("target_details is required for target_type: %s", ac.TargetType)
 		}
@@ -82,9 +96,9 @@ func (ac *AgentCampaign) ValidateTargetDetails() error {
 // UpdateStatus 更新狀態邏輯
 func (ac *AgentCampaign) UpdateStatus() {
 	if ac.ScheduledAt != nil {
-		ac.Status = "scheduled"
-	} else if ac.Status == "scheduled" {
-		ac.Status = "draft" // 如果移除了排程時間，改回草稿狀態
+		ac.Status = consts.AgentCampaignStatusScheduled
+	} else if ac.Status == consts.AgentCampaignStatusScheduled {
+		ac.Status = consts.AgentCampaignStatusDraft // 如果移除了排程時間，改回草稿狀態
 	}
 }
 
