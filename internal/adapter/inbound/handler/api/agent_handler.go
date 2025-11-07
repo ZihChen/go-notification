@@ -272,14 +272,13 @@ func (h *AgentHandler) DeleteAgentCampaign(c *gin.Context) {
 
 // GetAgentMessages 獲取代理站內信列表
 // @Summary 獲取代理站內信列表
-// @Description 分頁獲取指定代理的站內信列表
+// @Description 分頁獲取指定代理的站內信列表，按創建時間由近到遠排序
 // @Tags 代理站內信
 // @Accept json
 // @Produce json
 // @Param global_agent_id path string true "全域代理ID - 跨系統代理唯一識別符，用於標識特定代理" example("agent-123e4567-e89b-12d3-a456-426614174000")
 // @Param page query int false "頁碼 - 分頁查詢的第几頁，必須大於0" minimum(1) default(1) example(1)
 // @Param page_size query int false "每頁數量 - 每頁返回的記錄數，範圍1-50" minimum(1) maximum(50) default(10) example(10)
-// @Param is_read query bool false "已讀狀態篩選 - true只顯示已讀，false只顯示未讀，不填顯示全部" example(false)
 // @Success 200 {object} dto.AgentMessageListResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
@@ -289,13 +288,11 @@ func (h *AgentHandler) GetAgentMessages(c *gin.Context) {
 	globalAgentID := c.Param("global_agent_id")
 	if globalAgentID == "" {
 		response.BadRequest(c, "global agent ID is required").Return()
-		return
 	}
 
 	var query dto.AgentMessagesQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
 		response.BadRequest(c, "invalid query parameters", err.Error()).Return()
-		return
 	}
 
 	// 設定全域代理ID
@@ -321,7 +318,6 @@ func (h *AgentHandler) GetAgentMessages(c *gin.Context) {
 			h.logger.String("global_agent_id", globalAgentID),
 		)
 		response.InternalServerError(c, "failed to get agent messages", err.Error()).Return()
-		return
 	}
 
 	response.OK(c).Data(messagesResponse).Return()
@@ -345,13 +341,11 @@ func (h *AgentHandler) MarkMessageAsRead(c *gin.Context) {
 	globalAgentID := c.Param("global_agent_id")
 	if globalAgentID == "" {
 		response.BadRequest(c, "global agent ID is required").Return()
-		return
 	}
 
 	messageID, err := strconv.ParseUint(c.Param("message_id"), 10, 64)
 	if err != nil {
 		response.BadRequest(c, "invalid message ID", err.Error()).Return()
-		return
 	}
 
 	// 首先根據globalAgentID獲取agentID
@@ -359,7 +353,6 @@ func (h *AgentHandler) MarkMessageAsRead(c *gin.Context) {
 	if err != nil {
 		if err.Error() == "record not found" {
 			response.NotFound(c, "agent not found", err.Error()).Return()
-			return
 		}
 		h.logger.ErrorWithContext(
 			c.Request.Context(),
@@ -368,13 +361,11 @@ func (h *AgentHandler) MarkMessageAsRead(c *gin.Context) {
 			h.logger.String("global_agent_id", globalAgentID),
 		)
 		response.InternalServerError(c, "failed to get agent", err.Error()).Return()
-		return
 	}
 
 	if err = h.agentUseCase.MarkMessageAsRead(c.Request.Context(), messageID, agent.ID); err != nil {
 		if err.Error() == "record not found or already read" {
 			response.NotFound(c, "message not found or already read", err.Error()).Return()
-			return
 		}
 		h.logger.ErrorWithContext(
 			c.Request.Context(),
@@ -384,7 +375,6 @@ func (h *AgentHandler) MarkMessageAsRead(c *gin.Context) {
 			h.logger.UInt64("agent_id", agent.ID),
 		)
 		response.InternalServerError(c, "failed to mark message as read", err.Error()).Return()
-		return
 	}
 
 	response.OK(c).Data(gin.H{

@@ -215,17 +215,13 @@ type AgentMessagesQuery struct {
 
 // AgentMessageResponse 代理站內信回應 DTO
 type AgentMessageResponse struct {
-	ID              uint64     `json:"id"`
-	AgentCampaignID uint64     `json:"agent_campaign_id"`
-	AgentID         uint64     `json:"agent_id"`
-	GlobalAgentID   string     `json:"global_agent_id"` // 通過關聯取得
-	Title           string     `json:"title"`           // 通過關聯取得
-	Content         string     `json:"content"`         // 通過關聯取得
-	IsRead          bool       `json:"is_read"`
-	ReadAt          *time.Time `json:"read_at"`
-	SentAt          time.Time  `json:"sent_at"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
+	ID              uint64 `json:"id"`
+	AgentCampaignID uint64 `json:"agent_campaign_id"`
+	AgentID         uint64 `json:"agent_id"`
+	GlobalAgentID   string `json:"global_agent_id"` // 通過關聯取得
+	Title           string `json:"title"`           // 通過關聯取得
+	Content         string `json:"content"`         // 通過關聯取得
+	IsRead          bool   `json:"is_read"`
 }
 
 // AgentMessageListResponse 代理站內信列表回應 DTO

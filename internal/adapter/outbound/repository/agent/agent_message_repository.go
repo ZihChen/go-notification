@@ -155,35 +155,37 @@ func (r *AgentMessageRepository) CheckMessageExistsBatch(
 	return existsMap, nil
 }
 
-// ListByAgent 根據代理查詢訊息列表
+// MessageWithCampaign 包含活動資訊的訊息結構體
+type MessageWithCampaign struct {
+	models.AgentMessage
+	CampaignTitle   string `gorm:"column:campaign_title"`
+	CampaignContent string `gorm:"column:campaign_content"`
+	GlobalAgentID   string `gorm:"column:global_agent_id"`
+}
+
+// ListByAgent 根據代理查詢訊息列表（包含活動資訊）
 func (r *AgentMessageRepository) ListByAgent(
 	ctx context.Context,
 	query *dto.AgentMessagesQuery,
 ) ([]*entity.AgentMessage, int, error) {
-	var messageModels []models.AgentMessage
+	var messagesWithCampaign []MessageWithCampaign
 	var total int64
 
-	db := r.db.WithContext(ctx).Model(&models.AgentMessage{})
+	// 構建基礎查詢，加入 JOIN
+	db := r.db.WithContext(ctx).
+		Table("agent_messages").
+		Select(`
+			agent_messages.*,
+			agent_campaigns.title as campaign_title,
+			agent_campaigns.content as campaign_content,
+			agents.global_agent_id
+		`).
+		Joins("LEFT JOIN agent_campaigns ON agent_messages.agent_campaign_id = agent_campaigns.id").
+		Joins("LEFT JOIN agents ON agent_messages.agent_id = agents.id")
 
-	// 添加查詢條件
+	// 只保留 agent_id 查詢條件
 	if query.AgentID > 0 {
-		db = db.Where("agent_id = ?", query.AgentID)
-	}
-
-	if query.CampaignID > 0 {
-		db = db.Where("agent_campaign_id = ?", query.CampaignID)
-	}
-
-	if query.IsRead != nil {
-		db = db.Where("is_read = ?", *query.IsRead)
-	}
-
-	if !query.StartDate.IsZero() {
-		db = db.Where("created_at >= ?", query.StartDate)
-	}
-
-	if !query.EndDate.IsZero() {
-		db = db.Where("created_at <= ?", query.EndDate)
+		db = db.Where("agent_messages.agent_id = ?", query.AgentID)
 	}
 
 	// 獲取總數
@@ -191,16 +193,8 @@ func (r *AgentMessageRepository) ListByAgent(
 		return nil, 0, fmt.Errorf("count agent messages failed: %w", err)
 	}
 
-	// 添加排序和分頁
-	if query.OrderBy != "" {
-		orderDirection := "DESC"
-		if query.OrderDirection == "ASC" {
-			orderDirection = "ASC"
-		}
-		db = db.Order(fmt.Sprintf("%s %s", query.OrderBy, orderDirection))
-	} else {
-		db = db.Order("created_at DESC")
-	}
+	// 固定排序：按創建日期由近到遠
+	db = db.Order("agent_messages.created_at DESC")
 
 	if query.Limit > 0 {
 		db = db.Limit(query.Limit)
@@ -211,13 +205,13 @@ func (r *AgentMessageRepository) ListByAgent(
 	}
 
 	// 執行查詢
-	if err := db.Find(&messageModels).Error; err != nil {
+	if err := db.Find(&messagesWithCampaign).Error; err != nil {
 		return nil, 0, fmt.Errorf("list agent messages failed: %w", err)
 	}
 
-	messages := make([]*entity.AgentMessage, len(messageModels))
-	for i, model := range messageModels {
-		messages[i] = r.modelToEntity(&model)
+	messages := make([]*entity.AgentMessage, len(messagesWithCampaign))
+	for i, msgWithCampaign := range messagesWithCampaign {
+		messages[i] = r.messageWithCampaignToEntity(&msgWithCampaign)
 	}
 
 	return messages, int(total), nil
@@ -293,5 +287,22 @@ func (r *AgentMessageRepository) modelToEntity(model *models.AgentMessage) *enti
 		ReadAt:          model.ReadAt,
 		CreatedAt:       model.CreatedAt,
 		UpdatedAt:       model.UpdatedAt,
+	}
+}
+
+// messageWithCampaignToEntity 將包含活動信息的模型轉換為實體
+func (r *AgentMessageRepository) messageWithCampaignToEntity(msgWithCampaign *MessageWithCampaign) *entity.AgentMessage {
+	return &entity.AgentMessage{
+		ID:              msgWithCampaign.ID,
+		AgentCampaignID: msgWithCampaign.AgentCampaignID,
+		AgentID:         msgWithCampaign.AgentID,
+		IsRead:          msgWithCampaign.IsRead,
+		ReadAt:          msgWithCampaign.ReadAt,
+		CreatedAt:       msgWithCampaign.CreatedAt,
+		UpdatedAt:       msgWithCampaign.UpdatedAt,
+		// 新增的活動信息欄位
+		CampaignTitle:   msgWithCampaign.CampaignTitle,
+		CampaignContent: msgWithCampaign.CampaignContent,
+		GlobalAgentID:   msgWithCampaign.GlobalAgentID,
 	}
 }

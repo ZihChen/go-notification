@@ -481,24 +481,19 @@ func (u *AgentUseCase) GetAgentMessages(
 
 	// 獲取訊息列表
 	u.tracingService.TraceEvent(span, "Getting agent messages")
-	// TODO: Implement FindMessages method in repository
-	messages := []*entity.AgentMessage{}
-	total := int64(0)
-	// messages, total, err := u.agentMessageRepo.FindMessages(ctx, query)
-	// if err != nil {
-	//	u.tracingService.RecordSpanError(span, err)
-	//	return nil, fmt.Errorf("find agent messages: %w", err)
-	// }
+	messages, total, err := u.agentMessageRepo.ListByAgent(ctx, query)
+	if err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return nil, fmt.Errorf("find agent messages: %w", err)
+	}
 
 	// 獲取訊息統計
 	u.tracingService.TraceEvent(span, "Getting agent message stats")
-	// TODO: Implement GetMessageStats method in repository
-	stats := &dto.AgentMessageStats{ReadCount: 0, UnreadCount: 0, TotalCount: 0}
-	// stats, err := u.agentMessageRepo.GetMessageStats(ctx, agent.ID)
-	// if err != nil {
-	//	u.tracingService.RecordSpanError(span, err)
-	//	return nil, fmt.Errorf("get message stats: %w", err)
-	// }
+	stats, err := u.agentMessageRepo.GetMessageStats(ctx, agent.ID)
+	if err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return nil, fmt.Errorf("get message stats: %w", err)
+	}
 
 	// 轉換為回應DTO
 	messageResponses := make([]dto.AgentMessageResponse, len(messages))
@@ -507,14 +502,10 @@ func (u *AgentUseCase) GetAgentMessages(
 			ID:              message.ID,
 			AgentCampaignID: message.AgentCampaignID,
 			AgentID:         message.AgentID,
-			GlobalAgentID:   query.GlobalAgentID,
-			Title:           "", // TODO: 從JOIN查詢獲取
-			Content:         "", // TODO: 從JOIN查詢獲取
+			GlobalAgentID:   message.GlobalAgentID,   // 從JOIN查詢獲取
+			Title:           message.CampaignTitle,   // 從JOIN查詢獲取
+			Content:         message.CampaignContent, // 從JOIN查詢獲取
 			IsRead:          message.IsRead,
-			ReadAt:          message.ReadAt,
-			SentAt:          message.CreatedAt, // SentAt就是CreatedAt
-			CreatedAt:       message.CreatedAt,
-			UpdatedAt:       message.UpdatedAt,
 		}
 	}
 
@@ -527,7 +518,7 @@ func (u *AgentUseCase) GetAgentMessages(
 		Messages: messageResponses,
 		Page:     query.Page,
 		PageSize: query.PageSize,
-		Total:    int(total),
+		Total:    total,
 	}
 
 	u.tracingService.TraceEvent(span, "Agent messages retrieved successfully")
@@ -547,31 +538,19 @@ func (u *AgentUseCase) MarkMessageAsRead(
 		attribute.Int64("message.id", int64(messageID)),
 		attribute.Int64("agent.id", int64(agentID)))
 
-	// 檢查訊息是否存在且屬於該代理
-	u.tracingService.TraceEvent(span, "Checking message ownership")
-	// TODO: Implement GetMessageByIDAndAgentID method in repository
-	message := &entity.AgentMessage{IsRead: false}
-	//message, err := u.agentMessageRepo.GetMessageByIDAndAgentID(ctx, messageID, agentID)
-	//if err != nil {
-	//	u.tracingService.RecordSpanError(span, err)
-	//	return fmt.Errorf("get message by ID and agent ID: %w", err)
-	//}
-
-	// 檢查訊息是否已經被讀過
-	if message.IsRead {
-		u.logger.InfoLog("Message already read",
-			u.logger.UInt64("message_id", messageID),
-			u.logger.UInt64("agent_id", agentID))
-		return nil // 已讀過，直接返回成功
-	}
-
 	// 標記為已讀
 	u.tracingService.TraceEvent(span, "Marking message as read")
-	// TODO: Implement MarkAsRead method in repository
-	// if err := u.agentMessageRepo.MarkAsRead(ctx, messageID, agentID); err != nil {
-	//	u.tracingService.RecordSpanError(span, err)
-	//	return fmt.Errorf("mark message as read: %w", err)
-	// }
+	if err := u.agentMessageRepo.MarkAsRead(ctx, messageID, agentID); err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		// 檢查是否是已讀或不存在的錯誤
+		if err.Error() == "message not found or already read" {
+			u.logger.InfoLog("Message not found or already read",
+				u.logger.UInt64("message_id", messageID),
+				u.logger.UInt64("agent_id", agentID))
+			return fmt.Errorf("record not found or already read")
+		}
+		return fmt.Errorf("mark message as read: %w", err)
+	}
 
 	u.tracingService.TraceEvent(span, "Message marked as read successfully")
 	u.logger.InfoLog("Message marked as read successfully",

@@ -81,8 +81,6 @@ definitions:
       content:
         description: 通過關聯取得
         type: string
-      created_at:
-        type: string
       global_agent_id:
         description: 通過關聯取得
         type: string
@@ -90,14 +88,8 @@ definitions:
         type: integer
       is_read:
         type: boolean
-      read_at:
-        type: string
-      sent_at:
-        type: string
       title:
         description: 通過關聯取得
-        type: string
-      updated_at:
         type: string
     type: object
   dto.AgentMessageStats:
@@ -1101,7 +1093,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: 分頁獲取指定代理的站內信列表
+      description: 分頁獲取指定代理的站內信列表，按創建時間由近到遠排序
       parameters:
       - description: 全域代理ID - 跨系統代理唯一識別符，用於標識特定代理
         example: '"agent-123e4567-e89b-12d3-a456-426614174000"'
@@ -1124,11 +1116,6 @@ paths:
         minimum: 1
         name: page_size
         type: integer
-      - description: 已讀狀態篩選 - true只顯示已讀，false只顯示未讀，不填顯示全部
-        example: false
-        in: query
-        name: is_read
-        type: boolean
       produces:
       - application/json
       responses:

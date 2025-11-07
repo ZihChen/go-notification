@@ -111,6 +111,10 @@ type AgentMessage struct {
 	ReadAt          *time.Time `json:"read_at"`           // 已讀時間
 	CreatedAt       time.Time  `json:"created_at"`        // 創建時間即發送時間
 	UpdatedAt       time.Time  `json:"updated_at"`
+	// 以下欄位從 JOIN 查詢獲得，用於 API 回應
+	CampaignTitle   string `json:"campaign_title,omitempty"`   // 活動標題 (FROM JOIN)
+	CampaignContent string `json:"campaign_content,omitempty"` // 活動內容 (FROM JOIN)
+	GlobalAgentID   string `json:"global_agent_id,omitempty"`  // 代理全域ID (FROM JOIN)
 }
 
 // AgentRelationship 代理關係 (用於高效查詢代理樹結構) - 雙主鍵設計

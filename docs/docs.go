@@ -334,7 +334,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "分頁獲取指定代理的站內信列表",
+                "description": "分頁獲取指定代理的站內信列表，按創建時間由近到遠排序",
                 "consumes": [
                     "application/json"
                 ],
@@ -371,13 +371,6 @@ const docTemplate = `{
                         "example": 10,
                         "description": "每頁數量 - 每頁返回的記錄數，範圍1-50",
                         "name": "page_size",
-                        "in": "query"
-                    },
-                    {
-                        "type": "boolean",
-                        "example": false,
-                        "description": "已讀狀態篩選 - true只顯示已讀，false只顯示未讀，不填顯示全部",
-                        "name": "is_read",
                         "in": "query"
                     }
                 ],
@@ -1706,9 +1699,6 @@ const docTemplate = `{
                     "description": "通過關聯取得",
                     "type": "string"
                 },
-                "created_at": {
-                    "type": "string"
-                },
                 "global_agent_id": {
                     "description": "通過關聯取得",
                     "type": "string"
@@ -1719,17 +1709,8 @@ const docTemplate = `{
                 "is_read": {
                     "type": "boolean"
                 },
-                "read_at": {
-                    "type": "string"
-                },
-                "sent_at": {
-                    "type": "string"
-                },
                 "title": {
                     "description": "通過關聯取得",
-                    "type": "string"
-                },
-                "updated_at": {
                     "type": "string"
                 }
             }
