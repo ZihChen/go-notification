@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/aggregate"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
@@ -155,27 +156,25 @@ func (r *AgentMessageRepository) CheckMessageExistsBatch(
 	return existsMap, nil
 }
 
-// MessageWithCampaign 包含活動資訊的訊息結構體
-type MessageWithCampaign struct {
-	models.AgentMessage
-	CampaignTitle   string `gorm:"column:campaign_title"`
-	CampaignContent string `gorm:"column:campaign_content"`
-	GlobalAgentID   string `gorm:"column:global_agent_id"`
-}
-
 // ListByAgent 根據代理查詢訊息列表（包含活動資訊）
 func (r *AgentMessageRepository) ListByAgent(
 	ctx context.Context,
 	query *dto.AgentMessagesQuery,
 ) ([]*entity.AgentMessage, int, error) {
-	var messagesWithCampaign []MessageWithCampaign
+	var aggregates []aggregate.AgentMessageAggregate
 	var total int64
 
 	// 構建基礎查詢，加入 JOIN
 	db := r.db.WithContext(ctx).
 		Table("agent_messages").
 		Select(`
-			agent_messages.*,
+			agent_messages.id,
+			agent_messages.agent_campaign_id,
+			agent_messages.agent_id,
+			agent_messages.is_read,
+			agent_messages.read_at,
+			agent_messages.created_at,
+			agent_messages.updated_at,
 			agent_campaigns.title as campaign_title,
 			agent_campaigns.content as campaign_content,
 			agents.global_agent_id
@@ -205,13 +204,13 @@ func (r *AgentMessageRepository) ListByAgent(
 	}
 
 	// 執行查詢
-	if err := db.Find(&messagesWithCampaign).Error; err != nil {
+	if err := db.Find(&aggregates).Error; err != nil {
 		return nil, 0, fmt.Errorf("list agent messages failed: %w", err)
 	}
 
-	messages := make([]*entity.AgentMessage, len(messagesWithCampaign))
-	for i, msgWithCampaign := range messagesWithCampaign {
-		messages[i] = r.messageWithCampaignToEntity(&msgWithCampaign)
+	messages := make([]*entity.AgentMessage, len(aggregates))
+	for i, ag := range aggregates {
+		messages[i] = r.aggregateToEntity(&ag)
 	}
 
 	return messages, int(total), nil
@@ -290,19 +289,19 @@ func (r *AgentMessageRepository) modelToEntity(model *models.AgentMessage) *enti
 	}
 }
 
-// messageWithCampaignToEntity 將包含活動信息的模型轉換為實體
-func (r *AgentMessageRepository) messageWithCampaignToEntity(msgWithCampaign *MessageWithCampaign) *entity.AgentMessage {
+// aggregateToEntity 將聚合根轉換為實體
+func (r *AgentMessageRepository) aggregateToEntity(aggregate *aggregate.AgentMessageAggregate) *entity.AgentMessage {
 	return &entity.AgentMessage{
-		ID:              msgWithCampaign.ID,
-		AgentCampaignID: msgWithCampaign.AgentCampaignID,
-		AgentID:         msgWithCampaign.AgentID,
-		IsRead:          msgWithCampaign.IsRead,
-		ReadAt:          msgWithCampaign.ReadAt,
-		CreatedAt:       msgWithCampaign.CreatedAt,
-		UpdatedAt:       msgWithCampaign.UpdatedAt,
-		// 新增的活動信息欄位
-		CampaignTitle:   msgWithCampaign.CampaignTitle,
-		CampaignContent: msgWithCampaign.CampaignContent,
-		GlobalAgentID:   msgWithCampaign.GlobalAgentID,
+		ID:              aggregate.ID,
+		AgentCampaignID: aggregate.AgentCampaignID,
+		AgentID:         aggregate.AgentID,
+		IsRead:          aggregate.IsRead,
+		ReadAt:          aggregate.ReadAt,
+		CreatedAt:       aggregate.CreatedAt,
+		UpdatedAt:       aggregate.UpdatedAt,
+		// 聚合的活動信息欄位
+		CampaignTitle:   aggregate.CampaignTitle,
+		CampaignContent: aggregate.CampaignContent,
+		GlobalAgentID:   aggregate.GlobalAgentID,
 	}
 }
