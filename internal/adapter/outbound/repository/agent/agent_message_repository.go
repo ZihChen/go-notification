@@ -290,7 +290,9 @@ func (r *AgentMessageRepository) modelToEntity(model *models.AgentMessage) *enti
 }
 
 // aggregateToEntity 將聚合根轉換為實體
-func (r *AgentMessageRepository) aggregateToEntity(aggregate *aggregate.AgentMessageAggregate) *entity.AgentMessage {
+func (r *AgentMessageRepository) aggregateToEntity(
+	aggregate *aggregate.AgentMessageAggregate,
+) *entity.AgentMessage {
 	return &entity.AgentMessage{
 		ID:              aggregate.ID,
 		AgentCampaignID: aggregate.AgentCampaignID,
