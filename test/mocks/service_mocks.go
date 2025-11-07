@@ -222,3 +222,93 @@ func (m *TracingServiceMock) SetupEmpty() {}
 func (m *TracingServiceMock) Reset() {
 	m.Mock = mock.Mock{}
 }
+
+// AgentServiceMock 統一的 AgentService Mock
+type AgentServiceMock struct {
+	*BaseMock
+}
+
+func NewAgentServiceMock(t *testing.T) *AgentServiceMock {
+	return &AgentServiceMock{
+		BaseMock: NewBaseMock(t),
+	}
+}
+
+func (m *AgentServiceMock) SyncAgentRelationshipsUpsert(
+	ctx context.Context,
+	agentEvent *event.AgentSyncEvent,
+) error {
+	args := m.Called(ctx, agentEvent)
+	return args.Error(0)
+}
+
+func (m *AgentServiceMock) GetAgentLineDescendants(
+	ctx context.Context,
+	globalAgentID string,
+) ([]string, error) {
+	args := m.Called(ctx, globalAgentID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *AgentServiceMock) GetAgentLineAncestors(
+	ctx context.Context,
+	globalAgentID string,
+) ([]string, error) {
+	args := m.Called(ctx, globalAgentID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *AgentServiceMock) GetAgentHierarchy(
+	ctx context.Context,
+	globalAgentID string,
+) (*service.AgentHierarchy, error) {
+	args := m.Called(ctx, globalAgentID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*service.AgentHierarchy), args.Error(1)
+}
+
+func (m *AgentServiceMock) ParseAgentPath(ancestry string) []string {
+	args := m.Called(ancestry)
+	if args.Get(0) == nil {
+		return nil
+	}
+	return args.Get(0).([]string)
+}
+
+func (m *AgentServiceMock) GeneratePathHash(pathParts []string) string {
+	args := m.Called(pathParts)
+	return args.String(0)
+}
+
+func (m *AgentServiceMock) ValidateAndFilterAgents(agents []string) []string {
+	args := m.Called(agents)
+	if args.Get(0) == nil {
+		return nil
+	}
+	return args.Get(0).([]string)
+}
+
+func (m *AgentServiceMock) IsValidAgentID(agentID string) bool {
+	args := m.Called(agentID)
+	return args.Bool(0)
+}
+
+func (m *AgentServiceMock) ExtractAccountFromGlobalID(globalID string) string {
+	args := m.Called(globalID)
+	return args.String(0)
+}
+
+func (m *AgentServiceMock) SetupSuccess() {}
+func (m *AgentServiceMock) SetupError()   {}
+func (m *AgentServiceMock) SetupEmpty()   {}
+func (m *AgentServiceMock) Reset() {
+	m.Mock = mock.Mock{}
+}

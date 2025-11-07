@@ -921,3 +921,321 @@ func (m *PushKeyRepositoryMock) SetupEmpty()   {}
 func (m *PushKeyRepositoryMock) Reset() {
 	m.Mock = mock.Mock{}
 }
+
+// AgentRepositoryMock 統一的 Agent Repository Mock
+type AgentRepositoryMock struct {
+	*BaseMock
+}
+
+func NewAgentRepositoryMock(t *testing.T) *AgentRepositoryMock {
+	return &AgentRepositoryMock{
+		BaseMock: NewBaseMock(t),
+	}
+}
+
+func (m *AgentRepositoryMock) Create(ctx context.Context, agent *entity.Agent) (*entity.Agent, error) {
+	args := m.Called(ctx, agent)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.Agent), args.Error(1)
+}
+
+func (m *AgentRepositoryMock) GetByID(ctx context.Context, id uint64) (*entity.Agent, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.Agent), args.Error(1)
+}
+
+func (m *AgentRepositoryMock) GetByGlobalID(ctx context.Context, globalAgentID string) (*entity.Agent, error) {
+	args := m.Called(ctx, globalAgentID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.Agent), args.Error(1)
+}
+
+func (m *AgentRepositoryMock) Update(ctx context.Context, agent *entity.Agent) error {
+	args := m.Called(ctx, agent)
+	return args.Error(0)
+}
+
+func (m *AgentRepositoryMock) Delete(ctx context.Context, id uint64) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+func (m *AgentRepositoryMock) Upsert(ctx context.Context, agent *entity.Agent) error {
+	args := m.Called(ctx, agent)
+	return args.Error(0)
+}
+
+func (m *AgentRepositoryMock) FindAgents(ctx context.Context, merchantID uint64, limit, offset int) ([]*entity.Agent, error) {
+	args := m.Called(ctx, merchantID, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.Agent), args.Error(1)
+}
+
+func (m *AgentRepositoryMock) QueryAgentsByPath(ctx context.Context, targetAgentID string) ([]string, error) {
+	args := m.Called(ctx, targetAgentID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *AgentRepositoryMock) GetAgentIDByGlobalID(ctx context.Context, globalID string, merchantID uint64) (uint64, error) {
+	args := m.Called(ctx, globalID, merchantID)
+	return args.Get(0).(uint64), args.Error(1)
+}
+
+func (m *AgentRepositoryMock) BatchGetOrCreateAgentsByGlobalIDs(ctx context.Context, globalIDs []string, merchantID uint64) (map[string]uint64, error) {
+	args := m.Called(ctx, globalIDs, merchantID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[string]uint64), args.Error(1)
+}
+
+func (m *AgentRepositoryMock) UpsertRelationship(ctx context.Context, rel *entity.AgentRelationship) error {
+	args := m.Called(ctx, rel)
+	return args.Error(0)
+}
+
+func (m *AgentRepositoryMock) QueryAgentsByRelationship(ctx context.Context, parentAgentID string) ([]string, error) {
+	args := m.Called(ctx, parentAgentID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *AgentRepositoryMock) QueryAgentAncestorsByRelationship(ctx context.Context, childAgentID string) ([]string, error) {
+	args := m.Called(ctx, childAgentID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *AgentRepositoryMock) AgentExists(ctx context.Context, agentID uint64) (bool, error) {
+	args := m.Called(ctx, agentID)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *AgentRepositoryMock) SetupSuccess() {}
+func (m *AgentRepositoryMock) SetupError()   {}
+func (m *AgentRepositoryMock) SetupEmpty()   {}
+func (m *AgentRepositoryMock) Reset() {
+	m.Mock = mock.Mock{}
+}
+
+// AgentCampaignRepositoryMock 統一的 AgentCampaign Repository Mock
+type AgentCampaignRepositoryMock struct {
+	*BaseMock
+}
+
+func NewAgentCampaignRepositoryMock(t *testing.T) *AgentCampaignRepositoryMock {
+	return &AgentCampaignRepositoryMock{
+		BaseMock: NewBaseMock(t),
+	}
+}
+
+func (m *AgentCampaignRepositoryMock) Create(ctx context.Context, campaign *entity.AgentCampaign) (*entity.AgentCampaign, error) {
+	args := m.Called(ctx, campaign)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.AgentCampaign), args.Error(1)
+}
+
+func (m *AgentCampaignRepositoryMock) GetByID(ctx context.Context, id uint64) (*entity.AgentCampaign, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.AgentCampaign), args.Error(1)
+}
+
+func (m *AgentCampaignRepositoryMock) Update(ctx context.Context, campaign *entity.AgentCampaign) error {
+	args := m.Called(ctx, campaign)
+	return args.Error(0)
+}
+
+func (m *AgentCampaignRepositoryMock) Delete(ctx context.Context, id uint64) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+func (m *AgentCampaignRepositoryMock) UpdateFields(ctx context.Context, id uint64, columns map[string]interface{}) error {
+	args := m.Called(ctx, id, columns)
+	return args.Error(0)
+}
+
+func (m *AgentCampaignRepositoryMock) List(ctx context.Context, query *dto.AgentCampaignsQuery) ([]*entity.AgentCampaign, int, error) {
+	args := m.Called(ctx, query)
+	if args.Get(0) == nil {
+		return nil, args.Int(1), args.Error(2)
+	}
+	return args.Get(0).([]*entity.AgentCampaign), args.Int(1), args.Error(2)
+}
+
+func (m *AgentCampaignRepositoryMock) GetScheduledCampaigns(ctx context.Context) ([]*entity.AgentCampaign, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.AgentCampaign), args.Error(1)
+}
+
+func (m *AgentCampaignRepositoryMock) SetupSuccess() {}
+func (m *AgentCampaignRepositoryMock) SetupError()   {}
+func (m *AgentCampaignRepositoryMock) SetupEmpty()   {}
+func (m *AgentCampaignRepositoryMock) Reset() {
+	m.Mock = mock.Mock{}
+}
+
+// AgentMessageRepositoryMock 統一的 AgentMessage Repository Mock
+type AgentMessageRepositoryMock struct {
+	*BaseMock
+}
+
+func NewAgentMessageRepositoryMock(t *testing.T) *AgentMessageRepositoryMock {
+	return &AgentMessageRepositoryMock{
+		BaseMock: NewBaseMock(t),
+	}
+}
+
+func (m *AgentMessageRepositoryMock) Create(ctx context.Context, message *entity.AgentMessage) (*entity.AgentMessage, error) {
+	args := m.Called(ctx, message)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.AgentMessage), args.Error(1)
+}
+
+func (m *AgentMessageRepositoryMock) GetByID(ctx context.Context, id uint64) (*entity.AgentMessage, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.AgentMessage), args.Error(1)
+}
+
+func (m *AgentMessageRepositoryMock) Update(ctx context.Context, message *entity.AgentMessage) error {
+	args := m.Called(ctx, message)
+	return args.Error(0)
+}
+
+func (m *AgentMessageRepositoryMock) Delete(ctx context.Context, id uint64) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+func (m *AgentMessageRepositoryMock) CreateBatch(ctx context.Context, messages []*entity.AgentMessage) error {
+	args := m.Called(ctx, messages)
+	return args.Error(0)
+}
+
+func (m *AgentMessageRepositoryMock) CheckMessageExistsBatch(ctx context.Context, agentIDs []uint64, campaignID uint64) (map[uint64]bool, error) {
+	args := m.Called(ctx, agentIDs, campaignID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[uint64]bool), args.Error(1)
+}
+
+func (m *AgentMessageRepositoryMock) ListByAgent(ctx context.Context, query *dto.AgentMessagesQuery) ([]*entity.AgentMessage, int, error) {
+	args := m.Called(ctx, query)
+	if args.Get(0) == nil {
+		return nil, args.Int(1), args.Error(2)
+	}
+	return args.Get(0).([]*entity.AgentMessage), args.Int(1), args.Error(2)
+}
+
+func (m *AgentMessageRepositoryMock) MarkAsRead(ctx context.Context, messageID uint64, agentID uint64) error {
+	args := m.Called(ctx, messageID, agentID)
+	return args.Error(0)
+}
+
+func (m *AgentMessageRepositoryMock) GetMessageStats(ctx context.Context, agentID uint64) (*dto.AgentMessageStats, error) {
+	args := m.Called(ctx, agentID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*dto.AgentMessageStats), args.Error(1)
+}
+
+func (m *AgentMessageRepositoryMock) SetupSuccess() {}
+func (m *AgentMessageRepositoryMock) SetupError()   {}
+func (m *AgentMessageRepositoryMock) SetupEmpty()   {}
+func (m *AgentMessageRepositoryMock) Reset() {
+	m.Mock = mock.Mock{}
+}
+
+// AgentRelationshipRepositoryMock 統一的 AgentRelationship Repository Mock
+type AgentRelationshipRepositoryMock struct {
+	*BaseMock
+}
+
+func NewAgentRelationshipRepositoryMock(t *testing.T) *AgentRelationshipRepositoryMock {
+	return &AgentRelationshipRepositoryMock{
+		BaseMock: NewBaseMock(t),
+	}
+}
+
+func (m *AgentRelationshipRepositoryMock) BatchUpdate(ctx context.Context, parentID uint64, relationships []*entity.AgentRelationship) error {
+	args := m.Called(ctx, parentID, relationships)
+	return args.Error(0)
+}
+
+func (m *AgentRelationshipRepositoryMock) GetByParentID(ctx context.Context, parentID uint64) ([]*entity.AgentRelationship, error) {
+	args := m.Called(ctx, parentID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.AgentRelationship), args.Error(1)
+}
+
+func (m *AgentRelationshipRepositoryMock) GetByChildID(ctx context.Context, childID uint64) ([]*entity.AgentRelationship, error) {
+	args := m.Called(ctx, childID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.AgentRelationship), args.Error(1)
+}
+
+func (m *AgentRelationshipRepositoryMock) FindDescendants(ctx context.Context, parentID uint64, maxDepth int) ([]*entity.AgentRelationship, error) {
+	args := m.Called(ctx, parentID, maxDepth)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.AgentRelationship), args.Error(1)
+}
+
+func (m *AgentRelationshipRepositoryMock) FindAncestors(ctx context.Context, childID uint64, maxDepth int) ([]*entity.AgentRelationship, error) {
+	args := m.Called(ctx, childID, maxDepth)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.AgentRelationship), args.Error(1)
+}
+
+func (m *AgentRelationshipRepositoryMock) FindByPathHash(ctx context.Context, pathHash string) ([]*entity.AgentRelationship, error) {
+	args := m.Called(ctx, pathHash)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.AgentRelationship), args.Error(1)
+}
+
+func (m *AgentRelationshipRepositoryMock) SetupSuccess() {}
+func (m *AgentRelationshipRepositoryMock) SetupError()   {}
+func (m *AgentRelationshipRepositoryMock) SetupEmpty()   {}
+func (m *AgentRelationshipRepositoryMock) Reset() {
+	m.Mock = mock.Mock{}
+}
