@@ -207,7 +207,9 @@ func (r *AgentCampaignRepository) modelToEntity(model *models.AgentCampaign) *en
 }
 
 // entityToModel 將實體轉換為模型
-func (r *AgentCampaignRepository) entityToModel(campaign *entity.AgentCampaign) *models.AgentCampaign {
+func (r *AgentCampaignRepository) entityToModel(
+	campaign *entity.AgentCampaign,
+) *models.AgentCampaign {
 	model := &models.AgentCampaign{
 		ID:            campaign.ID,
 		MerchantID:    campaign.MerchantID,

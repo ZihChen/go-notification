@@ -366,7 +366,6 @@ func (u *AgentUseCase) GetAgentCampaigns(
 		query.Offset = (query.Page - 1) * query.PageSize
 	}
 
-	campaigns := []*entity.AgentCampaign{}
 	campaigns, total, err := u.agentCampaignRepo.List(ctx, query)
 	if err != nil {
 		u.tracingService.RecordSpanError(span, err)
@@ -531,7 +530,7 @@ func (u *AgentUseCase) MarkMessageAsRead(
 	messageID uint64,
 	agentID uint64,
 ) error {
-	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.MarkMessageAsRead")
+	_, span := u.tracingService.StartSpan(ctx, "AgentUseCase.MarkMessageAsRead")
 	defer u.tracingService.SpanEnd(span)
 
 	u.tracingService.RecordSpanAttributes(span,
@@ -542,11 +541,11 @@ func (u *AgentUseCase) MarkMessageAsRead(
 	u.tracingService.TraceEvent(span, "Checking message ownership")
 	// TODO: Implement GetMessageByIDAndAgentID method in repository
 	message := &entity.AgentMessage{IsRead: false}
-	// message, err := u.agentMessageRepo.GetMessageByIDAndAgentID(ctx, messageID, agentID)
-	// if err != nil {
+	//message, err := u.agentMessageRepo.GetMessageByIDAndAgentID(ctx, messageID, agentID)
+	//if err != nil {
 	//	u.tracingService.RecordSpanError(span, err)
 	//	return fmt.Errorf("get message by ID and agent ID: %w", err)
-	// }
+	//}
 
 	// 檢查訊息是否已經被讀過
 	if message.IsRead {

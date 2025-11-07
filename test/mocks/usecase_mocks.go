@@ -488,10 +488,9 @@ func (m *AgentUseCaseMock) CreateAgentCampaign(
 
 func (m *AgentUseCaseMock) UpdateAgentCampaign(
 	ctx context.Context,
-	id uint64,
 	req *dto.UpdateAgentCampaignRequest,
 ) (*entity.AgentCampaign, error) {
-	args := m.Called(ctx, id, req)
+	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

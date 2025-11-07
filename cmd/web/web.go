@@ -88,7 +88,10 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	router := gin.Default()
 
 	// 使用路由管理器配置所有中間件並註冊路由
-	routerManager := routermgr.NewRouterManager(svc.webComponents.HTTPHandler, svc.webComponents.AgentHandler)
+	routerManager := routermgr.NewRouterManager(
+		svc.webComponents.HTTPHandler,
+		svc.webComponents.AgentHandler,
+	)
 	routerManager.SetupRoutersWithMiddleware(router, cfg)
 
 	// 創建HTTP服務器

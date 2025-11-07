@@ -132,25 +132,25 @@ type TagListResponse struct {
 
 // CreateAgentCampaignRequest 創建代理訊息活動請求 DTO
 type CreateAgentCampaignRequest struct {
-	GlobalMerchantID string     `json:"global_merchant_id"      swaggerignore:"true"` // 商户全局ID，由中间件自动设置
-	Title            string     `json:"title"                    binding:"required,max=255"`
-	Content          string     `json:"content"                  binding:"required"`
+	GlobalMerchantID string     `json:"global_merchant_id"       swaggerignore:"true"` // 商户全局ID，由中间件自动设置
+	Title            string     `json:"title"                                         binding:"required,max=255"`
+	Content          string     `json:"content"                                       binding:"required"`
 	ScheduledAt      *time.Time `json:"scheduled_at,omitempty"`
-	TargetType       string     `json:"target_type"              binding:"required,oneof=all specific line"`
+	TargetType       string     `json:"target_type"                                   binding:"required,oneof=all specific line"`
 	TargetDetails    []string   `json:"target_details,omitempty"`
-	CreatedBy        string     `json:"created_by"               binding:"required,max=100"` // 创建者，最大100个字符
+	CreatedBy        string     `json:"created_by"                                    binding:"required,max=100"` // 创建者，最大100个字符
 }
 
 // UpdateAgentCampaignRequest 更新代理訊息活動請求 DTO
 type UpdateAgentCampaignRequest struct {
 	ID               uint64     `json:"id"`
-	GlobalMerchantID string     `json:"global_merchant_id"      swaggerignore:"true"` // 商户全局ID，由中间件自动设置
-	Title            *string    `json:"title,omitempty"          binding:"omitempty,max=255"`
+	GlobalMerchantID string     `json:"global_merchant_id"       swaggerignore:"true"` // 商户全局ID，由中间件自动设置
+	Title            *string    `json:"title,omitempty"                               binding:"omitempty,max=255"`
 	Content          *string    `json:"content,omitempty"`
 	ScheduledAt      *time.Time `json:"scheduled_at,omitempty"`
-	TargetType       *string    `json:"target_type,omitempty"    binding:"omitempty,oneof=all specific line"`
+	TargetType       *string    `json:"target_type,omitempty"                         binding:"omitempty,oneof=all specific line"`
 	TargetDetails    []string   `json:"target_details,omitempty"`
-	UpdatedBy        string     `json:"updated_by"               binding:"required,max=100"`
+	UpdatedBy        string     `json:"updated_by"                                    binding:"required,max=100"`
 }
 
 // AgentCampaignResponse 代理訊息活動回應 DTO
@@ -173,7 +173,7 @@ type AgentCampaignResponse struct {
 
 // AgentCampaignsQuery 代理訊息活動查詢參數 DTO
 type AgentCampaignsQuery struct {
-	GlobalMerchantID string    `json:"global_merchant_id"      swaggerignore:"true"` // 商户全局ID，由中间件自动设置
+	GlobalMerchantID string    `json:"global_merchant_id" swaggerignore:"true"` // 商户全局ID，由中间件自动设置
 	Page             int       `json:"page"`
 	PageSize         int       `json:"page_size"`
 	Limit            int       `json:"limit"`
