@@ -516,7 +516,7 @@ func TestAgentCampaignRepository_GetScheduledCampaigns(t *testing.T) {
 
 			repo := NewAgentCampaignRepository(db)
 
-			campaigns, err := repo.GetScheduledCampaigns(context.Background())
+			campaigns, err := repo.GetScheduledCampaigns(context.Background(), time.Now())
 
 			if tc.expectedError != nil {
 				assert.Error(t, err)

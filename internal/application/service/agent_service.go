@@ -335,11 +335,10 @@ func (s *AgentService) ValidateAndFilterAgents(agents []string) []string {
 	return validAgents
 }
 
-// IsValidAgentID 領域知識：代理ID格式驗證
+// IsValidAgentID 領域知識：代理ID格式驗證（已移除格式限制）
 func (s *AgentService) IsValidAgentID(agentID string) bool {
-	// Service職責：領域知識封裝
-	return strings.HasPrefix(agentID, "FATCAT-AGENT-") ||
-		strings.HasPrefix(agentID, "PHW-AGENT-")
+	// 移除格式限制，只檢查非空字串
+	return agentID != ""
 }
 
 // ExtractAccountFromGlobalID 從 global_id 提取 account

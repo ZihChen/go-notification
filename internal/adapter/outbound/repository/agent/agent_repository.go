@@ -215,7 +215,7 @@ func (r *AgentRepository) UpsertRelationship(
 	return nil
 }
 
-// QueryAgentsByRelationship 根據關係查詢子代理 (legacy 支援)
+// QueryAgentsByRelationship 根據關係遞歸查詢所有層級子代理 (無限層級)
 func (r *AgentRepository) QueryAgentsByRelationship(
 	ctx context.Context,
 	parentAgentID string,
@@ -232,38 +232,33 @@ func (r *AgentRepository) QueryAgentsByRelationship(
 		return nil, fmt.Errorf("get parent agent failed: %w", err)
 	}
 
-	// 查詢關係表獲取子代理ID
-	var relationModels []models.AgentRelationship
-	if err := r.db.WithContext(ctx).
-		Where("parent_id = ?", parentAgent.ID).
-		Find(&relationModels).Error; err != nil {
-		return nil, fmt.Errorf("query relationships failed: %w", err)
+	// 使用 WITH RECURSIVE 遞歸查詢所有層級的子代理
+	query := `
+		WITH RECURSIVE agent_descendants AS (
+			-- 基礎查詢：直接子代理
+			SELECT ar.child_id, ar.depth_level
+			FROM agent_relationships ar
+			WHERE ar.parent_id = ?
+			
+			UNION ALL
+			
+			-- 遞歸查詢：子代理的子代理
+			SELECT ar.child_id, ar.depth_level
+			FROM agent_relationships ar
+			INNER JOIN agent_descendants ad ON ar.parent_id = ad.child_id
+		)
+		SELECT DISTINCT a.global_agent_id
+		FROM agent_descendants ad
+		INNER JOIN agents a ON ad.child_id = a.id
+		ORDER BY a.global_agent_id
+	`
+
+	var globalAgentIDs []string
+	if err := r.db.WithContext(ctx).Raw(query, parentAgent.ID).Scan(&globalAgentIDs).Error; err != nil {
+		return nil, fmt.Errorf("recursive query descendants failed: %w", err)
 	}
 
-	if len(relationModels) == 0 {
-		return []string{}, nil
-	}
-
-	// 獲取子代理的全局ID
-	childIDs := make([]uint64, len(relationModels))
-	for i, rel := range relationModels {
-		childIDs[i] = rel.ChildID
-	}
-
-	var childAgents []models.Agent
-	if err := r.db.WithContext(ctx).
-		Select("global_agent_id").
-		Where("id IN ?", childIDs).
-		Find(&childAgents).Error; err != nil {
-		return nil, fmt.Errorf("get child agents failed: %w", err)
-	}
-
-	result := make([]string, len(childAgents))
-	for i, agent := range childAgents {
-		result[i] = agent.GlobalAgentID
-	}
-
-	return result, nil
+	return globalAgentIDs, nil
 }
 
 // QueryAgentAncestorsByRelationship 根據關係查詢祖先代理 (legacy 支援)

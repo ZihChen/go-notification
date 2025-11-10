@@ -709,27 +709,43 @@ func (u *AgentUseCase) resolveTargetAgentsByType(ctx context.Context, campaign *
 
 	switch campaign.TargetType {
 	case consts.AgentTargetTypeAll:
+		// target_type = all: target_details = "" (空字串)
+		// 只找出 current_sign_in_at < 一個月內的代理
 		return u.resolveAllAgents(ctx, campaign.MerchantID)
 	case consts.AgentTargetTypeSpecific:
+		// target_type = specific: target_details = ["account1", "account2"] (特定代理帳號slice)
+		if len(campaign.TargetDetails) == 0 {
+			return nil, fmt.Errorf("specific target requires target details")
+		}
 		return campaign.TargetDetails, nil
 	case consts.AgentTargetTypeLine:
-		return u.resolveLineAgents(ctx, campaign.TargetDetails)
+		// target_type = line: target_details = "account1" (最上層父代理)
+		// 找出指定代理線下的所有代理
+		if len(campaign.TargetDetails) == 0 {
+			return nil, fmt.Errorf("line target requires target details")
+		}
+		parentAgentID := campaign.TargetDetails[0]
+		return u.resolveLineAgents(ctx, parentAgentID)
 	default:
 		return nil, fmt.Errorf("unsupported target type: %s", campaign.TargetType)
 	}
 }
 
-// resolveAllAgents 解析所有代理
+// resolveAllAgents 解析所有活躍代理（一個月內登入）
 func (u *AgentUseCase) resolveAllAgents(ctx context.Context, merchantID uint64) ([]string, error) {
 	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.resolveAllAgents")
 	defer u.tracingService.SpanEnd(span)
 
 	u.tracingService.RecordSpanAttributes(span, attribute.Int64("merchant.id", int64(merchantID)))
 
-	var allGlobalAgentIDs []string
+	// 定義一個月前的時間點
+	oneMonthAgo := time.Now().AddDate(0, -1, 0)
+
+	var activeAgentGlobalIDs []string
 	offset := 0
 	limit := 1000
 
+	// 分頁查詢所有代理並篩選活躍的
 	for {
 		agents, err := u.agentRepo.FindAgents(ctx, merchantID, limit, offset)
 		if err != nil {
@@ -741,8 +757,12 @@ func (u *AgentUseCase) resolveAllAgents(ctx context.Context, merchantID uint64) 
 			break
 		}
 
+		// 篩選出一個月內活躍的代理
 		for _, agent := range agents {
-			allGlobalAgentIDs = append(allGlobalAgentIDs, agent.GlobalAgentID)
+			// 檢查代理是否在一個月內有登入
+			if agent.CurrentSignInAt != nil && agent.CurrentSignInAt.After(oneMonthAgo) {
+				activeAgentGlobalIDs = append(activeAgentGlobalIDs, agent.GlobalAgentID)
+			}
 		}
 
 		if len(agents) < limit {
@@ -752,45 +772,39 @@ func (u *AgentUseCase) resolveAllAgents(ctx context.Context, merchantID uint64) 
 		offset += limit
 	}
 
-	u.tracingService.TraceEvent(span, "All agents resolved",
-		attribute.Int("total_agents", len(allGlobalAgentIDs)))
+	u.tracingService.TraceEvent(span, "Active agents resolved",
+		attribute.Int("active_agents", len(activeAgentGlobalIDs)),
+		attribute.String("cutoff_date", oneMonthAgo.Format(time.RFC3339)))
 
-	return allGlobalAgentIDs, nil
+	u.logger.InfoLog("Resolved active agents for merchant",
+		u.logger.UInt64("merchant_id", merchantID),
+		u.logger.Int("active_agents", len(activeAgentGlobalIDs)))
+
+	return activeAgentGlobalIDs, nil
 }
 
-// resolveLineAgents 解析代理線中的所有代理
-func (u *AgentUseCase) resolveLineAgents(ctx context.Context, lineAgentIDs []string) ([]string, error) {
+// resolveLineAgents 解析代理線下的所有代理
+// parentAgentID: 最上層父代理的帳號ID
+func (u *AgentUseCase) resolveLineAgents(ctx context.Context, parentAgentID string) ([]string, error) {
 	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.resolveLineAgents")
 	defer u.tracingService.SpanEnd(span)
 
-	u.tracingService.RecordSpanAttributes(span, attribute.Int("line_agents_count", len(lineAgentIDs)))
+	u.tracingService.RecordSpanAttributes(span, attribute.String("parent_agent_id", parentAgentID))
 
-	var allAgentIDs []string
-	uniqueAgentIDs := make(map[string]bool)
-
-	for _, lineAgentID := range lineAgentIDs {
-		// 獲取代理線下的所有代理
-		descendants, err := u.agentService.GetAgentLineDescendants(ctx, lineAgentID)
-		if err != nil {
-			u.logger.WarnLog("Failed to get agent line descendants",
-				u.logger.String("line_agent_id", lineAgentID),
-				u.logger.String("error", err.Error()))
-			continue
-		}
-
-		// 包含自己
-		uniqueAgentIDs[lineAgentID] = true
-
-		// 添加所有後代
-		for _, descendant := range descendants {
-			uniqueAgentIDs[descendant] = true
-		}
+	// 獲取代理線下的所有代理
+	descendants, err := u.agentService.GetAgentLineDescendants(ctx, parentAgentID)
+	if err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		u.logger.WarnLog("Failed to get agent line descendants",
+			u.logger.String("parent_agent_id", parentAgentID),
+			u.logger.String("error", err.Error()))
+		return nil, fmt.Errorf("get agent line descendants: %w", err)
 	}
 
-	// 轉換為切片
-	for agentID := range uniqueAgentIDs {
-		allAgentIDs = append(allAgentIDs, agentID)
-	}
+	// 包含父代理自己和所有後代
+	allAgentIDs := make([]string, 0, len(descendants)+1)
+	allAgentIDs = append(allAgentIDs, parentAgentID)  // 包含父代理自己
+	allAgentIDs = append(allAgentIDs, descendants...) // 添加所有後代
 
 	u.tracingService.TraceEvent(span, "Line agents resolved",
 		attribute.Int("total_agents", len(allAgentIDs)))
