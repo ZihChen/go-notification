@@ -44,7 +44,7 @@ func TestAgentUseCase_CreateAgentCampaign(t *testing.T) {
 	agentMessageRepo := mocks.NewAgentMessageRepositoryMock(t)
 	agentRelationshipRepo := mocks.NewAgentRelationshipRepositoryMock(t)
 	merchantRepo := mocks.NewMerchantRepositoryMock(t)
-	
+
 	// 創建模擬服務
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
@@ -111,7 +111,7 @@ func TestAgentUseCase_GetAgentCampaign(t *testing.T) {
 	agentMessageRepo := mocks.NewAgentMessageRepositoryMock(t)
 	agentRelationshipRepo := mocks.NewAgentRelationshipRepositoryMock(t)
 	merchantRepo := mocks.NewMerchantRepositoryMock(t)
-	
+
 	// 創建模擬服務
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
@@ -162,7 +162,7 @@ func TestAgentUseCase_UpdateAgentCampaign(t *testing.T) {
 	agentMessageRepo := mocks.NewAgentMessageRepositoryMock(t)
 	agentRelationshipRepo := mocks.NewAgentRelationshipRepositoryMock(t)
 	merchantRepo := mocks.NewMerchantRepositoryMock(t)
-	
+
 	// 創建模擬服務
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
@@ -220,7 +220,7 @@ func TestAgentUseCase_DeleteAgentCampaign(t *testing.T) {
 	agentMessageRepo := mocks.NewAgentMessageRepositoryMock(t)
 	agentRelationshipRepo := mocks.NewAgentRelationshipRepositoryMock(t)
 	merchantRepo := mocks.NewMerchantRepositoryMock(t)
-	
+
 	// 創建模擬服務
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
@@ -298,7 +298,7 @@ func TestAgentUseCase_GetAgentCampaigns(t *testing.T) {
 	agentMessageRepo := mocks.NewAgentMessageRepositoryMock(t)
 	agentRelationshipRepo := mocks.NewAgentRelationshipRepositoryMock(t)
 	merchantRepo := mocks.NewMerchantRepositoryMock(t)
-	
+
 	// 創建模擬服務
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
@@ -365,7 +365,7 @@ func TestAgentUseCase_GetAgentMessages(t *testing.T) {
 	agentMessageRepo := mocks.NewAgentMessageRepositoryMock(t)
 	agentRelationshipRepo := mocks.NewAgentRelationshipRepositoryMock(t)
 	merchantRepo := mocks.NewMerchantRepositoryMock(t)
-	
+
 	// 創建模擬服務
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
@@ -444,7 +444,7 @@ func TestAgentUseCase_MarkMessageAsRead(t *testing.T) {
 	agentMessageRepo := mocks.NewAgentMessageRepositoryMock(t)
 	agentRelationshipRepo := mocks.NewAgentRelationshipRepositoryMock(t)
 	merchantRepo := mocks.NewMerchantRepositoryMock(t)
-	
+
 	// 創建模擬服務
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
@@ -490,7 +490,7 @@ func TestAgentUseCase_GetAgentByGlobalID(t *testing.T) {
 	agentMessageRepo := mocks.NewAgentMessageRepositoryMock(t)
 	agentRelationshipRepo := mocks.NewAgentRelationshipRepositoryMock(t)
 	merchantRepo := mocks.NewMerchantRepositoryMock(t)
-	
+
 	// 創建模擬服務
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
@@ -541,7 +541,7 @@ func TestAgentUseCase_GetActiveAgents(t *testing.T) {
 	agentMessageRepo := mocks.NewAgentMessageRepositoryMock(t)
 	agentRelationshipRepo := mocks.NewAgentRelationshipRepositoryMock(t)
 	merchantRepo := mocks.NewMerchantRepositoryMock(t)
-	
+
 	// 創建模擬服務
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
@@ -596,7 +596,7 @@ func TestAgentUseCase_GetAgentCampaign_NotFound(t *testing.T) {
 	agentMessageRepo := mocks.NewAgentMessageRepositoryMock(t)
 	agentRelationshipRepo := mocks.NewAgentRelationshipRepositoryMock(t)
 	merchantRepo := mocks.NewMerchantRepositoryMock(t)
-	
+
 	// 創建模擬服務
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
@@ -645,7 +645,7 @@ func TestAgentUseCase_CreateAgentCampaign_RepositoryError(t *testing.T) {
 	agentMessageRepo := mocks.NewAgentMessageRepositoryMock(t)
 	agentRelationshipRepo := mocks.NewAgentRelationshipRepositoryMock(t)
 	merchantRepo := mocks.NewMerchantRepositoryMock(t)
-	
+
 	// 創建模擬服務
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
