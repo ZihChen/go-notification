@@ -76,6 +76,7 @@ data:
   EVENT_IDENTITY_TAG_SYNC: "tw.jvd.fatidentitycat.tag.sync.v1"
   EVENT_IDENTITY_PLAYER_LEVEL_SYNC: "tw.jvd.fatidentitycat.playerlevel.sync.v"
   EVENT_IDENTITY_PLAYER_TAGS_SYNC: "tw.jvd.fatidentitycat.playertags.sync.v1"
+  EVENT_IDENTITY_AGENT_SYNC: "tw.jvd.fatidentitycat.agent.sync.v1"
 
   # API AUTH 設置
   AUTH_ENABLED: "true"
