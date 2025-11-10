@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/aggregate"
@@ -1057,6 +1058,14 @@ func (m *AgentRepositoryMock) AgentExists(ctx context.Context, agentID uint64) (
 	return args.Bool(0), args.Error(1)
 }
 
+func (m *AgentRepositoryMock) BatchGetAgentsByGlobalIDs(ctx context.Context, globalIDs []string) ([]*entity.Agent, error) {
+	args := m.Called(ctx, globalIDs)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.Agent), args.Error(1)
+}
+
 func (m *AgentRepositoryMock) SetupSuccess() {}
 func (m *AgentRepositoryMock) SetupError()   {}
 func (m *AgentRepositoryMock) SetupEmpty()   {}
@@ -1132,8 +1141,9 @@ func (m *AgentCampaignRepositoryMock) List(
 
 func (m *AgentCampaignRepositoryMock) GetScheduledCampaigns(
 	ctx context.Context,
+	currentTime time.Time,
 ) ([]*entity.AgentCampaign, error) {
-	args := m.Called(ctx)
+	args := m.Called(ctx, currentTime)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

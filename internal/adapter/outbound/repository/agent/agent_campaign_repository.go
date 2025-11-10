@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
@@ -176,11 +177,12 @@ func (r *AgentCampaignRepository) List(
 // GetScheduledCampaigns 獲取待發送的排程活動
 func (r *AgentCampaignRepository) GetScheduledCampaigns(
 	ctx context.Context,
+	currentTime time.Time,
 ) ([]*entity.AgentCampaign, error) {
 	var campaignModels []models.AgentCampaign
 
 	if err := r.db.WithContext(ctx).
-		Where("status = ? AND scheduled_at <= NOW()", "scheduled").
+		Where("status = ? AND scheduled_at <= ?", "scheduled", currentTime).
 		Order("scheduled_at ASC").
 		Find(&campaignModels).Error; err != nil {
 		return nil, fmt.Errorf("get scheduled campaigns failed: %w", err)

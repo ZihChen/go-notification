@@ -439,3 +439,27 @@ func (r *AgentRepository) modelToEntity(model *models.Agent) *entity.Agent {
 
 	return agent
 }
+
+// BatchGetAgentsByGlobalIDs 批量根據全局ID獲取代理
+func (r *AgentRepository) BatchGetAgentsByGlobalIDs(
+	ctx context.Context,
+	globalIDs []string,
+) ([]*entity.Agent, error) {
+	if len(globalIDs) == 0 {
+		return []*entity.Agent{}, nil
+	}
+
+	var agentModels []models.Agent
+	if err := r.db.WithContext(ctx).
+		Where("global_agent_id IN ?", globalIDs).
+		Find(&agentModels).Error; err != nil {
+		return nil, fmt.Errorf("batch get agents by global ids failed: %w", err)
+	}
+
+	agents := make([]*entity.Agent, len(agentModels))
+	for i, model := range agentModels {
+		agents[i] = r.modelToEntity(&model)
+	}
+
+	return agents, nil
+}

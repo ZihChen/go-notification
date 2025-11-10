@@ -280,7 +280,24 @@ func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Log
 	pushNotificationService := providePushNotificationService(cfg, logger)
 	messageUseCase := message2.NewMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
 	messageCampaignTriggerJob := job.NewMessageCampaignTriggerJob(messageUseCase, logger)
-	registry := job.NewRegistry(messageCampaignTriggerJob)
+	agentRepository := repository3.NewAgentRepository(db)
+	agentCampaignRepository := repository3.NewAgentCampaignRepository(db)
+	agentMessageRepository := repository3.NewAgentMessageRepository(db)
+	distributedLockManager := provideDistributedLockManager(redisManager)
+	agentRelationshipRepository := provideAgentRelationshipRepository(db, distributedLockManager)
+	agentService := service.NewAgentService(agentRepository, agentRelationshipRepository, merchantRepository, logger, tracingService)
+	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
+	if err != nil {
+		return nil, err
+	}
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger, tracingService)
+	if err != nil {
+		return nil, err
+	}
+	eventProducer := service.NewEventService(kdsService, logger)
+	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService)
+	agentCampaignTriggerJob := ProvideAgentCampaignTriggerJob(agentUseCase, logger, tracingService, distributedLockManager)
+	registry := job.NewRegistry(messageCampaignTriggerJob, agentCampaignTriggerJob)
 	handler := scheduler.NewSchedulerHandler(logger, redisManager, tracingService, registry)
 	return handler, nil
 }
@@ -334,6 +351,21 @@ func providePushNotificationService(cfg *config.Config, logger infrastructure.Lo
 // TracingService提供者
 func provideTracingService() infrastructure.TracingService {
 	return tracing.NewTracingService()
+}
+
+// ProvideAgentCampaignTriggerJob 提供代理活動觸發器Job
+func ProvideAgentCampaignTriggerJob(
+	agentUseCase inbound.AgentUseCase,
+	logger infrastructure.Logger,
+	tracingService infrastructure.TracingService,
+	distributedLockMgr infrastructure.DistributedLockManager,
+) *job.AgentCampaignTriggerJob {
+	return job.NewAgentCampaignTriggerJob(
+		agentUseCase,
+		logger,
+		tracingService,
+		distributedLockMgr,
+	)
 }
 
 // 提供 worker 服務器

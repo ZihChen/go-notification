@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
@@ -547,27 +548,41 @@ func (m *AgentUseCaseMock) MarkMessageAsRead(
 func (m *AgentUseCaseMock) SendMessageToCampaignTargets(
 	ctx context.Context,
 	campaign *entity.AgentCampaign,
-) error {
+) (targetCount int, sentCount int, err error) {
 	args := m.Called(ctx, campaign)
-	return args.Error(0)
+	return args.Int(0), args.Int(1), args.Error(2)
 }
 
 func (m *AgentUseCaseMock) GetScheduledCampaigns(
 	ctx context.Context,
+	currentTime time.Time,
 ) ([]*entity.AgentCampaign, error) {
-	args := m.Called(ctx)
+	args := m.Called(ctx, currentTime)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]*entity.AgentCampaign), args.Error(1)
 }
 
-func (m *AgentUseCaseMock) FilterActiveAgents(agentIDs []string) []string {
-	args := m.Called(agentIDs)
+func (m *AgentUseCaseMock) FilterActiveAgents(
+	ctx context.Context,
+	globalAgentIDs []string,
+) ([]*entity.Agent, error) {
+	args := m.Called(ctx, globalAgentIDs)
 	if args.Get(0) == nil {
-		return nil
+		return nil, args.Error(1)
 	}
-	return args.Get(0).([]string)
+	return args.Get(0).([]*entity.Agent), args.Error(1)
+}
+
+func (m *AgentUseCaseMock) UpdateCampaignStatus(ctx context.Context, campaignID uint64, status string) error {
+	args := m.Called(ctx, campaignID, status)
+	return args.Error(0)
+}
+
+func (m *AgentUseCaseMock) CompleteCampaign(ctx context.Context, campaignID uint64, targetCount, sentCount int) error {
+	args := m.Called(ctx, campaignID, targetCount, sentCount)
+	return args.Error(0)
 }
 
 func (m *AgentUseCaseMock) SetupSuccess() {}

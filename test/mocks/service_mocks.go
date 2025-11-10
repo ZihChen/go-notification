@@ -312,3 +312,88 @@ func (m *AgentServiceMock) SetupEmpty()   {}
 func (m *AgentServiceMock) Reset() {
 	m.Mock = mock.Mock{}
 }
+
+// DistributedLockManagerMock 統一的 DistributedLockManager Mock
+type DistributedLockManagerMock struct {
+	*BaseMock
+}
+
+var _ infrastructure.DistributedLockManager = (*DistributedLockManagerMock)(nil)
+
+func NewDistributedLockManagerMock(t *testing.T) *DistributedLockManagerMock {
+	return &DistributedLockManagerMock{
+		BaseMock: NewBaseMock(t),
+	}
+}
+
+func (m *DistributedLockManagerMock) GetLock(ctx context.Context, key string) (infrastructure.DistributedMutex, error) {
+	args := m.Called(ctx, key)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(infrastructure.DistributedMutex), args.Error(1)
+}
+
+func (m *DistributedLockManagerMock) GetLockWithOptions(
+	ctx context.Context,
+	key string,
+	options infrastructure.LockOptions,
+) (infrastructure.DistributedMutex, error) {
+	args := m.Called(ctx, key, options)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(infrastructure.DistributedMutex), args.Error(1)
+}
+
+func (m *DistributedLockManagerMock) IsAvailable() bool {
+	args := m.Called()
+	return args.Bool(0)
+}
+
+func (m *DistributedLockManagerMock) SetupSuccess() {}
+func (m *DistributedLockManagerMock) SetupError()   {}
+func (m *DistributedLockManagerMock) SetupEmpty()   {}
+func (m *DistributedLockManagerMock) Reset() {
+	m.Mock = mock.Mock{}
+}
+
+// DistributedMutexMock 統一的 DistributedMutex Mock
+type DistributedMutexMock struct {
+	*BaseMock
+}
+
+var _ infrastructure.DistributedMutex = (*DistributedMutexMock)(nil)
+
+func NewDistributedMutexMock(t *testing.T) *DistributedMutexMock {
+	return &DistributedMutexMock{
+		BaseMock: NewBaseMock(t),
+	}
+}
+
+func (m *DistributedMutexMock) Lock() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
+func (m *DistributedMutexMock) TryLock() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
+func (m *DistributedMutexMock) Unlock() (bool, error) {
+	args := m.Called()
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *DistributedMutexMock) Extend() (bool, error) {
+	args := m.Called()
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *DistributedMutexMock) SetupSuccess() {}
+func (m *DistributedMutexMock) SetupError()   {}
+func (m *DistributedMutexMock) SetupEmpty()   {}
+func (m *DistributedMutexMock) Reset() {
+	m.Mock = mock.Mock{}
+}

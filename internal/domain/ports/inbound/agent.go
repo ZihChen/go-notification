@@ -2,6 +2,7 @@ package inbound
 
 import (
 	"context"
+	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
@@ -46,7 +47,11 @@ type AgentUseCase interface {
 	MarkMessageAsRead(ctx context.Context, messageID uint64, agentID uint64) error
 
 	// 代理訊息發送相關
-	SendMessageToCampaignTargets(ctx context.Context, campaign *entity.AgentCampaign) error
-	GetScheduledCampaigns(ctx context.Context) ([]*entity.AgentCampaign, error)
-	FilterActiveAgents(agentIDs []string) []string
+	SendMessageToCampaignTargets(ctx context.Context, campaign *entity.AgentCampaign) (targetCount int, sentCount int, err error)
+	GetScheduledCampaigns(ctx context.Context, currentTime time.Time) ([]*entity.AgentCampaign, error)
+	FilterActiveAgents(ctx context.Context, globalAgentIDs []string) ([]*entity.Agent, error)
+
+	// 排程相關方法
+	UpdateCampaignStatus(ctx context.Context, campaignID uint64, status string) error
+	CompleteCampaign(ctx context.Context, campaignID uint64, targetCount, sentCount int) error
 }

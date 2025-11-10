@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
@@ -30,6 +31,7 @@ type AgentRepository interface {
 		globalIDs []string,
 		merchantID uint64,
 	) (map[string]uint64, error)
+	BatchGetAgentsByGlobalIDs(ctx context.Context, globalIDs []string) ([]*entity.Agent, error)
 
 	// 關係操作
 	UpsertRelationship(ctx context.Context, rel *entity.AgentRelationship) error
@@ -55,7 +57,7 @@ type AgentCampaignRepository interface {
 
 	// 查詢操作
 	List(ctx context.Context, query *dto.AgentCampaignsQuery) ([]*entity.AgentCampaign, int, error)
-	GetScheduledCampaigns(ctx context.Context) ([]*entity.AgentCampaign, error)
+	GetScheduledCampaigns(ctx context.Context, currentTime time.Time) ([]*entity.AgentCampaign, error)
 }
 
 // AgentMessageRepository 代理站內信倉儲接口

@@ -6,7 +6,9 @@ const (
 	AgentCampaignStatusDraft = "draft"
 	// AgentCampaignStatusScheduled 預約中狀態
 	AgentCampaignStatusScheduled = "scheduled"
-	// AgentCampaignStatusSent 發送中狀態
+	// AgentCampaignStatusSending 發送中狀態
+	AgentCampaignStatusSending = "sending"
+	// AgentCampaignStatusSent 已完成發送狀態
 	AgentCampaignStatusSent = "sent"
 	// AgentCampaignStatusFailed 失敗狀態
 	AgentCampaignStatusFailed = "failed"
@@ -84,6 +86,7 @@ const (
 var AgentCampaignStatuses = []string{
 	AgentCampaignStatusDraft,
 	AgentCampaignStatusScheduled,
+	AgentCampaignStatusSending,
 	AgentCampaignStatusSent,
 	AgentCampaignStatusFailed,
 	AgentCampaignStatusCancelled,

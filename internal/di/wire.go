@@ -53,6 +53,7 @@ type WebComponents struct {
 	AgentHandler *api.AgentHandler
 }
 
+
 var baseSet = wire.NewSet(
 	// 基礎設施層
 	queue.NewQueueService,
@@ -105,6 +106,22 @@ func providePushNotificationService(cfg *config.Config, logger infrastructure.Lo
 // TracingService提供者
 func provideTracingService() infrastructure.TracingService {
 	return tracing.NewTracingService()
+}
+
+
+// ProvideAgentCampaignTriggerJob 提供代理活動觸發器Job
+func ProvideAgentCampaignTriggerJob(
+	agentUseCase inbound.AgentUseCase,
+	logger infrastructure.Logger,
+	tracingService infrastructure.TracingService,
+	distributedLockMgr infrastructure.DistributedLockManager,
+) *job.AgentCampaignTriggerJob {
+	return job.NewAgentCampaignTriggerJob(
+		agentUseCase,
+		logger,
+		tracingService,
+		distributedLockMgr,
+	)
 }
 
 // InitializeWebServer 初始化 Web 服務的 HTTP 處理器
@@ -219,12 +236,15 @@ func provideRedisClient(manager *redisCache.Manager) (*redis.Client, error) {
 func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Logger, redisManager *redisCache.Manager, db *gorm.DB) (*scheduler.Handler, error) {
 	wire.Build(
 		baseSet,
+		kds.NewKDSService,
 		job.NewMessageCampaignTriggerJob,
+		ProvideAgentCampaignTriggerJob,
 		job.NewRegistry,
 		scheduler.NewSchedulerHandler,
 	)
 	return nil, nil
 }
+
 
 // LegacyDB 是舊系統資料庫連接的類型
 type LegacyDB struct {
