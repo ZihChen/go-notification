@@ -366,7 +366,11 @@ func (r *AgentRepository) ProcessAgentsByRelationshipInBatches(
 				Select("child_id").
 				Where("parent_id IN ?", batchIDs).
 				Find(&relationships).Error; err != nil {
-				return totalProcessed, fmt.Errorf("query relationships at depth %d failed: %w", depth, err)
+				return totalProcessed, fmt.Errorf(
+					"query relationships at depth %d failed: %w",
+					depth,
+					err,
+				)
 			}
 
 			// 收集這批的子代理

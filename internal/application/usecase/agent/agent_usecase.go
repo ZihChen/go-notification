@@ -594,7 +594,10 @@ func (u *AgentUseCase) SendMessageToCampaignTargets(
 }
 
 // GetScheduledCampaigns 獲取到期的排程活動
-func (u *AgentUseCase) GetScheduledCampaigns(ctx context.Context, currentTime time.Time) ([]*entity.AgentCampaign, error) {
+func (u *AgentUseCase) GetScheduledCampaigns(
+	ctx context.Context,
+	currentTime time.Time,
+) ([]*entity.AgentCampaign, error) {
 	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.GetScheduledCampaigns")
 	defer u.tracingService.SpanEnd(span)
 
@@ -613,7 +616,10 @@ func (u *AgentUseCase) GetScheduledCampaigns(ctx context.Context, currentTime ti
 
 // FilterActiveAgents 篩選活躍代理（已弃用，保留作為補用函式）
 // 新的實作使用 BatchGetActiveAgentsByGlobalIDs 更高效
-func (u *AgentUseCase) FilterActiveAgents(ctx context.Context, globalAgentIDs []string) ([]*entity.Agent, error) {
+func (u *AgentUseCase) FilterActiveAgents(
+	ctx context.Context,
+	globalAgentIDs []string,
+) ([]*entity.Agent, error) {
 	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.FilterActiveAgents")
 	defer u.tracingService.SpanEnd(span)
 
@@ -638,7 +644,11 @@ func (u *AgentUseCase) FilterActiveAgents(ctx context.Context, globalAgentIDs []
 }
 
 // UpdateCampaignStatus 更新活動狀態
-func (u *AgentUseCase) UpdateCampaignStatus(ctx context.Context, campaignID uint64, status string) error {
+func (u *AgentUseCase) UpdateCampaignStatus(
+	ctx context.Context,
+	campaignID uint64,
+	status string,
+) error {
 	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.UpdateCampaignStatus")
 	defer u.tracingService.SpanEnd(span)
 
@@ -660,7 +670,11 @@ func (u *AgentUseCase) UpdateCampaignStatus(ctx context.Context, campaignID uint
 }
 
 // CompleteCampaign 完成活動並更新統計
-func (u *AgentUseCase) CompleteCampaign(ctx context.Context, campaignID uint64, targetCount, sentCount int) error {
+func (u *AgentUseCase) CompleteCampaign(
+	ctx context.Context,
+	campaignID uint64,
+	targetCount, sentCount int,
+) error {
 	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.CompleteCampaign")
 	defer u.tracingService.SpanEnd(span)
 
@@ -686,11 +700,17 @@ func (u *AgentUseCase) CompleteCampaign(ctx context.Context, campaignID uint64, 
 
 // resolveLineAgents 解析代理線下的所有代理（使用直接資料庫查詢）
 // parentGlobalID: 最上層父代理的全局ID
-func (u *AgentUseCase) resolveLineAgents(ctx context.Context, parentGlobalID string) ([]uint64, error) {
+func (u *AgentUseCase) resolveLineAgents(
+	ctx context.Context,
+	parentGlobalID string,
+) ([]uint64, error) {
 	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.resolveLineAgents")
 	defer u.tracingService.SpanEnd(span)
 
-	u.tracingService.RecordSpanAttributes(span, attribute.String("parent_global_id", parentGlobalID))
+	u.tracingService.RecordSpanAttributes(
+		span,
+		attribute.String("parent_global_id", parentGlobalID),
+	)
 
 	// 獲取父代理的數值ID
 	parentAgent, err := u.agentRepo.GetByGlobalID(ctx, parentGlobalID)
@@ -729,7 +749,11 @@ func (u *AgentUseCase) resolveLineAgents(ctx context.Context, parentGlobalID str
 }
 
 // createMessagesForAgents 為代理批量創建訊息
-func (u *AgentUseCase) createMessagesForAgents(ctx context.Context, campaign *entity.AgentCampaign, agents []*entity.Agent) (int, error) {
+func (u *AgentUseCase) createMessagesForAgents(
+	ctx context.Context,
+	campaign *entity.AgentCampaign,
+	agents []*entity.Agent,
+) (int, error) {
 	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.createMessagesForAgents")
 	defer u.tracingService.SpanEnd(span)
 
@@ -817,7 +841,13 @@ func (u *AgentUseCase) processBatchAgentsForAll(
 	// 分批處理活躍代理
 	for {
 		// 獲取一批活躍代理
-		activeAgents, err := u.agentRepo.FindActiveAgents(ctx, campaign.MerchantID, oneMonthAgo, limit, offset)
+		activeAgents, err := u.agentRepo.FindActiveAgents(
+			ctx,
+			campaign.MerchantID,
+			oneMonthAgo,
+			limit,
+			offset,
+		)
 		if err != nil {
 			u.tracingService.RecordSpanError(span, err)
 			return totalTargetCount, totalSentCount, fmt.Errorf("find active agents batch: %w", err)
@@ -1002,14 +1032,17 @@ func (u *AgentUseCase) processBatchAgentsForLine(
 
 	// 使用 repository 層面的分頁處理
 	totalProcessed, err := u.agentRepo.ProcessAgentsByRelationshipInBatches(
-		ctx, 
+		ctx,
 		parentAgent.GlobalAgentID,
 		batchSize,
 		processor,
 	)
 	if err != nil {
 		u.tracingService.RecordSpanError(span, err)
-		return totalTargetCount, totalSentCount, fmt.Errorf("process agents by relationship in batches: %w", err)
+		return totalTargetCount, totalSentCount, fmt.Errorf(
+			"process agents by relationship in batches: %w",
+			err,
+		)
 	}
 
 	u.tracingService.TraceEvent(span, "Repository-level line agents batch processing completed",

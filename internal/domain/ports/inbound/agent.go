@@ -47,8 +47,14 @@ type AgentUseCase interface {
 	MarkMessageAsRead(ctx context.Context, messageID uint64, agentID uint64) error
 
 	// 代理訊息發送相關
-	SendMessageToCampaignTargets(ctx context.Context, campaign *entity.AgentCampaign) (targetCount int, sentCount int, err error)
-	GetScheduledCampaigns(ctx context.Context, currentTime time.Time) ([]*entity.AgentCampaign, error)
+	SendMessageToCampaignTargets(
+		ctx context.Context,
+		campaign *entity.AgentCampaign,
+	) (targetCount int, sentCount int, err error)
+	GetScheduledCampaigns(
+		ctx context.Context,
+		currentTime time.Time,
+	) ([]*entity.AgentCampaign, error)
 	FilterActiveAgents(ctx context.Context, globalAgentIDs []string) ([]*entity.Agent, error)
 
 	// 排程相關方法

@@ -174,15 +174,15 @@ type AgentCampaignResponse struct {
 // AgentCampaignsQuery 代理訊息活動查詢參數 DTO
 type AgentCampaignsQuery struct {
 	GlobalMerchantID string   `json:"global_merchant_id" swaggerignore:"true"` // 商户全局ID，由中间件自动设置
-	Page             int      `form:"page"  json:"page"`
-	PageSize         int      `form:"page_size"  json:"page_size"`
-	Limit            int      `form:"limit"  json:"limit"`
-	Offset           int      `form:"offset"  json:"offset"`
-	MerchantID       uint64   `form:"merchant_id"  json:"merchant_id"`
-	Status           []string `form:"status"  json:"status"` // 支援多選狀態篩選
-	CreatedBy        string   `form:"created_by"  json:"created_by"`
-	StartAt          string   `form:"start_at"  json:"start_at"` // 創建時間區間開始
-	EndAt            string   `form:"end_at"  json:"end_at"`     // 創建時間區間結束
+	Page             int      `json:"page"                                    form:"page"`
+	PageSize         int      `json:"page_size"                               form:"page_size"`
+	Limit            int      `json:"limit"                                   form:"limit"`
+	Offset           int      `json:"offset"                                  form:"offset"`
+	MerchantID       uint64   `json:"merchant_id"                             form:"merchant_id"`
+	Status           []string `json:"status"                                  form:"status"` // 支援多選狀態篩選
+	CreatedBy        string   `json:"created_by"                              form:"created_by"`
+	StartAt          string   `json:"start_at"                                form:"start_at"` // 創建時間區間開始
+	EndAt            string   `json:"end_at"                                  form:"end_at"`   // 創建時間區間結束
 }
 
 // AgentCampaignListResponse 代理訊息活動列表回應 DTO

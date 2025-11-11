@@ -103,7 +103,10 @@ func (j *AgentCampaignTriggerJob) processCampaignsConcurrently(
 	ctx context.Context,
 	campaigns []*entity.AgentCampaign,
 ) error {
-	ctx, span := j.tracingService.StartSpan(ctx, "AgentCampaignTriggerJob.processCampaignsConcurrently")
+	ctx, span := j.tracingService.StartSpan(
+		ctx,
+		"AgentCampaignTriggerJob.processCampaignsConcurrently",
+	)
 	defer j.tracingService.SpanEnd(span)
 
 	j.tracingService.RecordSpanAttributes(span, attribute.Int("campaigns_count", len(campaigns)))
