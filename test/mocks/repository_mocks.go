@@ -1066,6 +1066,31 @@ func (m *AgentRepositoryMock) BatchGetAgentsByGlobalIDs(ctx context.Context, glo
 	return args.Get(0).([]*entity.Agent), args.Error(1)
 }
 
+func (m *AgentRepositoryMock) FindActiveAgents(
+	ctx context.Context,
+	merchantID uint64,
+	activeThreshold time.Time,
+	limit, offset int,
+) ([]*entity.Agent, error) {
+	args := m.Called(ctx, merchantID, activeThreshold, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.Agent), args.Error(1)
+}
+
+func (m *AgentRepositoryMock) BatchGetActiveAgentsByGlobalIDs(
+	ctx context.Context,
+	globalIDs []string,
+	activeThreshold time.Time,
+) ([]*entity.Agent, error) {
+	args := m.Called(ctx, globalIDs, activeThreshold)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.Agent), args.Error(1)
+}
+
 func (m *AgentRepositoryMock) SetupSuccess() {}
 func (m *AgentRepositoryMock) SetupError()   {}
 func (m *AgentRepositoryMock) SetupEmpty()   {}

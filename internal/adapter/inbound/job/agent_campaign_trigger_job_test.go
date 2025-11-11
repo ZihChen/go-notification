@@ -26,7 +26,7 @@ func TestAgentCampaignTriggerJob_Execute(t *testing.T) {
 			setupMocks: func(mocks *AgentJobMocks) {
 				// Mock tracing service
 				mocks.tracingService.SetupSuccess()
-				
+
 				// Mock GetScheduledCampaigns
 				campaigns := []*entity.AgentCampaign{
 					{
@@ -41,10 +41,6 @@ func TestAgentCampaignTriggerJob_Execute(t *testing.T) {
 				}
 				mocks.agentUseCase.On("GetScheduledCampaigns", mock.Anything, mock.AnythingOfType("time.Time")).
 					Return(campaigns, nil)
-
-				// Mock UpdateCampaignStatus to sending
-				mocks.agentUseCase.On("UpdateCampaignStatus", mock.Anything, uint64(1), consts.AgentCampaignStatusSending).
-					Return(nil)
 
 				// Mock SendMessageToCampaignTargets
 				mocks.agentUseCase.On("SendMessageToCampaignTargets", mock.Anything, campaigns[0]).
@@ -67,7 +63,7 @@ func TestAgentCampaignTriggerJob_Execute(t *testing.T) {
 			setupMocks: func(mocks *AgentJobMocks) {
 				// Mock tracing service
 				mocks.tracingService.SetupSuccess()
-				
+
 				mocks.agentUseCase.On("GetScheduledCampaigns", mock.Anything, mock.AnythingOfType("time.Time")).
 					Return([]*entity.AgentCampaign{}, nil)
 
@@ -84,7 +80,7 @@ func TestAgentCampaignTriggerJob_Execute(t *testing.T) {
 			setupMocks: func(mocks *AgentJobMocks) {
 				// Mock tracing service
 				mocks.tracingService.SetupSuccess()
-				
+
 				mocks.agentUseCase.On("GetScheduledCampaigns", mock.Anything, mock.AnythingOfType("time.Time")).
 					Return(nil, errors.New("database error"))
 
@@ -102,7 +98,7 @@ func TestAgentCampaignTriggerJob_Execute(t *testing.T) {
 			setupMocks: func(mocks *AgentJobMocks) {
 				// Mock tracing service
 				mocks.tracingService.SetupSuccess()
-				
+
 				mocks.distributedLockMgr.On("GetLockWithOptions", mock.Anything, "job:agent_campaigns:trigger", mock.Anything).
 					Return(mocks.mutex, nil)
 				mocks.mutex.On("TryLock").Return(errors.New("lock already acquired")) // 鎖已被占用
@@ -114,7 +110,7 @@ func TestAgentCampaignTriggerJob_Execute(t *testing.T) {
 			setupMocks: func(mocks *AgentJobMocks) {
 				// Mock tracing service
 				mocks.tracingService.SetupSuccess()
-				
+
 				campaigns := []*entity.AgentCampaign{
 					{
 						ID:          1,
@@ -128,10 +124,6 @@ func TestAgentCampaignTriggerJob_Execute(t *testing.T) {
 				}
 				mocks.agentUseCase.On("GetScheduledCampaigns", mock.Anything, mock.AnythingOfType("time.Time")).
 					Return(campaigns, nil)
-
-				// Mock UpdateCampaignStatus to sending
-				mocks.agentUseCase.On("UpdateCampaignStatus", mock.Anything, uint64(1), consts.AgentCampaignStatusSending).
-					Return(nil)
 
 				// Mock SendMessageToCampaignTargets failure
 				mocks.agentUseCase.On("SendMessageToCampaignTargets", mock.Anything, campaigns[0]).

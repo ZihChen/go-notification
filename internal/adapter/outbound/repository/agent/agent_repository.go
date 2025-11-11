@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
@@ -137,6 +138,30 @@ func (r *AgentRepository) FindAgents(
 	query := r.db.WithContext(ctx).Where("merchant_id = ?", merchantID)
 	if err := query.Limit(limit).Offset(offset).Find(&agentModels).Error; err != nil {
 		return nil, fmt.Errorf("find agents failed: %w", err)
+	}
+
+	agents := make([]*entity.Agent, len(agentModels))
+	for i, model := range agentModels {
+		agents[i] = r.modelToEntity(&model)
+	}
+
+	return agents, nil
+}
+
+// FindActiveAgents 查詢活躍代理列表（指定時間闾值之後登入的代理）
+func (r *AgentRepository) FindActiveAgents(
+	ctx context.Context,
+	merchantID uint64,
+	activeThreshold time.Time,
+	limit, offset int,
+) ([]*entity.Agent, error) {
+	var agentModels []models.Agent
+
+	query := r.db.WithContext(ctx).
+		Where("merchant_id = ? AND current_sign_in_at IS NOT NULL AND current_sign_in_at > ?",
+			merchantID, activeThreshold)
+	if err := query.Limit(limit).Offset(offset).Find(&agentModels).Error; err != nil {
+		return nil, fmt.Errorf("find active agents failed: %w", err)
 	}
 
 	agents := make([]*entity.Agent, len(agentModels))
@@ -449,6 +474,32 @@ func (r *AgentRepository) BatchGetAgentsByGlobalIDs(
 		Where("global_agent_id IN ?", globalIDs).
 		Find(&agentModels).Error; err != nil {
 		return nil, fmt.Errorf("batch get agents by global ids failed: %w", err)
+	}
+
+	agents := make([]*entity.Agent, len(agentModels))
+	for i, model := range agentModels {
+		agents[i] = r.modelToEntity(&model)
+	}
+
+	return agents, nil
+}
+
+// BatchGetActiveAgentsByGlobalIDs 批量根據全局ID獲取活躍代理
+func (r *AgentRepository) BatchGetActiveAgentsByGlobalIDs(
+	ctx context.Context,
+	globalIDs []string,
+	activeThreshold time.Time,
+) ([]*entity.Agent, error) {
+	if len(globalIDs) == 0 {
+		return []*entity.Agent{}, nil
+	}
+
+	var agentModels []models.Agent
+	if err := r.db.WithContext(ctx).
+		Where("global_agent_id IN ? AND current_sign_in_at IS NOT NULL AND current_sign_in_at > ?",
+			globalIDs, activeThreshold).
+		Find(&agentModels).Error; err != nil {
+		return nil, fmt.Errorf("batch get active agents by global ids failed: %w", err)
 	}
 
 	agents := make([]*entity.Agent, len(agentModels))
