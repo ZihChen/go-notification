@@ -413,15 +413,15 @@ func (r *AgentRepository) ProcessAgentsByRelationshipInBatches(
 func (r *AgentRepository) QueryAgentAncestorsByRelationship(
 	ctx context.Context,
 	childAgentID string,
-) ([]string, error) {
+) ([]uint64, error) {
 	// 首先獲取子代理的數值ID
 	var childAgent models.Agent
 	if err := r.db.WithContext(ctx).
 		Select("id").
 		Where("global_agent_id = ?", childAgentID).
 		First(&childAgent).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return []string{}, nil
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return []uint64{}, nil
 		}
 		return nil, fmt.Errorf("get child agent failed: %w", err)
 	}
@@ -435,7 +435,7 @@ func (r *AgentRepository) QueryAgentAncestorsByRelationship(
 	}
 
 	if len(relationships) == 0 {
-		return []string{}, nil
+		return []uint64{}, nil
 	}
 
 	// 獲取祖先代理的全局ID
@@ -446,15 +446,15 @@ func (r *AgentRepository) QueryAgentAncestorsByRelationship(
 
 	var ancestorAgents []models.Agent
 	if err := r.db.WithContext(ctx).
-		Select("global_agent_id").
+		Select("id").
 		Where("id IN ?", ancestorIDs).
 		Find(&ancestorAgents).Error; err != nil {
 		return nil, fmt.Errorf("get ancestor agents failed: %w", err)
 	}
 
-	result := make([]string, len(ancestorAgents))
+	result := make([]uint64, len(ancestorAgents))
 	for i, agent := range ancestorAgents {
-		result[i] = agent.GlobalAgentID
+		result[i] = agent.ID
 	}
 
 	return result, nil

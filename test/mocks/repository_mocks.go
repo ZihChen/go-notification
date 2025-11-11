@@ -1066,12 +1066,12 @@ func (m *AgentRepositoryMock) ProcessAgentsByRelationshipInBatches(
 func (m *AgentRepositoryMock) QueryAgentAncestorsByRelationship(
 	ctx context.Context,
 	childAgentID string,
-) ([]string, error) {
+) ([]uint64, error) {
 	args := m.Called(ctx, childAgentID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]string), args.Error(1)
+	return args.Get(0).([]uint64), args.Error(1)
 }
 
 func (m *AgentRepositoryMock) AgentExists(ctx context.Context, agentID uint64) (bool, error) {

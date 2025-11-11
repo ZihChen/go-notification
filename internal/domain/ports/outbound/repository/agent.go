@@ -57,7 +57,7 @@ type AgentRepository interface {
 		batchSize int,
 		processor func(ctx context.Context, agentIDs []uint64) (processedCount int, err error),
 	) (totalProcessed int, err error)
-	QueryAgentAncestorsByRelationship(ctx context.Context, childAgentID string) ([]string, error)
+	QueryAgentAncestorsByRelationship(ctx context.Context, childAgentID string) ([]uint64, error)
 
 	// 存在性檢查
 	AgentExists(ctx context.Context, agentID uint64) (bool, error)

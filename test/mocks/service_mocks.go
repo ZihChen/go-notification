@@ -245,23 +245,23 @@ func (m *AgentServiceMock) SyncAgentRelationshipsUpsert(
 func (m *AgentServiceMock) GetAgentLineDescendants(
 	ctx context.Context,
 	globalAgentID string,
-) ([]string, error) {
+) ([]uint64, error) {
 	args := m.Called(ctx, globalAgentID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]string), args.Error(1)
+	return args.Get(0).([]uint64), args.Error(1)
 }
 
 func (m *AgentServiceMock) GetAgentLineAncestors(
 	ctx context.Context,
 	globalAgentID string,
-) ([]string, error) {
+) ([]uint64, error) {
 	args := m.Called(ctx, globalAgentID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]string), args.Error(1)
+	return args.Get(0).([]uint64), args.Error(1)
 }
 
 func (m *AgentServiceMock) GetAgentHierarchy(

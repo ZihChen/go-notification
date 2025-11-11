@@ -23,7 +23,7 @@ type AgentService struct {
 	merchantRepo   repository.MerchantRepository
 	logger         infrastructure.Logger
 	tracingService infrastructure.TracingService
-	cache          map[string][]string // 簡單的記憶體快取
+	cache          map[string][]uint64 // 簡單的記憶體快取
 	cacheMutex     sync.RWMutex
 }
 
@@ -41,7 +41,7 @@ func NewAgentService(
 		merchantRepo:   merchantRepo,
 		logger:         logger,
 		tracingService: tracingService,
-		cache:          make(map[string][]string),
+		cache:          make(map[string][]uint64),
 		cacheMutex:     sync.RWMutex{},
 	}
 }
@@ -157,7 +157,7 @@ func (s *AgentService) SyncAgentRelationshipsUpsert(
 func (s *AgentService) GetAgentLineDescendants(
 	ctx context.Context,
 	globalAgentID string,
-) ([]string, error) {
+) ([]uint64, error) {
 	ctx, span := s.tracingService.StartSpan(ctx, "AgentService.GetAgentLineDescendants")
 	defer s.tracingService.SpanEnd(span)
 
@@ -172,22 +172,18 @@ func (s *AgentService) GetAgentLineDescendants(
 		return cached, nil
 	}
 
-	//// 2. 查詢邏輯 (領域專業邏輯)
-	//// 使用Repository的查詢方法
-	//descendants, err := s.agentRepo.QueryAgentsByRelationship(ctx, globalAgentID)
-	//if err != nil {
-	//	s.tracingService.RecordSpanError(span, err)
-	//	return nil, fmt.Errorf("query descendants: %w", err)
-	//}
-	//
-	//// 3. 驗證與過濾 (領域規則)
-	//validDescendants := s.ValidateAndFilterAgents(descendants)
-	//
-	//// 4. 快取結果
-	//s.setCache(cacheKey, validDescendants)
-	//
-	//s.tracingService.TraceEvent(span, "Agent line descendants retrieved",
-	//	attribute.Int("descendants_count", len(validDescendants)))
+	// 使用Repository查詢
+	descendants, err := s.agentRepo.QueryAgentsByRelationship(ctx, globalAgentID)
+	if err != nil {
+		s.tracingService.RecordSpanError(span, err)
+		return nil, fmt.Errorf("query descendants: %w", err)
+	}
+
+	// 快取結果
+	s.setCache(cacheKey, descendants)
+
+	s.tracingService.TraceEvent(span, "Agent line descendants retrieved",
+		attribute.Int("descendants_count", len(descendants)))
 
 	return nil, nil
 }
@@ -196,7 +192,7 @@ func (s *AgentService) GetAgentLineDescendants(
 func (s *AgentService) GetAgentLineAncestors(
 	ctx context.Context,
 	globalAgentID string,
-) ([]string, error) {
+) ([]uint64, error) {
 	ctx, span := s.tracingService.StartSpan(ctx, "AgentService.GetAgentLineAncestors")
 	defer s.tracingService.SpanEnd(span)
 
@@ -216,16 +212,13 @@ func (s *AgentService) GetAgentLineAncestors(
 		return nil, fmt.Errorf("query ancestors: %w", err)
 	}
 
-	// 驗證與過濾
-	validAncestors := s.ValidateAndFilterAgents(ancestors)
-
 	// 快取結果
-	s.setCache(cacheKey, validAncestors)
+	s.setCache(cacheKey, ancestors)
 
 	s.tracingService.TraceEvent(span, "Agent ancestors retrieved",
-		attribute.Int("ancestors_count", len(validAncestors)))
+		attribute.Int("ancestors_count", len(ancestors)))
 
-	return validAncestors, nil
+	return ancestors, nil
 }
 
 // GetAgentHierarchy 完整代理層級查詢 (Service職責：並發優化)
@@ -239,7 +232,7 @@ func (s *AgentService) GetAgentHierarchy(
 	s.tracingService.RecordSpanAttributes(span, attribute.String("agent.global_id", globalAgentID))
 
 	// Service職責：複雜的並發邏輯與效能優化
-	var ancestors, descendants []string
+	var ancestors, descendants []uint64
 	var err1, err2 error
 
 	done := make(chan struct{}, 2)
@@ -352,13 +345,13 @@ func (s *AgentService) ExtractAccountFromGlobalID(globalID string) string {
 }
 
 // 快取相關方法
-func (s *AgentService) getFromCache(key string) []string {
+func (s *AgentService) getFromCache(key string) []uint64 {
 	s.cacheMutex.RLock()
 	defer s.cacheMutex.RUnlock()
 	return s.cache[key]
 }
 
-func (s *AgentService) setCache(key string, value []string) {
+func (s *AgentService) setCache(key string, value []uint64) {
 	s.cacheMutex.Lock()
 	defer s.cacheMutex.Unlock()
 	s.cache[key] = value
