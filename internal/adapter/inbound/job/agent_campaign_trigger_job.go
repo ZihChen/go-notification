@@ -57,8 +57,8 @@ func (j *AgentCampaignTriggerJob) Execute(ctx context.Context) error {
 	// 1. 獲取分佈式鎖確保單實例執行
 	lockKey := "job:agent_campaigns:trigger"
 	mutex, err := j.distributedLockMgr.GetLockWithOptions(ctx, lockKey, infrastructure.LockOptions{
-		Expiry:     5 * time.Minute, // 5分鐘鎖過期
-		Tries:      1,               // 不重試，避免重複執行
+		Expiry:     5 * time.Second,
+		Tries:      1, // 不重試，避免重複執行
 		RetryDelay: 0,
 	})
 	if err != nil {

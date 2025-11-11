@@ -172,24 +172,24 @@ func (s *AgentService) GetAgentLineDescendants(
 		return cached, nil
 	}
 
-	// 2. 查詢邏輯 (領域專業邏輯)
-	// 使用Repository的查詢方法
-	descendants, err := s.agentRepo.QueryAgentsByRelationship(ctx, globalAgentID)
-	if err != nil {
-		s.tracingService.RecordSpanError(span, err)
-		return nil, fmt.Errorf("query descendants: %w", err)
-	}
+	//// 2. 查詢邏輯 (領域專業邏輯)
+	//// 使用Repository的查詢方法
+	//descendants, err := s.agentRepo.QueryAgentsByRelationship(ctx, globalAgentID)
+	//if err != nil {
+	//	s.tracingService.RecordSpanError(span, err)
+	//	return nil, fmt.Errorf("query descendants: %w", err)
+	//}
+	//
+	//// 3. 驗證與過濾 (領域規則)
+	//validDescendants := s.ValidateAndFilterAgents(descendants)
+	//
+	//// 4. 快取結果
+	//s.setCache(cacheKey, validDescendants)
+	//
+	//s.tracingService.TraceEvent(span, "Agent line descendants retrieved",
+	//	attribute.Int("descendants_count", len(validDescendants)))
 
-	// 3. 驗證與過濾 (領域規則)
-	validDescendants := s.ValidateAndFilterAgents(descendants)
-
-	// 4. 快取結果
-	s.setCache(cacheKey, validDescendants)
-
-	s.tracingService.TraceEvent(span, "Agent line descendants retrieved",
-		attribute.Int("descendants_count", len(validDescendants)))
-
-	return validDescendants, nil
+	return nil, nil
 }
 
 // GetAgentLineAncestors 代理祖先查詢邏輯

@@ -14,6 +14,7 @@ type AgentRepository interface {
 	Create(ctx context.Context, agent *entity.Agent) (*entity.Agent, error)
 	GetByID(ctx context.Context, id uint64) (*entity.Agent, error)
 	GetByGlobalID(ctx context.Context, globalAgentID string) (*entity.Agent, error)
+	GetByAccount(ctx context.Context, account string) (*entity.Agent, error)
 	Update(ctx context.Context, agent *entity.Agent) error
 	Delete(ctx context.Context, id uint64) error
 
@@ -33,11 +34,14 @@ type AgentRepository interface {
 		merchantID uint64,
 	) (map[string]uint64, error)
 	BatchGetAgentsByGlobalIDs(ctx context.Context, globalIDs []string) ([]*entity.Agent, error)
+	BatchGetAgentsByIDs(ctx context.Context, agentIDs []uint64) ([]*entity.Agent, error)
+	BatchGetAgentsByAccounts(ctx context.Context, accounts []string) ([]*entity.Agent, error)
 	BatchGetActiveAgentsByGlobalIDs(ctx context.Context, globalIDs []string, activeThreshold time.Time) ([]*entity.Agent, error)
+	BatchConvertGlobalIDsToAccounts(ctx context.Context, globalIDs []string) ([]string, error)
 
 	// 關係操作
 	UpsertRelationship(ctx context.Context, rel *entity.AgentRelationship) error
-	QueryAgentsByRelationship(ctx context.Context, parentAgentID string) ([]string, error)
+	QueryAgentsByRelationship(ctx context.Context, parentAgentID string) ([]uint64, error)
 	QueryAgentAncestorsByRelationship(ctx context.Context, childAgentID string) ([]string, error)
 
 	// 存在性檢查

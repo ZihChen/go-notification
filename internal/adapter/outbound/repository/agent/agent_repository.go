@@ -148,6 +148,18 @@ func (r *AgentRepository) FindAgents(
 	return agents, nil
 }
 
+func (r *AgentRepository) GetByAccount(ctx context.Context, account string) (*entity.Agent, error) {
+	var agentModel models.Agent
+	if err := r.db.WithContext(ctx).Where("account = ?", account).First(&agentModel).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get agent by gaccount failed: %w", err)
+	}
+
+	return r.modelToEntity(&agentModel), nil
+}
+
 // FindActiveAgents 查詢活躍代理列表（指定時間闾值之後登入的代理）
 func (r *AgentRepository) FindActiveAgents(
 	ctx context.Context,
@@ -244,7 +256,7 @@ func (r *AgentRepository) UpsertRelationship(
 func (r *AgentRepository) QueryAgentsByRelationship(
 	ctx context.Context,
 	parentAgentID string,
-) ([]string, error) {
+) ([]uint64, error) {
 	// 首先獲取父代理的數值ID
 	var parentAgent models.Agent
 	if err := r.db.WithContext(ctx).
@@ -252,38 +264,55 @@ func (r *AgentRepository) QueryAgentsByRelationship(
 		Where("global_agent_id = ?", parentAgentID).
 		First(&parentAgent).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return []string{}, nil
+			return []uint64{}, nil
 		}
 		return nil, fmt.Errorf("get parent agent failed: %w", err)
 	}
 
-	// 使用 WITH RECURSIVE 遞歸查詢所有層級的子代理
-	query := `
-		WITH RECURSIVE agent_descendants AS (
-			-- 基礎查詢：直接子代理
-			SELECT ar.child_id, ar.depth_level
-			FROM agent_relationships ar
-			WHERE ar.parent_id = ?
-			
-			UNION ALL
-			
-			-- 遞歸查詢：子代理的子代理
-			SELECT ar.child_id, ar.depth_level
-			FROM agent_relationships ar
-			INNER JOIN agent_descendants ad ON ar.parent_id = ad.child_id
-		)
-		SELECT DISTINCT a.global_agent_id
-		FROM agent_descendants ad
-		INNER JOIN agents a ON ad.child_id = a.id
-		ORDER BY a.global_agent_id
-	`
+	// 使用迭代方式實現遞歸查詢，避免 WITH RECURSIVE 兼容性問題
+	// 這個方案雖然不是單一SQL，但在大多數情況下性能仍然可接受
+	var allChildIDs []uint64
+	processedIDs := make(map[uint64]bool)
+	currentLevelIDs := []uint64{parentAgent.ID}
 
-	var globalAgentIDs []string
-	if err := r.db.WithContext(ctx).Raw(query, parentAgent.ID).Scan(&globalAgentIDs).Error; err != nil {
-		return nil, fmt.Errorf("recursive query descendants failed: %w", err)
+	// 限制最大深度避免無限循環，並批量處理提升性能
+	maxDepth := 100
+	batchSize := 1000
+
+	for depth := 0; depth < maxDepth && len(currentLevelIDs) > 0; depth++ {
+		var nextLevelIDs []uint64
+
+		// 分批處理當前層級的代理，避免IN語句過大
+		for i := 0; i < len(currentLevelIDs); i += batchSize {
+			end := i + batchSize
+			if end > len(currentLevelIDs) {
+				end = len(currentLevelIDs)
+			}
+			batchIDs := currentLevelIDs[i:end]
+
+			var relationships []models.AgentRelationship
+			if err := r.db.WithContext(ctx).
+				Select("child_id").
+				Where("parent_id IN ?", batchIDs).
+				Find(&relationships).Error; err != nil {
+				return nil, fmt.Errorf("query relationships at depth %d failed: %w", depth, err)
+			}
+
+			// 收集下一層級的ID
+			for _, rel := range relationships {
+				if !processedIDs[rel.ChildID] {
+					nextLevelIDs = append(nextLevelIDs, rel.ChildID)
+					allChildIDs = append(allChildIDs, rel.ChildID)
+					processedIDs[rel.ChildID] = true
+				}
+			}
+		}
+
+		currentLevelIDs = nextLevelIDs
 	}
 
-	return globalAgentIDs, nil
+	// 直接返回所有子代理的ID列表
+	return allChildIDs, nil
 }
 
 // QueryAgentAncestorsByRelationship 根據關係查詢祖先代理 (legacy 支援)
@@ -482,6 +511,79 @@ func (r *AgentRepository) BatchGetAgentsByGlobalIDs(
 	}
 
 	return agents, nil
+}
+
+// BatchGetAgentsByIDs 批量根據數值ID獲取代理
+func (r *AgentRepository) BatchGetAgentsByIDs(
+	ctx context.Context,
+	agentIDs []uint64,
+) ([]*entity.Agent, error) {
+	if len(agentIDs) == 0 {
+		return []*entity.Agent{}, nil
+	}
+
+	var agentModels []models.Agent
+	if err := r.db.WithContext(ctx).
+		Where("id IN ?", agentIDs).
+		Find(&agentModels).Error; err != nil {
+		return nil, fmt.Errorf("batch get agents by IDs failed: %w", err)
+	}
+
+	agents := make([]*entity.Agent, len(agentModels))
+	for i, model := range agentModels {
+		agents[i] = r.modelToEntity(&model)
+	}
+
+	return agents, nil
+}
+
+// BatchGetAgentsByAccounts 批量根據賬號獲取代理
+func (r *AgentRepository) BatchGetAgentsByAccounts(
+	ctx context.Context,
+	accounts []string,
+) ([]*entity.Agent, error) {
+	if len(accounts) == 0 {
+		return []*entity.Agent{}, nil
+	}
+
+	var agentModels []models.Agent
+	if err := r.db.WithContext(ctx).
+		Where("account IN ?", accounts).
+		Find(&agentModels).Error; err != nil {
+		return nil, fmt.Errorf("batch get agents by accounts failed: %w", err)
+	}
+
+	agents := make([]*entity.Agent, len(agentModels))
+	for i, model := range agentModels {
+		agents[i] = r.modelToEntity(&model)
+	}
+
+	return agents, nil
+}
+
+// BatchConvertGlobalIDsToAccounts 批量將全局ID轉換為帳號名
+func (r *AgentRepository) BatchConvertGlobalIDsToAccounts(
+	ctx context.Context,
+	globalIDs []string,
+) ([]string, error) {
+	if len(globalIDs) == 0 {
+		return []string{}, nil
+	}
+
+	var agentModels []models.Agent
+	if err := r.db.WithContext(ctx).
+		Select("account").
+		Where("global_agent_id IN ?", globalIDs).
+		Find(&agentModels).Error; err != nil {
+		return nil, fmt.Errorf("batch convert global ids to accounts failed: %w", err)
+	}
+
+	accounts := make([]string, len(agentModels))
+	for i, model := range agentModels {
+		accounts[i] = model.Account
+	}
+
+	return accounts, nil
 }
 
 // BatchGetActiveAgentsByGlobalIDs 批量根據全局ID獲取活躍代理

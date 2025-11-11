@@ -964,6 +964,14 @@ func (m *AgentRepositoryMock) GetByGlobalID(
 	return args.Get(0).(*entity.Agent), args.Error(1)
 }
 
+func (m *AgentRepositoryMock) GetByAccount(ctx context.Context, account string) (*entity.Agent, error) {
+	args := m.Called(ctx, account)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.Agent), args.Error(1)
+}
+
 func (m *AgentRepositoryMock) Update(ctx context.Context, agent *entity.Agent) error {
 	args := m.Called(ctx, agent)
 	return args.Error(0)
@@ -1034,12 +1042,12 @@ func (m *AgentRepositoryMock) UpsertRelationship(
 func (m *AgentRepositoryMock) QueryAgentsByRelationship(
 	ctx context.Context,
 	parentAgentID string,
-) ([]string, error) {
+) ([]uint64, error) {
 	args := m.Called(ctx, parentAgentID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]string), args.Error(1)
+	return args.Get(0).([]uint64), args.Error(1)
 }
 
 func (m *AgentRepositoryMock) QueryAgentAncestorsByRelationship(
@@ -1064,6 +1072,30 @@ func (m *AgentRepositoryMock) BatchGetAgentsByGlobalIDs(ctx context.Context, glo
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]*entity.Agent), args.Error(1)
+}
+
+func (m *AgentRepositoryMock) BatchGetAgentsByIDs(ctx context.Context, agentIDs []uint64) ([]*entity.Agent, error) {
+	args := m.Called(ctx, agentIDs)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.Agent), args.Error(1)
+}
+
+func (m *AgentRepositoryMock) BatchGetAgentsByAccounts(ctx context.Context, accounts []string) ([]*entity.Agent, error) {
+	args := m.Called(ctx, accounts)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.Agent), args.Error(1)
+}
+
+func (m *AgentRepositoryMock) BatchConvertGlobalIDsToAccounts(ctx context.Context, globalIDs []string) ([]string, error) {
+	args := m.Called(ctx, globalIDs)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
 }
 
 func (m *AgentRepositoryMock) FindActiveAgents(
