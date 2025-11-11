@@ -111,30 +111,21 @@ func (r *AgentCampaignRepository) List(
 	db := r.db.WithContext(ctx).Model(&models.AgentCampaign{}).
 		Where("merchant_id = ?", query.MerchantID)
 
-	// 是否包含已刪除的記錄
-	if query.IncludeDeleted {
-		db = db.Unscoped()
-	}
-
 	// 添加查詢條件
-	if query.Status != "" {
-		db = db.Where("status = ?", query.Status)
-	}
-
-	if query.TargetType != "" {
-		db = db.Where("target_type = ?", query.TargetType)
+	if len(query.Status) > 0 {
+		db = db.Where("status IN ?", query.Status)
 	}
 
 	if query.CreatedBy != "" {
 		db = db.Where("created_by = ?", query.CreatedBy)
 	}
 
-	if !query.StartDate.IsZero() {
-		db = db.Where("scheduled_at >= ?", query.StartDate)
+	if query.StartAt != "" {
+		db = db.Where("created_at >= ?", query.StartAt)
 	}
 
-	if !query.EndDate.IsZero() {
-		db = db.Where("scheduled_at <= ?", query.EndDate)
+	if query.EndAt != "" {
+		db = db.Where("created_at <= ?", query.EndAt)
 	}
 
 	// 獲取總數
@@ -143,15 +134,7 @@ func (r *AgentCampaignRepository) List(
 	}
 
 	// 添加排序和分頁
-	if query.OrderBy != "" {
-		orderDirection := "DESC"
-		if query.OrderDirection == "ASC" {
-			orderDirection = "ASC"
-		}
-		db = db.Order(fmt.Sprintf("%s %s", query.OrderBy, orderDirection))
-	} else {
-		db = db.Order("created_at DESC")
-	}
+	db = db.Order("created_at DESC")
 
 	if query.Limit > 0 {
 		db = db.Limit(query.Limit)

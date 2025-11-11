@@ -348,8 +348,7 @@ func (u *AgentUseCase) GetAgentCampaigns(
 	u.tracingService.RecordSpanAttributes(span,
 		attribute.Int("page", query.Page),
 		attribute.Int("page_size", query.PageSize),
-		attribute.String("status", query.Status),
-		attribute.String("target_type", query.TargetType))
+		attribute.StringSlice("status", query.Status))
 
 	merchant, err := u.merchantRepo.FindByGlobalID(ctx, query.GlobalMerchantID)
 	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
@@ -357,7 +356,6 @@ func (u *AgentUseCase) GetAgentCampaigns(
 		return nil, fmt.Errorf("find merchant: %w", err)
 	}
 	query.MerchantID = merchant.ID
-	query.IncludeDeleted = true
 
 	// 設定預設值
 	if query.Limit == 0 {

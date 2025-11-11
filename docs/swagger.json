@@ -23,7 +23,7 @@
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "分頁列出代理訊息活動，支持多條件篩選\n查詢參數說明：\n- page: 頁碼，從1開始，預設為1\n- page_size: 每頁數量，範圍1-100，預設為10\n- status: 狀態篩選，可選值：draft(草稿)、scheduled(已排程)、sent(已發送)、cancelled(已取消)、failed(發送失敗)\n- target_type: 目標類型篩選，可選值：all(全部代理)、specific(指定代理)、line(代理線)\n- created_by: 創建者篩選\n- include_deleted: 是否包含已刪除記錄，預設為false",
+                "description": "分頁列出代理訊息活動，支持多條件篩選\n查詢參數說明：\n- page: 頁碼，從1開始，預設為1\n- page_size: 每頁數量，範圍1-100，預設為10\n- status: 狀態篩選（多選），可選值：draft(草稿)、scheduled(已排程)\n- created_by: 創建者篩選\n- start_at: 創建時間區間開始（ISO 8601格式）\n- end_at: 創建時間區間結束（ISO 8601格式）",
                 "tags": [
                     "代理訊息活動"
                 ],
@@ -49,29 +49,17 @@
                         "in": "query"
                     },
                     {
-                        "enum": [
-                            "draft",
-                            "scheduled",
-                            "sent",
-                            "cancelled",
-                            "failed"
-                        ],
-                        "type": "string",
-                        "example": "\"scheduled\"",
-                        "description": "狀態篩選",
+                        "type": "array",
+                        "items": {
+                            "enum": [
+                                "draft",
+                                "scheduled"
+                            ],
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "狀態篩選（多選）",
                         "name": "status",
-                        "in": "query"
-                    },
-                    {
-                        "enum": [
-                            "all",
-                            "specific",
-                            "line"
-                        ],
-                        "type": "string",
-                        "example": "\"all\"",
-                        "description": "目標類型篩選",
-                        "name": "target_type",
                         "in": "query"
                     },
                     {
@@ -82,11 +70,19 @@
                         "in": "query"
                     },
                     {
-                        "type": "boolean",
-                        "default": false,
-                        "example": false,
-                        "description": "是否包含已刪除記錄",
-                        "name": "include_deleted",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "\"2024-01-01T00:00:00Z\"",
+                        "description": "創建時間區間開始",
+                        "name": "start_at",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "\"2024-12-31T23:59:59Z\"",
+                        "description": "創建時間區間結束",
+                        "name": "end_at",
                         "in": "query"
                     }
                 ],

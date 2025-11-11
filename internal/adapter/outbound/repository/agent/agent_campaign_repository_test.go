@@ -386,12 +386,11 @@ func TestAgentCampaignRepository_List(t *testing.T) {
 		{
 			name: "list campaigns with pagination",
 			query: &dto.AgentCampaignsQuery{
-				MerchantID:     1,
-				Page:           1,
-				PageSize:       10,
-				Limit:          10,
-				Offset:         0,
-				IncludeDeleted: false,
+				MerchantID: 1,
+				Page:       1,
+				PageSize:   10,
+				Limit:      10,
+				Offset:     0,
 			},
 			setupMock: func(mock sqlmock.Sqlmock) {
 				// Count query
@@ -419,20 +418,18 @@ func TestAgentCampaignRepository_List(t *testing.T) {
 		{
 			name: "list campaigns with filters",
 			query: &dto.AgentCampaignsQuery{
-				MerchantID:     1,
-				Status:         "draft",
-				TargetType:     "all",
-				CreatedBy:      "user1",
-				Page:           1,
-				PageSize:       10,
-				Limit:          10,
-				Offset:         0,
-				IncludeDeleted: false,
+				MerchantID: 1,
+				Status:     []string{"draft"},
+				CreatedBy:  "user1",
+				Page:       1,
+				PageSize:   10,
+				Limit:      10,
+				Offset:     0,
 			},
 			setupMock: func(mock sqlmock.Sqlmock) {
 				// Count query with filters
 				mock.ExpectQuery(regexp.QuoteMeta("SELECT count(*)")).
-					WithArgs(1, "draft", "all", "user1").
+					WithArgs(1, "draft", "user1").
 					WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(1))
 
 				// List query with filters
@@ -444,7 +441,7 @@ func TestAgentCampaignRepository_List(t *testing.T) {
 					AddRow(1, 1, "Campaign 1", "Content 1", &now, "draft", "all", "[]", 0, 0, "user1", "user1", now, now, nil)
 
 				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `agent_campaigns`")).
-					WithArgs(1, "draft", "all", "user1", 10).
+					WithArgs(1, "draft", "user1", 10).
 					WillReturnRows(rows)
 			},
 			expectedCount: 1,
@@ -497,7 +494,7 @@ func TestAgentCampaignRepository_GetScheduledCampaigns(t *testing.T) {
 					AddRow(1, 1, "Scheduled Campaign", "Content", &now, "scheduled", "all", "[]", 0, 0, "user1", "user1", now, now, nil)
 
 				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `agent_campaigns`")).
-					WithArgs("scheduled").
+					WithArgs("scheduled", sqlmock.AnyArg()).
 					WillReturnRows(rows)
 			},
 			expectedCount: 1,

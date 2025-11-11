@@ -173,20 +173,16 @@ type AgentCampaignResponse struct {
 
 // AgentCampaignsQuery 代理訊息活動查詢參數 DTO
 type AgentCampaignsQuery struct {
-	GlobalMerchantID string    `json:"global_merchant_id" swaggerignore:"true"` // 商户全局ID，由中间件自动设置
-	Page             int       `json:"page"`
-	PageSize         int       `json:"page_size"`
-	Limit            int       `json:"limit"`
-	Offset           int       `json:"offset"`
-	MerchantID       uint64    `json:"merchant_id"`
-	Status           string    `json:"status"`
-	TargetType       string    `json:"target_type"`
-	IncludeDeleted   bool      `json:"include_deleted"`
-	CreatedBy        string    `json:"created_by"`
-	StartDate        time.Time `json:"start_date"`
-	EndDate          time.Time `json:"end_date"`
-	OrderBy          string    `json:"order_by"`
-	OrderDirection   string    `json:"order_direction"`
+	GlobalMerchantID string   `json:"global_merchant_id" swaggerignore:"true"` // 商户全局ID，由中间件自动设置
+	Page             int      `form:"page"  json:"page"`
+	PageSize         int      `form:"page_size"  json:"page_size"`
+	Limit            int      `form:"limit"  json:"limit"`
+	Offset           int      `form:"offset"  json:"offset"`
+	MerchantID       uint64   `form:"merchant_id"  json:"merchant_id"`
+	Status           []string `form:"status"  json:"status"` // 支援多選狀態篩選
+	CreatedBy        string   `form:"created_by"  json:"created_by"`
+	StartAt          string   `form:"start_at"  json:"start_at"` // 創建時間區間開始
+	EndAt            string   `form:"end_at"  json:"end_at"`     // 創建時間區間結束
 }
 
 // AgentCampaignListResponse 代理訊息活動列表回應 DTO
