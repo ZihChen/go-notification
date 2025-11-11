@@ -716,8 +716,8 @@ func (u *AgentUseCase) resolveLineAgents(ctx context.Context, parentGlobalID str
 
 	// 包含父代理自己和所有後代
 	allAgentIDs := make([]uint64, 0, len(descendants)+1)
-	allAgentIDs = append(allAgentIDs, parentAgent.ID)  // 包含父代理自己
-	allAgentIDs = append(allAgentIDs, descendants...)   // 添加所有後代
+	allAgentIDs = append(allAgentIDs, parentAgent.ID) // 包含父代理自己
+	allAgentIDs = append(allAgentIDs, descendants...) // 添加所有後代
 
 	u.tracingService.TraceEvent(span, "Line agents resolved with repository query",
 		attribute.Int("descendants_count", len(descendants)),
@@ -808,7 +808,7 @@ func (u *AgentUseCase) processBatchAgentsForAll(
 	// 定義一個月前的時間點
 	oneMonthAgo := time.Now().AddDate(0, -1, 0)
 	offset := 0
-	limit := 1000 // 批次大小，可配置
+	limit := 5000 // 批次大小，可配置
 	totalTargetCount := 0
 	totalSentCount := 0
 
@@ -885,7 +885,7 @@ func (u *AgentUseCase) processBatchAgentsForSpecific(
 		attribute.Int64("campaign.id", int64(campaign.ID)),
 		attribute.Int("target_accounts_count", len(targetAccounts)))
 
-	batchSize := 1000 // 批次大小，可配置
+	batchSize := 5000 // 批次大小，可配置
 	totalSentCount := 0
 
 	u.logger.InfoLog("Starting batch processing for specific agents",
@@ -958,85 +958,71 @@ func (u *AgentUseCase) processBatchAgentsForLine(
 		return 0, 0, fmt.Errorf("get agent by account: %w", err)
 	}
 
-	// 獲取線下所有代理 ID 列表
-	targetAgentIDs, err := u.resolveLineAgents(ctx, parentAgent.GlobalAgentID)
-	if err != nil {
-		u.tracingService.RecordSpanError(span, err)
-		return 0, 0, fmt.Errorf("resolve line agents: %w", err)
-	}
-
-	u.logger.InfoLog("Starting batch processing for line agents",
-		u.logger.UInt64("campaign_id", campaign.ID),
-		u.logger.String("parent_agent_id", parentAgent.GlobalAgentID),
-		u.logger.Int("total_targets", len(targetAgentIDs)))
-
-	// 直接使用 agent IDs 批量處理，避免額外的轉換
-	return u.processBatchAgentsByIDs(ctx, campaign, targetAgentIDs)
-}
-
-// processBatchAgentsByIDs 直接使用 agent IDs 批量處理代理
-func (u *AgentUseCase) processBatchAgentsByIDs(
-	ctx context.Context,
-	campaign *entity.AgentCampaign,
-	targetAgentIDs []uint64,
-) (targetCount int, sentCount int, err error) {
-	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.processBatchAgentsByIDs")
-	defer u.tracingService.SpanEnd(span)
-
-	u.tracingService.RecordSpanAttributes(span,
-		attribute.Int64("campaign.id", int64(campaign.ID)),
-		attribute.Int("target_agent_ids_count", len(targetAgentIDs)))
-
-	batchSize := 1000 // 批次大小，可配置
+	batchSize := 1000 // 每批處理的代理數量
+	totalTargetCount := 0
 	totalSentCount := 0
 
-	u.logger.InfoLog("Starting batch processing by agent IDs",
+	u.logger.InfoLog("Starting repository-level batch processing for line agents",
 		u.logger.UInt64("campaign_id", campaign.ID),
-		u.logger.Int("total_targets", len(targetAgentIDs)))
+		u.logger.String("parent_agent_id", parentAgent.GlobalAgentID))
 
-	// 分批處理代理 IDs
-	for i := 0; i < len(targetAgentIDs); i += batchSize {
-		end := i + batchSize
-		if end > len(targetAgentIDs) {
-			end = len(targetAgentIDs)
-		}
-
-		batchAgentIDs := targetAgentIDs[i:end]
-
+	// 創建處理器函數，用於處理每批代理
+	processor := func(ctx context.Context, agentIDs []uint64) (processedCount int, err error) {
 		// 批量獲取代理詳細資訊
-		batchAgents, err := u.agentRepo.BatchGetAgentsByIDs(ctx, batchAgentIDs)
+		batchAgents, err := u.agentRepo.BatchGetAgentsByIDs(ctx, agentIDs)
 		if err != nil {
 			u.tracingService.RecordSpanError(span, err)
-			u.logger.WarnLog("Failed to get batch agents by IDs",
+			u.logger.WarnLog("Failed to get batch agents for line processing",
 				u.logger.UInt64("campaign_id", campaign.ID),
-				u.logger.Int("batch_start", i),
-				u.logger.Int("batch_size", len(batchAgentIDs)),
+				u.logger.Int("batch_size", len(agentIDs)),
 				u.logger.String("error", err.Error()))
-			continue // 繼續處理下一批
+			return 0, err
 		}
 
 		// 為當前批次的代理創建訊息
 		batchSentCount, err := u.createMessagesForAgents(ctx, campaign, batchAgents)
 		if err != nil {
 			u.tracingService.RecordSpanError(span, err)
-			u.logger.WarnLog("Failed to create messages for agents batch",
+			u.logger.WarnLog("Failed to create messages for line batch",
 				u.logger.UInt64("campaign_id", campaign.ID),
 				u.logger.Int("batch_agents", len(batchAgents)),
 				u.logger.String("error", err.Error()))
-		} else {
-			totalSentCount += batchSentCount
+			return 0, err
 		}
 
-		u.logger.InfoLog("Processed batch for agents by IDs",
+		totalTargetCount += len(batchAgents)
+		totalSentCount += batchSentCount
+
+		u.logger.InfoLog("Processed batch for line agents",
 			u.logger.UInt64("campaign_id", campaign.ID),
 			u.logger.Int("batch_agents", len(batchAgents)),
 			u.logger.Int("batch_sent", batchSentCount),
 			u.logger.Int("total_sent", totalSentCount))
+
+		return batchSentCount, nil
 	}
 
-	u.tracingService.TraceEvent(span, "Batch processing completed for agent IDs",
-		attribute.Int("target_count", len(targetAgentIDs)),
-		attribute.Int("sent_count", totalSentCount))
+	// 使用 repository 層面的分頁處理
+	totalProcessed, err := u.agentRepo.ProcessAgentsByRelationshipInBatches(
+		ctx, 
+		parentAgent.GlobalAgentID,
+		batchSize,
+		processor,
+	)
+	if err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return totalTargetCount, totalSentCount, fmt.Errorf("process agents by relationship in batches: %w", err)
+	}
 
-	return len(targetAgentIDs), totalSentCount, nil
+	u.tracingService.TraceEvent(span, "Repository-level line agents batch processing completed",
+		attribute.Int("target_count", totalTargetCount),
+		attribute.Int("sent_count", totalProcessed))
+
+	u.logger.InfoLog("Completed repository-level batch processing for line agents",
+		u.logger.UInt64("campaign_id", campaign.ID),
+		u.logger.String("parent_agent_id", parentAgent.GlobalAgentID),
+		u.logger.Int("target_count", totalTargetCount),
+		u.logger.Int("sent_count", totalProcessed))
+
+	return totalTargetCount, totalProcessed, nil
 }

@@ -1050,6 +1050,16 @@ func (m *AgentRepositoryMock) QueryAgentsByRelationship(
 	return args.Get(0).([]uint64), args.Error(1)
 }
 
+func (m *AgentRepositoryMock) ProcessAgentsByRelationshipInBatches(
+	ctx context.Context,
+	parentAgentID string,
+	batchSize int,
+	processor func(ctx context.Context, agentIDs []uint64) (processedCount int, err error),
+) (totalProcessed int, err error) {
+	args := m.Called(ctx, parentAgentID, batchSize, processor)
+	return args.Int(0), args.Error(1)
+}
+
 func (m *AgentRepositoryMock) QueryAgentAncestorsByRelationship(
 	ctx context.Context,
 	childAgentID string,

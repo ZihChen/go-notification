@@ -315,6 +315,96 @@ func (r *AgentRepository) QueryAgentsByRelationship(
 	return allChildIDs, nil
 }
 
+// ProcessAgentsByRelationshipInBatches 分批查詢並處理代理關係，邊查詢邊處理避免記憶體問題
+func (r *AgentRepository) ProcessAgentsByRelationshipInBatches(
+	ctx context.Context,
+	parentAgentID string,
+	batchSize int,
+	processor func(ctx context.Context, agentIDs []uint64) (processedCount int, err error),
+) (totalProcessed int, err error) {
+	// 首先獲取父代理的數值ID
+	var parentAgent models.Agent
+	if err := r.db.WithContext(ctx).
+		Select("id").
+		Where("global_agent_id = ?", parentAgentID).
+		First(&parentAgent).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("get parent agent failed: %w", err)
+	}
+
+	// 首先處理父代理自己
+	parentProcessed, err := processor(ctx, []uint64{parentAgent.ID})
+	if err != nil {
+		return 0, fmt.Errorf("process parent agent failed: %w", err)
+	}
+	totalProcessed += parentProcessed
+
+	// 使用迭代方式實現遞歸查詢，每查詢一批就處理一批
+	processedIDs := make(map[uint64]bool)
+	processedIDs[parentAgent.ID] = true // 標記父代理已處理
+	currentLevelIDs := []uint64{parentAgent.ID}
+
+	maxDepth := 100
+	depth := 0
+
+	for depth < maxDepth && len(currentLevelIDs) > 0 {
+		var nextLevelIDs []uint64
+		var currentBatch []uint64
+
+		// 分批處理當前層級的代理
+		for i := 0; i < len(currentLevelIDs); i += batchSize {
+			end := i + batchSize
+			if end > len(currentLevelIDs) {
+				end = len(currentLevelIDs)
+			}
+			batchIDs := currentLevelIDs[i:end]
+
+			var relationships []models.AgentRelationship
+			if err := r.db.WithContext(ctx).
+				Select("child_id").
+				Where("parent_id IN ?", batchIDs).
+				Find(&relationships).Error; err != nil {
+				return totalProcessed, fmt.Errorf("query relationships at depth %d failed: %w", depth, err)
+			}
+
+			// 收集這批的子代理
+			for _, rel := range relationships {
+				if !processedIDs[rel.ChildID] {
+					nextLevelIDs = append(nextLevelIDs, rel.ChildID)
+					currentBatch = append(currentBatch, rel.ChildID)
+					processedIDs[rel.ChildID] = true
+
+					// 如果當前批次達到指定大小，就處理這一批
+					if len(currentBatch) >= batchSize {
+						batchProcessed, err := processor(ctx, currentBatch)
+						if err != nil {
+							return totalProcessed, fmt.Errorf("process agent batch failed: %w", err)
+						}
+						totalProcessed += batchProcessed
+						currentBatch = currentBatch[:0] // 清空當前批次
+					}
+				}
+			}
+		}
+
+		// 處理剩餘的代理（不足一個 batchSize 的部分）
+		if len(currentBatch) > 0 {
+			batchProcessed, err := processor(ctx, currentBatch)
+			if err != nil {
+				return totalProcessed, fmt.Errorf("process final agent batch failed: %w", err)
+			}
+			totalProcessed += batchProcessed
+		}
+
+		currentLevelIDs = nextLevelIDs
+		depth++
+	}
+
+	return totalProcessed, nil
+}
+
 // QueryAgentAncestorsByRelationship 根據關係查詢祖先代理 (legacy 支援)
 func (r *AgentRepository) QueryAgentAncestorsByRelationship(
 	ctx context.Context,

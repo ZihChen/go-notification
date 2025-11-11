@@ -42,6 +42,12 @@ type AgentRepository interface {
 	// 關係操作
 	UpsertRelationship(ctx context.Context, rel *entity.AgentRelationship) error
 	QueryAgentsByRelationship(ctx context.Context, parentAgentID string) ([]uint64, error)
+	ProcessAgentsByRelationshipInBatches(
+		ctx context.Context,
+		parentAgentID string,
+		batchSize int,
+		processor func(ctx context.Context, agentIDs []uint64) (processedCount int, err error),
+	) (totalProcessed int, err error)
 	QueryAgentAncestorsByRelationship(ctx context.Context, childAgentID string) ([]string, error)
 
 	// 存在性檢查
