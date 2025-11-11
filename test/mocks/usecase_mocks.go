@@ -575,12 +575,20 @@ func (m *AgentUseCaseMock) FilterActiveAgents(
 	return args.Get(0).([]*entity.Agent), args.Error(1)
 }
 
-func (m *AgentUseCaseMock) UpdateCampaignStatus(ctx context.Context, campaignID uint64, status string) error {
+func (m *AgentUseCaseMock) UpdateCampaignStatus(
+	ctx context.Context,
+	campaignID uint64,
+	status string,
+) error {
 	args := m.Called(ctx, campaignID, status)
 	return args.Error(0)
 }
 
-func (m *AgentUseCaseMock) CompleteCampaign(ctx context.Context, campaignID uint64, targetCount, sentCount int) error {
+func (m *AgentUseCaseMock) CompleteCampaign(
+	ctx context.Context,
+	campaignID uint64,
+	targetCount, sentCount int,
+) error {
 	args := m.Called(ctx, campaignID, targetCount, sentCount)
 	return args.Error(0)
 }

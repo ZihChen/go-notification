@@ -68,10 +68,20 @@ func createTestJobRegistry(t *testing.T, jobs []jobport.ScheduledJob) *job.Regis
 	// 創建一個測試用的 registry
 	// 創建一個最小實現的 MockMessageUseCase
 	mockMessageUseCase := mocks.NewMessageUseCaseMock(t)
+	mockAgentUseCase := mocks.NewAgentUseCaseMock(t)
 	mockLogger := new(helper.MockLogger)
-	campaignTriggerJob := job.NewMessageCampaignTriggerJob(mockMessageUseCase, mockLogger)
+	mockTracingService := mocks.NewTracingServiceMock(nil)
+	mockDistributedLockMgr := mocks.NewDistributedLockManagerMock(t)
 
-	registry := job.NewRegistry(campaignTriggerJob)
+	campaignTriggerJob := job.NewMessageCampaignTriggerJob(mockMessageUseCase, mockLogger)
+	agentCampaignTriggerJob := job.NewAgentCampaignTriggerJob(
+		mockAgentUseCase,
+		mockLogger,
+		mockTracingService,
+		mockDistributedLockMgr,
+	)
+
+	registry := job.NewRegistry(campaignTriggerJob, agentCampaignTriggerJob)
 
 	// 如果傳入了其他 jobs，也註冊它們
 	for _, j := range jobs {
@@ -114,9 +124,13 @@ func TestNewSchedulerHandler_Success(t *testing.T) {
 	mockJob.On("GetName").Return("test-job")
 	mockJob.On("GetCron").Return("0 */1 * * * *")
 
-	// Logger expectations for job registration (會有兩個 jobs 被註冊)
+	// Logger expectations for job registration (會有三個 jobs 被註冊)
 	logger.On("String", "job_name", "message-campaign-trigger").Return(&entity.LoggerFiled{})
 	logger.On("String", "schedule", "*/10 * * * * *").Return(&entity.LoggerFiled{})
+	logger.On("InfoLog", "Registered scheduled job", mock.Anything, mock.Anything).Return()
+
+	logger.On("String", "job_name", "agent-campaign-trigger").Return(&entity.LoggerFiled{})
+	logger.On("String", "schedule", "*/30 * * * * *").Return(&entity.LoggerFiled{})
 	logger.On("InfoLog", "Registered scheduled job", mock.Anything, mock.Anything).Return()
 
 	logger.On("String", "job_name", "test-job").Return(&entity.LoggerFiled{})
@@ -132,11 +146,16 @@ func TestNewSchedulerHandler_Success(t *testing.T) {
 	// Verify
 	assert.NotNil(t, handler)
 	assert.Equal(t, logger, handler.logger)
-	assert.Len(t, handler.jobs, 2) // 現在包含 message-campaign-trigger + test-job
+	assert.Len(
+		t,
+		handler.jobs,
+		3,
+	) // 現在包含 message-campaign-trigger + agent-campaign-trigger + test-job
 
-	// 檢查兩個 job 都存在
-	jobNames := []string{handler.jobs[0].Name, handler.jobs[1].Name}
+	// 檢查三個 job 都存在
+	jobNames := []string{handler.jobs[0].Name, handler.jobs[1].Name, handler.jobs[2].Name}
 	assert.Contains(t, jobNames, "message-campaign-trigger")
+	assert.Contains(t, jobNames, "agent-campaign-trigger")
 	assert.Contains(t, jobNames, "test-job")
 
 	mockJob.AssertExpectations(t)
@@ -155,11 +174,21 @@ func TestNewSchedulerHandler_MultipleJobs(t *testing.T) {
 
 	// Verify
 	assert.NotNil(t, handler)
-	assert.Len(t, handler.jobs, 3) // Registry now includes message-campaign-trigger + job-1 + job-2
+	assert.Len(
+		t,
+		handler.jobs,
+		4,
+	) // Registry now includes message-campaign-trigger + agent-campaign-trigger + job-1 + job-2
 
-	// 檢查所有三個 job 都存在
-	jobNames := []string{handler.jobs[0].Name, handler.jobs[1].Name, handler.jobs[2].Name}
+	// 檢查所有四個 job 都存在
+	jobNames := []string{
+		handler.jobs[0].Name,
+		handler.jobs[1].Name,
+		handler.jobs[2].Name,
+		handler.jobs[3].Name,
+	}
 	assert.Contains(t, jobNames, "message-campaign-trigger")
+	assert.Contains(t, jobNames, "agent-campaign-trigger")
 	assert.Contains(t, jobNames, "job-1")
 	assert.Contains(t, jobNames, "job-2")
 
@@ -189,10 +218,12 @@ func TestNewSchedulerHandler_JobRegistrationError(t *testing.T) {
 	tracingService := mocks.NewTracingServiceMock(nil)
 	handler := NewSchedulerHandler(logger, nil, tracingService, registry)
 
-	// 如果程式沒有 panic，驗證 handler 仍然被創建但只有默認的 message-campaign-trigger job
+	// 如果程式沒有 panic，驗證 handler 仍然被創建但只有默認的 message-campaign-trigger 和 agent-campaign-trigger jobs
 	if handler != nil {
-		assert.Len(t, handler.jobs, 1)
-		assert.Equal(t, "message-campaign-trigger", handler.jobs[0].Name)
+		assert.Len(t, handler.jobs, 2)
+		jobNames := []string{handler.jobs[0].Name, handler.jobs[1].Name}
+		assert.Contains(t, jobNames, "message-campaign-trigger")
+		assert.Contains(t, jobNames, "agent-campaign-trigger")
 	}
 }
 
@@ -220,9 +251,9 @@ func TestHandler_RegisterJobs_Success(t *testing.T) {
 	// Execute
 	handler.RegisterJobs(cronManager)
 
-	// Verify - cron 管理器應該有註冊的任務 (message-campaign-trigger + test-job)
+	// Verify - cron 管理器應該有註冊的任務 (message-campaign-trigger + agent-campaign-trigger + test-job)
 	entries := cronManager.Entries()
-	assert.Len(t, entries, 2)
+	assert.Len(t, entries, 3)
 
 	job.AssertExpectations(t)
 }
@@ -308,7 +339,11 @@ func TestHandler_RegisterJobs_MultipleJobs(t *testing.T) {
 
 	// Verify
 	entries := cronManager.Entries()
-	assert.Len(t, entries, 3) // Registry now includes message-campaign-trigger + job-1 + job-2
+	assert.Len(
+		t,
+		entries,
+		4,
+	) // Registry now includes message-campaign-trigger + agent-campaign-trigger + job-1 + job-2
 
 	job1.AssertExpectations(t)
 	job2.AssertExpectations(t)
@@ -472,8 +507,13 @@ func TestHandler_GetRegisteredJobs_Success(t *testing.T) {
 	jobNames := handler.GetRegisteredJobs()
 
 	// Verify
-	assert.Len(t, jobNames, 3) // Registry now includes message-campaign-trigger + job-1 + job-2
+	assert.Len(
+		t,
+		jobNames,
+		4,
+	) // Registry now includes message-campaign-trigger + agent-campaign-trigger + job-1 + job-2
 	assert.Contains(t, jobNames, "message-campaign-trigger")
+	assert.Contains(t, jobNames, "agent-campaign-trigger")
 	assert.Contains(t, jobNames, "job-1")
 	assert.Contains(t, jobNames, "job-2")
 
@@ -493,8 +533,13 @@ func TestHandler_GetRegisteredJobs_Empty(t *testing.T) {
 	jobNames := handler.GetRegisteredJobs()
 
 	// Verify
-	assert.Len(t, jobNames, 1) // Registry now always includes message-campaign-trigger
+	assert.Len(
+		t,
+		jobNames,
+		2,
+	) // Registry now always includes message-campaign-trigger + agent-campaign-trigger
 	assert.Contains(t, jobNames, "message-campaign-trigger")
+	assert.Contains(t, jobNames, "agent-campaign-trigger")
 }
 
 // ============================================================================
@@ -515,23 +560,28 @@ func TestHandler_FullWorkflow_Integration(t *testing.T) {
 	handler := NewSchedulerHandler(logger, nil, tracingService, registry)
 
 	// Verify jobs were registered during construction
-	assert.Len(t, handler.jobs, 2)
+	assert.Len(
+		t,
+		handler.jobs,
+		3,
+	) // message-campaign-trigger + agent-campaign-trigger + cleanup-job
 
 	// Test GetRegisteredJobs
 	jobNames := handler.GetRegisteredJobs()
-	assert.Len(t, jobNames, 2)
+	assert.Len(t, jobNames, 3)
 	assert.Contains(t, jobNames, "message-campaign-trigger")
+	assert.Contains(t, jobNames, "agent-campaign-trigger")
 	assert.Contains(t, jobNames, "cleanup-job")
 
 	// Test RegisterJobs with cron manager
 	cronManager := cron.New(cron.WithSeconds())
-	logger.On("InfoLog", "Successfully registered scheduled job", mock.Anything).Return().Times(2)
+	logger.On("InfoLog", "Successfully registered scheduled job", mock.Anything).Return().Times(3)
 
 	handler.RegisterJobs(cronManager)
 
 	// Verify cron entries
 	entries := cronManager.Entries()
-	assert.Len(t, entries, 2)
+	assert.Len(t, entries, 3)
 
 	job1.AssertExpectations(t)
 	job2.AssertExpectations(t)

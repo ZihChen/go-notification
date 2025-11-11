@@ -326,7 +326,10 @@ func NewDistributedLockManagerMock(t *testing.T) *DistributedLockManagerMock {
 	}
 }
 
-func (m *DistributedLockManagerMock) GetLock(ctx context.Context, key string) (infrastructure.DistributedMutex, error) {
+func (m *DistributedLockManagerMock) GetLock(
+	ctx context.Context,
+	key string,
+) (infrastructure.DistributedMutex, error) {
 	args := m.Called(ctx, key)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)

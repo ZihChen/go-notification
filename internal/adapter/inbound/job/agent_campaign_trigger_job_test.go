@@ -196,7 +196,7 @@ func TestAgentCampaignTriggerJob_GetCron(t *testing.T) {
 		mocks.distributedLockMgr,
 	)
 
-	assert.Equal(t, "*/30 * * * * *", job.GetCron())
+	assert.Equal(t, "*/10 * * * * *", job.GetCron())
 }
 
 // AgentJobMocks 包含代理Job測試所需的所有 mock
