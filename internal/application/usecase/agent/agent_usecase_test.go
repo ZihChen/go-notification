@@ -765,24 +765,27 @@ func TestAgentUseCase_BackfillMissedMessages(t *testing.T) {
 	// Mock 分頁活動查詢
 	campaigns := []*entity.AgentCampaign{
 		{
-			ID:          1,
-			MerchantID:  1,
-			Title:       "Test Campaign",
-			Content:     "Test Content",
-			Status:      "sent",
-			TargetType:  "all",
-			CreatedAt:   time.Now().AddDate(0, 0, -1),
+			ID:         1,
+			MerchantID: 1,
+			Title:      "Test Campaign",
+			Content:    "Test Content",
+			Status:     "sent",
+			TargetType: "all",
+			CreatedAt:  time.Now().AddDate(0, 0, -1),
 		},
 	}
 	// 第一次查詢返回活動（少於批次大小，會觸發退出）
-	agentCampaignRepo.On("FindSentCampaignsForBackfillPaginated", ctx, uint64(1), 100, 0).Return(campaigns, nil)
+	agentCampaignRepo.On("FindSentCampaignsForBackfillPaginated", ctx, uint64(1), 100, 0).
+		Return(campaigns, nil)
 
 	// Mock 批次檢查訊息不存在
 	existsMap := map[uint64]bool{1: false} // campaign ID 1 不存在
-	agentMessageRepo.On("CheckCampaignMessageExistsBatch", ctx, uint64(1), []uint64{1}).Return(existsMap, nil)
+	agentMessageRepo.On("CheckCampaignMessageExistsBatch", ctx, uint64(1), []uint64{1}).
+		Return(existsMap, nil)
 
 	// Mock 批次創建訊息
-	agentMessageRepo.On("CreateBatch", ctx, mock.AnythingOfType("[]*entity.AgentMessage")).Return(nil)
+	agentMessageRepo.On("CreateBatch", ctx, mock.AnythingOfType("[]*entity.AgentMessage")).
+		Return(nil)
 
 	// 執行測試
 	err := useCase.BackfillMissedMessages(ctx, agentEvent)

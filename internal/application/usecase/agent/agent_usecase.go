@@ -1069,7 +1069,12 @@ func (u *AgentUseCase) BackfillMissedMessages(
 
 	for {
 		// 分頁查詢活動
-		campaigns, err := u.agentCampaignRepo.FindSentCampaignsForBackfillPaginated(ctx, merchant.ID, batchSize, offset)
+		campaigns, err := u.agentCampaignRepo.FindSentCampaignsForBackfillPaginated(
+			ctx,
+			merchant.ID,
+			batchSize,
+			offset,
+		)
 		if err != nil {
 			u.tracingService.RecordSpanError(span, err)
 			return fmt.Errorf("find sent campaigns for backfill: %w", err)
@@ -1090,7 +1095,11 @@ func (u *AgentUseCase) BackfillMissedMessages(
 		}
 
 		// 使用批次檢查避免 N+1 查詢
-		existsMap, err := u.agentMessageRepo.CheckCampaignMessageExistsBatch(ctx, agent.ID, campaignIDs)
+		existsMap, err := u.agentMessageRepo.CheckCampaignMessageExistsBatch(
+			ctx,
+			agent.ID,
+			campaignIDs,
+		)
 		if err != nil {
 			u.tracingService.RecordSpanError(span, err)
 			u.logger.ErrorLog("Failed to batch check message existence",
