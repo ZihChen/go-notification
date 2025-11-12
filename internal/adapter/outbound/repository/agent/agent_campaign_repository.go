@@ -251,3 +251,66 @@ func (r *AgentCampaignRepository) entityToModel(
 
 	return model
 }
+
+// FindSentCampaignsForBackfill 查找用於補派發的已發送活動
+func (r *AgentCampaignRepository) FindSentCampaignsForBackfill(
+	ctx context.Context,
+	merchantID uint64,
+) ([]*entity.AgentCampaign, error) {
+	var campaignModels []models.AgentCampaign
+
+	// 找出所有符合條件的活動：
+	// 1. target_type = 'all' (全員發送)
+	// 2. status = 'sent' (已發送)
+	// 3. merchant_id = merchantID (該商戶的活動)
+	// 4. created_at < now (創建時間早於現在)
+	if err := r.db.WithContext(ctx).
+		Where("merchant_id = ? AND target_type = ? AND status = ? AND created_at < ?",
+			merchantID, "all", "sent", time.Now()).
+		Order("created_at DESC").
+		Find(&campaignModels).Error; err != nil {
+		return nil, fmt.Errorf("find sent campaigns for backfill failed: %w", err)
+	}
+
+	// 轉換為 entity
+	campaigns := make([]*entity.AgentCampaign, 0, len(campaignModels))
+	for _, campaignModel := range campaignModels {
+		campaign := r.modelToEntity(&campaignModel)
+		campaigns = append(campaigns, campaign)
+	}
+
+	return campaigns, nil
+}
+
+// FindSentCampaignsForBackfillPaginated 分頁查找用於補派發的已發送活動
+func (r *AgentCampaignRepository) FindSentCampaignsForBackfillPaginated(
+	ctx context.Context,
+	merchantID uint64,
+	limit, offset int,
+) ([]*entity.AgentCampaign, error) {
+	var campaignModels []models.AgentCampaign
+
+	// 分頁查詢符合條件的活動：
+	// 1. target_type = 'all' (全員發送)
+	// 2. status = 'sent' (已發送)
+	// 3. merchant_id = merchantID (該商戶的活動)
+	// 4. created_at < now (創建時間早於現在)
+	if err := r.db.WithContext(ctx).
+		Where("merchant_id = ? AND target_type = ? AND status = ? AND created_at < ?",
+			merchantID, "all", "sent", time.Now()).
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&campaignModels).Error; err != nil {
+		return nil, fmt.Errorf("find sent campaigns for backfill paginated failed: %w", err)
+	}
+
+	// 轉換為 entity
+	campaigns := make([]*entity.AgentCampaign, 0, len(campaignModels))
+	for _, campaignModel := range campaignModels {
+		campaign := r.modelToEntity(&campaignModel)
+		campaigns = append(campaigns, campaign)
+	}
+
+	return campaigns, nil
+}

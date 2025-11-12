@@ -85,6 +85,17 @@ func (u *AgentUseCase) SyncAgentDataWithRelationships(
 		return fmt.Errorf("sync agent relationships: %w", err)
 	}
 
+	// 3. 補派發遺失訊息 (針對超過一個月未登入的代理)
+	u.tracingService.TraceEvent(span, "Backfilling missed messages for inactive agent")
+	if err := u.BackfillMissedMessages(ctx, agentEvent); err != nil {
+		// 補派發失敗不影響主同步流程，只記錄警告
+		u.tracingService.RecordSpanError(span, err)
+		u.logger.WarnLog("Failed to backfill missed messages",
+			u.logger.String("global_agent_id", agentEvent.GlobalAgentID),
+			u.logger.String("global_merchant_id", agentEvent.GlobalMerchantID),
+			u.logger.Error("error", err))
+	}
+
 	// 記錄完成
 	u.tracingService.TraceEvent(span, "Agent sync with relationships completed successfully")
 	u.logger.InfoLog("Agent sync with relationships completed successfully",
@@ -1022,4 +1033,125 @@ func (u *AgentUseCase) processBatchAgentsForLine(
 		u.logger.Int("sent_count", totalProcessed))
 
 	return totalTargetCount, totalProcessed, nil
+}
+
+// BackfillMissedMessages 為超過一個月沒上線的代理補派發訊息
+func (u *AgentUseCase) BackfillMissedMessages(
+	ctx context.Context,
+	agentEvent *event.AgentSyncEvent,
+) error {
+	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.BackfillMissedMessages")
+	defer u.tracingService.SpanEnd(span)
+
+	u.tracingService.RecordSpanAttributes(span,
+		attribute.String("agent.global_id", agentEvent.GlobalAgentID),
+		attribute.String("merchant.global_id", agentEvent.GlobalMerchantID))
+
+	// 1. 檢查代理是否需要補派發 (超過一個月沒上線)
+	agent, err := u.agentRepo.GetByGlobalID(ctx, agentEvent.GlobalAgentID)
+	if err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return fmt.Errorf("get agent by global id: %w", err)
+	}
+
+	// 2. 獲取商戶信息
+	merchant, err := u.merchantRepo.FindByGlobalID(ctx, agentEvent.GlobalMerchantID)
+	if err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return fmt.Errorf("find merchant: %w", err)
+	}
+
+	// 3. 使用批次分頁查詢找出所有需要補派發的訊息活動
+	backfilledCount := 0
+	totalCampaignsChecked := 0
+	const batchSize = 100 // 批次處理大小
+	offset := 0
+
+	for {
+		// 分頁查詢活動
+		campaigns, err := u.agentCampaignRepo.FindSentCampaignsForBackfillPaginated(ctx, merchant.ID, batchSize, offset)
+		if err != nil {
+			u.tracingService.RecordSpanError(span, err)
+			return fmt.Errorf("find sent campaigns for backfill: %w", err)
+		}
+
+		if len(campaigns) == 0 {
+			break // 沒有更多活動
+		}
+
+		u.tracingService.TraceEvent(span, "Processing campaign batch",
+			attribute.Int("batch_size", len(campaigns)),
+			attribute.Int("offset", offset))
+
+		// 4. 批次檢查是否已經有該代理的訊息記錄
+		campaignIDs := make([]uint64, len(campaigns))
+		for i, campaign := range campaigns {
+			campaignIDs[i] = campaign.ID
+		}
+
+		// 使用批次檢查避免 N+1 查詢
+		existsMap, err := u.agentMessageRepo.CheckCampaignMessageExistsBatch(ctx, agent.ID, campaignIDs)
+		if err != nil {
+			u.tracingService.RecordSpanError(span, err)
+			u.logger.ErrorLog("Failed to batch check message existence",
+				u.logger.Error("err", err),
+				u.logger.UInt64("agent_id", agent.ID))
+			offset += len(campaigns)
+			continue
+		}
+
+		// 5. 準備批次創建的訊息
+		var messagesToCreate []*entity.AgentMessage
+		now := time.Now()
+
+		for _, campaign := range campaigns {
+			// 檢查該活動的訊息是否已存在
+			if exists, found := existsMap[campaign.ID]; !found || !exists {
+				message := &entity.AgentMessage{
+					AgentCampaignID: campaign.ID,
+					AgentID:         agent.ID,
+					IsRead:          false,
+					ReadAt:          nil,
+					CreatedAt:       now,
+					UpdatedAt:       now,
+				}
+				messagesToCreate = append(messagesToCreate, message)
+			}
+		}
+
+		// 6. 批次創建缺失的訊息記錄
+		if len(messagesToCreate) > 0 {
+			err := u.agentMessageRepo.CreateBatch(ctx, messagesToCreate)
+			if err != nil {
+				u.tracingService.RecordSpanError(span, err)
+				u.logger.ErrorLog("Failed to batch create backfill messages",
+					u.logger.Error("err", err),
+					u.logger.Int("message_count", len(messagesToCreate)),
+					u.logger.UInt64("agent_id", agent.ID))
+			} else {
+				backfilledCount += len(messagesToCreate)
+				u.tracingService.TraceEvent(span, "Batch created messages",
+					attribute.Int("created_count", len(messagesToCreate)))
+			}
+		}
+
+		totalCampaignsChecked += len(campaigns)
+		offset += len(campaigns)
+
+		// 如果返回的結果少於批次大小，表示已經處理完所有數據
+		if len(campaigns) < batchSize {
+			break
+		}
+	}
+
+	u.tracingService.TraceEvent(span, "Message backfill completed",
+		attribute.Int("campaigns_checked", totalCampaignsChecked),
+		attribute.Int("messages_backfilled", backfilledCount))
+
+	u.logger.InfoLog("Message backfill completed successfully",
+		u.logger.String("global_agent_id", agentEvent.GlobalAgentID),
+		u.logger.Int("campaigns_checked", totalCampaignsChecked),
+		u.logger.Int("messages_backfilled", backfilledCount))
+
+	return nil
 }

@@ -1232,6 +1232,29 @@ func (m *AgentCampaignRepositoryMock) GetScheduledCampaigns(
 	return args.Get(0).([]*entity.AgentCampaign), args.Error(1)
 }
 
+func (m *AgentCampaignRepositoryMock) FindSentCampaignsForBackfill(
+	ctx context.Context,
+	merchantID uint64,
+) ([]*entity.AgentCampaign, error) {
+	args := m.Called(ctx, merchantID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.AgentCampaign), args.Error(1)
+}
+
+func (m *AgentCampaignRepositoryMock) FindSentCampaignsForBackfillPaginated(
+	ctx context.Context,
+	merchantID uint64,
+	limit, offset int,
+) ([]*entity.AgentCampaign, error) {
+	args := m.Called(ctx, merchantID, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entity.AgentCampaign), args.Error(1)
+}
+
 func (m *AgentCampaignRepositoryMock) SetupSuccess() {}
 func (m *AgentCampaignRepositoryMock) SetupError()   {}
 func (m *AgentCampaignRepositoryMock) SetupEmpty()   {}
@@ -1323,6 +1346,27 @@ func (m *AgentMessageRepositoryMock) MarkAsRead(
 ) error {
 	args := m.Called(ctx, messageID, agentID)
 	return args.Error(0)
+}
+
+func (m *AgentMessageRepositoryMock) ExistsMessage(
+	ctx context.Context,
+	campaignID uint64,
+	agentID uint64,
+) (bool, error) {
+	args := m.Called(ctx, campaignID, agentID)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *AgentMessageRepositoryMock) CheckCampaignMessageExistsBatch(
+	ctx context.Context,
+	agentID uint64,
+	campaignIDs []uint64,
+) (map[uint64]bool, error) {
+	args := m.Called(ctx, agentID, campaignIDs)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[uint64]bool), args.Error(1)
 }
 
 func (m *AgentMessageRepositoryMock) GetMessageStats(

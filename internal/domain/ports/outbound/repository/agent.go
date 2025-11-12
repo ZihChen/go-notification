@@ -82,6 +82,15 @@ type AgentCampaignRepository interface {
 		ctx context.Context,
 		currentTime time.Time,
 	) ([]*entity.AgentCampaign, error)
+	FindSentCampaignsForBackfill(
+		ctx context.Context,
+		merchantID uint64,
+	) ([]*entity.AgentCampaign, error)
+	FindSentCampaignsForBackfillPaginated(
+		ctx context.Context,
+		merchantID uint64,
+		limit, offset int,
+	) ([]*entity.AgentCampaign, error)
 }
 
 // AgentMessageRepository 代理站內信倉儲接口
@@ -99,6 +108,11 @@ type AgentMessageRepository interface {
 		agentIDs []uint64,
 		campaignID uint64,
 	) (map[uint64]bool, error)
+	CheckCampaignMessageExistsBatch(
+		ctx context.Context,
+		agentID uint64,
+		campaignIDs []uint64,
+	) (map[uint64]bool, error)
 
 	// 查詢操作
 	ListByAgent(
@@ -106,6 +120,9 @@ type AgentMessageRepository interface {
 		query *dto.AgentMessagesQuery,
 	) ([]*entity.AgentMessage, int, error)
 	MarkAsRead(ctx context.Context, messageID uint64, agentID uint64) error
+
+	// 存在性檢查
+	ExistsMessage(ctx context.Context, campaignID uint64, agentID uint64) (bool, error)
 
 	// 統計操作
 	GetMessageStats(ctx context.Context, agentID uint64) (*dto.AgentMessageStats, error)

@@ -156,6 +156,42 @@ func (r *AgentMessageRepository) CheckMessageExistsBatch(
 	return existsMap, nil
 }
 
+// CheckCampaignMessageExistsBatch 批次檢查單個代理的多個活動訊息是否存在
+func (r *AgentMessageRepository) CheckCampaignMessageExistsBatch(
+	ctx context.Context,
+	agentID uint64,
+	campaignIDs []uint64,
+) (map[uint64]bool, error) {
+	if len(campaignIDs) == 0 {
+		return make(map[uint64]bool), nil
+	}
+
+	type Result struct {
+		AgentCampaignID uint64 `json:"agent_campaign_id"`
+	}
+
+	var results []Result
+	if err := r.db.WithContext(ctx).
+		Model(&models.AgentMessage{}).
+		Select("agent_campaign_id").
+		Where("agent_id = ? AND agent_campaign_id IN ?", agentID, campaignIDs).
+		Find(&results).Error; err != nil {
+		return nil, fmt.Errorf("check campaign message exists batch failed: %w", err)
+	}
+
+	existsMap := make(map[uint64]bool)
+	// 初始化所有campaignID為false
+	for _, campaignID := range campaignIDs {
+		existsMap[campaignID] = false
+	}
+	// 設置存在的為true
+	for _, result := range results {
+		existsMap[result.AgentCampaignID] = true
+	}
+
+	return existsMap, nil
+}
+
 // ListByAgent 根據代理查詢訊息列表（包含活動資訊）
 func (r *AgentMessageRepository) ListByAgent(
 	ctx context.Context,
@@ -242,6 +278,22 @@ func (r *AgentMessageRepository) MarkAsRead(
 	}
 
 	return nil
+}
+
+// ExistsMessage 檢查特定代理是否已有特定活動的訊息
+func (r *AgentMessageRepository) ExistsMessage(
+	ctx context.Context,
+	campaignID uint64,
+	agentID uint64,
+) (bool, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).
+		Model(&models.AgentMessage{}).
+		Where("agent_campaign_id = ? AND agent_id = ?", campaignID, agentID).
+		Count(&count).Error; err != nil {
+		return false, fmt.Errorf("check message exists failed: %w", err)
+	}
+	return count > 0, nil
 }
 
 // GetMessageStats 獲取代理訊息統計
