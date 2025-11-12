@@ -23,21 +23,21 @@ type Agent struct {
 
 // AgentCampaign 代理訊息活動
 type AgentCampaign struct {
-	ID            uint64     `json:"id"`
-	MerchantID    uint64     `json:"merchant_id"`
-	Title         string     `json:"title"`
-	Content       string     `json:"content"`
-	ScheduledAt   *time.Time `json:"scheduled_at,omitempty"`
-	Status        string     `json:"status"`          // draft, scheduled, sending, completed, failed, cancelled
-	TargetType    string     `json:"target_type"`     // all, specific, line
-	TargetDetails []string   `json:"target_details"`  // 目標詳情 (account列表或line路徑)
-	TargetCount   int64      `json:"target_count"`    // 目標代理數量
-	RealSentCount int64      `json:"real_sent_count"` // 實際發送數量
-	CreatedBy     string     `json:"created_by"`      // 建立者
-	UpdatedBy     string     `json:"updated_by"`      // 修改者
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
-	DeletedAt     *time.Time `json:"deleted_at,omitempty"`
+	ID            uint64                     `json:"id"`
+	MerchantID    uint64                     `json:"merchant_id"`
+	Title         string                     `json:"title"`
+	Content       string                     `json:"content"`
+	ScheduledAt   *time.Time                 `json:"scheduled_at,omitempty"`
+	Status        consts.AgentCampaignStatus `json:"status"`          // draft, scheduled, sending, completed, failed, cancelled
+	TargetType    string                     `json:"target_type"`     // all, specific, line
+	TargetDetails []string                   `json:"target_details"`  // 目標詳情 (account列表或line路徑)
+	TargetCount   int64                      `json:"target_count"`    // 目標代理數量
+	RealSentCount int64                      `json:"real_sent_count"` // 實際發送數量
+	CreatedBy     string                     `json:"created_by"`      // 建立者
+	UpdatedBy     string                     `json:"updated_by"`      // 修改者
+	CreatedAt     time.Time                  `json:"created_at"`
+	UpdatedAt     time.Time                  `json:"updated_at"`
+	DeletedAt     *time.Time                 `json:"deleted_at,omitempty"`
 }
 
 // CanUpdate 檢查活動是否允許更新
@@ -71,7 +71,7 @@ func (ac *AgentCampaign) UpdateFromRequest(req *dto.UpdateAgentCampaignRequest) 
 		ac.Content = *req.Content
 	}
 	if req.Status != nil {
-		ac.Status = *req.Status
+		ac.Status = consts.AgentCampaignStatus(*req.Status)
 	}
 	if req.ScheduledAt != nil {
 		ac.ScheduledAt = req.ScheduledAt
@@ -87,8 +87,10 @@ func (ac *AgentCampaign) UpdateFromRequest(req *dto.UpdateAgentCampaignRequest) 
 	ac.UpdatedAt = now
 
 	// 處理立即排程：status 更新為 scheduled 且目前 scheduled_at 為 nil
-	if req.Status != nil && *req.Status == consts.AgentCampaignStatusScheduled &&
-		req.ScheduledAt == nil && ac.ScheduledAt == nil {
+	if req.Status != nil &&
+		consts.AgentCampaignStatus(*req.Status) == consts.AgentCampaignStatusScheduled &&
+		req.ScheduledAt == nil &&
+		ac.ScheduledAt == nil {
 		ac.ScheduledAt = &now
 	}
 
@@ -180,7 +182,7 @@ func NewAgentCampaign(
 	campaign := &AgentCampaign{
 		Title:         req.Title,
 		Content:       req.Content,
-		Status:        req.Status,
+		Status:        consts.AgentCampaignStatus(req.Status),
 		ScheduledAt:   req.ScheduledAt,
 		MerchantID:    merchantID,
 		TargetType:    req.TargetType,
@@ -194,7 +196,8 @@ func NewAgentCampaign(
 	}
 
 	// 處理立即排程：status=scheduled 且 scheduled_at 為 nil
-	if req.Status == consts.AgentCampaignStatusScheduled && req.ScheduledAt == nil {
+	if consts.AgentCampaignStatus(req.Status) == consts.AgentCampaignStatusScheduled &&
+		req.ScheduledAt == nil {
 		campaign.ScheduledAt = &now
 	}
 

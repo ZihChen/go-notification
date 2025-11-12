@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 )
@@ -58,6 +59,10 @@ type AgentUseCase interface {
 	FilterActiveAgents(ctx context.Context, globalAgentIDs []string) ([]*entity.Agent, error)
 
 	// 排程相關方法
-	UpdateCampaignStatus(ctx context.Context, campaignID uint64, status string) error
+	UpdateCampaignStatus(
+		ctx context.Context,
+		campaignID uint64,
+		status consts.AgentCampaignStatus,
+	) error
 	CompleteCampaign(ctx context.Context, campaignID uint64, targetCount, sentCount int) error
 }

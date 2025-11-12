@@ -182,7 +182,16 @@ func (j *AgentCampaignTriggerJob) processCampaign(
 		j.logger.UInt64("campaign_id", campaign.ID),
 		j.logger.String("title", campaign.Title))
 
-	// 1. 委託UseCase執行完整發送流程
+	// 1. 更新狀態為發送中：sending
+	if err := j.agentUseCase.UpdateCampaignStatus(ctx, campaign.ID, consts.AgentCampaignStatusSending); err != nil {
+		j.logger.ErrorLog("Failed to mark campaign as sending",
+			j.logger.UInt64("campaign_id", campaign.ID),
+			j.logger.String("update_error", err.Error()))
+		j.tracingService.RecordSpanError(span, err)
+		return err
+	}
+
+	// 2. 委託UseCase執行完整發送流程
 	targetCount, sentCount, err := j.agentUseCase.SendMessageToCampaignTargets(ctx, campaign)
 	if err != nil {
 		// 標記活動失敗
@@ -195,7 +204,7 @@ func (j *AgentCampaignTriggerJob) processCampaign(
 		return err
 	}
 
-	// 2. 更新統計與完成狀態
+	// 3. 更新統計與完成狀態
 	if err = j.agentUseCase.CompleteCampaign(ctx, campaign.ID, targetCount, sentCount); err != nil {
 		j.tracingService.RecordSpanError(span, err)
 		return err

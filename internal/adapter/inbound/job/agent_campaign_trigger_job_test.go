@@ -42,6 +42,10 @@ func TestAgentCampaignTriggerJob_Execute(t *testing.T) {
 				mocks.agentUseCase.On("GetScheduledCampaigns", mock.Anything, mock.AnythingOfType("time.Time")).
 					Return(campaigns, nil)
 
+				// Mock UpdateCampaignStatus to "sending"
+				mocks.agentUseCase.On("UpdateCampaignStatus", mock.Anything, uint64(1), consts.AgentCampaignStatusSending).
+					Return(nil)
+
 				// Mock SendMessageToCampaignTargets
 				mocks.agentUseCase.On("SendMessageToCampaignTargets", mock.Anything, campaigns[0]).
 					Return(10, 8, nil) // 10 targets, 8 sent
@@ -124,6 +128,10 @@ func TestAgentCampaignTriggerJob_Execute(t *testing.T) {
 				}
 				mocks.agentUseCase.On("GetScheduledCampaigns", mock.Anything, mock.AnythingOfType("time.Time")).
 					Return(campaigns, nil)
+
+				// Mock UpdateCampaignStatus to "sending"
+				mocks.agentUseCase.On("UpdateCampaignStatus", mock.Anything, uint64(1), consts.AgentCampaignStatusSending).
+					Return(nil)
 
 				// Mock SendMessageToCampaignTargets failure
 				mocks.agentUseCase.On("SendMessageToCampaignTargets", mock.Anything, campaigns[0]).

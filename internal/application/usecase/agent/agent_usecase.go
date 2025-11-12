@@ -288,7 +288,7 @@ func (u *AgentUseCase) UpdateAgentCampaign(
 	u.logger.InfoLog("Agent campaign updated successfully",
 		u.logger.UInt64("campaign_id", campaignEntity.ID),
 		u.logger.String("title", campaignEntity.Title),
-		u.logger.String("status", campaignEntity.Status))
+		u.logger.String("status", campaignEntity.Status.String()))
 
 	return campaignEntity, nil
 }
@@ -358,7 +358,7 @@ func (u *AgentUseCase) GetAgentCampaigns(
 			Title:         campaign.Title,
 			Content:       campaign.Content,
 			ScheduledAt:   campaign.ScheduledAt,
-			Status:        campaign.Status,
+			Status:        campaign.Status.String(),
 			TargetType:    campaign.TargetType,
 			TargetDetails: campaign.TargetDetails,
 			TargetCount:   campaign.TargetCount,
@@ -624,17 +624,49 @@ func (u *AgentUseCase) FilterActiveAgents(
 func (u *AgentUseCase) UpdateCampaignStatus(
 	ctx context.Context,
 	campaignID uint64,
-	status string,
+	status consts.AgentCampaignStatus,
 ) error {
 	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.UpdateCampaignStatus")
 	defer u.tracingService.SpanEnd(span)
 
 	u.tracingService.RecordSpanAttributes(span,
 		attribute.Int64("campaign.id", int64(campaignID)),
-		attribute.String("status", status))
+		attribute.String("status", status.String()))
 
+	// 1. 驗證新狀態是否有效
+	if !status.IsValid() {
+		err := fmt.Errorf("invalid campaign status: %s", status.String())
+		u.tracingService.RecordSpanError(span, err)
+		return err
+	}
+
+	// 2. 獲取當前活動狀態以驗證狀態轉換
+	campaign, err := u.agentCampaignRepo.GetByID(ctx, campaignID)
+	if err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return fmt.Errorf("get campaign for status validation: %w", err)
+	}
+	if campaign == nil {
+		err := fmt.Errorf("campaign not found: %d", campaignID)
+		u.tracingService.RecordSpanError(span, err)
+		return err
+	}
+
+	// 3. 驗證狀態轉換是否合法
+	currentStatus := consts.AgentCampaignStatus(campaign.Status)
+	if !currentStatus.CanTransitionTo(status) {
+		err := fmt.Errorf(
+			"invalid status transition from %s to %s",
+			currentStatus.String(),
+			status.String(),
+		)
+		u.tracingService.RecordSpanError(span, err)
+		return err
+	}
+
+	// 4. 更新狀態
 	setColumn := map[string]interface{}{
-		"status": status,
+		"status": status.String(),
 	}
 
 	if err := u.agentCampaignRepo.UpdateFields(ctx, campaignID, setColumn); err != nil {
@@ -642,7 +674,15 @@ func (u *AgentUseCase) UpdateCampaignStatus(
 		return fmt.Errorf("update campaign status: %w", err)
 	}
 
-	u.tracingService.TraceEvent(span, "Campaign status updated successfully")
+	u.tracingService.TraceEvent(span, "Campaign status updated successfully",
+		attribute.String("previous_status", currentStatus.String()),
+		attribute.String("new_status", status.String()))
+
+	u.logger.InfoLog("Campaign status updated",
+		u.logger.UInt64("campaign_id", campaignID),
+		u.logger.String("previous_status", currentStatus.String()),
+		u.logger.String("new_status", status.String()))
+
 	return nil
 }
 

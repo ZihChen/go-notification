@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
@@ -187,7 +188,7 @@ func (r *AgentCampaignRepository) modelToEntity(model *models.AgentCampaign) *en
 		Title:         model.Title,
 		Content:       model.Content,
 		ScheduledAt:   model.ScheduledAt,
-		Status:        model.Status,
+		Status:        consts.AgentCampaignStatus(model.Status),
 		TargetType:    model.TargetType,
 		TargetCount:   model.TargetCount,
 		RealSentCount: model.RealSentCount,
@@ -228,7 +229,7 @@ func (r *AgentCampaignRepository) entityToModel(
 		Title:         campaign.Title,
 		Content:       campaign.Content,
 		ScheduledAt:   campaign.ScheduledAt,
-		Status:        campaign.Status,
+		Status:        campaign.Status.String(),
 		TargetType:    campaign.TargetType,
 		TargetCount:   campaign.TargetCount,
 		RealSentCount: campaign.RealSentCount,

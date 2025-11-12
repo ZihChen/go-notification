@@ -1,17 +1,22 @@
 package consts
 
+// AgentCampaignStatus 代理活動狀態型別
+type AgentCampaignStatus string
+
 // 代理活動狀態常數
 const (
 	// AgentCampaignStatusDraft 草稿狀態
-	AgentCampaignStatusDraft = "draft"
+	AgentCampaignStatusDraft AgentCampaignStatus = "draft"
 	// AgentCampaignStatusScheduled 預約中狀態
-	AgentCampaignStatusScheduled = "scheduled"
+	AgentCampaignStatusScheduled AgentCampaignStatus = "scheduled"
+	// AgentCampaignStatusSending 傳送中狀態
+	AgentCampaignStatusSending AgentCampaignStatus = "sending"
 	// AgentCampaignStatusSent 已完成發送狀態
-	AgentCampaignStatusSent = "sent"
+	AgentCampaignStatusSent AgentCampaignStatus = "sent"
 	// AgentCampaignStatusFailed 失敗狀態
-	AgentCampaignStatusFailed = "failed"
+	AgentCampaignStatusFailed AgentCampaignStatus = "failed"
 	// AgentCampaignStatusCancelled 已取消狀態
-	AgentCampaignStatusCancelled = "cancelled"
+	AgentCampaignStatusCancelled AgentCampaignStatus = "cancelled"
 )
 
 // 代理目標類型常數
@@ -81,9 +86,10 @@ const (
 )
 
 // AgentCampaignStatuses 代理活動狀態列表
-var AgentCampaignStatuses = []string{
+var AgentCampaignStatuses = []AgentCampaignStatus{
 	AgentCampaignStatusDraft,
 	AgentCampaignStatusScheduled,
+	AgentCampaignStatusSending,
 	AgentCampaignStatusSent,
 	AgentCampaignStatusFailed,
 	AgentCampaignStatusCancelled,
@@ -99,7 +105,7 @@ var AgentTargetTypes = []string{
 // IsValidAgentCampaignStatus 檢查代理活動狀態是否有效
 func IsValidAgentCampaignStatus(status string) bool {
 	for _, s := range AgentCampaignStatuses {
-		if s == status {
+		if s.String() == status {
 			return true
 		}
 	}
@@ -114,4 +120,71 @@ func IsValidAgentTargetType(targetType string) bool {
 		}
 	}
 	return false
+}
+
+// String 將 AgentCampaignStatus 轉換為字串
+func (s AgentCampaignStatus) String() string {
+	return string(s)
+}
+
+// IsValid 檢查狀態是否有效
+func (s AgentCampaignStatus) IsValid() bool {
+	return IsValidAgentCampaignStatus(s.String())
+}
+
+// IsDraft 檢查是否為草稿狀態
+func (s AgentCampaignStatus) IsDraft() bool {
+	return s == AgentCampaignStatusDraft
+}
+
+// IsScheduled 檢查是否為預約中狀態
+func (s AgentCampaignStatus) IsScheduled() bool {
+	return s == AgentCampaignStatusScheduled
+}
+
+// IsSending 檢查是否為傳送中狀態
+func (s AgentCampaignStatus) IsSending() bool {
+	return s == AgentCampaignStatusSending
+}
+
+// IsSent 檢查是否為已完成發送狀態
+func (s AgentCampaignStatus) IsSent() bool {
+	return s == AgentCampaignStatusSent
+}
+
+// IsFailed 檢查是否為失敗狀態
+func (s AgentCampaignStatus) IsFailed() bool {
+	return s == AgentCampaignStatusFailed
+}
+
+// IsCancelled 檢查是否為已取消狀態
+func (s AgentCampaignStatus) IsCancelled() bool {
+	return s == AgentCampaignStatusCancelled
+}
+
+// IsFinalized 檢查是否為最終狀態 (sent, failed, cancelled)
+func (s AgentCampaignStatus) IsFinalized() bool {
+	return s.IsSent() || s.IsFailed() || s.IsCancelled()
+}
+
+// CanTransitionTo 檢查是否可以轉換到目標狀態
+func (s AgentCampaignStatus) CanTransitionTo(target AgentCampaignStatus) bool {
+	// 已經是最終狀態的不能再轉換
+	if s.IsFinalized() {
+		return false
+	}
+
+	switch s {
+	case AgentCampaignStatusDraft:
+		// 草稿可以轉換到預約中、已取消
+		return target == AgentCampaignStatusScheduled || target == AgentCampaignStatusCancelled
+	case AgentCampaignStatusScheduled:
+		// 預約中可以轉換到傳送中、已取消
+		return target == AgentCampaignStatusSending || target == AgentCampaignStatusCancelled
+	case AgentCampaignStatusSending:
+		// 傳送中可以轉換到已完成發送、失敗
+		return target == AgentCampaignStatusSent || target == AgentCampaignStatusFailed
+	default:
+		return false
+	}
 }

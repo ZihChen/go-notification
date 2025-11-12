@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
@@ -578,7 +579,7 @@ func (m *AgentUseCaseMock) FilterActiveAgents(
 func (m *AgentUseCaseMock) UpdateCampaignStatus(
 	ctx context.Context,
 	campaignID uint64,
-	status string,
+	status consts.AgentCampaignStatus,
 ) error {
 	args := m.Called(ctx, campaignID, status)
 	return args.Error(0)
