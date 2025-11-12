@@ -33,18 +33,35 @@ func NewAgentHandler(
 // @Summary 創建代理訊息活動
 // @Description 創建新的代理訊息活動，支持全代理、指定代理、代理線等目標類型
 // @Description 參數說明：
+// @Description - status: 訊息狀態，必填，可選值：draft(草稿)、scheduled(排程)
 // @Description - target_type: 目標類型，可選值：all(全部代理)、specific(指定代理)、line(代理線)
 // @Description - target_details: 目標詳情，當target_type為specific時填入代理帳號陣列，當target_type為line時填入上級代理帳號
-// @Description - scheduled_at: 排程時間，可選，不填則立即發送
+// @Description - scheduled_at: 排程時間，根據status決定是否必填
+// @Description   * 預約發送：status=draft，scheduled_at可帶可不帶
+// @Description   * 立即發送：status=scheduled，scheduled_at不得帶入
+// @Description   * 預約發送：status=scheduled，scheduled_at必須帶入
 // @Description
-// @Description 範例請求：
+// @Description 範例請求（預約發送）：
 // @Description ```json
 // @Description {
 // @Description   "title": "Test title",
 // @Description   "content": "test45678",
+// @Description   "status": "scheduled",
 // @Description   "target_type": "all",
 // @Description   "target_details": [],
 // @Description   "scheduled_at": "2025-11-11T18:00:00Z",
+// @Description   "created_by": "winston888"
+// @Description }
+// @Description ```
+// @Description
+// @Description 範例請求（立即發送）：
+// @Description ```json
+// @Description {
+// @Description   "title": "Immediate Message",
+// @Description   "content": "Immediate sending",
+// @Description   "status": "scheduled",
+// @Description   "target_type": "all",
+// @Description   "target_details": [],
 // @Description   "created_by": "winston888"
 // @Description }
 // @Description ```
@@ -84,18 +101,35 @@ func (h *AgentHandler) CreateAgentCampaign(c *gin.Context) {
 // @Summary 更新代理訊息活動
 // @Description 更新指定ID的代理訊息活動
 // @Description 參數說明：
+// @Description - status: 訊息狀態，可選，可選值：draft(草稿)、scheduled(排程)
 // @Description - target_type: 目標類型，可選值：all(全部代理)、specific(指定代理)、line(代理線)
 // @Description - target_details: 目標詳情，當target_type為specific時填入代理帳號陣列，當target_type為line時填入上級代理帳號
-// @Description - scheduled_at: 排程時間，可選，不填則立即發送
+// @Description - scheduled_at: 排程時間，根據status決定是否必填
+// @Description   * 預約發送：status=draft，scheduled_at可帶可不帶
+// @Description   * 立即發送：status=scheduled，scheduled_at不得帶入
+// @Description   * 預約發送：status=scheduled，scheduled_at必須帶入
 // @Description
-// @Description 範例請求：
+// @Description 範例請求（預約發送）：
 // @Description ```json
 // @Description {
 // @Description   "title": "Test update",
 // @Description   "content": "hello mey friend",
+// @Description   "status": "scheduled",
 // @Description   "target_type": "specific",
 // @Description   "target_details": ["fatcat-john01", "fatcat-yoyo"],
 // @Description   "scheduled_at": "2025-11-11T18:00:00Z",
+// @Description   "updated_by": "winston888"
+// @Description }
+// @Description ```
+// @Description
+// @Description 範例請求（立即發送）：
+// @Description ```json
+// @Description {
+// @Description   "title": "Immediate Update",
+// @Description   "content": "Immediate update message",
+// @Description   "status": "scheduled",
+// @Description   "target_type": "all",
+// @Description   "target_details": [],
 // @Description   "updated_by": "winston888"
 // @Description }
 // @Description ```

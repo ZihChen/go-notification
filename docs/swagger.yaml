@@ -204,6 +204,11 @@ definitions:
         type: string
       scheduled_at:
         type: string
+      status:
+        enum:
+        - draft
+        - scheduled
+        type: string
       target_details:
         items:
           type: string
@@ -220,6 +225,7 @@ definitions:
     required:
     - content
     - created_by
+    - status
     - target_type
     - title
     type: object
@@ -542,6 +548,11 @@ definitions:
       id:
         type: integer
       scheduled_at:
+        type: string
+      status:
+        enum:
+        - draft
+        - scheduled
         type: string
       target_details:
         items:
@@ -919,18 +930,35 @@ paths:
       description: |-
         創建新的代理訊息活動，支持全代理、指定代理、代理線等目標類型
         參數說明：
+        - status: 訊息狀態，必填，可選值：draft(草稿)、scheduled(排程)
         - target_type: 目標類型，可選值：all(全部代理)、specific(指定代理)、line(代理線)
         - target_details: 目標詳情，當target_type為specific時填入代理帳號陣列，當target_type為line時填入上級代理帳號
-        - scheduled_at: 排程時間，可選，不填則立即發送
+        - scheduled_at: 排程時間，根據status決定是否必填
+        * 預約發送：status=draft，scheduled_at可帶可不帶
+        * 立即發送：status=scheduled，scheduled_at不得帶入
+        * 預約發送：status=scheduled，scheduled_at必須帶入
 
-        範例請求：
+        範例請求（預約發送）：
         ```json
         {
         "title": "Test title",
         "content": "test45678",
+        "status": "scheduled",
         "target_type": "all",
         "target_details": [],
         "scheduled_at": "2025-11-11T18:00:00Z",
+        "created_by": "winston888"
+        }
+        ```
+
+        範例請求（立即發送）：
+        ```json
+        {
+        "title": "Immediate Message",
+        "content": "Immediate sending",
+        "status": "scheduled",
+        "target_type": "all",
+        "target_details": [],
         "created_by": "winston888"
         }
         ```
@@ -1032,18 +1060,35 @@ paths:
       description: |-
         更新指定ID的代理訊息活動
         參數說明：
+        - status: 訊息狀態，可選，可選值：draft(草稿)、scheduled(排程)
         - target_type: 目標類型，可選值：all(全部代理)、specific(指定代理)、line(代理線)
         - target_details: 目標詳情，當target_type為specific時填入代理帳號陣列，當target_type為line時填入上級代理帳號
-        - scheduled_at: 排程時間，可選，不填則立即發送
+        - scheduled_at: 排程時間，根據status決定是否必填
+        * 預約發送：status=draft，scheduled_at可帶可不帶
+        * 立即發送：status=scheduled，scheduled_at不得帶入
+        * 預約發送：status=scheduled，scheduled_at必須帶入
 
-        範例請求：
+        範例請求（預約發送）：
         ```json
         {
         "title": "Test update",
         "content": "hello mey friend",
+        "status": "scheduled",
         "target_type": "specific",
         "target_details": ["fatcat-john01", "fatcat-yoyo"],
         "scheduled_at": "2025-11-11T18:00:00Z",
+        "updated_by": "winston888"
+        }
+        ```
+
+        範例請求（立即發送）：
+        ```json
+        {
+        "title": "Immediate Update",
+        "content": "Immediate update message",
+        "status": "scheduled",
+        "target_type": "all",
+        "target_details": [],
         "updated_by": "winston888"
         }
         ```

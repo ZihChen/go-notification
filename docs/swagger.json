@@ -107,7 +107,7 @@
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "創建新的代理訊息活動，支持全代理、指定代理、代理線等目標類型\n參數說明：\n- target_type: 目標類型，可選值：all(全部代理)、specific(指定代理)、line(代理線)\n- target_details: 目標詳情，當target_type為specific時填入代理帳號陣列，當target_type為line時填入上級代理帳號\n- scheduled_at: 排程時間，可選，不填則立即發送\n\n範例請求：\n```json\n{\n\"title\": \"Test title\",\n\"content\": \"test45678\",\n\"target_type\": \"all\",\n\"target_details\": [],\n\"scheduled_at\": \"2025-11-11T18:00:00Z\",\n\"created_by\": \"winston888\"\n}\n```",
+                "description": "創建新的代理訊息活動，支持全代理、指定代理、代理線等目標類型\n參數說明：\n- status: 訊息狀態，必填，可選值：draft(草稿)、scheduled(排程)\n- target_type: 目標類型，可選值：all(全部代理)、specific(指定代理)、line(代理線)\n- target_details: 目標詳情，當target_type為specific時填入代理帳號陣列，當target_type為line時填入上級代理帳號\n- scheduled_at: 排程時間，根據status決定是否必填\n* 預約發送：status=draft，scheduled_at可帶可不帶\n* 立即發送：status=scheduled，scheduled_at不得帶入\n* 預約發送：status=scheduled，scheduled_at必須帶入\n\n範例請求（預約發送）：\n```json\n{\n\"title\": \"Test title\",\n\"content\": \"test45678\",\n\"status\": \"scheduled\",\n\"target_type\": \"all\",\n\"target_details\": [],\n\"scheduled_at\": \"2025-11-11T18:00:00Z\",\n\"created_by\": \"winston888\"\n}\n```\n\n範例請求（立即發送）：\n```json\n{\n\"title\": \"Immediate Message\",\n\"content\": \"Immediate sending\",\n\"status\": \"scheduled\",\n\"target_type\": \"all\",\n\"target_details\": [],\n\"created_by\": \"winston888\"\n}\n```",
                 "consumes": [
                     "application/json"
                 ],
@@ -207,7 +207,7 @@
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "更新指定ID的代理訊息活動\n參數說明：\n- target_type: 目標類型，可選值：all(全部代理)、specific(指定代理)、line(代理線)\n- target_details: 目標詳情，當target_type為specific時填入代理帳號陣列，當target_type為line時填入上級代理帳號\n- scheduled_at: 排程時間，可選，不填則立即發送\n\n範例請求：\n```json\n{\n\"title\": \"Test update\",\n\"content\": \"hello mey friend\",\n\"target_type\": \"specific\",\n\"target_details\": [\"fatcat-john01\", \"fatcat-yoyo\"],\n\"scheduled_at\": \"2025-11-11T18:00:00Z\",\n\"updated_by\": \"winston888\"\n}\n```",
+                "description": "更新指定ID的代理訊息活動\n參數說明：\n- status: 訊息狀態，可選，可選值：draft(草稿)、scheduled(排程)\n- target_type: 目標類型，可選值：all(全部代理)、specific(指定代理)、line(代理線)\n- target_details: 目標詳情，當target_type為specific時填入代理帳號陣列，當target_type為line時填入上級代理帳號\n- scheduled_at: 排程時間，根據status決定是否必填\n* 預約發送：status=draft，scheduled_at可帶可不帶\n* 立即發送：status=scheduled，scheduled_at不得帶入\n* 預約發送：status=scheduled，scheduled_at必須帶入\n\n範例請求（預約發送）：\n```json\n{\n\"title\": \"Test update\",\n\"content\": \"hello mey friend\",\n\"status\": \"scheduled\",\n\"target_type\": \"specific\",\n\"target_details\": [\"fatcat-john01\", \"fatcat-yoyo\"],\n\"scheduled_at\": \"2025-11-11T18:00:00Z\",\n\"updated_by\": \"winston888\"\n}\n```\n\n範例請求（立即發送）：\n```json\n{\n\"title\": \"Immediate Update\",\n\"content\": \"Immediate update message\",\n\"status\": \"scheduled\",\n\"target_type\": \"all\",\n\"target_details\": [],\n\"updated_by\": \"winston888\"\n}\n```",
                 "consumes": [
                     "application/json"
                 ],
@@ -1843,6 +1843,7 @@
             "required": [
                 "content",
                 "created_by",
+                "status",
                 "target_type",
                 "title"
             ],
@@ -1857,6 +1858,13 @@
                 },
                 "scheduled_at": {
                     "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "draft",
+                        "scheduled"
+                    ]
                 },
                 "target_details": {
                     "type": "array",
@@ -2317,6 +2325,13 @@
                 },
                 "scheduled_at": {
                     "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "draft",
+                        "scheduled"
+                    ]
                 },
                 "target_details": {
                     "type": "array",

@@ -120,14 +120,17 @@ func (h *HTTPHandler) GetMerchantByID(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		response.BadRequest(c, "invalid merchant ID", err.Error()).Return()
+		return
 	}
 
 	merchant, err := h.merchantUseCase.GetMerchantByID(c.Request.Context(), id)
 	if err != nil {
 		if err.Error() == "record not found" {
 			response.NotFound(c, "merchant not found", err.Error()).Return()
+			return
 		}
 		response.InternalServerError(c, "failed to get merchant", err.Error()).Return()
+		return
 	}
 	response.OK(c).Data(merchant).Return()
 }
@@ -237,13 +240,16 @@ func (h *HTTPHandler) UpdatePlayerLastActive(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		response.BadRequest(c, "invalid player ID", err.Error()).Return()
+		return
 	}
 
 	if err = h.playerUseCase.UpdatePlayerLastActive(c.Request.Context(), id); err != nil {
 		if err.Error() == "record not found" {
 			response.NotFound(c, "player not found", err.Error()).Return()
+			return
 		}
 		response.InternalServerError(c, "failed to update player last active", err.Error()).Return()
+		return
 	}
 	response.OK(c).Data(gin.H{
 		"playerID": id,
@@ -268,14 +274,17 @@ func (h *HTTPHandler) GetManagerByID(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		response.BadRequest(c, "invalid Manager ID", err.Error()).Return()
+		return
 	}
 
 	manager, err := h.managerUseCase.GetManagerByID(c.Request.Context(), id)
 	if err != nil {
 		if err.Error() == "record not found" {
 			response.BadRequest(c, "manager not found", err.Error()).Return()
+			return
 		}
 		response.BadRequest(c, "failed to get manager", err.Error()).Return()
+		return
 	}
 	response.OK(c).Data(manager).Return()
 }

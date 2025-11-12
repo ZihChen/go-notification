@@ -383,9 +383,34 @@ func TestHTTPHandler_GetMerchantByID_Success(t *testing.T) {
 }
 
 func TestHTTPHandler_GetMerchantByID_InvalidID(t *testing.T) {
-	// Skip this test due to handler bug - it doesn't return after calling Return()
-	// This would require fixing the handler code first
-	t.Skip("Handler has bug: missing return after BadRequest().Return()")
+	// Setup
+	merchantUseCase, playerUseCase, managerUseCase, messageUseCase, logger := createMockDependencies(
+		t,
+	)
+	handler := createTestHandler(
+		merchantUseCase,
+		playerUseCase,
+		managerUseCase,
+		messageUseCase,
+		logger,
+	)
+
+	router := setupTestRouter()
+	router.GET("/api/v1/merchants/:id", handler.GetMerchantByID)
+
+	// Execute
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/merchants/invalid", nil)
+	router.ServeHTTP(w, req)
+
+	// Verify
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, false, response["success"])
+	assert.Contains(t, response, "error")
 }
 
 func TestHTTPHandler_GetMerchantByID_NotFound(t *testing.T) {
@@ -428,7 +453,39 @@ func TestHTTPHandler_GetMerchantByID_NotFound(t *testing.T) {
 }
 
 func TestHTTPHandler_GetMerchantByID_InternalServerError(t *testing.T) {
-	t.Skip("Handler has bug: missing return after NotFound().Return()")
+	// Setup
+	merchantUseCase, playerUseCase, managerUseCase, messageUseCase, logger := createMockDependencies(
+		t,
+	)
+	handler := createTestHandler(
+		merchantUseCase,
+		playerUseCase,
+		managerUseCase,
+		messageUseCase,
+		logger,
+	)
+
+	router := setupTestRouter()
+	router.GET("/api/v1/merchants/:id", handler.GetMerchantByID)
+
+	merchantUseCase.On("GetMerchantByID", mock.Anything, uint64(123)).
+		Return(nil, errors.New("database connection failed"))
+
+	// Execute
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/merchants/123", nil)
+	router.ServeHTTP(w, req)
+
+	// Verify
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, false, response["success"])
+	assert.Contains(t, response, "error")
+
+	merchantUseCase.AssertExpectations()
 }
 
 func TestHTTPHandler_GetMerchantByGlobalID_Success(t *testing.T) {
@@ -652,7 +709,34 @@ func TestHTTPHandler_UpdatePlayerLastActive_Success(t *testing.T) {
 }
 
 func TestHTTPHandler_UpdatePlayerLastActive_InvalidID(t *testing.T) {
-	t.Skip("Handler has bug: missing return after BadRequest().Return()")
+	// Setup
+	merchantUseCase, playerUseCase, managerUseCase, messageUseCase, logger := createMockDependencies(
+		t,
+	)
+	handler := createTestHandler(
+		merchantUseCase,
+		playerUseCase,
+		managerUseCase,
+		messageUseCase,
+		logger,
+	)
+
+	router := setupTestRouter()
+	router.PUT("/api/v1/players/:id/active", handler.UpdatePlayerLastActive)
+
+	// Execute
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("PUT", "/api/v1/players/invalid/active", nil)
+	router.ServeHTTP(w, req)
+
+	// Verify
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, false, response["success"])
+	assert.Contains(t, response, "error")
 }
 
 // ============================================================================
@@ -701,7 +785,34 @@ func TestHTTPHandler_GetManagerByID_Success(t *testing.T) {
 }
 
 func TestHTTPHandler_GetManagerByID_InvalidID(t *testing.T) {
-	t.Skip("Handler has bug: missing return after BadRequest().Return()")
+	// Setup
+	merchantUseCase, playerUseCase, managerUseCase, messageUseCase, logger := createMockDependencies(
+		t,
+	)
+	handler := createTestHandler(
+		merchantUseCase,
+		playerUseCase,
+		managerUseCase,
+		messageUseCase,
+		logger,
+	)
+
+	router := setupTestRouter()
+	router.GET("/api/v1/managers/:id", handler.GetManagerByID)
+
+	// Execute
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/managers/invalid", nil)
+	router.ServeHTTP(w, req)
+
+	// Verify
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, false, response["success"])
+	assert.Contains(t, response, "error")
 }
 
 func TestHTTPHandler_GetManagerByGlobalID_Success(t *testing.T) {

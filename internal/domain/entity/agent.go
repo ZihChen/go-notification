@@ -61,12 +61,17 @@ func (ac *AgentCampaign) CanDelete() error {
 }
 
 // UpdateFromRequest 從DTO更新實體 (只更新非nil的欄位)
-func (ac *AgentCampaign) UpdateFromRequest(req *dto.UpdateAgentCampaignRequest) {
+func (ac *AgentCampaign) UpdateFromRequest(req *dto.UpdateAgentCampaignRequest) error {
+	now := time.Now()
+
 	if req.Title != nil {
 		ac.Title = *req.Title
 	}
 	if req.Content != nil {
 		ac.Content = *req.Content
+	}
+	if req.Status != nil {
+		ac.Status = *req.Status
 	}
 	if req.ScheduledAt != nil {
 		ac.ScheduledAt = req.ScheduledAt
@@ -79,7 +84,28 @@ func (ac *AgentCampaign) UpdateFromRequest(req *dto.UpdateAgentCampaignRequest) 
 	}
 
 	ac.UpdatedBy = req.UpdatedBy
-	ac.UpdatedAt = time.Now()
+	ac.UpdatedAt = now
+
+	// 處理立即排程：status 更新為 scheduled 且目前 scheduled_at 為 nil
+	if req.Status != nil && *req.Status == consts.AgentCampaignStatusScheduled &&
+		req.ScheduledAt == nil && ac.ScheduledAt == nil {
+		ac.ScheduledAt = &now
+	}
+
+	// 驗證更新後的資料
+	return ac.ValidateForUpdate(req)
+}
+
+// ValidateForUpdate 更新代理活動時的驗證
+func (ac *AgentCampaign) ValidateForUpdate(req *dto.UpdateAgentCampaignRequest) error {
+	// 如果有更新target相關欄位，需要驗證target詳情
+	if req.TargetType != nil || req.TargetDetails != nil {
+		if err := ac.ValidateTargetDetails(); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // ValidateTargetDetails 根據TargetType驗證TargetDetails
@@ -93,13 +119,91 @@ func (ac *AgentCampaign) ValidateTargetDetails() error {
 	return nil
 }
 
-// UpdateStatus 更新狀態邏輯
-func (ac *AgentCampaign) UpdateStatus() {
-	if ac.ScheduledAt != nil {
-		ac.Status = consts.AgentCampaignStatusScheduled
-	} else if ac.Status == consts.AgentCampaignStatusScheduled {
-		ac.Status = consts.AgentCampaignStatusDraft // 如果移除了排程時間，改回草稿狀態
+// ValidateForCreate 創建代理活動時的完整驗證
+func (ac *AgentCampaign) ValidateForCreate() error {
+	// 驗證必填欄位
+	if ac.Title == "" {
+		return fmt.Errorf("title is required")
 	}
+	if ac.Content == "" {
+		return fmt.Errorf("content is required")
+	}
+	if ac.TargetType == "" {
+		return fmt.Errorf("target_type is required")
+	}
+	if ac.Status == "" {
+		return fmt.Errorf("status is required")
+	}
+	if ac.CreatedBy == "" {
+		return fmt.Errorf("created_by is required")
+	}
+
+	// 驗證 status 和 scheduled_at 的組合
+	if err := ac.ValidateStatusAndSchedule(); err != nil {
+		return err
+	}
+
+	// 驗證目標詳情
+	if err := ac.ValidateTargetDetails(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ValidateStatusAndSchedule 驗證狀態和排程時間的組合
+func (ac *AgentCampaign) ValidateStatusAndSchedule() error {
+	switch ac.Status {
+	case consts.AgentCampaignStatusDraft:
+		// 草稿狀態：scheduled_at 可帶可不帶
+		return nil
+	case consts.AgentCampaignStatusScheduled:
+		if ac.ScheduledAt == nil {
+			// 立即發送：status=scheduled，scheduled_at 不能帶
+			return nil
+		} else {
+			// 預約發送：status=scheduled，scheduled_at 必須帶
+			return nil
+		}
+	default:
+		return fmt.Errorf("invalid status: %s. Must be 'draft' or 'scheduled'", ac.Status)
+	}
+}
+
+// NewAgentCampaign 創建新的代理活動實體並進行驗證
+func NewAgentCampaign(
+	req *dto.CreateAgentCampaignRequest,
+	merchantID uint64,
+) (*AgentCampaign, error) {
+	now := time.Now()
+
+	campaign := &AgentCampaign{
+		Title:         req.Title,
+		Content:       req.Content,
+		Status:        req.Status,
+		ScheduledAt:   req.ScheduledAt,
+		MerchantID:    merchantID,
+		TargetType:    req.TargetType,
+		TargetDetails: req.TargetDetails,
+		TargetCount:   0, // 將在排程時計算
+		RealSentCount: 0,
+		CreatedBy:     req.CreatedBy,
+		UpdatedBy:     req.CreatedBy,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+
+	// 處理立即排程：status=scheduled 且 scheduled_at 為 nil
+	if req.Status == consts.AgentCampaignStatusScheduled && req.ScheduledAt == nil {
+		campaign.ScheduledAt = &now
+	}
+
+	// 執行完整驗證
+	if err := campaign.ValidateForCreate(); err != nil {
+		return nil, err
+	}
+
+	return campaign, nil
 }
 
 // AgentMessage 代理站內信

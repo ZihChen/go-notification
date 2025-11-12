@@ -72,6 +72,7 @@ func TestAgentUseCase_CreateAgentCampaign(t *testing.T) {
 		GlobalMerchantID: "MERCHANT-001",
 		Title:            "Test Campaign",
 		Content:          "Test Content",
+		Status:           "draft",
 		TargetType:       "all",
 		CreatedBy:        "test-user",
 	}
@@ -673,6 +674,7 @@ func TestAgentUseCase_CreateAgentCampaign_RepositoryError(t *testing.T) {
 		GlobalMerchantID: "MERCHANT-001",
 		Title:            "Test Campaign",
 		Content:          "Test Content",
+		Status:           "draft",
 		TargetType:       "all",
 		CreatedBy:        "test-user",
 	}

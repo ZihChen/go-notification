@@ -197,17 +197,6 @@ func (u *AgentUseCase) CreateAgentCampaign(
 		attribute.String("campaign.title", req.Title),
 		attribute.String("campaign.target_type", req.TargetType))
 
-	// 驗證請求參數
-	if req.Title == "" {
-		return nil, fmt.Errorf("title is required")
-	}
-	if req.Content == "" {
-		return nil, fmt.Errorf("content is required")
-	}
-	if req.TargetType == "" {
-		return nil, fmt.Errorf("target_type is required")
-	}
-
 	merchant, err := u.merchantRepo.FindByGlobalID(ctx, req.GlobalMerchantID)
 	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
 		u.tracingService.RecordSpanError(span, err)
@@ -215,29 +204,11 @@ func (u *AgentUseCase) CreateAgentCampaign(
 	}
 	u.tracingService.TraceEvent(span, "Creating message campaign")
 
-	// 構建代理活動實體
-	campaign := &entity.AgentCampaign{
-		Title:         req.Title,
-		Content:       req.Content,
-		ScheduledAt:   req.ScheduledAt,
-		MerchantID:    merchant.ID,
-		TargetType:    req.TargetType,
-		TargetDetails: req.TargetDetails,
-		Status:        consts.AgentCampaignStatusDraft, // 預設狀態為草稿
-		TargetCount:   0,                               // 將在排程時計算
-		RealSentCount: 0,
-		CreatedBy:     req.CreatedBy,
-		UpdatedBy:     req.CreatedBy,
-	}
-
-	// 根據TargetType驗證TargetDetails
-	if err = campaign.ValidateTargetDetails(); err != nil {
+	// 使用 Entity 工廠方法創建並驗證代理活動
+	campaign, err := entity.NewAgentCampaign(req, merchant.ID)
+	if err != nil {
+		u.tracingService.RecordSpanError(span, err)
 		return nil, err
-	}
-
-	// 如果設定了排程時間，狀態改為scheduled
-	if req.ScheduledAt != nil {
-		campaign.Status = consts.AgentCampaignStatusScheduled
 	}
 
 	u.tracingService.TraceEvent(span, "Creating agent campaign")
@@ -289,16 +260,11 @@ func (u *AgentUseCase) UpdateAgentCampaign(
 		return nil, err
 	}
 
-	// 使用 Entity 方法更新欄位
-	campaignEntity.UpdateFromRequest(req)
-
-	// 使用 Entity 方法驗證目標詳情
-	if err = campaignEntity.ValidateTargetDetails(); err != nil {
+	// 使用 Entity 方法更新欄位並驗證
+	if err = campaignEntity.UpdateFromRequest(req); err != nil {
+		u.tracingService.RecordSpanError(span, err)
 		return nil, err
 	}
-
-	// 使用 Entity 方法更新狀態
-	campaignEntity.UpdateStatus()
 
 	u.tracingService.TraceEvent(span, "Updating agent campaign")
 	err = u.agentCampaignRepo.Update(ctx, campaignEntity)
