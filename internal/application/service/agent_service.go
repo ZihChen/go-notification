@@ -185,7 +185,7 @@ func (s *AgentService) GetAgentLineDescendants(
 	s.tracingService.TraceEvent(span, "Agent line descendants retrieved",
 		attribute.Int("descendants_count", len(descendants)))
 
-	return nil, nil
+	return descendants, nil
 }
 
 // GetAgentLineAncestors 代理祖先查詢邏輯
@@ -205,11 +205,23 @@ func (s *AgentService) GetAgentLineAncestors(
 		return cached, nil
 	}
 
-	// 查詢祖先
-	ancestors, err := s.agentRepo.QueryAgentAncestorsByRelationship(ctx, globalAgentID)
+	// 使用關係倉儲查詢祖先
+	agent, err := s.agentRepo.GetByGlobalID(ctx, globalAgentID)
 	if err != nil {
-		s.tracingService.RecordSpanError(span, err)
-		return nil, fmt.Errorf("query ancestors: %w", err)
+		return nil, fmt.Errorf("get agent by global id: %w", err)
+	}
+	if agent == nil {
+		return nil, fmt.Errorf("agent not found: %s", globalAgentID)
+	}
+
+	relationships, err := s.relationRepo.GetByChildID(ctx, agent.ID)
+	if err != nil {
+		return nil, fmt.Errorf("get relationships by child id: %w", err)
+	}
+
+	ancestors := make([]uint64, len(relationships))
+	for i, rel := range relationships {
+		ancestors[i] = rel.ParentID
 	}
 
 	// 快取結果

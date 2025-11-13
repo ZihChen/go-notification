@@ -575,3 +575,136 @@ func TestAgentMessageRepository_GetMessageStats(t *testing.T) {
 		})
 	}
 }
+
+func TestAgentMessageRepository_CheckCampaignMessageExistsBatch(t *testing.T) {
+	testCases := []struct {
+		name           string
+		agentID        uint64
+		campaignIDs    []uint64
+		setupMock      func(sqlmock.Sqlmock)
+		expectedExists map[uint64]bool
+		expectedError  error
+	}{
+		{
+			name:        "check campaign messages exist successfully",
+			agentID:     1,
+			campaignIDs: []uint64{100, 200, 300},
+			setupMock: func(mock sqlmock.Sqlmock) {
+				rows := sqlmock.NewRows([]string{"agent_campaign_id"}).
+					AddRow(100).
+					AddRow(300)
+
+				mock.ExpectQuery("SELECT .* FROM `agent_messages` WHERE \\(agent_id = .+ AND agent_campaign_id IN .+\\) AND .*deleted_at.* IS NULL").
+					WithArgs(1, 100, 200, 300).
+					WillReturnRows(rows)
+			},
+			expectedExists: map[uint64]bool{
+				100: true,
+				200: false,
+				300: true,
+			},
+			expectedError: nil,
+		},
+		{
+			name:           "empty campaign IDs",
+			agentID:        1,
+			campaignIDs:    []uint64{},
+			setupMock:      func(mock sqlmock.Sqlmock) {},
+			expectedExists: map[uint64]bool{},
+			expectedError:  nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock, sqlDB := setupAgentMessageMockDB(t)
+			defer func() {
+				_ = sqlDB.Close()
+			}()
+
+			tc.setupMock(mock)
+
+			repo := NewAgentMessageRepository(db)
+
+			exists, err := repo.CheckCampaignMessageExistsBatch(
+				context.Background(),
+				tc.agentID,
+				tc.campaignIDs,
+			)
+
+			if tc.expectedError != nil {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedError.Error())
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectedExists, exists)
+			}
+
+			if len(tc.campaignIDs) > 0 {
+				assert.NoError(t, mock.ExpectationsWereMet())
+			}
+		})
+	}
+}
+
+func TestAgentMessageRepository_ExistsMessage(t *testing.T) {
+	testCases := []struct {
+		name           string
+		campaignID     uint64
+		agentID        uint64
+		setupMock      func(sqlmock.Sqlmock)
+		expectedExists bool
+		expectedError  error
+	}{
+		{
+			name:       "message exists",
+			campaignID: 100,
+			agentID:    1,
+			setupMock: func(mock sqlmock.Sqlmock) {
+				rows := sqlmock.NewRows([]string{"count"}).AddRow(1)
+				mock.ExpectQuery("SELECT count\\(\\*\\) FROM `agent_messages` WHERE \\(agent_campaign_id = .+ AND agent_id = .+\\) AND .*deleted_at.* IS NULL").
+					WithArgs(100, 1).
+					WillReturnRows(rows)
+			},
+			expectedExists: true,
+			expectedError:  nil,
+		},
+		{
+			name:       "message does not exist",
+			campaignID: 200,
+			agentID:    1,
+			setupMock: func(mock sqlmock.Sqlmock) {
+				rows := sqlmock.NewRows([]string{"count"}).AddRow(0)
+				mock.ExpectQuery("SELECT count\\(\\*\\) FROM `agent_messages` WHERE \\(agent_campaign_id = .+ AND agent_id = .+\\) AND .*deleted_at.* IS NULL").
+					WithArgs(200, 1).
+					WillReturnRows(rows)
+			},
+			expectedExists: false,
+			expectedError:  nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock, sqlDB := setupAgentMessageMockDB(t)
+			defer func() {
+				_ = sqlDB.Close()
+			}()
+
+			tc.setupMock(mock)
+
+			repo := NewAgentMessageRepository(db)
+
+			exists, err := repo.ExistsMessage(context.Background(), tc.campaignID, tc.agentID)
+
+			if tc.expectedError != nil {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedError.Error())
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectedExists, exists)
+			}
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}

@@ -934,25 +934,6 @@ func NewAgentRepositoryMock(t *testing.T) *AgentRepositoryMock {
 	}
 }
 
-func (m *AgentRepositoryMock) Create(
-	ctx context.Context,
-	agent *entity.Agent,
-) (*entity.Agent, error) {
-	args := m.Called(ctx, agent)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*entity.Agent), args.Error(1)
-}
-
-func (m *AgentRepositoryMock) GetByID(ctx context.Context, id uint64) (*entity.Agent, error) {
-	args := m.Called(ctx, id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*entity.Agent), args.Error(1)
-}
-
 func (m *AgentRepositoryMock) GetByGlobalID(
 	ctx context.Context,
 	globalAgentID string,
@@ -975,16 +956,6 @@ func (m *AgentRepositoryMock) GetByAccount(
 	return args.Get(0).(*entity.Agent), args.Error(1)
 }
 
-func (m *AgentRepositoryMock) Update(ctx context.Context, agent *entity.Agent) error {
-	args := m.Called(ctx, agent)
-	return args.Error(0)
-}
-
-func (m *AgentRepositoryMock) Delete(ctx context.Context, id uint64) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-
 func (m *AgentRepositoryMock) Upsert(ctx context.Context, agent *entity.Agent) error {
 	args := m.Called(ctx, agent)
 	return args.Error(0)
@@ -1000,46 +971,6 @@ func (m *AgentRepositoryMock) FindAgents(
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]*entity.Agent), args.Error(1)
-}
-
-func (m *AgentRepositoryMock) QueryAgentsByPath(
-	ctx context.Context,
-	targetAgentID string,
-) ([]string, error) {
-	args := m.Called(ctx, targetAgentID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]string), args.Error(1)
-}
-
-func (m *AgentRepositoryMock) GetAgentIDByGlobalID(
-	ctx context.Context,
-	globalID string,
-	merchantID uint64,
-) (uint64, error) {
-	args := m.Called(ctx, globalID, merchantID)
-	return args.Get(0).(uint64), args.Error(1)
-}
-
-func (m *AgentRepositoryMock) BatchGetOrCreateAgentsByGlobalIDs(
-	ctx context.Context,
-	globalIDs []string,
-	merchantID uint64,
-) (map[string]uint64, error) {
-	args := m.Called(ctx, globalIDs, merchantID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(map[string]uint64), args.Error(1)
-}
-
-func (m *AgentRepositoryMock) UpsertRelationship(
-	ctx context.Context,
-	rel *entity.AgentRelationship,
-) error {
-	args := m.Called(ctx, rel)
-	return args.Error(0)
 }
 
 func (m *AgentRepositoryMock) QueryAgentsByRelationship(
@@ -1061,33 +992,6 @@ func (m *AgentRepositoryMock) ProcessAgentsByRelationshipInBatches(
 ) (totalProcessed int, err error) {
 	args := m.Called(ctx, parentAgentID, batchSize, processor)
 	return args.Int(0), args.Error(1)
-}
-
-func (m *AgentRepositoryMock) QueryAgentAncestorsByRelationship(
-	ctx context.Context,
-	childAgentID string,
-) ([]uint64, error) {
-	args := m.Called(ctx, childAgentID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]uint64), args.Error(1)
-}
-
-func (m *AgentRepositoryMock) AgentExists(ctx context.Context, agentID uint64) (bool, error) {
-	args := m.Called(ctx, agentID)
-	return args.Bool(0), args.Error(1)
-}
-
-func (m *AgentRepositoryMock) BatchGetAgentsByGlobalIDs(
-	ctx context.Context,
-	globalIDs []string,
-) ([]*entity.Agent, error) {
-	args := m.Called(ctx, globalIDs)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]*entity.Agent), args.Error(1)
 }
 
 func (m *AgentRepositoryMock) BatchGetAgentsByIDs(
@@ -1112,15 +1016,16 @@ func (m *AgentRepositoryMock) BatchGetAgentsByAccounts(
 	return args.Get(0).([]*entity.Agent), args.Error(1)
 }
 
-func (m *AgentRepositoryMock) BatchConvertGlobalIDsToAccounts(
+func (m *AgentRepositoryMock) BatchGetOrCreateAgentsByGlobalIDs(
 	ctx context.Context,
 	globalIDs []string,
-) ([]string, error) {
-	args := m.Called(ctx, globalIDs)
+	merchantID uint64,
+) (map[string]uint64, error) {
+	args := m.Called(ctx, globalIDs, merchantID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]string), args.Error(1)
+	return args.Get(0).(map[string]uint64), args.Error(1)
 }
 
 func (m *AgentRepositoryMock) FindActiveAgents(

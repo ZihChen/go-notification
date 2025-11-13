@@ -11,12 +11,8 @@ import (
 // AgentRepository 代理資料倉儲接口
 type AgentRepository interface {
 	// 基本 CRUD 操作
-	Create(ctx context.Context, agent *entity.Agent) (*entity.Agent, error)
-	GetByID(ctx context.Context, id uint64) (*entity.Agent, error)
 	GetByGlobalID(ctx context.Context, globalAgentID string) (*entity.Agent, error)
 	GetByAccount(ctx context.Context, account string) (*entity.Agent, error)
-	Update(ctx context.Context, agent *entity.Agent) error
-	Delete(ctx context.Context, id uint64) error
 
 	// 冪等性操作
 	Upsert(ctx context.Context, agent *entity.Agent) error
@@ -29,8 +25,6 @@ type AgentRepository interface {
 		activeThreshold time.Time,
 		limit, offset int,
 	) ([]*entity.Agent, error)
-	QueryAgentsByPath(ctx context.Context, targetAgentID string) ([]string, error)
-	GetAgentIDByGlobalID(ctx context.Context, globalID string, merchantID uint64) (uint64, error)
 
 	// 批量操作
 	BatchGetOrCreateAgentsByGlobalIDs(
@@ -38,7 +32,6 @@ type AgentRepository interface {
 		globalIDs []string,
 		merchantID uint64,
 	) (map[string]uint64, error)
-	BatchGetAgentsByGlobalIDs(ctx context.Context, globalIDs []string) ([]*entity.Agent, error)
 	BatchGetAgentsByIDs(ctx context.Context, agentIDs []uint64) ([]*entity.Agent, error)
 	BatchGetAgentsByAccounts(ctx context.Context, accounts []string) ([]*entity.Agent, error)
 	BatchGetActiveAgentsByGlobalIDs(
@@ -46,10 +39,8 @@ type AgentRepository interface {
 		globalIDs []string,
 		activeThreshold time.Time,
 	) ([]*entity.Agent, error)
-	BatchConvertGlobalIDsToAccounts(ctx context.Context, globalIDs []string) ([]string, error)
 
 	// 關係操作
-	UpsertRelationship(ctx context.Context, rel *entity.AgentRelationship) error
 	QueryAgentsByRelationship(ctx context.Context, parentAgentID string) ([]uint64, error)
 	ProcessAgentsByRelationshipInBatches(
 		ctx context.Context,
@@ -57,10 +48,6 @@ type AgentRepository interface {
 		batchSize int,
 		processor func(ctx context.Context, agentIDs []uint64) (processedCount int, err error),
 	) (totalProcessed int, err error)
-	QueryAgentAncestorsByRelationship(ctx context.Context, childAgentID string) ([]uint64, error)
-
-	// 存在性檢查
-	AgentExists(ctx context.Context, agentID uint64) (bool, error)
 }
 
 // AgentCampaignRepository 代理訊息活動倉儲接口

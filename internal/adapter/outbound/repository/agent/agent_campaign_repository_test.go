@@ -525,3 +525,79 @@ func TestAgentCampaignRepository_GetScheduledCampaigns(t *testing.T) {
 		})
 	}
 }
+
+func TestAgentCampaignRepository_FindSentCampaignsForBackfillPaginated(t *testing.T) {
+	now := time.Now()
+	testCases := []struct {
+		name              string
+		merchantID        uint64
+		limit             int
+		offset            int
+		setupMock         func(sqlmock.Sqlmock)
+		expectedCampaigns []*entity.AgentCampaign
+		expectedError     error
+	}{
+		{
+			name:       "find sent campaigns for backfill successfully",
+			merchantID: 1,
+			limit:      100,
+			offset:     0,
+			setupMock: func(mock sqlmock.Sqlmock) {
+				rows := sqlmock.NewRows([]string{
+					"id", "merchant_id", "title", "content", "scheduled_at", "status",
+					"target_type", "target_details", "target_count", "real_sent_count",
+					"created_by", "updated_by", "created_at", "updated_at",
+				}).AddRow(
+					1, 1, "Test Campaign", "Test Content", now, "sent",
+					"all", "", 100, 100, "admin", "admin", now, now,
+				)
+
+				mock.ExpectQuery("SELECT .* FROM `agent_campaigns` WHERE \\(merchant_id = .+ AND target_type = .+ AND status = .+ AND created_at < .+\\) AND .*deleted_at.* IS NULL ORDER BY created_at DESC LIMIT .+").
+					WithArgs(1, "all", "sent", sqlmock.AnyArg(), 100).
+					WillReturnRows(rows)
+			},
+			expectedCampaigns: []*entity.AgentCampaign{
+				{
+					ID:         1,
+					MerchantID: 1,
+					Title:      "Test Campaign",
+					Content:    "Test Content",
+				},
+			},
+			expectedError: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock, sqlDB := setupAgentCampaignMockDB(t)
+			defer func() {
+				_ = sqlDB.Close()
+			}()
+
+			tc.setupMock(mock)
+
+			repo := NewAgentCampaignRepository(db)
+
+			campaigns, err := repo.FindSentCampaignsForBackfillPaginated(
+				context.Background(),
+				tc.merchantID,
+				tc.limit,
+				tc.offset,
+			)
+
+			if tc.expectedError != nil {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedError.Error())
+			} else {
+				assert.NoError(t, err)
+				assert.Len(t, campaigns, len(tc.expectedCampaigns))
+				if len(campaigns) > 0 {
+					assert.Equal(t, tc.expectedCampaigns[0].ID, campaigns[0].ID)
+					assert.Equal(t, tc.expectedCampaigns[0].Title, campaigns[0].Title)
+				}
+			}
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}

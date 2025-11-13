@@ -21,39 +21,6 @@ func NewAgentRepository(db *gorm.DB) repository.AgentRepository {
 	return &AgentRepository{db: db}
 }
 
-// Create 創建代理
-func (r *AgentRepository) Create(ctx context.Context, agent *entity.Agent) (*entity.Agent, error) {
-	agentModel := &models.Agent{
-		MerchantID:      agent.MerchantID,
-		GlobalAgentID:   agent.GlobalAgentID,
-		Account:         agent.Account,
-		Ancestry:        agent.Ancestry,
-		CurrentSignInAt: agent.CurrentSignInAt,
-	}
-
-	if err := r.db.WithContext(ctx).Create(agentModel).Error; err != nil {
-		return nil, fmt.Errorf("create agent failed: %w", err)
-	}
-
-	agent.ID = agentModel.ID
-	agent.CreatedAt = agentModel.CreatedAt
-	agent.UpdatedAt = agentModel.UpdatedAt
-	return agent, nil
-}
-
-// GetByID 根據ID獲取代理
-func (r *AgentRepository) GetByID(ctx context.Context, id uint64) (*entity.Agent, error) {
-	var agentModel models.Agent
-	if err := r.db.WithContext(ctx).First(&agentModel, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("get agent by id failed: %w", err)
-	}
-
-	return r.modelToEntity(&agentModel), nil
-}
-
 // GetByGlobalID 根據全局代理ID獲取代理
 func (r *AgentRepository) GetByGlobalID(
 	ctx context.Context,
@@ -68,33 +35,6 @@ func (r *AgentRepository) GetByGlobalID(
 	}
 
 	return r.modelToEntity(&agentModel), nil
-}
-
-// Update 更新代理
-func (r *AgentRepository) Update(ctx context.Context, agent *entity.Agent) error {
-	agentModel := &models.Agent{
-		ID:              agent.ID,
-		MerchantID:      agent.MerchantID,
-		GlobalAgentID:   agent.GlobalAgentID,
-		Account:         agent.Account,
-		Ancestry:        agent.Ancestry,
-		CurrentSignInAt: agent.CurrentSignInAt,
-	}
-
-	if err := r.db.WithContext(ctx).Save(agentModel).Error; err != nil {
-		return fmt.Errorf("update agent failed: %w", err)
-	}
-
-	agent.UpdatedAt = agentModel.UpdatedAt
-	return nil
-}
-
-// Delete 刪除代理 (軟刪除)
-func (r *AgentRepository) Delete(ctx context.Context, id uint64) error {
-	if err := r.db.WithContext(ctx).Delete(&models.Agent{}, id).Error; err != nil {
-		return fmt.Errorf("delete agent failed: %w", err)
-	}
-	return nil
 }
 
 // Upsert 冪等性創建或更新代理
@@ -182,74 +122,6 @@ func (r *AgentRepository) FindActiveAgents(
 	}
 
 	return agents, nil
-}
-
-// QueryAgentsByPath 根據路徑查詢代理ID列表 (legacy 支援)
-func (r *AgentRepository) QueryAgentsByPath(
-	ctx context.Context,
-	targetAgentID string,
-) ([]string, error) {
-	var agentModels []models.Agent
-
-	// 查詢包含目標代理ID的ancestry路徑
-	if err := r.db.WithContext(ctx).
-		Where("ancestry LIKE ?", "%"+targetAgentID+"%").
-		Find(&agentModels).Error; err != nil {
-		return nil, fmt.Errorf("query agents by path failed: %w", err)
-	}
-
-	agentIDs := make([]string, len(agentModels))
-	for i, agent := range agentModels {
-		agentIDs[i] = agent.GlobalAgentID
-	}
-
-	return agentIDs, nil
-}
-
-// GetAgentIDByGlobalID 根據全局ID獲取數值ID
-func (r *AgentRepository) GetAgentIDByGlobalID(
-	ctx context.Context,
-	globalID string,
-	merchantID uint64,
-) (uint64, error) {
-	var agentModel models.Agent
-	if err := r.db.WithContext(ctx).
-		Select("id").
-		Where("global_agent_id = ? AND merchant_id = ?", globalID, merchantID).
-		First(&agentModel).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return 0, nil
-		}
-		return 0, fmt.Errorf("get agent id by global id failed: %w", err)
-	}
-
-	return agentModel.ID, nil
-}
-
-// UpsertRelationship 創建或更新代理關係 (legacy 支援)
-func (r *AgentRepository) UpsertRelationship(
-	ctx context.Context,
-	rel *entity.AgentRelationship,
-) error {
-	relationModel := &models.AgentRelationship{
-		ParentID:   rel.ParentID,
-		ChildID:    rel.ChildID,
-		DepthLevel: rel.DepthLevel,
-		PathHash:   rel.PathHash,
-	}
-
-	if err := r.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "parent_id"}, {Name: "child_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{
-			"depth_level", "path_hash", "updated_at",
-		}),
-	}).Create(relationModel).Error; err != nil {
-		return fmt.Errorf("upsert agent relationship failed: %w", err)
-	}
-
-	rel.CreatedAt = relationModel.CreatedAt
-	rel.UpdatedAt = relationModel.UpdatedAt
-	return nil
 }
 
 // QueryAgentsByRelationship 根據關係遞歸查詢所有層級子代理 (無限層級)
@@ -409,70 +281,6 @@ func (r *AgentRepository) ProcessAgentsByRelationshipInBatches(
 	return totalProcessed, nil
 }
 
-// QueryAgentAncestorsByRelationship 根據關係查詢祖先代理 (legacy 支援)
-func (r *AgentRepository) QueryAgentAncestorsByRelationship(
-	ctx context.Context,
-	childAgentID string,
-) ([]uint64, error) {
-	// 首先獲取子代理的數值ID
-	var childAgent models.Agent
-	if err := r.db.WithContext(ctx).
-		Select("id").
-		Where("global_agent_id = ?", childAgentID).
-		First(&childAgent).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return []uint64{}, nil
-		}
-		return nil, fmt.Errorf("get child agent failed: %w", err)
-	}
-
-	// 查詢關係表獲取祖先代理ID
-	var relationships []models.AgentRelationship
-	if err := r.db.WithContext(ctx).
-		Where("child_id = ?", childAgent.ID).
-		Find(&relationships).Error; err != nil {
-		return nil, fmt.Errorf("query relationships failed: %w", err)
-	}
-
-	if len(relationships) == 0 {
-		return []uint64{}, nil
-	}
-
-	// 獲取祖先代理的全局ID
-	ancestorIDs := make([]uint64, len(relationships))
-	for i, rel := range relationships {
-		ancestorIDs[i] = rel.ParentID
-	}
-
-	var ancestorAgents []models.Agent
-	if err := r.db.WithContext(ctx).
-		Select("id").
-		Where("id IN ?", ancestorIDs).
-		Find(&ancestorAgents).Error; err != nil {
-		return nil, fmt.Errorf("get ancestor agents failed: %w", err)
-	}
-
-	result := make([]uint64, len(ancestorAgents))
-	for i, agent := range ancestorAgents {
-		result[i] = agent.ID
-	}
-
-	return result, nil
-}
-
-// AgentExists 檢查代理是否存在
-func (r *AgentRepository) AgentExists(ctx context.Context, agentID uint64) (bool, error) {
-	var count int64
-	if err := r.db.WithContext(ctx).
-		Model(&models.Agent{}).
-		Where("id = ?", agentID).
-		Count(&count).Error; err != nil {
-		return false, fmt.Errorf("check agent exists failed: %w", err)
-	}
-
-	return count > 0, nil
-}
-
 // BatchGetOrCreateAgentsByGlobalIDs 批量獲取或創建代理，避免N+1查詢
 func (r *AgentRepository) BatchGetOrCreateAgentsByGlobalIDs(
 	ctx context.Context,
@@ -583,30 +391,6 @@ func (r *AgentRepository) modelToEntity(model *models.Agent) *entity.Agent {
 	return agent
 }
 
-// BatchGetAgentsByGlobalIDs 批量根據全局ID獲取代理
-func (r *AgentRepository) BatchGetAgentsByGlobalIDs(
-	ctx context.Context,
-	globalIDs []string,
-) ([]*entity.Agent, error) {
-	if len(globalIDs) == 0 {
-		return []*entity.Agent{}, nil
-	}
-
-	var agentModels []models.Agent
-	if err := r.db.WithContext(ctx).
-		Where("global_agent_id IN ?", globalIDs).
-		Find(&agentModels).Error; err != nil {
-		return nil, fmt.Errorf("batch get agents by global ids failed: %w", err)
-	}
-
-	agents := make([]*entity.Agent, len(agentModels))
-	for i, model := range agentModels {
-		agents[i] = r.modelToEntity(&model)
-	}
-
-	return agents, nil
-}
-
 // BatchGetAgentsByIDs 批量根據數值ID獲取代理
 func (r *AgentRepository) BatchGetAgentsByIDs(
 	ctx context.Context,
@@ -653,31 +437,6 @@ func (r *AgentRepository) BatchGetAgentsByAccounts(
 	}
 
 	return agents, nil
-}
-
-// BatchConvertGlobalIDsToAccounts 批量將全局ID轉換為帳號名
-func (r *AgentRepository) BatchConvertGlobalIDsToAccounts(
-	ctx context.Context,
-	globalIDs []string,
-) ([]string, error) {
-	if len(globalIDs) == 0 {
-		return []string{}, nil
-	}
-
-	var agentModels []models.Agent
-	if err := r.db.WithContext(ctx).
-		Select("account").
-		Where("global_agent_id IN ?", globalIDs).
-		Find(&agentModels).Error; err != nil {
-		return nil, fmt.Errorf("batch convert global ids to accounts failed: %w", err)
-	}
-
-	accounts := make([]string, len(agentModels))
-	for i, model := range agentModels {
-		accounts[i] = model.Account
-	}
-
-	return accounts, nil
 }
 
 // BatchGetActiveAgentsByGlobalIDs 批量根據全局ID獲取活躍代理
