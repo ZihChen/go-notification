@@ -482,6 +482,7 @@ func (u *AgentUseCase) GetAgentMessages(
 			Title:           message.CampaignTitle,   // 從JOIN查詢獲取
 			Content:         message.CampaignContent, // 從JOIN查詢獲取
 			IsRead:          message.IsRead,
+			SentAt:          message.CreatedAt, // 代理信發送時間
 		}
 	}
 

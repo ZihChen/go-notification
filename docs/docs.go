@@ -1589,6 +1589,25 @@ const docTemplate = `{
                 }
             }
         },
+        "consts.AgentCampaignStatus": {
+            "type": "string",
+            "enum": [
+                "draft",
+                "scheduled",
+                "sending",
+                "sent",
+                "failed",
+                "cancelled"
+            ],
+            "x-enum-varnames": [
+                "AgentCampaignStatusDraft",
+                "AgentCampaignStatusScheduled",
+                "AgentCampaignStatusSending",
+                "AgentCampaignStatusSent",
+                "AgentCampaignStatusFailed",
+                "AgentCampaignStatusCancelled"
+            ]
+        },
         "dto.AgentCampaignListResponse": {
             "type": "object",
             "properties": {
@@ -1704,6 +1723,9 @@ const docTemplate = `{
                 },
                 "is_read": {
                     "type": "boolean"
+                },
+                "sent_at": {
+                    "type": "string"
                 },
                 "title": {
                     "description": "通過關聯取得",
@@ -2510,7 +2532,11 @@ const docTemplate = `{
                 },
                 "status": {
                     "description": "draft, scheduled, sending, completed, failed, cancelled",
-                    "type": "string"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/consts.AgentCampaignStatus"
+                        }
+                    ]
                 },
                 "target_count": {
                     "description": "目標代理數量",
