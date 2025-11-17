@@ -65,6 +65,13 @@ func (s *AgentService) SyncAgentRelationshipsUpsert(
 		s.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("find merchant by global_id %s: %w", agentEvent.GlobalMerchantID, err)
 	}
+	if merchant == nil {
+		s.tracingService.TraceEvent(span, "Merchant not found, skipping agent relationship sync")
+		s.logger.WarnLog("Merchant not found for agent relationship sync",
+			s.logger.String("global_merchant_id", agentEvent.GlobalMerchantID),
+			s.logger.String("global_agent_id", agentEvent.GlobalAgentID))
+		return nil
+	}
 	s.tracingService.RecordSpanAttributes(span,
 		attribute.Int64("merchant.id", int64(merchant.ID)))
 

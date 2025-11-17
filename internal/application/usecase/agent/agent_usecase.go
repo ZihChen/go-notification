@@ -1096,6 +1096,14 @@ func (u *AgentUseCase) BackfillMissedMessages(
 		return fmt.Errorf("get agent by global id: %w", err)
 	}
 
+	// 如果代理不存在，無需補派發（可能是新代理或已被刪除）
+	if agent == nil {
+		u.tracingService.TraceEvent(span, "Agent not found, skipping backfill")
+		u.logger.InfoLog("Agent not found, skipping backfill",
+			u.logger.String("global_agent_id", agentEvent.GlobalAgentID))
+		return nil
+	}
+
 	// 2. 獲取商戶信息
 	merchant, err := u.merchantRepo.FindByGlobalID(ctx, agentEvent.GlobalMerchantID)
 	if err != nil {
@@ -1170,8 +1178,17 @@ func (u *AgentUseCase) BackfillMissedMessages(
 			switch campaign.TargetType {
 			case "all":
 				shouldReceive = true // all 類型的活動所有代理都應該接收
+				u.logger.InfoLog("Processing 'all' target type campaign",
+					u.logger.UInt64("campaign_id", campaign.ID),
+					u.logger.UInt64("agent_id", agent.ID))
 			case "specific":
 				shouldReceive = u.shouldAgentReceiveSpecificCampaign(agent, campaign)
+				u.logger.InfoLog("Processing 'specific' target type campaign",
+					u.logger.UInt64("campaign_id", campaign.ID),
+					u.logger.UInt64("agent_id", agent.ID),
+					u.logger.String("agent_account", agent.Account),
+					u.logger.Any("target_details", campaign.TargetDetails),
+					u.logger.Bool("should_receive", shouldReceive))
 			case "line":
 				var err error
 				shouldReceive, err = u.shouldAgentReceiveLineCampaign(ctx, agent, campaign)
@@ -1182,6 +1199,13 @@ func (u *AgentUseCase) BackfillMissedMessages(
 						u.logger.Error("error", err))
 					continue // 發生錯誤時跳過此活動
 				}
+				u.logger.InfoLog("Processing 'line' target type campaign",
+					u.logger.UInt64("campaign_id", campaign.ID),
+					u.logger.UInt64("agent_id", agent.ID),
+					u.logger.String("agent_account", agent.Account),
+					u.logger.String("agent_ancestry", agent.Ancestry),
+					u.logger.Any("target_details", campaign.TargetDetails),
+					u.logger.Bool("should_receive", shouldReceive))
 			default:
 				u.logger.WarnLog("Unknown target type",
 					u.logger.String("target_type", campaign.TargetType),
@@ -1280,6 +1304,11 @@ func (u *AgentUseCase) shouldAgentReceiveLineCampaign(
 	parentAgent, err := u.agentRepo.GetByAccount(ctx, parentAccount)
 	if err != nil {
 		return false, fmt.Errorf("get parent agent by account: %w", err)
+	}
+
+	// 如果父代理不存在，該 line 活動無效
+	if parentAgent == nil {
+		return false, fmt.Errorf("parent agent not found with account: %s", parentAccount)
 	}
 
 	// 高效能字串比對：檢查代理的 Ancestry 是否包含指定的父代理
