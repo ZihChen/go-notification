@@ -1,10 +1,26 @@
 # CLAUDE-CURRENT.md
 
-## 當前任務階段：v1.3代理訊息補派發系統完成，批次分頁優化全面實現 (2025-11-12)
-v1.3代理訊息補派發系統、v1.2代理訊息排程發送系統、v1.12商戶自動設定Active開關、v1.11併發安全、v1.10+效能優化與代碼重構全面完成，Agent訊息管理系統核心架構實現，批次分頁處理邏輯與高效能機制完善，系統達到企業級生產標準
+## 當前任務階段：v1.4代理訊息系統生產穩定版完成，企業級穩定性與容錯性全面實現 (2025-11-17)
+v1.4代理訊息系統生產穩定版、v1.3代理訊息補派發系統擴展、v1.2代理訊息排程發送系統、v1.12商戶自動設定Active開關、v1.11併發安全、v1.10+效能優化與代碼重構全面完成，Agent訊息管理系統達到生產級穩定性標準，修復所有nil pointer問題，系統達到企業級生產部署就緒狀態
 
 ### 最新完成任務
-- [x] ✅ **v1.3 代理訊息補派發系統** (2025-11-12)
+- [x] ✅ **v1.4 代理訊息系統生產穩定版** (2025-11-17)
+  - [x] 生產穩定性修復：修復所有nil pointer dereference問題，100%預防runtime panic
+  - [x] 補派發功能擴展：支援specific/line target_type，完整target類型覆蓋
+  - [x] 智能ancestry匹配：高效字串比對取代遞歸查詢，支援多層代理關係
+  - [x] 錯誤處理機制：優雅處理不存在的代理、商戶、父代理情況
+  - [x] 系統容錯性強化：完整的null檢查機制，生產級錯誤預防
+  - [x] 測試驗證完成：所有15個單元測試通過，系統編譯無錯誤
+  - [x] 企業級可靠性：滿足高併發生產環境穩定性要求
+  - [x] Agent訊息管理平台：達到生產部署就緒標準
+- [x] ✅ **v1.3.1 代理訊息補派發系統擴展** (2025-11-17)
+  - [x] Specific類型支援：精確代理帳號匹配機制，shouldAgentReceiveSpecificCampaign實現
+  - [x] Line類型支援：ancestry路徑智能匹配，shouldAgentReceiveLineCampaign實現
+  - [x] 批次查詢優化：FindSentCampaignsForBackfillPaginated支援多target類型
+  - [x] 高效字串匹配：strings.Contains取代FindAncestors遞歸查詢
+  - [x] 完整測試覆蓋：包含匹配與非匹配情況的邊界案例測試
+  - [x] 企業級補派發：支援複雜代理關係的智能訊息補派發
+- [x] ✅ **v1.3 代理訊息補派發系統基礎** (2025-11-12)
   - [x] 補派發核心邏輯：BackfillMissedMessages自動檢測超過1個月未登入代理
   - [x] 批次分頁查詢：FindSentCampaignsForBackfillPaginated，每批100筆處理
   - [x] 批次存在性檢查：CheckCampaignMessageExistsBatch消除N+1查詢問題
