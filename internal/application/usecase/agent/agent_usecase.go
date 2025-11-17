@@ -834,7 +834,7 @@ func (u *AgentUseCase) createMessagesForAgents(
 	return len(messages), nil
 }
 
-// processBatchAgentsForAll 批次處理 target_type = all 的活躍代理
+// processBatchAgentsForAll 批次處理 target_type = all 的所有代理
 func (u *AgentUseCase) processBatchAgentsForAll(
 	ctx context.Context,
 	campaign *entity.AgentCampaign,
@@ -846,45 +846,42 @@ func (u *AgentUseCase) processBatchAgentsForAll(
 		attribute.Int64("campaign.id", int64(campaign.ID)),
 		attribute.Int64("merchant.id", int64(campaign.MerchantID)))
 
-	// 定義一個月前的時間點
-	oneMonthAgo := time.Now().AddDate(0, -1, 0)
 	offset := 0
 	limit := 5000 // 批次大小，可配置
 	totalTargetCount := 0
 	totalSentCount := 0
 
-	u.logger.InfoLog("Starting batch processing for all active agents",
+	u.logger.InfoLog("Starting batch processing for all agents",
 		u.logger.UInt64("campaign_id", campaign.ID),
 		u.logger.UInt64("merchant_id", campaign.MerchantID))
 
-	// 分批處理活躍代理
+	// 分批處理所有代理
 	for {
-		// 獲取一批活躍代理
-		activeAgents, err := u.agentRepo.FindActiveAgents(
+		// 獲取一批代理（移除current_sign_in_at條件篩選）
+		agents, err := u.agentRepo.FindAgents(
 			ctx,
 			campaign.MerchantID,
-			oneMonthAgo,
 			limit,
 			offset,
 		)
 		if err != nil {
 			u.tracingService.RecordSpanError(span, err)
-			return totalTargetCount, totalSentCount, fmt.Errorf("find active agents batch: %w", err)
+			return totalTargetCount, totalSentCount, fmt.Errorf("find agents batch: %w", err)
 		}
 
-		if len(activeAgents) == 0 {
+		if len(agents) == 0 {
 			break // 沒有更多代理了
 		}
 
-		totalTargetCount += len(activeAgents)
+		totalTargetCount += len(agents)
 
 		// 為當前批次的代理創建訊息
-		batchSentCount, err := u.createMessagesForAgents(ctx, campaign, activeAgents)
+		batchSentCount, err := u.createMessagesForAgents(ctx, campaign, agents)
 		if err != nil {
 			u.tracingService.RecordSpanError(span, err)
 			u.logger.WarnLog("Failed to create messages for batch",
 				u.logger.UInt64("campaign_id", campaign.ID),
-				u.logger.Int("batch_size", len(activeAgents)),
+				u.logger.Int("batch_size", len(agents)),
 				u.logger.Int("offset", offset),
 				u.logger.String("error", err.Error()))
 			// 繼續處理下一批，不因為一批失敗就停止整個流程
@@ -892,26 +889,26 @@ func (u *AgentUseCase) processBatchAgentsForAll(
 			totalSentCount += batchSentCount
 		}
 
-		u.logger.InfoLog("Processed batch for all active agents",
+		u.logger.InfoLog("Processed batch for all agents",
 			u.logger.UInt64("campaign_id", campaign.ID),
-			u.logger.Int("batch_agents", len(activeAgents)),
+			u.logger.Int("batch_agents", len(agents)),
 			u.logger.Int("batch_sent", batchSentCount),
 			u.logger.Int("total_sent", totalSentCount),
 			u.logger.Int("offset", offset))
 
 		// 如果當次查詢結果數量少於 limit，說明已經是最後一批
-		if len(activeAgents) < limit {
+		if len(agents) < limit {
 			break
 		}
 
 		offset += limit
 	}
 
-	u.tracingService.TraceEvent(span, "Batch processing completed for all active agents",
+	u.tracingService.TraceEvent(span, "Batch processing completed for all agents",
 		attribute.Int("target_count", totalTargetCount),
 		attribute.Int("sent_count", totalSentCount))
 
-	u.logger.InfoLog("Batch processing completed for all active agents",
+	u.logger.InfoLog("Batch processing completed for all agents",
 		u.logger.UInt64("campaign_id", campaign.ID),
 		u.logger.Int("target_count", totalTargetCount),
 		u.logger.Int("sent_count", totalSentCount))
