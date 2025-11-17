@@ -76,6 +76,7 @@ type AgentCampaignRepository interface {
 	FindSentCampaignsForBackfillPaginated(
 		ctx context.Context,
 		merchantID uint64,
+		targetTypes []string,
 		limit, offset int,
 	) ([]*entity.AgentCampaign, error)
 }

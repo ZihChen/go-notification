@@ -775,7 +775,8 @@ func TestAgentUseCase_BackfillMissedMessages(t *testing.T) {
 		},
 	}
 	// 第一次查詢返回活動（少於批次大小，會觸發退出）
-	agentCampaignRepo.On("FindSentCampaignsForBackfillPaginated", ctx, uint64(1), 100, 0).
+	targetTypes := []string{"all", "specific", "line"}
+	agentCampaignRepo.On("FindSentCampaignsForBackfillPaginated", ctx, uint64(1), targetTypes, 100, 0).
 		Return(campaigns, nil)
 
 	// Mock 批次檢查訊息不存在
@@ -786,6 +787,296 @@ func TestAgentUseCase_BackfillMissedMessages(t *testing.T) {
 	// Mock 批次創建訊息
 	agentMessageRepo.On("CreateBatch", ctx, mock.AnythingOfType("[]*entity.AgentMessage")).
 		Return(nil)
+
+	// 執行測試
+	err := useCase.BackfillMissedMessages(ctx, agentEvent)
+
+	// 驗證結果
+	assert.NoError(t, err)
+	agentRepo.AssertExpectations()
+	merchantRepo.AssertExpectations()
+	agentCampaignRepo.AssertExpectations()
+	agentMessageRepo.AssertExpectations()
+}
+
+func TestAgentUseCase_BackfillMissedMessages_SpecificTargetType(t *testing.T) {
+	// 創建 mocks
+	agentRepo := mocks.NewAgentRepositoryMock(t)
+	agentCampaignRepo := mocks.NewAgentCampaignRepositoryMock(t)
+	agentMessageRepo := mocks.NewAgentMessageRepositoryMock(t)
+	agentRelationshipRepo := mocks.NewAgentRelationshipRepositoryMock(t)
+	merchantRepo := mocks.NewMerchantRepositoryMock(t)
+
+	// 創建模擬服務
+	agentService := mocks.NewAgentServiceMock(t)
+	eventProducer := mocks.NewEventProducerMock(t)
+	tracingService := mocks.NewTracingServiceMock(t)
+	logger := helper.NewMockLogger()
+
+	// 創建用例
+	tracingService.SetupSuccess()
+	useCase := &AgentUseCase{
+		agentRepo:         agentRepo,
+		agentCampaignRepo: agentCampaignRepo,
+		agentMessageRepo:  agentMessageRepo,
+		agentRelationRepo: agentRelationshipRepo,
+		merchantRepo:      merchantRepo,
+		agentService:      agentService,
+		eventProducer:     eventProducer,
+		logger:            logger,
+		tracingService:    tracingService,
+	}
+
+	ctx := context.Background()
+	agentEvent := &event.AgentSyncEvent{
+		GlobalAgentID:    "test-agent-123",
+		GlobalMerchantID: "test-merchant-456",
+		Account:          "test-account",
+	}
+
+	// Mock 代理信息
+	agent := &entity.Agent{
+		ID:      1,
+		Account: "test-account",
+	}
+	agentRepo.On("GetByGlobalID", ctx, agentEvent.GlobalAgentID).Return(agent, nil)
+
+	// Mock 商戶信息
+	merchant := &entity.Merchant{ID: 1}
+	merchantRepo.On("FindByGlobalID", ctx, agentEvent.GlobalMerchantID).Return(merchant, nil)
+
+	// 創建 specific 類型的活動，包含目標代理帳號
+	campaigns := []*entity.AgentCampaign{
+		{
+			ID:            1,
+			TargetType:    "specific",
+			TargetDetails: []string{"test-account", "other-account"}, // 包含目標代理
+		},
+		{
+			ID:            2,
+			TargetType:    "specific",
+			TargetDetails: []string{"other-account"}, // 不包含目標代理
+		},
+	}
+
+	targetTypes := []string{"all", "specific", "line"}
+	agentCampaignRepo.On("FindSentCampaignsForBackfillPaginated", ctx, uint64(1), targetTypes, 100, 0).
+		Return(campaigns, nil)
+
+	// Mock 批次檢查訊息不存在
+	existsMap := map[uint64]bool{1: false, 2: false}
+	agentMessageRepo.On("CheckCampaignMessageExistsBatch", ctx, uint64(1), []uint64{1, 2}).
+		Return(existsMap, nil)
+
+	// 預期只為第一個活動創建訊息（因為代理在目標列表中）
+	expectedMessages := []*entity.AgentMessage{
+		{
+			AgentCampaignID: 1,
+			AgentID:         1,
+			IsRead:          false,
+		},
+	}
+	agentMessageRepo.On("CreateBatch", ctx, mock.MatchedBy(func(messages []*entity.AgentMessage) bool {
+		if len(messages) != 1 {
+			return false
+		}
+		return messages[0].AgentCampaignID == expectedMessages[0].AgentCampaignID &&
+			messages[0].AgentID == expectedMessages[0].AgentID &&
+			messages[0].IsRead == expectedMessages[0].IsRead
+	})).
+		Return(nil)
+
+	// 執行測試
+	err := useCase.BackfillMissedMessages(ctx, agentEvent)
+
+	// 驗證結果
+	assert.NoError(t, err)
+	agentRepo.AssertExpectations()
+	merchantRepo.AssertExpectations()
+	agentCampaignRepo.AssertExpectations()
+	agentMessageRepo.AssertExpectations()
+}
+
+func TestAgentUseCase_BackfillMissedMessages_LineTargetType(t *testing.T) {
+	// 創建 mocks
+	agentRepo := mocks.NewAgentRepositoryMock(t)
+	agentCampaignRepo := mocks.NewAgentCampaignRepositoryMock(t)
+	agentMessageRepo := mocks.NewAgentMessageRepositoryMock(t)
+	agentRelationshipRepo := mocks.NewAgentRelationshipRepositoryMock(t)
+	merchantRepo := mocks.NewMerchantRepositoryMock(t)
+
+	// 創建模擬服務
+	agentService := mocks.NewAgentServiceMock(t)
+	eventProducer := mocks.NewEventProducerMock(t)
+	tracingService := mocks.NewTracingServiceMock(t)
+	logger := helper.NewMockLogger()
+
+	// 創建用例
+	tracingService.SetupSuccess()
+	useCase := &AgentUseCase{
+		agentRepo:         agentRepo,
+		agentCampaignRepo: agentCampaignRepo,
+		agentMessageRepo:  agentMessageRepo,
+		agentRelationRepo: agentRelationshipRepo,
+		merchantRepo:      merchantRepo,
+		agentService:      agentService,
+		eventProducer:     eventProducer,
+		logger:            logger,
+		tracingService:    tracingService,
+	}
+
+	ctx := context.Background()
+	agentEvent := &event.AgentSyncEvent{
+		GlobalAgentID:    "test-agent-123",
+		GlobalMerchantID: "test-merchant-456",
+		Account:          "child-account",
+	}
+
+	// Mock 代理信息 (下級代理，包含 Ancestry)
+	childAgent := &entity.Agent{
+		ID:       2,
+		Account:  "child-account",
+		Ancestry: "top-agent/parent-account", // 包含父代理的 Ancestry
+	}
+	agentRepo.On("GetByGlobalID", ctx, agentEvent.GlobalAgentID).Return(childAgent, nil)
+
+	// Mock 商戶信息
+	merchant := &entity.Merchant{ID: 1}
+	merchantRepo.On("FindByGlobalID", ctx, agentEvent.GlobalMerchantID).Return(merchant, nil)
+
+	// Mock 父代理信息
+	parentAgent := &entity.Agent{
+		ID:            1,
+		Account:       "parent-account",
+		GlobalAgentID: "parent-account", // 需要 GlobalAgentID 進行字串比對
+	}
+	agentRepo.On("GetByAccount", ctx, "parent-account").Return(parentAgent, nil)
+
+	// 創建 line 類型的活動
+	campaigns := []*entity.AgentCampaign{
+		{
+			ID:            1,
+			TargetType:    "line",
+			TargetDetails: []string{"parent-account"}, // 父代理帳號
+		},
+	}
+
+	targetTypes := []string{"all", "specific", "line"}
+	agentCampaignRepo.On("FindSentCampaignsForBackfillPaginated", ctx, uint64(1), targetTypes, 100, 0).
+		Return(campaigns, nil)
+
+	// 不再需要 Mock 代理關係查詢，改為使用 Ancestry 字串比對
+
+	// Mock 批次檢查訊息不存在
+	existsMap := map[uint64]bool{1: false}
+	agentMessageRepo.On("CheckCampaignMessageExistsBatch", ctx, uint64(2), []uint64{1}).
+		Return(existsMap, nil)
+
+	// 預期為 line 活動創建訊息（因為代理是指定父代理的下級）
+	expectedMessages := []*entity.AgentMessage{
+		{
+			AgentCampaignID: 1,
+			AgentID:         2,
+			IsRead:          false,
+		},
+	}
+	agentMessageRepo.On("CreateBatch", ctx, mock.MatchedBy(func(messages []*entity.AgentMessage) bool {
+		if len(messages) != 1 {
+			return false
+		}
+		return messages[0].AgentCampaignID == expectedMessages[0].AgentCampaignID &&
+			messages[0].AgentID == expectedMessages[0].AgentID &&
+			messages[0].IsRead == expectedMessages[0].IsRead
+	})).
+		Return(nil)
+
+	// 執行測試
+	err := useCase.BackfillMissedMessages(ctx, agentEvent)
+
+	// 驗證結果
+	assert.NoError(t, err)
+	agentRepo.AssertExpectations()
+	merchantRepo.AssertExpectations()
+	agentCampaignRepo.AssertExpectations()
+	agentMessageRepo.AssertExpectations()
+	// agentRelationshipRepo 不再需要驗證，因為改用 Ancestry 字串比對
+}
+
+func TestAgentUseCase_BackfillMissedMessages_LineTargetType_NotInAncestry(t *testing.T) {
+	// 創建 mocks
+	agentRepo := mocks.NewAgentRepositoryMock(t)
+	agentCampaignRepo := mocks.NewAgentCampaignRepositoryMock(t)
+	agentMessageRepo := mocks.NewAgentMessageRepositoryMock(t)
+	agentRelationshipRepo := mocks.NewAgentRelationshipRepositoryMock(t)
+	merchantRepo := mocks.NewMerchantRepositoryMock(t)
+
+	// 創建模擬服務
+	agentService := mocks.NewAgentServiceMock(t)
+	eventProducer := mocks.NewEventProducerMock(t)
+	tracingService := mocks.NewTracingServiceMock(t)
+	logger := helper.NewMockLogger()
+
+	// 創建用例
+	tracingService.SetupSuccess()
+	useCase := &AgentUseCase{
+		agentRepo:         agentRepo,
+		agentCampaignRepo: agentCampaignRepo,
+		agentMessageRepo:  agentMessageRepo,
+		agentRelationRepo: agentRelationshipRepo,
+		merchantRepo:      merchantRepo,
+		agentService:      agentService,
+		eventProducer:     eventProducer,
+		logger:            logger,
+		tracingService:    tracingService,
+	}
+
+	ctx := context.Background()
+	agentEvent := &event.AgentSyncEvent{
+		GlobalAgentID:    "test-agent-123",
+		GlobalMerchantID: "test-merchant-456",
+		Account:          "child-account",
+	}
+
+	// Mock 代理信息 (Ancestry 中不包含目標父代理)
+	childAgent := &entity.Agent{
+		ID:       2,
+		Account:  "child-account",
+		Ancestry: "top-agent/other-parent", // 不包含 "parent-account"
+	}
+	agentRepo.On("GetByGlobalID", ctx, agentEvent.GlobalAgentID).Return(childAgent, nil)
+
+	// Mock 商戶信息
+	merchant := &entity.Merchant{ID: 1}
+	merchantRepo.On("FindByGlobalID", ctx, agentEvent.GlobalMerchantID).Return(merchant, nil)
+
+	// Mock 父代理信息
+	parentAgent := &entity.Agent{
+		ID:            1,
+		Account:       "parent-account",
+		GlobalAgentID: "parent-account",
+	}
+	agentRepo.On("GetByAccount", ctx, "parent-account").Return(parentAgent, nil)
+
+	// 創建 line 類型的活動
+	campaigns := []*entity.AgentCampaign{
+		{
+			ID:            1,
+			TargetType:    "line",
+			TargetDetails: []string{"parent-account"},
+		},
+	}
+
+	targetTypes := []string{"all", "specific", "line"}
+	agentCampaignRepo.On("FindSentCampaignsForBackfillPaginated", ctx, uint64(1), targetTypes, 100, 0).
+		Return(campaigns, nil)
+
+	// Mock 批次檢查訊息不存在
+	existsMap := map[uint64]bool{1: false}
+	agentMessageRepo.On("CheckCampaignMessageExistsBatch", ctx, uint64(2), []uint64{1}).
+		Return(existsMap, nil)
+
+	// 預期不會創建訊息（因為代理不在指定父代理的線下）
+	// 因此不需要 mock CreateBatch
 
 	// 執行測試
 	err := useCase.BackfillMissedMessages(ctx, agentEvent)

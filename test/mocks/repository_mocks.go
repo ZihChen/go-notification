@@ -1151,9 +1151,10 @@ func (m *AgentCampaignRepositoryMock) FindSentCampaignsForBackfill(
 func (m *AgentCampaignRepositoryMock) FindSentCampaignsForBackfillPaginated(
 	ctx context.Context,
 	merchantID uint64,
+	targetTypes []string,
 	limit, offset int,
 ) ([]*entity.AgentCampaign, error) {
-	args := m.Called(ctx, merchantID, limit, offset)
+	args := m.Called(ctx, merchantID, targetTypes, limit, offset)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

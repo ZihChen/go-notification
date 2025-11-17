@@ -287,18 +287,19 @@ func (r *AgentCampaignRepository) FindSentCampaignsForBackfill(
 func (r *AgentCampaignRepository) FindSentCampaignsForBackfillPaginated(
 	ctx context.Context,
 	merchantID uint64,
+	targetTypes []string,
 	limit, offset int,
 ) ([]*entity.AgentCampaign, error) {
 	var campaignModels []models.AgentCampaign
 
 	// 分頁查詢符合條件的活動：
-	// 1. target_type = 'all' (全員發送)
+	// 1. target_type IN ('all', 'specific', 'line') (多種目標類型)
 	// 2. status = 'sent' (已發送)
 	// 3. merchant_id = merchantID (該商戶的活動)
 	// 4. created_at < now (創建時間早於現在)
 	if err := r.db.WithContext(ctx).
-		Where("merchant_id = ? AND target_type = ? AND status = ? AND created_at < ?",
-			merchantID, "all", "sent", time.Now()).
+		Where("merchant_id = ? AND target_type IN ? AND status = ? AND created_at < ?",
+			merchantID, targetTypes, "sent", time.Now()).
 		Order("created_at DESC").
 		Limit(limit).
 		Offset(offset).

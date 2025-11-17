@@ -552,8 +552,8 @@ func TestAgentCampaignRepository_FindSentCampaignsForBackfillPaginated(t *testin
 					"all", "", 100, 100, "admin", "admin", now, now,
 				)
 
-				mock.ExpectQuery("SELECT .* FROM `agent_campaigns` WHERE \\(merchant_id = .+ AND target_type = .+ AND status = .+ AND created_at < .+\\) AND .*deleted_at.* IS NULL ORDER BY created_at DESC LIMIT .+").
-					WithArgs(1, "all", "sent", sqlmock.AnyArg(), 100).
+				mock.ExpectQuery("SELECT .* FROM `agent_campaigns` WHERE \\(merchant_id = .+ AND target_type IN \\(.+\\) AND status = .+ AND created_at < .+\\) AND .*deleted_at.* IS NULL ORDER BY created_at DESC LIMIT .+").
+					WithArgs(1, "all", "specific", "line", "sent", sqlmock.AnyArg(), 100).
 					WillReturnRows(rows)
 			},
 			expectedCampaigns: []*entity.AgentCampaign{
@@ -579,9 +579,11 @@ func TestAgentCampaignRepository_FindSentCampaignsForBackfillPaginated(t *testin
 
 			repo := NewAgentCampaignRepository(db)
 
+			targetTypes := []string{"all", "specific", "line"}
 			campaigns, err := repo.FindSentCampaignsForBackfillPaginated(
 				context.Background(),
 				tc.merchantID,
+				targetTypes,
 				tc.limit,
 				tc.offset,
 			)

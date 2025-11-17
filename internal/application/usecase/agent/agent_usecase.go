@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jinzhu/copier"
@@ -1108,11 +1109,15 @@ func (u *AgentUseCase) BackfillMissedMessages(
 	const batchSize = 100 // 批次處理大小
 	offset := 0
 
+	// 支援的目標類型：all, specific, line
+	targetTypes := []string{"all", "specific", "line"}
+
 	for {
 		// 分頁查詢活動
 		campaigns, err := u.agentCampaignRepo.FindSentCampaignsForBackfillPaginated(
 			ctx,
 			merchant.ID,
+			targetTypes,
 			batchSize,
 			offset,
 		)
@@ -1156,7 +1161,36 @@ func (u *AgentUseCase) BackfillMissedMessages(
 
 		for _, campaign := range campaigns {
 			// 檢查該活動的訊息是否已存在
-			if exists, found := existsMap[campaign.ID]; !found || !exists {
+			if exists, found := existsMap[campaign.ID]; found && exists {
+				continue // 訊息已存在，跳過
+			}
+
+			// 根據 target_type 判斷該代理是否應該接收此活動
+			shouldReceive := false
+			switch campaign.TargetType {
+			case "all":
+				shouldReceive = true // all 類型的活動所有代理都應該接收
+			case "specific":
+				shouldReceive = u.shouldAgentReceiveSpecificCampaign(agent, campaign)
+			case "line":
+				var err error
+				shouldReceive, err = u.shouldAgentReceiveLineCampaign(ctx, agent, campaign)
+				if err != nil {
+					u.logger.WarnLog("Failed to check line campaign eligibility",
+						u.logger.UInt64("campaign_id", campaign.ID),
+						u.logger.UInt64("agent_id", agent.ID),
+						u.logger.Error("error", err))
+					continue // 發生錯誤時跳過此活動
+				}
+			default:
+				u.logger.WarnLog("Unknown target type",
+					u.logger.String("target_type", campaign.TargetType),
+					u.logger.UInt64("campaign_id", campaign.ID))
+				continue
+			}
+
+			// 如果該代理應該接收此活動，則創建訊息記錄
+			if shouldReceive {
 				message := &entity.AgentMessage{
 					AgentCampaignID: campaign.ID,
 					AgentID:         agent.ID,
@@ -1204,4 +1238,57 @@ func (u *AgentUseCase) BackfillMissedMessages(
 		u.logger.Int("messages_backfilled", backfilledCount))
 
 	return nil
+}
+
+// shouldAgentReceiveSpecificCampaign 判斷代理是否應該接收 specific target_type 的活動
+func (u *AgentUseCase) shouldAgentReceiveSpecificCampaign(
+	agent *entity.Agent,
+	campaign *entity.AgentCampaign,
+) bool {
+	if campaign.TargetType != "specific" {
+		return false
+	}
+
+	// 檢查代理帳號是否在 target_details 中
+	for _, targetAccount := range campaign.TargetDetails {
+		if agent.Account == targetAccount {
+			return true
+		}
+	}
+
+	return false
+}
+
+// shouldAgentReceiveLineCampaign 判斷代理是否應該接收 line target_type 的活動
+func (u *AgentUseCase) shouldAgentReceiveLineCampaign(
+	ctx context.Context,
+	agent *entity.Agent,
+	campaign *entity.AgentCampaign,
+) (bool, error) {
+	if campaign.TargetType != "line" {
+		return false, nil
+	}
+
+	// line target_type 的 target_details 應該只包含一個上級代理帳號
+	if len(campaign.TargetDetails) != 1 {
+		return false, fmt.Errorf("line target_type should have exactly one parent agent account")
+	}
+
+	parentAccount := campaign.TargetDetails[0]
+
+	// 獲取父代理信息以取得其 GlobalAgentID
+	parentAgent, err := u.agentRepo.GetByAccount(ctx, parentAccount)
+	if err != nil {
+		return false, fmt.Errorf("get parent agent by account: %w", err)
+	}
+
+	// 高效能字串比對：檢查代理的 Ancestry 是否包含指定的父代理
+	// Ancestry 格式: "FATCAT-AGENT-01/FATCAT-AGENT-02/FATCAT-AGENT-03"
+	// 只需檢查父代理的 global_agent_id 是否在 ancestry 路徑中
+	if agent.Ancestry == "" {
+		return false, nil // 頂級代理，無父代理關係
+	}
+
+	// 檢查父代理 GlobalAgentID 是否在 Ancestry 路徑中
+	return strings.Contains(agent.Ancestry, parentAgent.GlobalAgentID), nil
 }
