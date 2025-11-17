@@ -788,6 +788,10 @@ func TestAgentUseCase_BackfillMissedMessages(t *testing.T) {
 	agentMessageRepo.On("CreateBatch", ctx, mock.AnythingOfType("[]*entity.AgentMessage")).
 		Return(nil)
 
+	// Mock 更新活動統計
+	agentCampaignRepo.On("UpdateFields", ctx, uint64(1), mock.AnythingOfType("map[string]interface {}")).
+		Return(nil)
+
 	// 執行測試
 	err := useCase.BackfillMissedMessages(ctx, agentEvent)
 
@@ -884,6 +888,10 @@ func TestAgentUseCase_BackfillMissedMessages_SpecificTargetType(t *testing.T) {
 			messages[0].AgentID == expectedMessages[0].AgentID &&
 			messages[0].IsRead == expectedMessages[0].IsRead
 	})).
+		Return(nil)
+
+	// Mock 更新活動統計
+	agentCampaignRepo.On("UpdateFields", ctx, uint64(1), mock.AnythingOfType("map[string]interface {}")).
 		Return(nil)
 
 	// 執行測試
@@ -988,6 +996,10 @@ func TestAgentUseCase_BackfillMissedMessages_LineTargetType(t *testing.T) {
 			messages[0].AgentID == expectedMessages[0].AgentID &&
 			messages[0].IsRead == expectedMessages[0].IsRead
 	})).
+		Return(nil)
+
+	// Mock 更新活動統計
+	agentCampaignRepo.On("UpdateFields", ctx, uint64(1), mock.AnythingOfType("map[string]interface {}")).
 		Return(nil)
 
 	// 執行測試

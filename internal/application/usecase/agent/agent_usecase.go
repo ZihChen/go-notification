@@ -18,6 +18,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"go.opentelemetry.io/otel/attribute"
+	"gorm.io/gorm"
 )
 
 // AgentUseCase 代理業務用例實作
@@ -1237,6 +1238,29 @@ func (u *AgentUseCase) BackfillMissedMessages(
 				backfilledCount += len(messagesToCreate)
 				u.tracingService.TraceEvent(span, "Batch created messages",
 					attribute.Int("created_count", len(messagesToCreate)))
+
+				// 7. 更新相關 campaign 的 target_count 和 real_sent_count
+				campaignCountMap := make(map[uint64]int)
+				for _, message := range messagesToCreate {
+					campaignCountMap[message.AgentCampaignID]++
+				}
+
+				for campaignID, count := range campaignCountMap {
+					err := u.agentCampaignRepo.UpdateFields(ctx, campaignID, map[string]interface{}{
+						"target_count":    gorm.Expr("target_count + ?", count),
+						"real_sent_count": gorm.Expr("real_sent_count + ?", count),
+					})
+					if err != nil {
+						u.logger.WarnLog("Failed to update campaign counts for backfill",
+							u.logger.UInt64("campaign_id", campaignID),
+							u.logger.Int("count", count),
+							u.logger.Error("error", err))
+					} else {
+						u.logger.InfoLog("Updated campaign counts for backfill",
+							u.logger.UInt64("campaign_id", campaignID),
+							u.logger.Int("count", count))
+					}
+				}
 			}
 		}
 
