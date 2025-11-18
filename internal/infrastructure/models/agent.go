@@ -51,8 +51,8 @@ func (*AgentCampaign) TableName() string {
 // AgentMessage 代理站內信數據模型
 type AgentMessage struct {
 	ID              uint64         `gorm:"primaryKey;autoIncrement"                                            json:"id"`
-	AgentCampaignID uint64         `gorm:"index;not null"                                                      json:"agent_campaign_id"` // 關聯到代理活動
-	AgentID         uint64         `gorm:"index;not null"                                                      json:"agent_id"`          // 關聯到代理
+	AgentCampaignID uint64         `gorm:"uniqueIndex:unique_agent_campaign_message;index;not null"            json:"agent_campaign_id"` // 關聯到代理活動
+	AgentID         uint64         `gorm:"uniqueIndex:unique_agent_campaign_message;index;not null"            json:"agent_id"`          // 關聯到代理
 	IsRead          bool           `gorm:"default:false;index"                                                 json:"is_read"`           // 是否已讀
 	ReadAt          *time.Time     `gorm:"type:datetime;index"                                                 json:"read_at"`           // 讀取時間，添加索引
 	CreatedAt       time.Time      `gorm:"type:datetime;default:CURRENT_TIMESTAMP;index"                       json:"created_at"`        // 創建時間即發送時間

@@ -297,6 +297,20 @@ func TestAgentMessageRepository_CreateBatch(t *testing.T) {
 			},
 			expectedError: nil,
 		},
+		{
+			name: "duplicate key update on conflict",
+			messages: []*entity.AgentMessage{
+				{AgentCampaignID: 1, AgentID: 1, IsRead: false, CreatedAt: now, UpdatedAt: now},
+			},
+			setupMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+				// 期望使用 ON DUPLICATE KEY UPDATE 語法
+				mock.ExpectExec("INSERT INTO `agent_messages`.*ON DUPLICATE KEY UPDATE.*").
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
+			},
+			expectedError: nil,
+		},
 	}
 
 	for _, tc := range testCases {

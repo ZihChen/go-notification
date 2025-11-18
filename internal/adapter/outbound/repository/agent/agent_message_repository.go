@@ -12,6 +12,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type AgentMessageRepository struct {
@@ -86,7 +87,7 @@ func (r *AgentMessageRepository) Delete(ctx context.Context, id uint64) error {
 	return nil
 }
 
-// CreateBatch 批量創建代理站內信
+// CreateBatch 批量創建代理站內信 (使用UPSERT避免重複寫入)
 func (r *AgentMessageRepository) CreateBatch(
 	ctx context.Context,
 	messages []*entity.AgentMessage,
@@ -105,12 +106,19 @@ func (r *AgentMessageRepository) CreateBatch(
 		}
 	}
 
-	// 使用批量插入
-	if err := r.db.WithContext(ctx).CreateInBatches(messageModels, 100).Error; err != nil {
+	// 使用 ON DUPLICATE KEY UPDATE 避免重複插入
+	// 當 (agent_campaign_id, agent_id) 組合已存在時，更新 updated_at 時間戳
+	if err := r.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "agent_campaign_id"}, {Name: "agent_id"}},
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"updated_at": gorm.Expr("VALUES(updated_at)"),
+		}),
+	}).CreateInBatches(messageModels, 100).Error; err != nil {
 		return fmt.Errorf("create batch agent messages failed: %w", err)
 	}
 
 	// 更新實體的ID和時間戳
+	// 注意：對於重複的記錄，ID可能不會更新，需要特殊處理
 	for i, model := range messageModels {
 		messages[i].ID = model.ID
 		messages[i].CreatedAt = model.CreatedAt
