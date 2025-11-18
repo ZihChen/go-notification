@@ -811,6 +811,14 @@ func (m *PlayerTagRepositoryMock) BatchUpdate(
 	return args.Error(0)
 }
 
+func (m *PlayerTagRepositoryMock) DeleteByPlayerID(
+	ctx context.Context,
+	playerID uint64,
+) error {
+	args := m.Called(ctx, playerID)
+	return args.Error(0)
+}
+
 func (m *PlayerTagRepositoryMock) SetupSuccess() {}
 func (m *PlayerTagRepositoryMock) SetupError()   {}
 func (m *PlayerTagRepositoryMock) SetupEmpty()   {}

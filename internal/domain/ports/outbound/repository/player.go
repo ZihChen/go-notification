@@ -47,4 +47,5 @@ type TagRepository interface {
 // PlayerTagRepository 玩家標籤關聯資料庫接口
 type PlayerTagRepository interface {
 	BatchUpdate(ctx context.Context, playerID uint64, tagIDs []uint64) error
+	DeleteByPlayerID(ctx context.Context, playerID uint64) error
 }
