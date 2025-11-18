@@ -16,6 +16,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/scheduler"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/worker"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/job"
+	repository4 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository"
 	repository3 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/agent"
 	repository2 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/manager"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/merchant"
@@ -24,6 +25,7 @@ import (
 	service3 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/agent"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/failed_task_event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/level"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/manager"
 	merchant2 "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/merchant"
@@ -32,7 +34,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/player"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
-	repository4 "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
+	repository5 "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	service2 "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
@@ -226,13 +228,16 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 	agentService := service.NewAgentService(agentRepository, agentRelationshipRepository, merchantRepository, logger, tracingService)
 	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService)
 	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, messageUseCase, agentUseCase, logger, tracingService)
-	server, err := provideWorkerServer(cfg, logger)
+	failedTaskEventRepository := repository4.NewFailedTaskEventRepository(db)
+	failedTaskEventUseCase := usecase.NewFailedTaskEventUseCase(failedTaskEventRepository, logger)
+	server, err := provideWorkerServer(cfg, logger, failedTaskEventUseCase)
 	if err != nil {
 		return nil, err
 	}
 	workerComponents := &WorkerComponents{
-		Handler: workerHandler,
-		Server:  server,
+		Handler:                workerHandler,
+		Server:                 server,
+		FailedTaskEventUseCase: failedTaskEventUseCase,
 	}
 	return workerComponents, nil
 }
@@ -323,8 +328,9 @@ func InitializeMigrateHandler(cfg *config.Config, logger infrastructure.Logger, 
 
 // WorkerComponents 包含 worker 所需的所有組件
 type WorkerComponents struct {
-	Handler *worker.WorkerHandler
-	Server  *asynq.Server
+	Handler                *worker.WorkerHandler
+	Server                 *asynq.Server
+	FailedTaskEventUseCase inbound.FailedTaskEventUseCase
 }
 
 // WebComponents 包含 web 服務所需的所有組件
@@ -335,7 +341,7 @@ type WebComponents struct {
 
 var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient,
 	provideTracingService,
-	provideDistributedLockManager, merchant.NewMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, message.NewMessageCampaignRepository, message.NewCampaignTargetRepository, providePlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant.NewPushKeyRepository, repository3.NewAgentRepository, repository3.NewAgentCampaignRepository, repository3.NewAgentMessageRepository, provideAgentRelationshipRepository, service.NewEventService, service.NewAgentService, providePushNotificationService, merchant2.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message2.NewMessageUseCase, level.NewLevelUseCase, player.NewTagUseCase, agent.NewAgentUseCase,
+	provideDistributedLockManager, merchant.NewMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, message.NewMessageCampaignRepository, message.NewCampaignTargetRepository, providePlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant.NewPushKeyRepository, repository3.NewAgentRepository, repository3.NewAgentCampaignRepository, repository3.NewAgentMessageRepository, provideAgentRelationshipRepository, repository4.NewFailedTaskEventRepository, service.NewEventService, service.NewAgentService, providePushNotificationService, merchant2.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message2.NewMessageUseCase, level.NewLevelUseCase, player.NewTagUseCase, agent.NewAgentUseCase, usecase.NewFailedTaskEventUseCase,
 )
 
 // 事件生產者提供者 (保留作為別名)
@@ -369,17 +375,17 @@ func ProvideAgentCampaignTriggerJob(
 }
 
 // 提供 worker 服務器
-func provideWorkerServer(cfg *config.Config, logger infrastructure.Logger) (*asynq.Server, error) {
-	return queue.NewWorkerServer(cfg, logger)
+func provideWorkerServer(cfg *config.Config, logger infrastructure.Logger, failedTaskUseCase inbound.FailedTaskEventUseCase) (*asynq.Server, error) {
+	return queue.NewWorkerServer(cfg, logger, failedTaskUseCase)
 }
 
 // 提供 PlayerMessageRepository
-func providePlayerMessageRepository(db *gorm.DB, redisManager *redis.Manager) repository4.PlayerMessageRepository {
+func providePlayerMessageRepository(db *gorm.DB, redisManager *redis.Manager) repository5.PlayerMessageRepository {
 	return message.NewPlayerMessageRepository(db, redisManager)
 }
 
 // 提供 AgentRelationshipRepository
-func provideAgentRelationshipRepository(db *gorm.DB, lockManager infrastructure.DistributedLockManager) repository4.AgentRelationshipRepository {
+func provideAgentRelationshipRepository(db *gorm.DB, lockManager infrastructure.DistributedLockManager) repository5.AgentRelationshipRepository {
 	return repository3.NewAgentRelationshipRepository(db, lockManager)
 }
 
@@ -389,7 +395,7 @@ func provideDistributedLockManager(redisManager *redis.Manager) infrastructure.D
 }
 
 // 提供 PlayerMessageRepository (migrate 專用，不需要 redis)
-func provideMigratePlayerMessageRepository(db *gorm.DB) repository4.PlayerMessageRepository {
+func provideMigratePlayerMessageRepository(db *gorm.DB) repository5.PlayerMessageRepository {
 	return message.NewPlayerMessageRepository(db, nil)
 }
 
@@ -409,11 +415,11 @@ type LegacyDB struct {
 // provideMigrateUseCase 創建 migrate use case，明確區分兩個資料庫連接
 func provideMigrateUseCase(
 	legacyDB *LegacyDB,
-	messageRepo repository4.MessageCampaignRepository,
-	playerRepo repository4.PlayerRepository,
-	merchantRepo repository4.MerchantRepository,
-	playerMessageRepo repository4.PlayerMessageRepository,
-	pushKeyRepo repository4.PushKeyRepository,
+	messageRepo repository5.MessageCampaignRepository,
+	playerRepo repository5.PlayerRepository,
+	merchantRepo repository5.MerchantRepository,
+	playerMessageRepo repository5.PlayerMessageRepository,
+	pushKeyRepo repository5.PushKeyRepository,
 	pushService service2.PushNotificationService,
 	logger infrastructure.Logger,
 ) inbound.MigrateUseCase {

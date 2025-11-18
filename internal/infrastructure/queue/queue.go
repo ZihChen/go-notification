@@ -2,13 +2,15 @@ package queue
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/hibiken/asynq"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
@@ -260,8 +262,37 @@ func (q *QueueService) Close() error {
 	return q.client.Close()
 }
 
+// generateTaskIDFromPayload 從payload生成或提取taskID
+func generateTaskIDFromPayload(taskType string, payload []byte) string {
+	// 首先嘗試從JSON payload中提取事件ID
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(payload, &jsonData); err == nil {
+		// 嘗試多個可能的ID字段名稱
+		idFields := []string{"id", "event_id", "task_id", "messageId", "ID", "global_id"}
+		for _, field := range idFields {
+			if id, exists := jsonData[field]; exists {
+				if idStr, ok := id.(string); ok && idStr != "" {
+					return idStr
+				}
+			}
+		}
+	}
+
+	// 如果無法提取ID，則生成一個基於payload內容的唯一標識符
+	hash := md5.Sum(payload)
+	hashStr := hex.EncodeToString(hash[:])
+
+	// 結合任務類型和時間戳，確保唯一性
+	timestamp := time.Now().Unix()
+	return fmt.Sprintf("%s_%d_%s", taskType, timestamp, hashStr[:12])
+}
+
 // NewWorkerServer 創建Worker服務器
-func NewWorkerServer(cfg *config.Config, logger infrastructure.Logger) (*asynq.Server, error) {
+func NewWorkerServer(
+	cfg *config.Config,
+	logger infrastructure.Logger,
+	failedTaskUseCase inbound.FailedTaskEventUseCase,
+) (*asynq.Server, error) {
 	redisAddr := fmt.Sprintf("%s:%d", cfg.Redis.Domain, cfg.Redis.Port)
 
 	logger.InfoLog("Creating worker server",
@@ -299,18 +330,13 @@ func NewWorkerServer(cfg *config.Config, logger infrastructure.Logger) (*asynq.S
 					}
 				}()
 
-				logFields := []*entity.LoggerFiled{
-					logger.Int("retry_count", n),
-					logger.Error("err", err),
-				}
-
 				if task != nil {
-					logFields = append(logFields,
+					logger.WarnLog("Task retry scheduled",
+						logger.Int("retry_count", n),
+						logger.Error("err", err),
 						logger.String("task_type", task.Type()),
 						logger.String("payload", string(task.Payload())))
 				}
-
-				logger.InfoLog("Task retry scheduled", logFields...)
 
 				// 使用指數退避策略，但設置上限
 				delay := time.Duration(n*n) * time.Second
@@ -322,10 +348,60 @@ func NewWorkerServer(cfg *config.Config, logger infrastructure.Logger) (*asynq.S
 			},
 			ErrorHandler: asynq.ErrorHandlerFunc(
 				func(ctx context.Context, task *asynq.Task, err error) {
-					logger.ErrorLog("Task processing error",
+					taskID := "unknown"
+
+					// 方法1: 通過ResultWriter (首選方法)
+					if w := task.ResultWriter(); w != nil {
+						taskID = w.TaskID()
+						logger.DebugLog(
+							"TaskID obtained from ResultWriter",
+							logger.String("task_id", taskID),
+						)
+					}
+
+					// 方法2: 如果ResultWriter不可用，從payload中提取或生成唯一ID
+					if taskID == "unknown" || taskID == "" {
+						logger.WarnLog("ResultWriter unavailable, generating taskID from payload")
+						taskID = generateTaskIDFromPayload(task.Type(), task.Payload())
+						logger.DebugLog(
+							"TaskID generated from payload",
+							logger.String("task_id", taskID),
+						)
+					}
+
+					logger.ErrorLog("Task processing failed - storing to DB",
+						logger.String("task_id", taskID),
 						logger.String("type", task.Type()),
-						logger.String("payload", string(task.Payload())),
 						logger.Error("err", err))
+
+					// 異步處理：存儲錯誤事件到DB
+					go func() {
+						bgCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+						defer cancel()
+
+						// 記錄失敗任務事件到資料庫
+						redisKey := fmt.Sprintf("asynq:default:t:%s", taskID)
+						if createErr := failedTaskUseCase.CreateFailedTaskEventWithRedisInfo(
+							bgCtx,
+							taskID,
+							task.Type(),
+							"default", // 默認queue
+							string(task.Payload()),
+							err.Error(),
+							redisKey,
+							"failed", // 設置為失敗狀態
+							0,        // ErrorHandler中的重試次數為0（不會重試）
+						); createErr != nil {
+							logger.ErrorLog("Failed to record failed task event",
+								logger.Error("err", createErr),
+								logger.String("task_id", taskID),
+								logger.String("task_type", task.Type()))
+						} else {
+							logger.InfoLog("Failed task event recorded to DB",
+								logger.String("task_id", taskID),
+								logger.String("task_type", task.Type()))
+						}
+					}()
 				},
 			),
 		},

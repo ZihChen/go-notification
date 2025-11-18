@@ -1376,3 +1376,29 @@ func (m *AgentRelationshipRepositoryMock) SetupEmpty()   {}
 func (m *AgentRelationshipRepositoryMock) Reset() {
 	m.Mock = mock.Mock{}
 }
+
+// MockFailedTaskEventRepository 失敗任務事件Repository的Mock實現
+type MockFailedTaskEventRepository struct {
+	mock.Mock
+}
+
+// NewMockFailedTaskEventRepository 創建失敗任務事件Repository的Mock
+func NewMockFailedTaskEventRepository() *MockFailedTaskEventRepository {
+	return &MockFailedTaskEventRepository{}
+}
+
+// Create Mock實現
+func (m *MockFailedTaskEventRepository) Create(
+	ctx context.Context,
+	failedTask *entity.FailedTaskEvent,
+) error {
+	args := m.Called(ctx, failedTask)
+	return args.Error(0)
+}
+
+func (m *MockFailedTaskEventRepository) SetupSuccess() {}
+func (m *MockFailedTaskEventRepository) SetupError()   {}
+func (m *MockFailedTaskEventRepository) SetupEmpty()   {}
+func (m *MockFailedTaskEventRepository) Reset() {
+	m.Mock = mock.Mock{}
+}

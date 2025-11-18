@@ -13,6 +13,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/worker"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/job"
 	agentRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/agent"
+	failedTaskEventRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository"
 	managerRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/manager"
 	merchantRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/merchant"
 	messageRepo "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/message"
@@ -20,6 +21,7 @@ import (
 	outboundService "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/service"
 	agentUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/agent"
+	failedTaskEventUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/failed_task_event"
 	levelUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/level"
 	managerUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/manager"
 	merchantUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/merchant"
@@ -43,8 +45,9 @@ import (
 
 // WorkerComponents 包含 worker 所需的所有組件
 type WorkerComponents struct {
-	Handler *worker.WorkerHandler
-	Server  *asynq.Server
+	Handler               *worker.WorkerHandler
+	Server                *asynq.Server
+	FailedTaskEventUseCase inbound.FailedTaskEventUseCase
 }
 
 // WebComponents 包含 web 服務所需的所有組件
@@ -77,6 +80,8 @@ var baseSet = wire.NewSet(
 	agentRepo.NewAgentCampaignRepository,
 	agentRepo.NewAgentMessageRepository,
 	provideAgentRelationshipRepository,
+	// Failed Task Event repository
+	failedTaskEventRepo.NewFailedTaskEventRepository,
 
 	// 服務
 	service.NewEventService,
@@ -91,6 +96,7 @@ var baseSet = wire.NewSet(
 	levelUseCase.NewLevelUseCase,
 	playerUseCase.NewTagUseCase,
 	agentUseCase.NewAgentUseCase,
+	failedTaskEventUseCase.NewFailedTaskEventUseCase,
 )
 
 // 事件生產者提供者 (保留作為別名)
@@ -179,8 +185,8 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 }
 
 // 提供 worker 服務器
-func provideWorkerServer(cfg *config.Config, logger infrastructure.Logger) (*asynq.Server, error) {
-	return queue.NewWorkerServer(cfg, logger)
+func provideWorkerServer(cfg *config.Config, logger infrastructure.Logger, failedTaskUseCase inbound.FailedTaskEventUseCase) (*asynq.Server, error) {
+	return queue.NewWorkerServer(cfg, logger, failedTaskUseCase)
 }
 
 // 提供 PlayerMessageRepository
