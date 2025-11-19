@@ -509,8 +509,8 @@ func TestPlayerMessageRepository_CreateBatchOptimized(t *testing.T) {
 		}()
 
 		repo := &PlayerMessageRepository{
-			db:           db,
-			redisManager: nil, // Should work without Redis in test
+			db:          db,
+			lockManager: nil, // Should work without lockManager in test
 		}
 
 		// Empty batch should work fine

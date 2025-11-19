@@ -5,18 +5,16 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-redsync/redsync/v4"
 	"github.com/google/uuid"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	jobport "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/job"
-	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 )
 
 // JobWrapper 包裝job執行邏輯，添加追蹤、日誌和分布式鎖
 type JobWrapper struct {
 	job            jobport.ScheduledJob
 	logger         infrastructure.Logger
-	redisManager   *redisCache.Manager
+	lockManager    infrastructure.DistributedLockManager
 	tracingService infrastructure.TracingService
 }
 
@@ -32,14 +30,16 @@ func (w *JobWrapper) run() {
 	// 分布式鎖 key，使用 job 名稱
 	mutexKey := fmt.Sprintf("scheduler:job:%s", jobName)
 
-	// 如果 RedisManager 不為 nil，則使用分布式鎖
-	if w.redisManager != nil {
+	// 如果 LockManager 不為 nil，則使用分布式鎖
+	if w.lockManager != nil {
 		// 獲取分布式鎖
-		mutex, err := w.redisManager.GetMutexWithOption(mutexKey,
-			redsync.WithExpiry(30*time.Second),           // 鎖的過期時間 30 秒
-			redsync.WithTries(1),                         // 只試一次，不重試
-			redsync.WithRetryDelay(100*time.Millisecond), // 重試間隔
-		)
+		lockOptions := infrastructure.LockOptions{
+			Expiry:     30 * time.Second,       // 鎖的過期時間 30 秒
+			Tries:      1,                      // 只試一次，不重試
+			RetryDelay: 100 * time.Millisecond, // 重試間隔
+		}
+
+		mutex, err := w.lockManager.GetLockWithOptions(ctx, mutexKey, lockOptions)
 		if err != nil {
 			w.tracingService.RecordSpanError(span, err)
 			w.logger.ErrorWithContext(ctx, "Failed to get distributed lock",

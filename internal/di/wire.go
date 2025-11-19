@@ -190,8 +190,8 @@ func provideWorkerServer(cfg *config.Config, logger infrastructure.Logger, faile
 }
 
 // 提供 PlayerMessageRepository
-func providePlayerMessageRepository(db *gorm.DB, redisManager *redisCache.Manager) repository.PlayerMessageRepository {
-	return messageRepo.NewPlayerMessageRepository(db, redisManager)
+func providePlayerMessageRepository(db *gorm.DB, lockManager infrastructure.DistributedLockManager) repository.PlayerMessageRepository {
+	return messageRepo.NewPlayerMessageRepository(db, lockManager)
 }
 
 // 提供 AgentRelationshipRepository

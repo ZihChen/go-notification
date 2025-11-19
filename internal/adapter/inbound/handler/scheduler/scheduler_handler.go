@@ -6,14 +6,13 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/job"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	jobport "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/job"
-	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/robfig/cron/v3"
 )
 
 // Handler 排程處理器
 type Handler struct {
 	logger         infrastructure.Logger
-	redisManager   *redisCache.Manager
+	lockManager    infrastructure.DistributedLockManager
 	tracingService infrastructure.TracingService
 	jobs           []ScheduledJobConfig
 }
@@ -28,12 +27,12 @@ type ScheduledJobConfig struct {
 // NewSchedulerHandler 創建排程處理器
 func NewSchedulerHandler(
 	logger infrastructure.Logger,
-	redisManager *redisCache.Manager,
+	lockManager infrastructure.DistributedLockManager,
 	tracingService infrastructure.TracingService,
 	jobRegistry *job.Registry) *Handler {
 	h := &Handler{
 		logger:         logger,
-		redisManager:   redisManager,
+		lockManager:    lockManager,
 		tracingService: tracingService,
 		jobs:           make([]ScheduledJobConfig, 0),
 	}
@@ -57,7 +56,7 @@ func (h *Handler) RegisterJobs(cronManager *cron.Cron) {
 		wrapper := &JobWrapper{
 			job:            jobConfig.Job,
 			logger:         h.logger,
-			redisManager:   h.redisManager,
+			lockManager:    h.lockManager,
 			tracingService: h.tracingService,
 		}
 

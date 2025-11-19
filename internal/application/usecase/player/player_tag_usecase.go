@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-redsync/redsync/v4"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
@@ -14,7 +13,6 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
-	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/constants"
 )
 
@@ -24,7 +22,7 @@ type PlayerTagUseCase struct {
 	playerRepo     repository.PlayerRepository
 	playerTagRepo  repository.PlayerTagRepository
 	logger         infrastructure.Logger
-	redisManager   *redisCache.Manager
+	lockManager    infrastructure.DistributedLockManager
 	tracingService infrastructure.TracingService
 }
 
@@ -34,7 +32,7 @@ func NewTagUseCase(
 	playerRepo repository.PlayerRepository,
 	playerTagRepo repository.PlayerTagRepository,
 	logger infrastructure.Logger,
-	redisManager *redisCache.Manager,
+	lockManager infrastructure.DistributedLockManager,
 	tracingService infrastructure.TracingService,
 ) inbound.PlayerTagUseCase {
 	return &PlayerTagUseCase{
@@ -43,7 +41,7 @@ func NewTagUseCase(
 		playerRepo:     playerRepo,
 		playerTagRepo:  playerTagRepo,
 		logger:         logger,
-		redisManager:   redisManager,
+		lockManager:    lockManager,
 		tracingService: tracingService,
 	}
 }
@@ -184,11 +182,13 @@ func (u *PlayerTagUseCase) executeLocked(
 		tries := 5 + attempt*2
 		baseDelay := time.Duration(50*attempt) * time.Millisecond
 
-		mutex, err := u.redisManager.GetMutexWithOption(mutexKey,
-			redsync.WithExpiry(expiry),
-			redsync.WithTries(tries),
-			redsync.WithRetryDelay(baseDelay),
-		)
+		lockOptions := infrastructure.LockOptions{
+			Expiry:     expiry,
+			Tries:      tries,
+			RetryDelay: baseDelay,
+		}
+
+		mutex, err := u.lockManager.GetLockWithOptions(ctx, mutexKey, lockOptions)
 		if err != nil {
 			u.logger.ErrorWithContext(ctx, "Failed to create mutex",
 				u.logger.String("mutex_key", mutexKey),

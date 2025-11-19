@@ -6,44 +6,66 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-redsync/redsync/v4"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
-	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
 	"github.com/jvdiamondtech/ms-notification-cat/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-// Mock Redis Manager and Mutex
-type MockRedisManager struct {
+// Mock DistributedLockManager and Mutex
+type MockDistributedLockManager struct {
 	mock.Mock
 }
 
-type MockMutex struct {
+type MockDistributedMutex struct {
 	mock.Mock
 }
 
-func (m *MockMutex) Lock() error {
+func (m *MockDistributedMutex) Lock() error {
 	args := m.Called()
 	return args.Error(0)
 }
 
-func (m *MockMutex) Unlock() (bool, error) {
+func (m *MockDistributedMutex) Unlock() (bool, error) {
 	args := m.Called()
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockRedisManager) GetMutexWithOption(
-	key string,
-	options ...redsync.Option,
-) (*redsync.Mutex, error) {
-	args := m.Called(key, options)
+func (m *MockDistributedMutex) TryLock() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
+func (m *MockDistributedMutex) Extend() (bool, error) {
+	args := m.Called()
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockDistributedLockManager) GetLock(ctx context.Context, key string) (interface{}, error) {
+	args := m.Called(ctx, key)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*redsync.Mutex), args.Error(1)
+	return args.Get(0), args.Error(1)
+}
+
+func (m *MockDistributedLockManager) GetLockWithOptions(
+	ctx context.Context,
+	key string,
+	options interface{},
+) (interface{}, error) {
+	args := m.Called(ctx, key, options)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0), args.Error(1)
+}
+
+func (m *MockDistributedLockManager) IsAvailable() bool {
+	args := m.Called()
+	return args.Bool(0)
 }
 
 // Helper functions
@@ -53,16 +75,16 @@ func createPlayerTagMockDependencies(t *testing.T) (
 	*mocks.PlayerRepositoryMock,
 	*mocks.PlayerTagRepositoryMock,
 	*helper.MockLogger,
-	*MockRedisManager,
+	*MockDistributedLockManager,
 ) {
 	tagRepo := mocks.NewTagRepositoryMock(t)
 	merchantRepo := mocks.NewMerchantRepositoryMock(t)
 	playerRepo := mocks.NewPlayerRepositoryMock(t)
 	playerTagRepo := mocks.NewPlayerTagRepositoryMock(t)
 	logger := helper.NewMockLogger()
-	redisManager := new(MockRedisManager)
+	lockManager := new(MockDistributedLockManager)
 
-	return tagRepo, merchantRepo, playerRepo, playerTagRepo, logger, redisManager
+	return tagRepo, merchantRepo, playerRepo, playerTagRepo, logger, lockManager
 }
 
 func createTestTag() *entity.Tag {
@@ -158,13 +180,6 @@ func createTestPlayerForTag(lastActive *time.Time) *entity.Player {
 
 func stringPtrTag(s string) *string {
 	return &s
-}
-
-// Mock Redis Manager that returns a working mutex
-func createMockRedisManagerWithMutex() *redisCache.Manager {
-	// For simplicity, we'll mock the mutex behavior directly in tests
-	// In a real scenario, you might want to use a more sophisticated mock
-	return nil // This will need proper mocking in real implementation
 }
 
 // Test SyncPlayerTags - successful sync (skipped due to Redis dependency complexity)

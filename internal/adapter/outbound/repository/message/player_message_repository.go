@@ -7,12 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redsync/redsync/v4"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/aggregate"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/constants"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"gorm.io/gorm"
@@ -26,18 +25,18 @@ type playerCampaignKey struct {
 
 // PlayerMessageRepository GORM實現的會員訊息資料庫
 type PlayerMessageRepository struct {
-	db           *gorm.DB
-	redisManager *redis.Manager
+	db          *gorm.DB
+	lockManager infrastructure.DistributedLockManager
 }
 
 // NewPlayerMessageRepository 創建會員訊息資料庫
 func NewPlayerMessageRepository(
 	db *gorm.DB,
-	redisManager *redis.Manager,
+	lockManager infrastructure.DistributedLockManager,
 ) repository.PlayerMessageRepository {
 	return &PlayerMessageRepository{
-		db:           db,
-		redisManager: redisManager,
+		db:          db,
+		lockManager: lockManager,
 	}
 }
 
@@ -288,18 +287,20 @@ func (r *PlayerMessageRepository) executeWithDistributedLock(
 	campaignID uint64,
 	fn func() error,
 ) error {
-	// 如果沒有 redisManager（如 migrate 場景），直接執行函數
-	if r.redisManager == nil {
+	// 如果沒有 lockManager（如 migrate 場景），直接執行函數
+	if r.lockManager == nil {
 		return fn()
 	}
 
 	mutexKey := fmt.Sprintf(constants.AutoNotificationMutexKey, globalPlayerID, campaignID)
 
-	mutex, err := r.redisManager.GetMutexWithOption(mutexKey,
-		redsync.WithExpiry(10*time.Second),           // 鎖的過期時間（比 player_tag 更長，因為涉及 DB 操作）
-		redsync.WithTries(3),                         // 獲取鎖的重試次數
-		redsync.WithRetryDelay(200*time.Millisecond), // 重試間隔
-	)
+	lockOptions := infrastructure.LockOptions{
+		Expiry:     10 * time.Second,       // 鎖的過期時間（比 player_tag 更長，因為涉及 DB 操作）
+		Tries:      3,                      // 獲取鎖的重試次數
+		RetryDelay: 200 * time.Millisecond, // 重試間隔
+	}
+
+	mutex, err := r.lockManager.GetLockWithOptions(ctx, mutexKey, lockOptions)
 	if err != nil {
 		return fmt.Errorf(
 			"failed to create mutex for auto notification %s:%d: %w",
@@ -484,16 +485,18 @@ func (r *PlayerMessageRepository) executeWithBatchDistributedLock(
 	mutexKey string,
 	fn func() error,
 ) error {
-	// 如果沒有 redisManager（如 migrate 場景），直接執行
-	if r.redisManager == nil {
+	// 如果沒有 lockManager（如 migrate 場景），直接執行
+	if r.lockManager == nil {
 		return fn()
 	}
 
-	mutex, err := r.redisManager.GetMutexWithOption(mutexKey,
-		redsync.WithExpiry(15*time.Second),           // 批次操作可能需要更長時間
-		redsync.WithTries(5),                         // 批次操作重試次數更多
-		redsync.WithRetryDelay(300*time.Millisecond), // 重試間隔稍長
-	)
+	lockOptions := infrastructure.LockOptions{
+		Expiry:     15 * time.Second,       // 批次操作可能需要更長時間
+		Tries:      5,                      // 批次操作重試次數更多
+		RetryDelay: 300 * time.Millisecond, // 重試間隔稍長
+	}
+
+	mutex, err := r.lockManager.GetLockWithOptions(ctx, mutexKey, lockOptions)
 	if err != nil {
 		return fmt.Errorf("failed to create batch mutex %s: %w", mutexKey, err)
 	}

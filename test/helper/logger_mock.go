@@ -6,7 +6,7 @@ import (
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
-	"github.com/jvdiamondtech/ms-notification-cat/test/mocks"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -341,7 +341,5 @@ func SetupLoggerMock(t *testing.T) *MockLogger {
 
 // NewMockTracingService 創建新的 Mock TracingService 實例
 func NewMockTracingService() infrastructure.TracingService {
-	mockService := mocks.NewTracingServiceMock(nil)
-	mockService.SetupSuccess()
-	return mockService
+	return tracing.NewTracingService()
 }
