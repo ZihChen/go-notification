@@ -93,7 +93,9 @@ func (r *RedisDistributedLockManager) IsAvailable() bool {
 		return false
 	}
 
-	// 嘗試獲取 Redis 客戶端來檢查連接狀態
-	_, err := r.manager.GetClient()
-	return err == nil
+	// 使用實際連通性檢查
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	return r.manager.HealthCheck(ctx) == nil
 }
