@@ -14,9 +14,9 @@ import (
 	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
-	"github.com/go-redsync/redsync/v4"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/constants"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -167,10 +167,13 @@ func (k *KDSService) ConsumeAllEvents(ctx context.Context) error {
 //   - shardId: 分片ID
 //
 // 返回值：
-//   - *redsync.Mutex: 成功獲取的鎖，失敗時返回 nil
-func (k *KDSService) acquireShardLock(ctx context.Context, shardId string) *redsync.Mutex {
+//   - infrastructure.DistributedMutex: 成功獲取的鎖，失敗時返回 nil
+func (k *KDSService) acquireShardLock(
+	ctx context.Context,
+	shardId string,
+) infrastructure.DistributedMutex {
 	mutexKey := fmt.Sprintf(constants.ShardMutexRedisKey, k.consumeStream, shardId)
-	mutex, mutexErr := k.redisManager.GetMutex(mutexKey, consumerProcessedTTL)
+	mutex, mutexErr := k.lockManager.GetMutex(mutexKey, consumerProcessedTTL)
 	if mutexErr != nil {
 		// Redis連線異常仍執行後面程序
 		k.logger.WarnWithContext(ctx, "Failed to create mutex, skipping lock logic",
@@ -592,7 +595,7 @@ func (k *KDSService) composeDynamoDBKey(shardId string) string {
 func (k *KDSService) consumeShardEvents(
 	ctx context.Context,
 	shardId, initialIterator string,
-	shardMutex *redsync.Mutex,
+	shardMutex infrastructure.DistributedMutex,
 	shardWaiters *sync.WaitGroup,
 	shardErrs chan<- error,
 ) {

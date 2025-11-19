@@ -57,7 +57,8 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, redis
 	if err != nil {
 		return nil, err
 	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger, tracingService)
+	distributedLockManager := provideDistributedLockManager(redisManager)
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, distributedLockManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +71,6 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, redis
 	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger, tracingService)
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
 	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
-	distributedLockManager := provideDistributedLockManager(redisManager)
 	playerMessageRepository := providePlayerMessageRepository(db, distributedLockManager)
 	tagRepository := repository.NewTagRepository(db)
 	pushKeyRepository := merchant.NewPushKeyRepository(db)
@@ -97,7 +97,7 @@ func InitializeAgentHandler(cfg *config.Config, logger infrastructure.Logger, re
 	if err != nil {
 		return nil, err
 	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger, tracingService)
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, distributedLockManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,8 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, r
 	if err != nil {
 		return nil, err
 	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger, tracingService)
+	distributedLockManager := provideDistributedLockManager(redisManager)
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, distributedLockManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +129,6 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, r
 	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger, tracingService)
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
 	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
-	distributedLockManager := provideDistributedLockManager(redisManager)
 	playerMessageRepository := providePlayerMessageRepository(db, distributedLockManager)
 	tagRepository := repository.NewTagRepository(db)
 	pushKeyRepository := merchant.NewPushKeyRepository(db)
@@ -160,7 +160,8 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, re
 	if err != nil {
 		return nil, err
 	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger, tracingService)
+	distributedLockManager := provideDistributedLockManager(redisManager)
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, distributedLockManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +175,6 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, re
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger, tracingService)
 	tagRepository := repository.NewTagRepository(db)
 	playerTagRepository := repository.NewPlayerTagRepository(db)
-	distributedLockManager := provideDistributedLockManager(redisManager)
 	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, distributedLockManager, tracingService)
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
 	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
@@ -200,7 +200,8 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 	if err != nil {
 		return nil, err
 	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger, tracingService)
+	distributedLockManager := provideDistributedLockManager(redisManager)
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, distributedLockManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +215,6 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger, tracingService)
 	tagRepository := repository.NewTagRepository(db)
 	playerTagRepository := repository.NewPlayerTagRepository(db)
-	distributedLockManager := provideDistributedLockManager(redisManager)
 	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, distributedLockManager, tracingService)
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
 	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
@@ -250,7 +250,8 @@ func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, redisM
 	if err != nil {
 		return nil, err
 	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger, tracingService)
+	distributedLockManager := provideDistributedLockManager(redisManager)
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, distributedLockManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +265,8 @@ func InitializeConsumerHandler(cfg *config.Config, logger infrastructure.Logger,
 	if err != nil {
 		return nil, err
 	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger, tracingService)
+	distributedLockManager := provideDistributedLockManager(redisManager)
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, distributedLockManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +298,7 @@ func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Log
 	if err != nil {
 		return nil, err
 	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, logger, tracingService)
+	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, distributedLockManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}

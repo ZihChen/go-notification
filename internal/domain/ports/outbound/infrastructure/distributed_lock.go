@@ -32,6 +32,9 @@ type DistributedLockManager interface {
 		options LockOptions,
 	) (DistributedMutex, error)
 
+	// GetMutex 獲取簡單的分佈式鎖
+	GetMutex(key string, expireTime time.Duration) (DistributedMutex, error)
+
 	// IsAvailable 檢查分佈式鎖服務是否可用
 	IsAvailable() bool
 }

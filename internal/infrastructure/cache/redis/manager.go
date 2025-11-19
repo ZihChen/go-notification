@@ -303,11 +303,15 @@ func (r *RedisDistributedLockManager) IsAvailable() bool {
 	return r.manager.HealthCheck(ctx) == nil
 }
 
-// GetMutex 為向後兼容性保留的方法 (僅供內部使用)
-func (m *Manager) GetMutex(key string, expireTime time.Duration) (*redsync.Mutex, error) {
-	r, err := m.GetRedsync()
+// GetMutex 獲取簡單的分佈式鎖
+func (r *RedisDistributedLockManager) GetMutex(
+	key string,
+	expireTime time.Duration,
+) (infrastructure.DistributedMutex, error) {
+	redsyncInstance, err := r.manager.GetRedsync()
 	if err != nil {
 		return nil, err
 	}
-	return r.NewMutex(key, redsync.WithExpiry(expireTime)), nil
+	mutex := redsyncInstance.NewMutex(key, redsync.WithExpiry(expireTime))
+	return &DistributedMutex{mutex: mutex}, nil
 }

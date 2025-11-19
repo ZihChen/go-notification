@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
@@ -343,6 +344,17 @@ func (m *DistributedLockManagerMock) GetLockWithOptions(
 	options infrastructure.LockOptions,
 ) (infrastructure.DistributedMutex, error) {
 	args := m.Called(ctx, key, options)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(infrastructure.DistributedMutex), args.Error(1)
+}
+
+func (m *DistributedLockManagerMock) GetMutex(
+	key string,
+	expireTime time.Duration,
+) (infrastructure.DistributedMutex, error) {
+	args := m.Called(key, expireTime)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

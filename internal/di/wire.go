@@ -213,6 +213,7 @@ func provideMigratePlayerMessageRepository(db *gorm.DB) repository.PlayerMessage
 func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, redisManager *redisCache.Manager) (*kds.KDSService, error) {
 	wire.Build(
 		provideTracingService,
+		provideDistributedLockManager,
 		queue.NewQueueService,
 		kds.NewKDSService,
 	)
@@ -223,6 +224,7 @@ func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, redisM
 func InitializeConsumerHandler(cfg *config.Config, logger infrastructure.Logger, redisManager *redisCache.Manager) (*consumer.ConsumerHandler, error) {
 	wire.Build(
 		provideTracingService,
+		provideDistributedLockManager,
 		queue.NewQueueService,
 		kds.NewKDSService,
 		consumer.NewConsumerHandler,
