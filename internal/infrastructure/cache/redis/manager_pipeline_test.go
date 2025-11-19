@@ -3,8 +3,10 @@ package redis
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 )
 
 func TestManager_Pipeline_ErrorHandling(t *testing.T) {
@@ -58,6 +60,53 @@ func TestManager_HealthCheck(t *testing.T) {
 
 	// 注意：健康連接的測試需要真實的Redis連接
 	// 可以在整合測試中進行驗證
+}
+
+func TestManager_ImplementsCacheManager(t *testing.T) {
+	// 確保Manager實現了CacheManager介面
+	var _ infrastructure.CacheManager = (*Manager)(nil)
+	
+	t.Run("介面方法可用性檢查", func(t *testing.T) {
+		manager := &Manager{}
+		ctx := context.Background()
+		
+		// 測試所有介面方法都存在（即使會返回錯誤）
+		// 注意：跳過Connect測試因為它需要有效的config
+		
+		// Close
+		err := manager.Close()
+		assert.NoError(t, err) // Close在未初始化時不會出錯
+		
+		// Set (會出錯因為client未初始化)
+		_, err = manager.Set(ctx, "test_key", "test_value", time.Minute)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "redis client not initialized")
+		
+		// SetNX
+		_, err = manager.SetNX(ctx, "test_key", "value", time.Minute)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "redis client not initialized")
+		
+		// MGet
+		_, err = manager.MGet(ctx, "test_key")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "redis client not initialized")
+		
+		// Pipeline
+		_, err = manager.Pipeline()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get redis client for pipeline")
+		
+		// HealthCheck
+		err = manager.HealthCheck(ctx)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "redis client not initialized")
+		
+		// GetClient
+		_, err = manager.GetClient()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "redis client not initialized")
+	})
 }
 
 // 以下是測試用的輔助函數，在有真實Redis環境時使用

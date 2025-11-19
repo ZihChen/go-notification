@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-redsync/redsync/v4"
 	"github.com/go-redsync/redsync/v4/redis/goredis/v9"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/redis/go-redis/v9"
 )
@@ -21,6 +22,9 @@ type Manager struct {
 	mu       sync.RWMutex
 	isClosed bool
 }
+
+// 確保Manager實現CacheManager介面
+var _ infrastructure.CacheManager = (*Manager)(nil)
 
 func NewRedisManager(cfg *config.Config) *Manager {
 	return &Manager{
@@ -35,6 +39,9 @@ func (m *Manager) Connect(ctx context.Context) error {
 	if m.client != nil {
 		return nil // Redis connection 還存在
 	}
+
+	retryCount := 0
+	maxRetries := 5
 
 	for {
 		select {
@@ -62,9 +69,23 @@ func (m *Manager) Connect(ctx context.Context) error {
 
 			// 測試連接
 			if err := client.Ping(ctx).Err(); err != nil {
-				log.Printf("Failed to connect to Redis: %v, retrying in 3 seconds...", err)
+				retryCount++
+				if retryCount >= maxRetries {
+					_ = client.Close()
+					return fmt.Errorf("failed to connect to Redis after %d attempts: %w", maxRetries, err)
+				}
+
+				// 指數退避，最大30秒
+				backoff := time.Duration(1<<uint(retryCount)) * time.Second
+				if backoff > 30*time.Second {
+					backoff = 30 * time.Second
+				}
+
+				log.Printf("Failed to connect to Redis (attempt %d/%d): %v, retrying in %v...",
+					retryCount, maxRetries, err, backoff)
+
 				_ = client.Close()
-				time.Sleep(3 * time.Second) // 等待三秒重新連線
+				time.Sleep(backoff)
 				continue
 			}
 
