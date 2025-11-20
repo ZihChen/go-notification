@@ -199,8 +199,8 @@ type AgentCampaignListResponse struct {
 
 // AgentMessagesQuery 代理站內信查詢參數 DTO
 type AgentMessagesQuery struct {
-	Page           int       `json:"page"`
-	PageSize       int       `json:"page_size"`
+	Page           int       `json:"page"                  form:"page"`
+	PageSize       int       `json:"page_size"             form:"page_size"`
 	Limit          int       `json:"limit"`
 	Offset         int       `json:"offset"`
 	AgentID        uint64    `json:"agent_id"`
