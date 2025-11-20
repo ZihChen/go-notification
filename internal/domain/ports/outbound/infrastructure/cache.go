@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/go-redsync/redsync/v4"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -36,4 +37,7 @@ type CacheManager interface {
 
 	// 健康檢查 (新增)
 	HealthCheck(ctx context.Context) error
+
+	// 分佈式鎖支援 (Redis 特有功能)
+	GetRedsync() (*redsync.Redsync, error)
 }

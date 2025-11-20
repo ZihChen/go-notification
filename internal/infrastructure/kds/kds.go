@@ -12,7 +12,6 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
-	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	cfg "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -22,7 +21,7 @@ import (
 type KDSService struct {
 	client         *kinesis.Client
 	dynamoClient   *dynamodb.Client
-	redisManager   *redisCache.Manager
+	cacheManager   infrastructure.CacheManager
 	lockManager    infrastructure.DistributedLockManager
 	consumeStream  string
 	tableName      string
@@ -38,7 +37,7 @@ type KDSService struct {
 func NewKDSService(
 	config *cfg.Config,
 	queueService service.QueueService,
-	redisManager *redisCache.Manager,
+	cacheManager infrastructure.CacheManager,
 	lockManager infrastructure.DistributedLockManager,
 	logger infrastructure.Logger,
 	tracingService infrastructure.TracingService,
@@ -62,7 +61,7 @@ func NewKDSService(
 	return &KDSService{
 		client:         kinesisClient,
 		dynamoClient:   dynamoClient,
-		redisManager:   redisManager,
+		cacheManager:   cacheManager,
 		lockManager:    lockManager,
 		consumeStream:  config.AWS.KinesisStream,
 		tableName:      config.AWS.DynamoDBTable,

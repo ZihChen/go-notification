@@ -237,13 +237,15 @@ func (r *DistributedMutex) Extend() (bool, error) {
 
 // RedisDistributedLockManager Redis分佈式鎖管理器 (Infrastructure層)
 type RedisDistributedLockManager struct {
-	manager *Manager
+	cacheManager infrastructure.CacheManager
 }
 
 // NewRedisDistributedLockManager 創建Redis分佈式鎖管理器
-func NewRedisDistributedLockManager(manager *Manager) infrastructure.DistributedLockManager {
+func NewRedisDistributedLockManager(
+	cacheManager infrastructure.CacheManager,
+) infrastructure.DistributedLockManager {
 	return &RedisDistributedLockManager{
-		manager: manager,
+		cacheManager: cacheManager,
 	}
 }
 
@@ -281,7 +283,7 @@ func (r *RedisDistributedLockManager) GetLockWithOptions(
 		redisyncOptions = append(redisyncOptions, redsync.WithTimeoutFactor(options.TimeoutFactor))
 	}
 
-	redsyncInstance, err := r.manager.GetRedsync()
+	redsyncInstance, err := r.cacheManager.GetRedsync()
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +294,7 @@ func (r *RedisDistributedLockManager) GetLockWithOptions(
 
 // IsAvailable 檢查分佈式鎖服務是否可用
 func (r *RedisDistributedLockManager) IsAvailable() bool {
-	if r.manager == nil {
+	if r.cacheManager == nil {
 		return false
 	}
 
@@ -300,7 +302,7 @@ func (r *RedisDistributedLockManager) IsAvailable() bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	return r.manager.HealthCheck(ctx) == nil
+	return r.cacheManager.HealthCheck(ctx) == nil
 }
 
 // GetMutex 獲取簡單的分佈式鎖
@@ -308,7 +310,7 @@ func (r *RedisDistributedLockManager) GetMutex(
 	key string,
 	expireTime time.Duration,
 ) (infrastructure.DistributedMutex, error) {
-	redsyncInstance, err := r.manager.GetRedsync()
+	redsyncInstance, err := r.cacheManager.GetRedsync()
 	if err != nil {
 		return nil, err
 	}

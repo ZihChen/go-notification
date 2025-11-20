@@ -328,7 +328,7 @@ func (k *KDSService) isEventProcessed(ctx context.Context, eventId string) (bool
 		return false, nil // 無法檢查沒有ID的事件
 	}
 	key := processedEventKeyPrefix + eventId
-	success, err := k.redisManager.SetNX(ctx, key, "1", eventProcessedTTL)
+	success, err := k.cacheManager.SetNX(ctx, key, "1", eventProcessedTTL)
 	if err != nil {
 		return false, err
 	}
@@ -342,7 +342,7 @@ func (k *KDSService) markEventProcessed(ctx context.Context, eventId string) err
 		return nil // 無法標記沒有ID的事件
 	}
 	key := processedEventKeyPrefix + eventId
-	_, err := k.redisManager.Set(ctx, key, "1", eventProcessedTTL)
+	_, err := k.cacheManager.Set(ctx, key, "1", eventProcessedTTL)
 	return err
 }
 
@@ -369,7 +369,7 @@ func (k *KDSService) batchCheckEventsProcessed(
 	}
 
 	// 批次檢查 keys 是否存在
-	results, err := k.redisManager.MGet(ctx, keys...)
+	results, err := k.cacheManager.MGet(ctx, keys...)
 	if err != nil {
 		k.logger.WarnWithContext(ctx, "Failed to batch check events processed",
 			k.logger.Error("err", err))
@@ -394,7 +394,7 @@ func (k *KDSService) batchMarkEventsProcessed(ctx context.Context, eventIDs []st
 	}
 
 	// 使用 Pipeline 批次設置
-	pipeline, err := k.redisManager.Pipeline()
+	pipeline, err := k.cacheManager.Pipeline()
 	if err != nil {
 		k.logger.WarnWithContext(ctx, "Failed to get Redis pipeline",
 			k.logger.Error("err", err))

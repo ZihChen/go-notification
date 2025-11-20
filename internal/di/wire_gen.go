@@ -50,15 +50,16 @@ import (
 // Injectors from wire.go:
 
 // InitializeWebServer 初始化 Web 服務的 HTTP 處理器
-func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager, db *gorm.DB) (*api.HTTPHandler, error) {
+func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, cacheManager *redis.Manager, db *gorm.DB) (*api.HTTPHandler, error) {
 	merchantRepository := merchant.NewMerchantRepository(db)
 	tracingService := provideTracingService()
 	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
-	distributedLockManager := provideDistributedLockManager(redisManager)
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, distributedLockManager, logger, tracingService)
+	infrastructureCacheManager := provideCacheManager(cacheManager)
+	distributedLockManager := provideDistributedLockManager(cacheManager)
+	kdsService, err := kds.NewKDSService(cfg, queueService, infrastructureCacheManager, distributedLockManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
@@ -84,11 +85,11 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, redis
 }
 
 // InitializeAgentHandler 初始化代理處理器
-func InitializeAgentHandler(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager, db *gorm.DB) (*api.AgentHandler, error) {
+func InitializeAgentHandler(cfg *config.Config, logger infrastructure.Logger, cacheManager *redis.Manager, db *gorm.DB) (*api.AgentHandler, error) {
 	agentRepository := repository3.NewAgentRepository(db)
 	agentCampaignRepository := repository3.NewAgentCampaignRepository(db)
 	agentMessageRepository := repository3.NewAgentMessageRepository(db)
-	distributedLockManager := provideDistributedLockManager(redisManager)
+	distributedLockManager := provideDistributedLockManager(cacheManager)
 	agentRelationshipRepository := provideAgentRelationshipRepository(db, distributedLockManager)
 	merchantRepository := merchant.NewMerchantRepository(db)
 	tracingService := provideTracingService()
@@ -97,7 +98,8 @@ func InitializeAgentHandler(cfg *config.Config, logger infrastructure.Logger, re
 	if err != nil {
 		return nil, err
 	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, distributedLockManager, logger, tracingService)
+	infrastructureCacheManager := provideCacheManager(cacheManager)
+	kdsService, err := kds.NewKDSService(cfg, queueService, infrastructureCacheManager, distributedLockManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
@@ -108,15 +110,16 @@ func InitializeAgentHandler(cfg *config.Config, logger infrastructure.Logger, re
 }
 
 // InitializeWebComponents 初始化 Web 服務的所有組件
-func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager, db *gorm.DB) (*WebComponents, error) {
+func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, cacheManager *redis.Manager, db *gorm.DB) (*WebComponents, error) {
 	merchantRepository := merchant.NewMerchantRepository(db)
 	tracingService := provideTracingService()
 	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
-	distributedLockManager := provideDistributedLockManager(redisManager)
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, distributedLockManager, logger, tracingService)
+	infrastructureCacheManager := provideCacheManager(cacheManager)
+	distributedLockManager := provideDistributedLockManager(cacheManager)
+	kdsService, err := kds.NewKDSService(cfg, queueService, infrastructureCacheManager, distributedLockManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
@@ -153,15 +156,16 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, r
 }
 
 // InitializeWorkerServer 初始化 Worker 服務的處理器
-func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager, db *gorm.DB) (*worker.WorkerHandler, error) {
+func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, cacheManager *redis.Manager, db *gorm.DB) (*worker.WorkerHandler, error) {
 	merchantRepository := merchant.NewMerchantRepository(db)
 	tracingService := provideTracingService()
 	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
-	distributedLockManager := provideDistributedLockManager(redisManager)
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, distributedLockManager, logger, tracingService)
+	infrastructureCacheManager := provideCacheManager(cacheManager)
+	distributedLockManager := provideDistributedLockManager(cacheManager)
+	kdsService, err := kds.NewKDSService(cfg, queueService, infrastructureCacheManager, distributedLockManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
@@ -193,15 +197,16 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, re
 }
 
 // InitializeWorkerComponents 初始化 Worker 服務的所有組件
-func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager, db *gorm.DB) (*WorkerComponents, error) {
+func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger, cacheManager *redis.Manager, db *gorm.DB) (*WorkerComponents, error) {
 	merchantRepository := merchant.NewMerchantRepository(db)
 	tracingService := provideTracingService()
 	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
-	distributedLockManager := provideDistributedLockManager(redisManager)
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, distributedLockManager, logger, tracingService)
+	infrastructureCacheManager := provideCacheManager(cacheManager)
+	distributedLockManager := provideDistributedLockManager(cacheManager)
+	kdsService, err := kds.NewKDSService(cfg, queueService, infrastructureCacheManager, distributedLockManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
@@ -244,14 +249,15 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 }
 
 // InitializeConsumer 初始化 Consumer 服務的 KDS 服務 (已廢棄)
-func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager) (*kds.KDSService, error) {
+func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, cacheManager *redis.Manager) (*kds.KDSService, error) {
 	tracingService := provideTracingService()
 	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
-	distributedLockManager := provideDistributedLockManager(redisManager)
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, distributedLockManager, logger, tracingService)
+	infrastructureCacheManager := provideCacheManager(cacheManager)
+	distributedLockManager := provideDistributedLockManager(cacheManager)
+	kdsService, err := kds.NewKDSService(cfg, queueService, infrastructureCacheManager, distributedLockManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
@@ -259,14 +265,15 @@ func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, redisM
 }
 
 // InitializeConsumerHandler 初始化 Consumer 服務的處理器
-func InitializeConsumerHandler(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager) (*consumer.ConsumerHandler, error) {
+func InitializeConsumerHandler(cfg *config.Config, logger infrastructure.Logger, cacheManager *redis.Manager) (*consumer.ConsumerHandler, error) {
 	tracingService := provideTracingService()
 	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
-	distributedLockManager := provideDistributedLockManager(redisManager)
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, distributedLockManager, logger, tracingService)
+	infrastructureCacheManager := provideCacheManager(cacheManager)
+	distributedLockManager := provideDistributedLockManager(cacheManager)
+	kdsService, err := kds.NewKDSService(cfg, queueService, infrastructureCacheManager, distributedLockManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
@@ -275,8 +282,8 @@ func InitializeConsumerHandler(cfg *config.Config, logger infrastructure.Logger,
 }
 
 // InitializeSchedulerComponents 初始化 Scheduler 服務的處理器
-func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Logger, redisManager *redis.Manager, db *gorm.DB) (*scheduler.Handler, error) {
-	distributedLockManager := provideDistributedLockManager(redisManager)
+func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Logger, cacheManager *redis.Manager, db *gorm.DB) (*scheduler.Handler, error) {
+	distributedLockManager := provideDistributedLockManager(cacheManager)
 	tracingService := provideTracingService()
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
 	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
@@ -298,7 +305,8 @@ func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Log
 	if err != nil {
 		return nil, err
 	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, redisManager, distributedLockManager, logger, tracingService)
+	infrastructureCacheManager := provideCacheManager(cacheManager)
+	kdsService, err := kds.NewKDSService(cfg, queueService, infrastructureCacheManager, distributedLockManager, logger, tracingService)
 	if err != nil {
 		return nil, err
 	}
@@ -343,6 +351,7 @@ type WebComponents struct {
 }
 
 var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient,
+	provideCacheManager,
 	provideTracingService,
 	provideDistributedLockManager, merchant.NewMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, message.NewMessageCampaignRepository, message.NewCampaignTargetRepository, providePlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant.NewPushKeyRepository, repository3.NewAgentRepository, repository3.NewAgentCampaignRepository, repository3.NewAgentMessageRepository, provideAgentRelationshipRepository, repository4.NewFailedTaskEventRepository, service.NewEventService, service.NewAgentService, providePushNotificationService, merchant2.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message2.NewMessageUseCase, level.NewLevelUseCase, player.NewTagUseCase, agent.NewAgentUseCase, usecase.NewFailedTaskEventUseCase,
 )
@@ -393,8 +402,8 @@ func provideAgentRelationshipRepository(db *gorm.DB, lockManager infrastructure.
 }
 
 // 提供 DistributedLockManager
-func provideDistributedLockManager(redisManager *redis.Manager) infrastructure.DistributedLockManager {
-	return redis.NewRedisDistributedLockManager(redisManager)
+func provideDistributedLockManager(cacheManager *redis.Manager) infrastructure.DistributedLockManager {
+	return redis.NewRedisDistributedLockManager(cacheManager)
 }
 
 // 提供 PlayerMessageRepository (migrate 專用，不需要 redis)
@@ -402,12 +411,17 @@ func provideMigratePlayerMessageRepository(db *gorm.DB) repository5.PlayerMessag
 	return message.NewPlayerMessageRepository(db, nil)
 }
 
-func provideRedisClient(manager2 *redis.Manager) (*redis2.Client, error) {
-	redisInstance, err := manager2.GetClient()
+func provideRedisClient(cacheManager *redis.Manager) (*redis2.Client, error) {
+	redisInstance, err := cacheManager.GetClient()
 	if err != nil {
 		return nil, err
 	}
 	return redisInstance, nil
+}
+
+// 提供 CacheManager 接口實現
+func provideCacheManager(redisManager *redis.Manager) infrastructure.CacheManager {
+	return redisManager
 }
 
 // LegacyDB 是舊系統資料庫連接的類型
