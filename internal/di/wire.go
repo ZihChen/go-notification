@@ -60,7 +60,6 @@ var baseSet = wire.NewSet(
 	// 基礎設施層
 	queue.NewQueueService,
 	provideRedisClient,
-	provideCacheManager,
 	provideTracingService,
 	provideDistributedLockManager,
 
@@ -130,7 +129,7 @@ func ProvideAgentCampaignTriggerJob(
 }
 
 // InitializeWebServer 初始化 Web 服務的 HTTP 處理器
-func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, cacheManager *redisCache.Manager, db *gorm.DB) (*api.HTTPHandler, error) {
+func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, cacheManager infrastructure.CacheManager, db *gorm.DB) (*api.HTTPHandler, error) {
 	wire.Build(
 		baseSet,
 		kds.NewKDSService,
@@ -140,7 +139,7 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, cache
 }
 
 // InitializeAgentHandler 初始化代理處理器
-func InitializeAgentHandler(cfg *config.Config, logger infrastructure.Logger, cacheManager *redisCache.Manager, db *gorm.DB) (*api.AgentHandler, error) {
+func InitializeAgentHandler(cfg *config.Config, logger infrastructure.Logger, cacheManager infrastructure.CacheManager, db *gorm.DB) (*api.AgentHandler, error) {
 	wire.Build(
 		baseSet,
 		kds.NewKDSService,
@@ -150,7 +149,7 @@ func InitializeAgentHandler(cfg *config.Config, logger infrastructure.Logger, ca
 }
 
 // InitializeWebComponents 初始化 Web 服務的所有組件
-func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, cacheManager *redisCache.Manager, db *gorm.DB) (*WebComponents, error) {
+func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, cacheManager infrastructure.CacheManager, db *gorm.DB) (*WebComponents, error) {
 	wire.Build(
 		wire.Struct(new(WebComponents), "*"),
 		baseSet,
@@ -162,7 +161,7 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 }
 
 // InitializeWorkerServer 初始化 Worker 服務的處理器
-func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, cacheManager *redisCache.Manager, db *gorm.DB) (*worker.WorkerHandler, error) {
+func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, cacheManager infrastructure.CacheManager, db *gorm.DB) (*worker.WorkerHandler, error) {
 	wire.Build(
 		baseSet,
 		kds.NewKDSService,
@@ -172,7 +171,7 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, ca
 }
 
 // InitializeWorkerComponents 初始化 Worker 服務的所有組件
-func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger, cacheManager *redisCache.Manager, db *gorm.DB) (*WorkerComponents, error) {
+func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger, cacheManager infrastructure.CacheManager, db *gorm.DB) (*WorkerComponents, error) {
 	wire.Build(
 		wire.Struct(new(WorkerComponents), "*"),
 		baseSet,
@@ -199,7 +198,7 @@ func provideAgentRelationshipRepository(db *gorm.DB, lockManager infrastructure.
 }
 
 // 提供 DistributedLockManager
-func provideDistributedLockManager(cacheManager *redisCache.Manager) infrastructure.DistributedLockManager {
+func provideDistributedLockManager(cacheManager infrastructure.CacheManager) infrastructure.DistributedLockManager {
 	return redisCache.NewRedisDistributedLockManager(cacheManager)
 }
 
@@ -209,9 +208,8 @@ func provideMigratePlayerMessageRepository(db *gorm.DB) repository.PlayerMessage
 }
 
 // InitializeConsumer 初始化 Consumer 服務的 KDS 服務 (已廢棄)
-func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, cacheManager *redisCache.Manager) (*kds.KDSService, error) {
+func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, cacheManager infrastructure.CacheManager) (*kds.KDSService, error) {
 	wire.Build(
-		provideCacheManager,
 		provideTracingService,
 		provideDistributedLockManager,
 		queue.NewQueueService,
@@ -221,9 +219,8 @@ func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, cacheM
 }
 
 // InitializeConsumerHandler 初始化 Consumer 服務的處理器
-func InitializeConsumerHandler(cfg *config.Config, logger infrastructure.Logger, cacheManager *redisCache.Manager) (*consumer.ConsumerHandler, error) {
+func InitializeConsumerHandler(cfg *config.Config, logger infrastructure.Logger, cacheManager infrastructure.CacheManager) (*consumer.ConsumerHandler, error) {
 	wire.Build(
-		provideCacheManager,
 		provideTracingService,
 		provideDistributedLockManager,
 		queue.NewQueueService,
@@ -233,7 +230,7 @@ func InitializeConsumerHandler(cfg *config.Config, logger infrastructure.Logger,
 	return nil, nil
 }
 
-func provideRedisClient(cacheManager *redisCache.Manager) (*redis.Client, error) {
+func provideRedisClient(cacheManager infrastructure.CacheManager) (*redis.Client, error) {
 	redisInstance, err := cacheManager.GetClient()
 	if err != nil {
 		return nil, err
@@ -241,13 +238,8 @@ func provideRedisClient(cacheManager *redisCache.Manager) (*redis.Client, error)
 	return redisInstance, nil
 }
 
-// 提供 CacheManager 接口實現
-func provideCacheManager(redisManager *redisCache.Manager) infrastructure.CacheManager {
-	return redisManager
-}
-
 // InitializeSchedulerComponents 初始化 Scheduler 服務的處理器
-func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Logger, cacheManager *redisCache.Manager, db *gorm.DB) (*scheduler.Handler, error) {
+func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Logger, cacheManager infrastructure.CacheManager, db *gorm.DB) (*scheduler.Handler, error) {
 	wire.Build(
 		baseSet,
 		kds.NewKDSService,
