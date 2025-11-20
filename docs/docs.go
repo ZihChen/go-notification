@@ -31,7 +31,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "分頁列出代理訊息活動，支持多條件篩選\n查詢參數說明：\n- page: 頁碼，從1開始，預設為1\n- page_size: 每頁數量，範圍1-100，預設為10\n- status: 狀態篩選（多選），可選值：draft(草稿)、scheduled(已排程)\n- created_by: 創建者篩選\n- start_at: 創建時間區間開始（ISO 8601格式）\n- end_at: 創建時間區間結束（ISO 8601格式）",
+                "description": "分頁列出代理訊息活動，支持多條件篩選\n查詢參數說明：\n- page: 頁碼，從1開始，預設為1\n- page_size: 每頁數量，範圍1-100，預設為10\n- status: 狀態篩選（多選），可選值：draft(草稿)、scheduled(已排程)、sent(已發送)、cancelled(已取消)\n- created_by: 創建者篩選\n- created_start_at: 創建時間區間開始（ISO 8601格式）\n- created_end_at: 創建時間區間結束（ISO 8601格式）\n- scheduled_start_at: 發送時間區間開始（ISO 8601格式）\n- scheduled_end_at: 發送時間區間結束（ISO 8601格式）",
                 "tags": [
                     "代理訊息活動"
                 ],
@@ -82,7 +82,7 @@ const docTemplate = `{
                         "format": "date-time",
                         "example": "\"2024-01-01T00:00:00Z\"",
                         "description": "創建時間區間開始",
-                        "name": "start_at",
+                        "name": "created_start_at",
                         "in": "query"
                     },
                     {
@@ -90,7 +90,23 @@ const docTemplate = `{
                         "format": "date-time",
                         "example": "\"2024-12-31T23:59:59Z\"",
                         "description": "創建時間區間結束",
-                        "name": "end_at",
+                        "name": "created_end_at",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "\"2024-01-01T00:00:00Z\"",
+                        "description": "發送時間區間開始",
+                        "name": "scheduled_start_at",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "\"2024-12-31T23:59:59Z\"",
+                        "description": "發送時間區間結束",
+                        "name": "scheduled_end_at",
                         "in": "query"
                     }
                 ],

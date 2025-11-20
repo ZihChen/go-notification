@@ -112,6 +112,9 @@ func (r *AgentCampaignRepository) List(
 	db := r.db.WithContext(ctx).Model(&models.AgentCampaign{}).
 		Where("merchant_id = ?", query.MerchantID)
 
+	// 含已刪除的記錄
+	db = db.Unscoped()
+
 	// 添加查詢條件
 	if len(query.Status) > 0 {
 		db = db.Where("status IN ?", query.Status)
@@ -121,12 +124,14 @@ func (r *AgentCampaignRepository) List(
 		db = db.Where("created_by = ?", query.CreatedBy)
 	}
 
-	if query.StartAt != "" {
-		db = db.Where("created_at >= ?", query.StartAt)
+	if query.CreatedStartAt != "" && query.CreatedEndAt != "" {
+		db = db.Where("created_at >= ?", query.CreatedStartAt).
+			Where("created_at <= ?", query.CreatedEndAt)
 	}
 
-	if query.EndAt != "" {
-		db = db.Where("created_at <= ?", query.EndAt)
+	if query.ScheduledStartAt != "" && query.ScheduledEndAt != "" {
+		db = db.Where("scheduled_at >= ?", query.ScheduledStartAt).
+			Where("scheduled_at <= ?", query.ScheduledEndAt)
 	}
 
 	// 獲取總數

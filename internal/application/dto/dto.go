@@ -183,8 +183,10 @@ type AgentCampaignsQuery struct {
 	MerchantID       uint64   `json:"merchant_id"                             form:"merchant_id"`
 	Status           []string `json:"status"                                  form:"status"` // 支援多選狀態篩選
 	CreatedBy        string   `json:"created_by"                              form:"created_by"`
-	StartAt          string   `json:"start_at"                                form:"start_at"` // 創建時間區間開始
-	EndAt            string   `json:"end_at"                                  form:"end_at"`   // 創建時間區間結束
+	CreatedStartAt   string   `json:"created_start_at"                        form:"created_start_at"`   // 創建時間區間開始
+	CreatedEndAt     string   `json:"created_end_at"                          form:"created_end_at"`     // 創建時間區間結束
+	ScheduledStartAt string   `json:"scheduled_start_at"                      form:"scheduled_start_at"` // 發送時間區間開始
+	ScheduledEndAt   string   `json:"scheduled_end_at"                        form:"scheduled_end_at"`   // 發送時間區間結束
 }
 
 // AgentCampaignListResponse 代理訊息活動列表回應 DTO

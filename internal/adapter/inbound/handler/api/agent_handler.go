@@ -220,17 +220,21 @@ func (h *AgentHandler) GetAgentCampaign(c *gin.Context) {
 // @Description 查詢參數說明：
 // @Description - page: 頁碼，從1開始，預設為1
 // @Description - page_size: 每頁數量，範圍1-100，預設為10
-// @Description - status: 狀態篩選（多選），可選值：draft(草稿)、scheduled(已排程)
+// @Description - status: 狀態篩選（多選），可選值：draft(草稿)、scheduled(已排程)、sent(已發送)、cancelled(已取消)
 // @Description - created_by: 創建者篩選
-// @Description - start_at: 創建時間區間開始（ISO 8601格式）
-// @Description - end_at: 創建時間區間結束（ISO 8601格式）
+// @Description - created_start_at: 創建時間區間開始（ISO 8601格式）
+// @Description - created_end_at: 創建時間區間結束（ISO 8601格式）
+// @Description - scheduled_start_at: 發送時間區間開始（ISO 8601格式）
+// @Description - scheduled_end_at: 發送時間區間結束（ISO 8601格式）
 // @Tags 代理訊息活動
 // @Param page query int false "頁碼" minimum(1) default(1) example(1)
 // @Param page_size query int false "每頁數量" minimum(1) maximum(100) default(10) example(10)
 // @Param status query []string false "狀態篩選（多選）" collectionFormat(multi) enums(draft,scheduled)
 // @Param created_by query string false "創建者" example("admin@example.com")
-// @Param start_at query string false "創建時間區間開始" format(date-time) example("2024-01-01T00:00:00Z")
-// @Param end_at query string false "創建時間區間結束" format(date-time) example("2024-12-31T23:59:59Z")
+// @Param created_start_at query string false "創建時間區間開始" format(date-time) example("2024-01-01T00:00:00Z")
+// @Param created_end_at query string false "創建時間區間結束" format(date-time) example("2024-12-31T23:59:59Z")
+// @Param scheduled_start_at query string false "發送時間區間開始" format(date-time) example("2024-01-01T00:00:00Z")
+// @Param scheduled_end_at query string false "發送時間區間結束" format(date-time) example("2024-12-31T23:59:59Z")
 // @Success 200 {object} dto.AgentCampaignListResponse
 // @Failure 500 {object} ErrorResponse
 // @Security ApiKeyAuth

@@ -882,10 +882,12 @@ paths:
         查詢參數說明：
         - page: 頁碼，從1開始，預設為1
         - page_size: 每頁數量，範圍1-100，預設為10
-        - status: 狀態篩選（多選），可選值：draft(草稿)、scheduled(已排程)
+        - status: 狀態篩選（多選），可選值：draft(草稿)、scheduled(已排程)、sent(已發送)、cancelled(已取消)
         - created_by: 創建者篩選
-        - start_at: 創建時間區間開始（ISO 8601格式）
-        - end_at: 創建時間區間結束（ISO 8601格式）
+        - created_start_at: 創建時間區間開始（ISO 8601格式）
+        - created_end_at: 創建時間區間結束（ISO 8601格式）
+        - scheduled_start_at: 發送時間區間開始（ISO 8601格式）
+        - scheduled_end_at: 發送時間區間結束（ISO 8601格式）
       parameters:
       - default: 1
         description: 頁碼
@@ -921,13 +923,25 @@ paths:
         example: '"2024-01-01T00:00:00Z"'
         format: date-time
         in: query
-        name: start_at
+        name: created_start_at
         type: string
       - description: 創建時間區間結束
         example: '"2024-12-31T23:59:59Z"'
         format: date-time
         in: query
-        name: end_at
+        name: created_end_at
+        type: string
+      - description: 發送時間區間開始
+        example: '"2024-01-01T00:00:00Z"'
+        format: date-time
+        in: query
+        name: scheduled_start_at
+        type: string
+      - description: 發送時間區間結束
+        example: '"2024-12-31T23:59:59Z"'
+        format: date-time
+        in: query
+        name: scheduled_end_at
         type: string
       responses:
         "200":
