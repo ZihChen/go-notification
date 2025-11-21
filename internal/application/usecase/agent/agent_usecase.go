@@ -452,6 +452,89 @@ func (u *AgentUseCase) DeleteAgentCampaign(ctx context.Context, id uint64) error
 	return nil
 }
 
+// BatchDeleteAgentCampaigns 批量刪除代理訊息活動
+func (u *AgentUseCase) BatchDeleteAgentCampaigns(
+	ctx context.Context,
+	req *dto.BatchDeleteAgentCampaignsRequest,
+) error {
+	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.BatchDeleteAgentCampaigns")
+	defer u.tracingService.SpanEnd(span)
+
+	u.tracingService.RecordSpanAttributes(span,
+		attribute.Int("campaign_count", len(req.IDs)),
+		attribute.String("campaign_ids", fmt.Sprintf("%v", req.IDs)))
+
+	if len(req.IDs) == 0 {
+		return fmt.Errorf("no campaign IDs provided")
+	}
+
+	// 先批量檢查所有活動是否存在並且可以刪除
+	u.tracingService.TraceEvent(span, "Checking campaigns existence and deletion permission")
+	var validIDs []uint64
+	var invalidCampaigns []uint64
+
+	for _, id := range req.IDs {
+		campaign, err := u.agentCampaignRepo.GetByID(ctx, id)
+		if err != nil {
+			u.tracingService.RecordSpanError(span, err)
+			u.logger.WarnLog("Failed to get campaign for batch deletion validation",
+				u.logger.UInt64("campaign_id", id),
+				u.logger.Error("error", err))
+			invalidCampaigns = append(invalidCampaigns, id)
+			continue
+		}
+
+		if campaign == nil {
+			u.logger.WarnLog("Campaign not found for batch deletion",
+				u.logger.UInt64("campaign_id", id))
+			invalidCampaigns = append(invalidCampaigns, id)
+			continue
+		}
+
+		// 檢查活動狀態是否允許刪除
+		if err = campaign.CanDelete(); err != nil {
+			u.logger.WarnLog("Campaign cannot be deleted",
+				u.logger.UInt64("campaign_id", id),
+				u.logger.String("status", campaign.Status.String()),
+				u.logger.Error("error", err))
+			invalidCampaigns = append(invalidCampaigns, id)
+			continue
+		}
+
+		validIDs = append(validIDs, id)
+	}
+
+	if len(validIDs) == 0 {
+		return fmt.Errorf("no valid campaigns found for deletion")
+	}
+
+	// 記錄驗證結果
+	u.tracingService.RecordSpanAttributes(span,
+		attribute.Int("valid_campaign_count", len(validIDs)),
+		attribute.Int("invalid_campaign_count", len(invalidCampaigns)))
+
+	if len(invalidCampaigns) > 0 {
+		u.logger.WarnLog("Some campaigns were skipped during batch deletion",
+			u.logger.Any("invalid_campaign_ids", invalidCampaigns),
+			u.logger.Any("valid_campaign_ids", validIDs))
+	}
+
+	// 執行批量刪除
+	u.tracingService.TraceEvent(span, "Executing batch delete operation")
+	if err := u.agentCampaignRepo.BatchDelete(ctx, validIDs); err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return fmt.Errorf("batch delete agent campaigns failed: %w", err)
+	}
+
+	u.tracingService.TraceEvent(span, "Batch delete completed successfully")
+	u.logger.InfoLog("Batch delete agent campaigns completed successfully",
+		u.logger.Any("deleted_campaign_ids", validIDs),
+		u.logger.Int("deleted_count", len(validIDs)),
+		u.logger.Int("skipped_count", len(invalidCampaigns)))
+
+	return nil
+}
+
 // GetAgentMessages 獲取代理站內信列表
 func (u *AgentUseCase) GetAgentMessages(
 	ctx context.Context,

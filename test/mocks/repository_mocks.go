@@ -1114,6 +1114,11 @@ func (m *AgentCampaignRepositoryMock) Delete(ctx context.Context, id uint64) err
 	return args.Error(0)
 }
 
+func (m *AgentCampaignRepositoryMock) BatchDelete(ctx context.Context, ids []uint64) error {
+	args := m.Called(ctx, ids)
+	return args.Error(0)
+}
+
 func (m *AgentCampaignRepositoryMock) UpdateFields(
 	ctx context.Context,
 	id uint64,

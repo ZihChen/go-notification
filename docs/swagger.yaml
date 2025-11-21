@@ -212,6 +212,17 @@ definitions:
       updated_count:
         type: integer
     type: object
+  dto.BatchDeleteAgentCampaignsRequest:
+    properties:
+      ids:
+        description: 要删除的活动ID列表，至少包含一个有效ID
+        items:
+          type: integer
+        minItems: 1
+        type: array
+    required:
+    - ids
+    type: object
   dto.CreateAgentCampaignRequest:
     properties:
       content:
@@ -876,6 +887,48 @@ info:
   version: "1.0"
 paths:
   /api/v1/agent-campaigns:
+    delete:
+      consumes:
+      - application/json
+      description: |-
+        根據ID列表批量刪除代理訊息活動，支援高效能批量操作
+
+        **請求說明:**
+        - ids: 要删除的活動ID數組，必須提供至少一個有效ID
+        - 無效ID（不存在或不能删除）會被自動跳過
+        - 只有狀態允許删除的活動才會被處理
+
+        **響應說明:**
+        - 200: 批量删除成功（部分成功也返回200）
+        - 400: 請求參數錯誤
+        - 500: 服務器內部錯誤
+      parameters:
+      - description: 批量刪除請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.BatchDeleteAgentCampaignsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: 批量刪除代理訊息活動
+      tags:
+      - 代理訊息活動
     get:
       description: |-
         分頁列出代理訊息活動，支持多條件篩選

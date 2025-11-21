@@ -166,6 +166,55 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "根據ID列表批量刪除代理訊息活動，支援高效能批量操作\n\n**請求說明:**\n- ids: 要删除的活動ID數組，必須提供至少一個有效ID\n- 無效ID（不存在或不能删除）會被自動跳過\n- 只有狀態允許删除的活動才會被處理\n\n**響應說明:**\n- 200: 批量删除成功（部分成功也返回200）\n- 400: 請求參數錯誤\n- 500: 服務器內部錯誤",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "代理訊息活動"
+                ],
+                "summary": "批量刪除代理訊息活動",
+                "parameters": [
+                    {
+                        "description": "批量刪除請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.BatchDeleteAgentCampaignsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/agent-campaigns/{id}": {
@@ -1874,6 +1923,22 @@ const docTemplate = `{
                 },
                 "updated_count": {
                     "type": "integer"
+                }
+            }
+        },
+        "dto.BatchDeleteAgentCampaignsRequest": {
+            "type": "object",
+            "required": [
+                "ids"
+            ],
+            "properties": {
+                "ids": {
+                    "description": "要删除的活动ID列表，至少包含一个有效ID",
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "integer"
+                    }
                 }
             }
         },

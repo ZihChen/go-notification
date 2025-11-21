@@ -475,6 +475,96 @@ func TestAgentCampaignRepository_List(t *testing.T) {
 	}
 }
 
+func TestAgentCampaignRepository_BatchDelete(t *testing.T) {
+	testCases := []struct {
+		name          string
+		ids           []uint64
+		setupMock     func(sqlmock.Sqlmock)
+		expectedError error
+	}{
+		{
+			name: "batch delete campaigns successfully",
+			ids:  []uint64{1, 2, 3},
+			setupMock: func(mock sqlmock.Sqlmock) {
+				// Begin transaction
+				mock.ExpectBegin()
+
+				// Update status to cancelled (GORM also updates updated_at)
+				mock.ExpectExec(regexp.QuoteMeta("UPDATE `agent_campaigns` SET `status`")).
+					WithArgs("cancelled", sqlmock.AnyArg(), 1, 2, 3).
+					WillReturnResult(sqlmock.NewResult(0, 3))
+
+				// Soft delete
+				mock.ExpectExec(regexp.QuoteMeta("UPDATE `agent_campaigns` SET `deleted_at`")).
+					WithArgs(sqlmock.AnyArg(), 1, 2, 3).
+					WillReturnResult(sqlmock.NewResult(0, 3))
+
+				// Commit transaction
+				mock.ExpectCommit()
+			},
+			expectedError: nil,
+		},
+		{
+			name: "empty IDs array",
+			ids:  []uint64{},
+			setupMock: func(mock sqlmock.Sqlmock) {
+				// No database calls expected
+			},
+			expectedError: errors.New("no IDs provided for batch delete"),
+		},
+		{
+			name: "update status fails",
+			ids:  []uint64{1, 2},
+			setupMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("UPDATE `agent_campaigns` SET `status`")).
+					WithArgs("cancelled", sqlmock.AnyArg(), 1, 2).
+					WillReturnError(errors.New("update failed"))
+				mock.ExpectRollback()
+			},
+			expectedError: errors.New("batch update campaigns status to cancelled failed"),
+		},
+		{
+			name: "delete fails",
+			ids:  []uint64{1},
+			setupMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("UPDATE `agent_campaigns` SET `status`")).
+					WithArgs("cancelled", sqlmock.AnyArg(), 1).
+					WillReturnResult(sqlmock.NewResult(0, 1))
+				mock.ExpectExec(regexp.QuoteMeta("UPDATE `agent_campaigns` SET `deleted_at`")).
+					WithArgs(sqlmock.AnyArg(), 1).
+					WillReturnError(errors.New("delete failed"))
+				mock.ExpectRollback()
+			},
+			expectedError: errors.New("batch delete agent campaigns failed"),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock, sqlDB := setupAgentCampaignMockDB(t)
+			defer func() {
+				_ = sqlDB.Close()
+			}()
+
+			tc.setupMock(mock)
+
+			repo := NewAgentCampaignRepository(db)
+
+			err := repo.BatchDelete(context.Background(), tc.ids)
+
+			if tc.expectedError != nil {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedError.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
 func TestAgentCampaignRepository_GetScheduledCampaigns(t *testing.T) {
 	now := time.Now()
 	testCases := []struct {

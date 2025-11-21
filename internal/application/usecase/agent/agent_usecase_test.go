@@ -3,10 +3,12 @@ package agent
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
@@ -1012,6 +1014,171 @@ func TestAgentUseCase_BackfillMissedMessages_LineTargetType(t *testing.T) {
 	agentCampaignRepo.AssertExpectations()
 	agentMessageRepo.AssertExpectations()
 	// agentRelationshipRepo 不再需要驗證，因為改用 Ancestry 字串比對
+}
+
+func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
+	// 創建模擬repositories
+	agentRepo := mocks.NewAgentRepositoryMock(t)
+	agentCampaignRepo := mocks.NewAgentCampaignRepositoryMock(t)
+	agentMessageRepo := mocks.NewAgentMessageRepositoryMock(t)
+	agentRelationshipRepo := mocks.NewAgentRelationshipRepositoryMock(t)
+	merchantRepo := mocks.NewMerchantRepositoryMock(t)
+
+	// 創建模擬服務
+	agentService := mocks.NewAgentServiceMock(t)
+	eventProducer := mocks.NewEventProducerMock(t)
+	tracingService := mocks.NewTracingServiceMock(t)
+
+	// 創建記錄器
+	logger := helper.NewMockLogger()
+
+	// 創建用例
+	tracingService.SetupSuccess()
+	useCase := NewAgentUseCase(
+		agentRepo,
+		agentCampaignRepo,
+		agentMessageRepo,
+		agentRelationshipRepo,
+		merchantRepo,
+		agentService,
+		eventProducer,
+		logger,
+		tracingService,
+	)
+
+	testCases := []struct {
+		name        string
+		request     *dto.BatchDeleteAgentCampaignsRequest
+		setupMock   func()
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "successful batch delete",
+			request: &dto.BatchDeleteAgentCampaignsRequest{
+				IDs: []uint64{1, 2, 3},
+			},
+			setupMock: func() {
+				// Mock campaigns that can be deleted
+				for i, id := range []uint64{1, 2, 3} {
+					campaign := createTestAgentCampaign()
+					campaign.ID = id
+					campaign.Status = consts.AgentCampaignStatusDraft // Can be deleted
+					campaign.Title = fmt.Sprintf("Campaign %d", i+1)
+
+					agentCampaignRepo.On("GetByID", mock.Anything, id).
+						Return(campaign, nil)
+				}
+
+				agentCampaignRepo.On("BatchDelete", mock.Anything, []uint64{1, 2, 3}).
+					Return(nil)
+			},
+			expectError: false,
+		},
+		{
+			name: "empty IDs array",
+			request: &dto.BatchDeleteAgentCampaignsRequest{
+				IDs: []uint64{},
+			},
+			setupMock: func() {
+				// No mock setup needed
+			},
+			expectError: true,
+			errorMsg:    "no campaign IDs provided",
+		},
+		{
+			name: "some campaigns not found",
+			request: &dto.BatchDeleteAgentCampaignsRequest{
+				IDs: []uint64{1, 999, 3},
+			},
+			setupMock: func() {
+				// Campaign 1 exists and can be deleted
+				campaign1 := createTestAgentCampaign()
+				campaign1.ID = 1
+				campaign1.Status = consts.AgentCampaignStatusDraft
+				agentCampaignRepo.On("GetByID", mock.Anything, uint64(1)).
+					Return(campaign1, nil)
+
+				// Campaign 999 not found
+				agentCampaignRepo.On("GetByID", mock.Anything, uint64(999)).
+					Return(nil, errors.New("not found"))
+
+				// Campaign 3 exists and can be deleted
+				campaign3 := createTestAgentCampaign()
+				campaign3.ID = 3
+				campaign3.Status = consts.AgentCampaignStatusDraft
+				agentCampaignRepo.On("GetByID", mock.Anything, uint64(3)).
+					Return(campaign3, nil)
+
+				// Only valid campaigns are deleted
+				agentCampaignRepo.On("BatchDelete", mock.Anything, []uint64{1, 3}).
+					Return(nil)
+			},
+			expectError: false,
+		},
+		{
+			name: "campaigns cannot be deleted",
+			request: &dto.BatchDeleteAgentCampaignsRequest{
+				IDs: []uint64{1, 2},
+			},
+			setupMock: func() {
+				// Both campaigns exist but cannot be deleted (sent status)
+				for _, id := range []uint64{1, 2} {
+					campaign := createTestAgentCampaign()
+					campaign.ID = id
+					campaign.Status = consts.AgentCampaignStatusSent // Cannot be deleted
+
+					agentCampaignRepo.On("GetByID", mock.Anything, id).
+						Return(campaign, nil)
+				}
+				// No BatchDelete call expected since no valid campaigns
+			},
+			expectError: true,
+			errorMsg:    "no valid campaigns found for deletion",
+		},
+		{
+			name: "repository batch delete fails",
+			request: &dto.BatchDeleteAgentCampaignsRequest{
+				IDs: []uint64{1},
+			},
+			setupMock: func() {
+				campaign := createTestAgentCampaign()
+				campaign.ID = 1
+				campaign.Status = consts.AgentCampaignStatusDraft
+
+				agentCampaignRepo.On("GetByID", mock.Anything, uint64(1)).
+					Return(campaign, nil)
+				agentCampaignRepo.On("BatchDelete", mock.Anything, []uint64{1}).
+					Return(errors.New("database error"))
+			},
+			expectError: true,
+			errorMsg:    "batch delete agent campaigns failed",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// 重置mock以避免測試間干擾
+			agentCampaignRepo.ExpectedCalls = agentCampaignRepo.ExpectedCalls[:0]
+			agentCampaignRepo.Calls = agentCampaignRepo.Calls[:0]
+
+			tc.setupMock()
+
+			err := useCase.BatchDeleteAgentCampaigns(context.Background(), tc.request)
+
+			if tc.expectError {
+				assert.Error(t, err)
+				if tc.errorMsg != "" {
+					assert.Contains(t, err.Error(), tc.errorMsg)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+
+			// 驗證所有mock期望
+			agentCampaignRepo.AssertExpectations()
+		})
+	}
 }
 
 func TestAgentUseCase_BackfillMissedMessages_LineTargetType_NotInAncestry(t *testing.T) {

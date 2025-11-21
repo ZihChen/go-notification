@@ -79,6 +79,47 @@ func (r *AgentCampaignRepository) Delete(ctx context.Context, id uint64) error {
 	return nil
 }
 
+// BatchDelete 批量刪除代理訊息活動 (軟刪除)
+func (r *AgentCampaignRepository) BatchDelete(ctx context.Context, ids []uint64) error {
+	if len(ids) == 0 {
+		return fmt.Errorf("no IDs provided for batch delete")
+	}
+
+	// 使用事務確保批量操作的原子性
+	tx := r.db.WithContext(ctx).Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 先批量更新狀態為 cancelled（與單個刪除邏輯一致）
+	updateResult := tx.Model(&models.AgentCampaign{}).
+		Where("id IN ?", ids).
+		Update("status", "cancelled")
+	if updateResult.Error != nil {
+		tx.Rollback()
+		return fmt.Errorf(
+			"batch update campaigns status to cancelled failed: %w",
+			updateResult.Error,
+		)
+	}
+
+	// 批量軟刪除
+	deleteResult := tx.Where("id IN ?", ids).Delete(&models.AgentCampaign{})
+	if deleteResult.Error != nil {
+		tx.Rollback()
+		return fmt.Errorf("batch delete agent campaigns failed: %w", deleteResult.Error)
+	}
+
+	// 提交事務
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("commit batch delete transaction failed: %w", err)
+	}
+
+	return nil
+}
+
 // UpdateFields 更新代理訊息活動特定欄位
 func (r *AgentCampaignRepository) UpdateFields(
 	ctx context.Context,

@@ -39,6 +39,7 @@ type AgentUseCase interface {
 		query *dto.AgentCampaignsQuery,
 	) (*dto.AgentCampaignListResponse, error)
 	DeleteAgentCampaign(ctx context.Context, id uint64) error
+	BatchDeleteAgentCampaigns(ctx context.Context, req *dto.BatchDeleteAgentCampaignsRequest) error
 
 	// 代理站內信相關
 	GetAgentMessages(

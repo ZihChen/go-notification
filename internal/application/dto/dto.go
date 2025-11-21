@@ -256,3 +256,8 @@ type AgentMessageStats struct {
 	UnreadCount int64 `json:"unread_count"`
 	TotalCount  int64 `json:"total_count"`
 }
+
+// BatchDeleteAgentCampaignsRequest 批量刪除代理訊息活動請求 DTO
+type BatchDeleteAgentCampaignsRequest struct {
+	IDs []uint64 `json:"ids" binding:"required,min=1,dive,min=1"` // 要删除的活动ID列表，至少包含一个有效ID
+}

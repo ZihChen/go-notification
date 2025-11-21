@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -301,6 +302,70 @@ func (h *AgentHandler) DeleteAgentCampaign(c *gin.Context) {
 			h.logger.Error("err", err),
 		)
 		response.InternalServerError(c, "failed to delete agent campaign", err.Error()).Return()
+	}
+
+	response.DeletedSuccess(c).Return()
+}
+
+// BatchDeleteAgentCampaigns 批量刪除代理訊息活動
+// @Summary 批量刪除代理訊息活動
+// @Description 根據ID列表批量刪除代理訊息活動，支援高效能批量操作
+// @Description
+// @Description **請求說明:**
+// @Description - ids: 要删除的活動ID數組，必須提供至少一個有效ID
+// @Description - 無效ID（不存在或不能删除）會被自動跳過
+// @Description - 只有狀態允許删除的活動才會被處理
+// @Description
+// @Description **響應說明:**
+// @Description - 200: 批量删除成功（部分成功也返回200）
+// @Description - 400: 請求參數錯誤
+// @Description - 500: 服務器內部錯誤
+// @Tags 代理訊息活動
+// @Accept json
+// @Produce json
+// @Param request body dto.BatchDeleteAgentCampaignsRequest true "批量刪除請求" example({"ids": [1, 2, 3, 4]})
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/agent-campaigns [delete]
+func (h *AgentHandler) BatchDeleteAgentCampaigns(c *gin.Context) {
+	var req dto.BatchDeleteAgentCampaignsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "invalid request payload", err.Error()).Return()
+		return
+	}
+
+	// 驗證ID列表是否為空
+	if len(req.IDs) == 0 {
+		response.BadRequest(c, "ids array cannot be empty", "at least one campaign ID must be provided").
+			Return()
+		return
+	}
+
+	// 驗證ID是否有效
+	for i, id := range req.IDs {
+		if id == 0 {
+			response.BadRequest(c, "invalid campaign ID", fmt.Sprintf("ID at index %d is zero", i)).
+				Return()
+			return
+		}
+	}
+
+	if err := h.agentUseCase.BatchDeleteAgentCampaigns(c.Request.Context(), &req); err != nil {
+		if err.Error() == "no valid campaigns found for deletion" {
+			response.BadRequest(c, "no valid campaigns found for deletion", err.Error()).Return()
+			return
+		}
+		h.logger.ErrorWithContext(
+			c.Request.Context(),
+			"failed to batch delete agent campaigns",
+			h.logger.Error("err", err),
+			h.logger.Any("campaign_ids", req.IDs),
+		)
+		response.InternalServerError(c, "failed to batch delete agent campaigns", err.Error()).
+			Return()
+		return
 	}
 
 	response.DeletedSuccess(c).Return()

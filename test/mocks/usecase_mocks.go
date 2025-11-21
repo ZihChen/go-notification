@@ -526,6 +526,14 @@ func (m *AgentUseCaseMock) DeleteAgentCampaign(ctx context.Context, id uint64) e
 	return args.Error(0)
 }
 
+func (m *AgentUseCaseMock) BatchDeleteAgentCampaigns(
+	ctx context.Context,
+	req *dto.BatchDeleteAgentCampaignsRequest,
+) error {
+	args := m.Called(ctx, req)
+	return args.Error(0)
+}
+
 func (m *AgentUseCaseMock) GetAgentMessages(
 	ctx context.Context,
 	query *dto.AgentMessagesQuery,
