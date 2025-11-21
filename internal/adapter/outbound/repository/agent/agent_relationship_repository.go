@@ -3,8 +3,10 @@ package repository
 import (
 	"context"
 	"fmt"
+	"log"
 	"sort"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
@@ -18,19 +20,37 @@ import (
 type AgentRelationshipRepository struct {
 	db          *gorm.DB
 	lockManager infrastructure.DistributedLockManager
+	// 簡化的批次處理佇列
+	batchQueue chan *batchRequest
+	processing sync.Map // map[uint64]bool 記錄正在處理的AgentID
+}
+
+// batchRequest 批次處理請求
+type batchRequest struct {
+	targetAgentID uint64
+	relationships []*entity.AgentRelationship
+	resultChan    chan error
+	ctx           context.Context
 }
 
 func NewAgentRelationshipRepository(
 	db *gorm.DB,
 	lockManager infrastructure.DistributedLockManager,
 ) repository.AgentRelationshipRepository {
-	return &AgentRelationshipRepository{
+	r := &AgentRelationshipRepository{
 		db:          db,
 		lockManager: lockManager,
+		batchQueue:  make(chan *batchRequest, 1000), // 佇列緩衝1000個請求
+		processing:  sync.Map{},
 	}
+
+	// 啟動批次處理器
+	go r.startBatchProcessor()
+
+	return r
 }
 
-// BatchUpdate 併發安全的批次更新代理關係
+// BatchUpdate 併發安全的批次更新代理關係（使用佇列機制）
 func (r *AgentRelationshipRepository) BatchUpdate(
 	ctx context.Context,
 	targetAgentID uint64,
@@ -41,57 +61,51 @@ func (r *AgentRelationshipRepository) BatchUpdate(
 		return r.clearAgentRelationships(ctx, targetAgentID)
 	}
 
-	// 智能分組策略：依據目標代理 ID 進行分組鎖定
-	lockKey := fmt.Sprintf("agent_relationship:batch_update:%d", targetAgentID)
-
-	// 如果分佈式鎖管理器可用，使用分佈式鎖
-	if r.lockManager != nil && r.lockManager.IsAvailable() {
-		return r.batchUpdateWithDistributedLock(ctx, targetAgentID, relationships, lockKey)
+	// 檢查是否已有相同AgentID正在處理
+	if _, isProcessing := r.processing.LoadOrStore(targetAgentID, true); isProcessing {
+		// 如果正在處理，直接返回成功（去重複）
+		log.Printf("Agent %d is already being processed, skipping duplicate request", targetAgentID)
+		return nil
 	}
 
-	// 分佈式鎖不可用時，降級到單純事務模式
-	return r.batchUpdateWithTransaction(ctx, targetAgentID, relationships)
+	// 創建批次請求
+	req := &batchRequest{
+		targetAgentID: targetAgentID,
+		relationships: relationships,
+		resultChan:    make(chan error, 1),
+		ctx:           ctx,
+	}
+
+	// 非阻塞式放入佇列
+	select {
+	case r.batchQueue <- req:
+		// 等待處理結果
+		select {
+		case result := <-req.resultChan:
+			r.processing.Delete(targetAgentID)
+			return result
+		case <-ctx.Done():
+			r.processing.Delete(targetAgentID)
+			return fmt.Errorf("context cancelled: %w", ctx.Err())
+		}
+	default:
+		// 佇列滿了，直接執行
+		r.processing.Delete(targetAgentID)
+		log.Printf("Batch queue is full, processing agent %d directly", targetAgentID)
+		return r.batchUpdateWithTransaction(ctx, targetAgentID, relationships)
+	}
 }
 
-// batchUpdateWithDistributedLock 使用分佈式鎖的批次更新
+// batchUpdateWithDistributedLock 簡化的分佈式鎖批次更新（已廢棄，改用佇列機制）
 func (r *AgentRelationshipRepository) batchUpdateWithDistributedLock(
 	ctx context.Context,
 	targetAgentID uint64,
 	relationships []*entity.AgentRelationship,
 	lockKey string,
 ) error {
-	// 設定鎖選項
-	lockOptions := infrastructure.LockOptions{
-		Expiry:     30 * time.Second,       // 鎖過期時間 30 秒
-		Tries:      5,                      // 最多嘗試 3 次
-		RetryDelay: 100 * time.Millisecond, // 重試間隔 100ms
-	}
-
-	// 取得分佈式鎖
-	mutex, err := r.lockManager.GetLockWithOptions(ctx, lockKey, lockOptions)
-	if err != nil {
-		return fmt.Errorf("failed to get distributed lock: %w", err)
-	}
-
-	// 獲取鎖
-	if err := mutex.Lock(); err != nil {
-		return fmt.Errorf("failed to acquire distributed lock: %w", err)
-	}
-
-	defer func() {
-		if unlocked, unlockErr := mutex.Unlock(); unlockErr != nil || !unlocked {
-			// 記錄解鎖失敗，但不影響主流程
-			fmt.Printf(
-				"Failed to release distributed lock %s: unlocked=%v, err=%v\n",
-				lockKey,
-				unlocked,
-				unlockErr,
-			)
-		}
-	}()
-
-	// 在鎖保護下執行批次更新
-	return r.batchUpdateWithTransaction(ctx, targetAgentID, relationships)
+	// 直接降級到事務模式，不使用分佈式鎖
+	log.Printf("Using transaction mode for agent %d (distributed lock bypassed)", targetAgentID)
+	return r.optimizedBatchUpdateWithTransaction(ctx, targetAgentID, relationships)
 }
 
 // batchUpdateWithTransaction 使用事務的批次更新
@@ -295,43 +309,14 @@ func (r *AgentRelationshipRepository) clearAgentRelationships(
 	})
 }
 
-// clearWithDistributedLock 使用分佈式鎖的清理操作
+// clearWithDistributedLock 簡化的清理操作（直接使用事務）
 func (r *AgentRelationshipRepository) clearWithDistributedLock(
 	ctx context.Context,
 	targetAgentID uint64,
 	lockKey string,
 ) error {
-	// 設定鎖選項
-	lockOptions := infrastructure.LockOptions{
-		Expiry:     30 * time.Second,       // 鎖過期時間 30 秒
-		Tries:      5,                      // 最多嘗試 3 次
-		RetryDelay: 100 * time.Millisecond, // 重試間隔 100ms
-	}
-
-	// 取得分佈式鎖
-	mutex, err := r.lockManager.GetLockWithOptions(ctx, lockKey, lockOptions)
-	if err != nil {
-		return fmt.Errorf("failed to get distributed lock for clear: %w", err)
-	}
-
-	// 獲取鎖
-	if err = mutex.Lock(); err != nil {
-		return fmt.Errorf("failed to acquire distributed lock for clear: %w", err)
-	}
-
-	defer func() {
-		if unlocked, unlockErr := mutex.Unlock(); unlockErr != nil || !unlocked {
-			// 記錄解鎖失敗，但不影響主流程
-			fmt.Printf(
-				"Failed to release distributed lock %s: unlocked=%v, err=%v\n",
-				lockKey,
-				unlocked,
-				unlockErr,
-			)
-		}
-	}()
-
-	// 在鎖保護下執行清理操作
+	// 直接使用事務模式，避免鎖競爭
+	log.Printf("Clearing agent %d relationships using direct transaction", targetAgentID)
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		return r.clearTargetAgentRelationships(tx, targetAgentID)
 	})
@@ -354,4 +339,79 @@ func (r *AgentRelationshipRepository) clearTargetAgentRelationships(
 	}
 
 	return nil
+}
+
+// startBatchProcessor 啟動批次處理器
+func (r *AgentRelationshipRepository) startBatchProcessor() {
+	log.Println("Starting agent relationship batch processor")
+
+	for req := range r.batchQueue {
+		// 使用超時控制，避免長時間阻塞
+		processCtx, cancel := context.WithTimeout(req.ctx, 10*time.Second)
+
+		// 直接執行優化的事務更新，不使用分佈式鎖
+		err := r.optimizedBatchUpdateWithTransaction(
+			processCtx,
+			req.targetAgentID,
+			req.relationships,
+		)
+
+		cancel()
+
+		// 發送結果
+		select {
+		case req.resultChan <- err:
+		default:
+			// 如果無法發送結果，記錄錯誤
+			log.Printf("Failed to send result for agent %d: %v", req.targetAgentID, err)
+		}
+	}
+
+	log.Println("Batch processor stopped")
+}
+
+// optimizedBatchUpdateWithTransaction 優化的事務批次更新（減少鎖定時間）
+func (r *AgentRelationshipRepository) optimizedBatchUpdateWithTransaction(
+	ctx context.Context,
+	targetAgentID uint64,
+	relationships []*entity.AgentRelationship,
+) error {
+	if len(relationships) == 0 {
+		// 快速刪除，不排序
+		return r.db.WithContext(ctx).Where("child_id = ?", targetAgentID).
+			Delete(&models.AgentRelationship{}).Error
+	}
+
+	// 預先構建插入數據，減少事務內的處理時間
+	insertModels := make([]*models.AgentRelationship, len(relationships))
+	now := time.Now()
+	for i, rel := range relationships {
+		insertModels[i] = &models.AgentRelationship{
+			ParentID:   rel.ParentID,
+			ChildID:    rel.ChildID,
+			DepthLevel: rel.DepthLevel,
+			PathHash:   rel.PathHash,
+			CreatedAt:  now,
+			UpdatedAt:  now,
+		}
+	}
+
+	// 使用短事務：先刪除再插入
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 1. 快速刪除目標代理的關係
+		if err := tx.Where("child_id = ?", targetAgentID).
+			Delete(&models.AgentRelationship{}).Error; err != nil {
+			return fmt.Errorf("delete old relationships: %w", err)
+		}
+
+		// 2. 批次插入新關係
+		if len(insertModels) > 0 {
+			// 使用較小的批次大小避免長時間鎖定
+			if err := tx.CreateInBatches(insertModels, 50).Error; err != nil {
+				return fmt.Errorf("insert new relationships: %w", err)
+			}
+		}
+
+		return nil
+	})
 }

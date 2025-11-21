@@ -64,15 +64,15 @@ type RedisConfig struct {
 	Port         int
 	Password     string
 	DB           int
-	PoolSize     int
-	MinIdleConns int
-	MaxRetries   int
-	DialTimeout  time.Duration
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
-	PoolTimeout  time.Duration
-	IdleTimeout  time.Duration
-	MaxConnAge   time.Duration
+	PoolSize     int           // 連線池大小，預設10
+	MinIdleConns int           // 最小空閒連線，預設5
+	MaxRetries   int           // 最大重試次數，預設3
+	DialTimeout  time.Duration // 連線超時，預設5s
+	ReadTimeout  time.Duration // 讀取超時，預設3s
+	WriteTimeout time.Duration // 寫入超時，預設3s
+	PoolTimeout  time.Duration // 連線池等待超時，預設10s
+	IdleTimeout  time.Duration // 連線最大空閒時間，預設5分鐘
+	MaxConnAge   time.Duration // 連線最大生命週期，預設1小時
 }
 
 // AWSConfig AWS配置

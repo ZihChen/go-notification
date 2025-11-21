@@ -48,6 +48,7 @@ func (m *Manager) Connect(ctx context.Context) error {
 		case <-ctx.Done():
 			return fmt.Errorf("context cancelled while trying to connect to Redis: %w", ctx.Err())
 		default:
+			// 增強連線配置，優化超時和重試機制
 			client := redis.NewClient(&redis.Options{
 				Addr:            fmt.Sprintf("%s:%d", m.config.Redis.Domain, m.config.Redis.Port),
 				Password:        m.config.Redis.Password,
@@ -67,30 +68,40 @@ func (m *Manager) Connect(ctx context.Context) error {
 			pool := goredis.NewPool(client)
 			rs := redsync.New(pool)
 
-			// 測試連接
-			if err := client.Ping(ctx).Err(); err != nil {
+			// 測試連接，增加超時控制
+			pingCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+			pingErr := client.Ping(pingCtx).Err()
+			cancel()
+
+			if pingErr != nil {
 				retryCount++
 				if retryCount >= maxRetries {
 					_ = client.Close()
 					return fmt.Errorf(
 						"failed to connect to Redis after %d attempts: %w",
 						maxRetries,
-						err,
+						pingErr,
 					)
 				}
 
-				// 指數退避，最大30秒
-				backoff := time.Duration(1<<uint(retryCount)) * time.Second
-				if backoff > 30*time.Second {
-					backoff = 30 * time.Second
+				// 優化指數退避策略，避免過長等待
+				backoff := time.Duration(1<<uint(retryCount)) * 500 * time.Millisecond
+				if backoff > 10*time.Second {
+					backoff = 10 * time.Second
 				}
 
 				log.Printf("Failed to connect to Redis (attempt %d/%d): %v, retrying in %v...",
-					retryCount, maxRetries, err, backoff)
+					retryCount, maxRetries, pingErr, backoff)
 
 				_ = client.Close()
-				time.Sleep(backoff)
-				continue
+
+				// 可中斷的睡眠
+				select {
+				case <-ctx.Done():
+					return fmt.Errorf("context cancelled during retry: %w", ctx.Err())
+				case <-time.After(backoff):
+					continue
+				}
 			}
 
 			// 連接成功
@@ -298,11 +309,17 @@ func (r *RedisDistributedLockManager) IsAvailable() bool {
 		return false
 	}
 
-	// 使用實際連通性檢查
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	// 使用較短超時檢查，避免阻塞
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	return r.cacheManager.HealthCheck(ctx) == nil
+	// 快速健康檢查，失敗則返回false
+	err := r.cacheManager.HealthCheck(ctx)
+	if err != nil {
+		log.Printf("Redis health check failed: %v", err)
+		return false
+	}
+	return true
 }
 
 // GetMutex 獲取簡單的分佈式鎖
