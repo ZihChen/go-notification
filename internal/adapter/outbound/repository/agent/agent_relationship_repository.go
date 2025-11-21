@@ -68,6 +68,9 @@ func (r *AgentRelationshipRepository) BatchUpdate(
 		return nil
 	}
 
+	// 確保在所有退出路徑都清理processing標記
+	defer r.processing.Delete(targetAgentID)
+
 	// 創建批次請求
 	req := &batchRequest{
 		targetAgentID: targetAgentID,
@@ -82,17 +85,14 @@ func (r *AgentRelationshipRepository) BatchUpdate(
 		// 等待處理結果
 		select {
 		case result := <-req.resultChan:
-			r.processing.Delete(targetAgentID)
 			return result
 		case <-ctx.Done():
-			r.processing.Delete(targetAgentID)
 			return fmt.Errorf("context cancelled: %w", ctx.Err())
 		}
 	default:
 		// 佇列滿了，直接執行
-		r.processing.Delete(targetAgentID)
 		log.Printf("Batch queue is full, processing agent %d directly", targetAgentID)
-		return r.batchUpdateWithTransaction(ctx, targetAgentID, relationships)
+		return r.optimizedBatchUpdateWithTransaction(ctx, targetAgentID, relationships)
 	}
 }
 
@@ -404,11 +404,16 @@ func (r *AgentRelationshipRepository) optimizedBatchUpdateWithTransaction(
 			return fmt.Errorf("delete old relationships: %w", err)
 		}
 
-		// 2. 批次插入新關係
+		// 2. 批次插入新關係，使用UPSERT避免重複鍵衝突
 		if len(insertModels) > 0 {
-			// 使用較小的批次大小避免長時間鎖定
-			if err := tx.CreateInBatches(insertModels, 50).Error; err != nil {
-				return fmt.Errorf("insert new relationships: %w", err)
+			// 使用ON DUPLICATE KEY UPDATE避免並發插入衝突
+			if err := tx.Clauses(clause.OnConflict{
+				Columns: []clause.Column{{Name: "parent_id"}, {Name: "child_id"}},
+				DoUpdates: clause.AssignmentColumns([]string{
+					"depth_level", "path_hash", "updated_at",
+				}),
+			}).CreateInBatches(insertModels, 100).Error; err != nil {
+				return fmt.Errorf("upsert new relationships: %w", err)
 			}
 		}
 
