@@ -344,7 +344,7 @@ func TestAgentUseCase_GetAgentCampaigns(t *testing.T) {
 	// 設置mock期望
 	merchantRepo.On("FindByGlobalID", mock.Anything, query.GlobalMerchantID).
 		Return(merchant, nil)
-	agentCampaignRepo.On("List", mock.Anything, mock.AnythingOfType("*dto.AgentCampaignsQuery")).
+	agentCampaignRepo.On("List", mock.Anything, mock.AnythingOfType("*dto.AgentCampaignsQueryForRepo")).
 		Return(campaigns, total, nil)
 
 	// 執行測試

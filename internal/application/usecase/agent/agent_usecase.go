@@ -324,27 +324,52 @@ func (u *AgentUseCase) GetAgentCampaigns(
 	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.GetAgentCampaigns")
 	defer u.tracingService.SpanEnd(span)
 
+	// 解析逗號分隔的status字符串
+	var statusList []string
+	if query.Status != "" {
+		statusList = strings.Split(strings.TrimSpace(query.Status), ",")
+		// 清理每個狀態值的空白
+		for i := range statusList {
+			statusList[i] = strings.TrimSpace(statusList[i])
+		}
+	}
+
 	u.tracingService.RecordSpanAttributes(span,
 		attribute.Int("page", query.Page),
 		attribute.Int("page_size", query.PageSize),
-		attribute.StringSlice("status", query.Status))
+		attribute.StringSlice("status", statusList))
 
 	merchant, err := u.merchantRepo.FindByGlobalID(ctx, query.GlobalMerchantID)
 	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
 		u.tracingService.RecordSpanError(span, err)
 		return nil, fmt.Errorf("find merchant: %w", err)
 	}
-	query.MerchantID = merchant.ID
+
+	// 創建用於Repository層的查詢對象，將status字符串轉換為數組
+	repoQuery := &dto.AgentCampaignsQueryForRepo{
+		GlobalMerchantID: query.GlobalMerchantID,
+		Page:             query.Page,
+		PageSize:         query.PageSize,
+		Limit:            query.Limit,
+		Offset:           query.Offset,
+		MerchantID:       merchant.ID,
+		Status:           statusList,
+		CreatedBy:        query.CreatedBy,
+		CreatedStartAt:   query.CreatedStartAt,
+		CreatedEndAt:     query.CreatedEndAt,
+		ScheduledStartAt: query.ScheduledStartAt,
+		ScheduledEndAt:   query.ScheduledEndAt,
+	}
 
 	// 設定預設值
-	if query.Limit == 0 {
-		query.Limit = query.PageSize
+	if repoQuery.Limit == 0 {
+		repoQuery.Limit = repoQuery.PageSize
 	}
-	if query.Offset == 0 {
-		query.Offset = (query.Page - 1) * query.PageSize
+	if repoQuery.Offset == 0 {
+		repoQuery.Offset = (repoQuery.Page - 1) * repoQuery.PageSize
 	}
 
-	campaigns, total, err := u.agentCampaignRepo.List(ctx, query)
+	campaigns, total, err := u.agentCampaignRepo.List(ctx, repoQuery)
 	if err != nil {
 		u.tracingService.RecordSpanError(span, err)
 		return nil, fmt.Errorf("find agent campaigns: %w", err)

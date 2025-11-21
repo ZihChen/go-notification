@@ -64,7 +64,10 @@ type AgentCampaignRepository interface {
 	) error
 
 	// 查詢操作
-	List(ctx context.Context, query *dto.AgentCampaignsQuery) ([]*entity.AgentCampaign, int, error)
+	List(
+		ctx context.Context,
+		query *dto.AgentCampaignsQueryForRepo,
+	) ([]*entity.AgentCampaign, int, error)
 	GetScheduledCampaigns(
 		ctx context.Context,
 		currentTime time.Time,

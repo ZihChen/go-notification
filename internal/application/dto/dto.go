@@ -175,18 +175,34 @@ type AgentCampaignResponse struct {
 
 // AgentCampaignsQuery 代理訊息活動查詢參數 DTO
 type AgentCampaignsQuery struct {
-	GlobalMerchantID string   `json:"global_merchant_id" swaggerignore:"true"` // 商户全局ID，由中间件自动设置
-	Page             int      `json:"page"                                    form:"page"`
-	PageSize         int      `json:"page_size"                               form:"page_size"`
-	Limit            int      `json:"limit"                                   form:"limit"`
-	Offset           int      `json:"offset"                                  form:"offset"`
-	MerchantID       uint64   `json:"merchant_id"                             form:"merchant_id"`
-	Status           []string `json:"status"                                  form:"status"` // 支援多選狀態篩選
-	CreatedBy        string   `json:"created_by"                              form:"created_by"`
-	CreatedStartAt   string   `json:"created_start_at"                        form:"created_start_at"`   // 創建時間區間開始
-	CreatedEndAt     string   `json:"created_end_at"                          form:"created_end_at"`     // 創建時間區間結束
-	ScheduledStartAt string   `json:"scheduled_start_at"                      form:"scheduled_start_at"` // 發送時間區間開始
-	ScheduledEndAt   string   `json:"scheduled_end_at"                        form:"scheduled_end_at"`   // 發送時間區間結束
+	GlobalMerchantID string `json:"global_merchant_id" swaggerignore:"true"` // 商户全局ID，由中间件自动设置
+	Page             int    `json:"page"                                    form:"page"`
+	PageSize         int    `json:"page_size"                               form:"page_size"`
+	Limit            int    `json:"limit"                                   form:"limit"`
+	Offset           int    `json:"offset"                                  form:"offset"`
+	MerchantID       uint64 `json:"merchant_id"                             form:"merchant_id"`
+	Status           string `json:"status"                                  form:"status"` // 支援逗號分隔狀態篩選，如: draft,scheduled,sent
+	CreatedBy        string `json:"created_by"                              form:"created_by"`
+	CreatedStartAt   string `json:"created_start_at"                        form:"created_start_at"`   // 創建時間區間開始
+	CreatedEndAt     string `json:"created_end_at"                          form:"created_end_at"`     // 創建時間區間結束
+	ScheduledStartAt string `json:"scheduled_start_at"                      form:"scheduled_start_at"` // 發送時間區間開始
+	ScheduledEndAt   string `json:"scheduled_end_at"                        form:"scheduled_end_at"`   // 發送時間區間結束
+}
+
+// AgentCampaignsQueryForRepo 供Repository層使用的代理訊息活動查詢參數 DTO
+type AgentCampaignsQueryForRepo struct {
+	GlobalMerchantID string   `json:"global_merchant_id"`
+	Page             int      `json:"page"`
+	PageSize         int      `json:"page_size"`
+	Limit            int      `json:"limit"`
+	Offset           int      `json:"offset"`
+	MerchantID       uint64   `json:"merchant_id"`
+	Status           []string `json:"status"` // Repository層使用[]string類型
+	CreatedBy        string   `json:"created_by"`
+	CreatedStartAt   string   `json:"created_start_at"`
+	CreatedEndAt     string   `json:"created_end_at"`
+	ScheduledStartAt string   `json:"scheduled_start_at"`
+	ScheduledEndAt   string   `json:"scheduled_end_at"`
 }
 
 // AgentCampaignListResponse 代理訊息活動列表回應 DTO

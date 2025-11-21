@@ -57,16 +57,9 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
-                        "type": "array",
-                        "items": {
-                            "enum": [
-                                "draft",
-                                "scheduled"
-                            ],
-                            "type": "string"
-                        },
-                        "collectionFormat": "multi",
-                        "description": "狀態篩選（多選）",
+                        "type": "string",
+                        "example": "\"draft,scheduled,sent\"",
+                        "description": "狀態篩選（逗號分隔）",
                         "name": "status",
                         "in": "query"
                     },

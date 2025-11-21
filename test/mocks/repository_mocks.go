@@ -1125,7 +1125,7 @@ func (m *AgentCampaignRepositoryMock) UpdateFields(
 
 func (m *AgentCampaignRepositoryMock) List(
 	ctx context.Context,
-	query *dto.AgentCampaignsQuery,
+	query *dto.AgentCampaignsQueryForRepo,
 ) ([]*entity.AgentCampaign, int, error) {
 	args := m.Called(ctx, query)
 	if args.Get(0) == nil {

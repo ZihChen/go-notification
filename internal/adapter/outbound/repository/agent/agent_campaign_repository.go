@@ -104,7 +104,7 @@ func (r *AgentCampaignRepository) UpdateFields(
 // List 分頁查詢代理訊息活動列表
 func (r *AgentCampaignRepository) List(
 	ctx context.Context,
-	query *dto.AgentCampaignsQuery,
+	query *dto.AgentCampaignsQueryForRepo,
 ) ([]*entity.AgentCampaign, int, error) {
 	var campaignModels []models.AgentCampaign
 	var total int64

@@ -377,7 +377,7 @@ func TestAgentCampaignRepository_List(t *testing.T) {
 	now := time.Now()
 	testCases := []struct {
 		name          string
-		query         *dto.AgentCampaignsQuery
+		query         *dto.AgentCampaignsQueryForRepo
 		setupMock     func(sqlmock.Sqlmock)
 		expectedCount int
 		expectedTotal int
@@ -385,7 +385,7 @@ func TestAgentCampaignRepository_List(t *testing.T) {
 	}{
 		{
 			name: "list campaigns with pagination",
-			query: &dto.AgentCampaignsQuery{
+			query: &dto.AgentCampaignsQueryForRepo{
 				MerchantID: 1,
 				Page:       1,
 				PageSize:   10,
@@ -417,7 +417,7 @@ func TestAgentCampaignRepository_List(t *testing.T) {
 		},
 		{
 			name: "list campaigns with filters",
-			query: &dto.AgentCampaignsQuery{
+			query: &dto.AgentCampaignsQueryForRepo{
 				MerchantID: 1,
 				Status:     []string{"draft"},
 				CreatedBy:  "user1",

@@ -229,7 +229,7 @@ func (h *AgentHandler) GetAgentCampaign(c *gin.Context) {
 // @Tags 代理訊息活動
 // @Param page query int false "頁碼" minimum(1) default(1) example(1)
 // @Param page_size query int false "每頁數量" minimum(1) maximum(100) default(10) example(10)
-// @Param status query []string false "狀態篩選（多選）" collectionFormat(multi) enums(draft,scheduled)
+// @Param status query string false "狀態篩選（逗號分隔）" example("draft,scheduled,sent")
 // @Param created_by query string false "創建者" example("admin@example.com")
 // @Param created_start_at query string false "創建時間區間開始" format(date-time) example("2024-01-01T00:00:00Z")
 // @Param created_end_at query string false "創建時間區間結束" format(date-time) example("2024-12-31T23:59:59Z")

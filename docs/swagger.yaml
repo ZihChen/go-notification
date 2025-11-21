@@ -904,16 +904,11 @@ paths:
         minimum: 1
         name: page_size
         type: integer
-      - collectionFormat: multi
-        description: 狀態篩選（多選）
+      - description: 狀態篩選（逗號分隔）
+        example: '"draft,scheduled,sent"'
         in: query
-        items:
-          enum:
-          - draft
-          - scheduled
-          type: string
         name: status
-        type: array
+        type: string
       - description: 創建者
         example: '"admin@example.com"'
         in: query
