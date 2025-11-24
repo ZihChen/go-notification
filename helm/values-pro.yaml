@@ -1,0 +1,90 @@
+global:
+  environment: production
+
+data:
+  # 應用程序設置
+  APP_NAME: "fat-notification-cat"
+  APP_ENV: "development"
+  APP_PORT: "8080"
+  APP_DEBUG: "true"
+
+  # HTTP Server 設置
+  SERVER_HTTP_DOMAIN: "fatnotificationcat-internal.micromicro.work"
+  SERVER_READ_TIMEOUT: "30s"
+  SERVER_WRITE_TIMEOUT: "30s"
+  SERVER_IDLE_TIMEOUT: "120s"
+
+  # 資料庫設置
+  DB_HOST: "REDACTED_DB_HOST"
+  DB_PORT: "3306"
+  DB_USER: "a9jasrk3rl9ehqfzsn1k"
+  # DB_PASSWORD: <secret>
+  DB_NAME: "ms_fatnotificationcat_pro"
+
+  # Atlas 測試資料庫設置
+  ATLAS_DEV_USER: "REDACTED_DB_USER_DEV"
+  # ATLAS_DEV_PASSWORD: <secret>
+
+  # 資料庫連線池設置
+  DB_MAX_IDLE: "25"
+  DB_MAX_OPEN: "100"
+  DB_MAX_LIFETIME: "1h"
+  DB_MAX_IDLE_TIME: "30m"
+
+  # Redis設置
+  REDIS_DOMAIN: {{  include "fatnotificationcat.redis-name" . }}
+  REDIS_PORT: "6379"
+  REDIS_DB: "0"
+
+  # Redis Pool 設置
+  REDIS_POOL_SIZE: "20"
+  REDIS_MIN_IDLE_CONNS: "5"
+  REDIS_MAX_RETRIES: "3"
+  REDIS_DIAL_TIMEOUT: "5s"
+  REDIS_READ_TIMEOUT: "3s"
+  REDIS_WRITE_TIMEOUT: "3s"
+  REDIS_POOL_TIMEOUT: "4s"
+  REDIS_IDLE_TIMEOUT: "5m"
+  REDIS_MAX_CONN_AGE: "30m"
+
+  # AWS KDS設置
+  AWS_REGION: "ap-northeast-1"
+
+  # Producer 發送事件用
+  KINESIS_STREAM_NAME: "fatcat-extension-fat-identity-cat-pro-kds-stream"
+  KINESIS_STREAM_ARN: "arn:aws:kinesis:ap-northeast-1:416777209679:stream/fatcat-extension-fat-identity-cat-pro-kds-stream"
+  DYNAMODB_TABLE: "fat-notification-cat"
+  DYNAMODB_PARTITION_KEY: "partition_key"
+
+  # OpenObserve設置
+  OPENOBSERVE_TRACE_API_ENDPOINT: "https://watchdog-ob.panpancat.click/api/jvd-prod/traces"
+  # OPENOBSERVE_TRACE_API_KEY: <secret>
+  OPENOBSERVE_TRACE_STREAM_NAME: "fat_notification_cat"
+
+  # OpenObserve logs設置
+  OPENOBSERVE_LOGS_API_ENDPOINT: "https://watchdog-ob.panpancat.click/api/jvd-prod/default/_json"
+  OPENOBSERVE_LOGS_USERNAME: "REDACTED_OO_USERNAME"
+  # OPENOBSERVE_LOGS_PASSWORD: <secret>
+
+  # KDS Events
+  EVENT_IDENTITY_MERCHANT_SYNC: "tw.jvd.fatidentitycat.merchant.sync.v1"
+  EVENT_IDENTITY_PLAYER_SYNC: "tw.jvd.fatidentitycat.player.sync.v1"
+  EVENT_IDENTITY_MANAGER_SYNC: "tw.jvd.fatidentitycat.manager.sync.v1"
+  EVENT_IDENTITY_TAG_SYNC: "tw.jvd.fatidentitycat.tag.sync.v1"
+  EVENT_IDENTITY_PLAYER_LEVEL_SYNC: "tw.jvd.fatidentitycat.playerlevel.sync.v"
+  EVENT_IDENTITY_PLAYER_TAGS_SYNC: "tw.jvd.fatidentitycat.playertags.sync.v1"
+  EVENT_IDENTITY_AGENT_SYNC: "tw.jvd.fatidentitycat.agent.sync.v1"
+
+
+encryptedData:
+  DB_PASSWORD: AgBe5l6B0Cf4jDZxnvR8SAZR9VmIyAOGcY5Ewy4F48oLhzDDU2i4Yv7n7NpwASs+2Tavh9CwW5R101Lg0ilDQtGlQGfpv0Bfq6TTpaBqUPY6taA+/V3JuamWAUztouS0qh8gnGv2kiEuxnq6AQtfj4xgJllzdcuXM1qW8tba54Hi7WRqdWDoNluXsTgZ/cmLJZ/MJxn0czt9vIEId8qA0dE9H1/9uXXysFaMLnC2bqjRBtPZXFHjfXqMt2OFdHa6YkeRrC5K1TLYUVVLaY/T1YmYWKlPTr9mnyaeVr+UFN4BQntguEjE2cBN+ZoIGa2rfqlO6Nwhxo7ujfQeuidl25xbVpNlP/NWLKIfxhK1XxpqcC77ublQz8xFqI9Ztfy52tR1DH3kGdLHNm77aQAOJVHA3qnCyMC6oM+yjVGSyh1s7+O3M37uqQUd75IfWTCn5x3yld0BBGwsjZJHWTw9xS+pMJK5oyVqVG3JVSjS9JT5pSaSO4Ez1Dji8Uf8lude3AB7GomWb0eLZynVxsuLwjBu7wbpCQgbr7eX0kxYiFy4LeyfYpyD0jspO++o4R4fD+6Xyt5sKQCMHT7GuDDmWKmnuprrqUFIWSqv4X7IZgk8KCPHrmDoIJsIZCIXmjID4lq7/acZLKev9OgxZTSqCMJFwIEhZ8wJ4TqTTSyLLpGhq2sRH1QNTnKf+9V/SRvx28dofqeubnU0XnsW9v2QN03mLQu+LIIg5xIO91fLWX1mDtSp/yTafn0SMqUGCoTlDpXuLDV3Qg==
+  OPENOBSERVE_TRACE_API_KEY: AgDNnZx6xMLqWjmrLQamNcTIKjmfRCRrkbDo4HAgGO8LPez+OMESAotftVIR2qhbULioSuXKaqh2nFDoHsFgx5YJsKo/+7F3bP7aZ6n4GT7UH8T/LHADPH1UTZFS57Omf5GPaC25KmJyhWg3jkaUsl6I67GOb5C7RfLmxmAhRaercvssRstLCY8OY3oBzLjbit0wqD++Mu6cV15eFJMaoF3pbAIUDzbvn03Hr3n4go/4x9udDz9Kg+S41fuap/BmurCH2PoInzniTYW6U4KgYWBs63j36inrv0hw91XzJgHhK+3RBEXytULIP/F1uxXMBCFAT0BSAw0Zb3d+u8ASZrp0wt+CdbTWUMp8y54e7KscfIHPITLm/v8Y2/T2zzmZBdBzSqBG5PMw7vhsNmJz9YmbYfR5MawGcZupUYAVPy/WLpTlfxR2pox2wWuGyiyYGNojDyOoMZZq5VmVmk1VtE1jmbE3DQlokaA5VP0jd8aczwzuX2eG0M+5hXeTnm0LL7NkpfNnw3ePC20v2w5NpoNEMRu+oe6QpQRCe3zdih4K61trwbufeGlZTEAG0WsXCSez/x+DGmRXvuzhLbnUSQXPhlH/xFqTZ8oP0UDw7fro3uTVkv3/Qbu0MU1nF8RARj8YMc1LeJ+ZUdKkgVRlllMUnoci7u7m/R126PhgI9TRLgK1gwQa28Cn7iyBHI/ZA8Vf2C6Uz/SvpDrnozMSxD126Y8B1x207wq1LP52MLBYEhbsBu2BFHxHG8RHK8oxwGF1swjjlSSO2gB0QIOkOw==
+  OPENOBSERVE_LOGS_PASSWORD: AgA54NJHGtG5Uvxv+LTfEt1MhJDpfClFOztZusisn6pFRIkOf81W/Baq+Tn6GWpYxpEL4EmJ59JGQn0ZOhwNmX9ESBi9rZGl4zAlaAOwnwKt1nNJV1/6zxbiY2N//eK2v5VKL2rnAmGXFW77KeTGqNPu0aiZMFtbycnbIgs18vwHg98iIdaV3LLWamZlsqp9zSIopVMB9WGtx+sdbRDsgxKtbcqfE7vISfRiKDir753lHDsSe5AEqAZFESLf7UnjrYeKsPSsC63mHYHZaoifqxz5O2PNWg39TJ053mKGp+5jGjdhh7TvyWTUcQ4nR+Nnp1HnQ48Xt8nI+PnhRCphMLk2k7KvluYIWif2pRO9Itmee+jamSUAQ06HzsJ5gmG6Cd2ybqAgk+1URLjgrykZ7oyEQLTaT6G3ZlAP84UVWWYoxB/WyI1RAgi2GEeUIkxzEcEzBTcA6zw2wfS8nkuio8NJsY4u4Z9UdQU5Dc6X7dNO5Gd+3/QehCRnAUJldSuGUlOkXWCFXZY+CIEwmn4RVTDdR/y9a0su+jIRCcBNT7VYmIqWkJXSLXziIPZTz3O15NzotU9cj/JMXjEOpwixCMnuREedcPLACQoWr7saKX3YEiCJOq8PyEwGoGxr1TwNBeW6c47zcZkIJLUZW/uAYIRx2oqAzzaCmjHFIFPw25JUVQK+Egg+R5AjFPijCTVvrleBpzquVMBl7vXXVle28yk7
+# Application settings
+app:
+  name: fatnotificationcat
+  appName: fatnotificationcat
+  image:
+    repository: 416777209679.dkr.ecr.ap-northeast-1.amazonaws.com/fatcat-extension/fatnotificationcat
+    tag: latest
+  replicas: 1
