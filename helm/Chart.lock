@@ -1,6 +1,6 @@
 dependencies:
 - name: redis
   repository: https://helm.jvdev.cc/
-  version: 0.1.0
-digest: sha256:05cb848b1c776a9026078137373ffc288d131897b6806e173be2b19d0c464775
-generated: "2025-08-20T15:30:45.007396+08:00"
+  version: 0.1.1
+digest: sha256:d539ddc70cef33b0c31dd220e2f7aca978aceb85327470bcc33df710b080f140
+generated: "2025-11-24T18:48:28.736807+08:00"
