@@ -83,6 +83,7 @@ func (h *AgentHandler) CreateAgentCampaign(c *gin.Context) {
 		response.BadRequest(c, "invalid request format", err.Error()).Return()
 		return
 	}
+	h.logger.DebugWithContext(c, "CreateAgentCampaign", h.logger.Any("request", req))
 
 	campaign, err := h.agentUseCase.CreateAgentCampaign(c.Request.Context(), req)
 	if err != nil {
@@ -160,6 +161,7 @@ func (h *AgentHandler) UpdateAgentCampaign(c *gin.Context) {
 		response.BadRequest(c, "invalid request format", err.Error()).Return()
 		return
 	}
+	h.logger.DebugWithContext(c, "UpdateAgentCampaign", h.logger.Any("request", req))
 
 	campaign, err := h.agentUseCase.UpdateAgentCampaign(c.Request.Context(), req)
 	if err != nil {
