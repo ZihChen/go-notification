@@ -25,7 +25,7 @@ spec:
         checksum/config: {{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}
         checksum/secret: {{ include (print .Template.BasePath "/sealedsecret.yaml") . | sha256sum }}
     spec:
-      serviceAccountName: bonuscat
+      serviceAccountName: {{ .Release.Namespace }}
       containers:
         - name: {{ .Chart.Name }}
           image: {{ include "fatnotificationcat.app-image" . }}
