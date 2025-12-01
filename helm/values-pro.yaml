@@ -1,7 +1,7 @@
 global:
   environment: production
 
-data:
+env:
   # 應用程序設置
   APP_NAME: "fat-notification-cat"
   APP_ENV: "development"
@@ -32,7 +32,7 @@ data:
   DB_MAX_IDLE_TIME: "30m"
 
   # Redis設置
-  REDIS_DOMAIN: {{  include "fatnotificationcat.redis-name" . }}
+  REDIS_DOMAIN: "fatnotificationcat-redis"
   REDIS_PORT: "6379"
   REDIS_DB: "0"
 
@@ -85,6 +85,6 @@ app:
   name: fatnotificationcat
   appName: fatnotificationcat
   image:
-    repository: 416777209679.dkr.ecr.ap-northeast-1.amazonaws.com/fatcat-extension/fatnotificationcat
+    repository: 416777209679.dkr.ecr.ap-northeast-1.amazonaws.com/fatcat-extension/fat-notification-cat
     tag: latest
   replicas: 1
