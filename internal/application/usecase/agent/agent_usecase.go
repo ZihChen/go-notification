@@ -87,17 +87,6 @@ func (u *AgentUseCase) SyncAgentDataWithRelationships(
 		return fmt.Errorf("sync agent relationships: %w", err)
 	}
 
-	// 3. 補派發遺失訊息 (針對超過一個月未登入的代理)
-	u.tracingService.TraceEvent(span, "Backfilling missed messages for inactive agent")
-	if err := u.BackfillMissedMessages(ctx, agentEvent); err != nil {
-		// 補派發失敗不影響主同步流程，只記錄警告
-		u.tracingService.RecordSpanError(span, err)
-		u.logger.WarnLog("Failed to backfill missed messages",
-			u.logger.String("global_agent_id", agentEvent.GlobalAgentID),
-			u.logger.String("global_merchant_id", agentEvent.GlobalMerchantID),
-			u.logger.Error("error", err))
-	}
-
 	// 記錄完成
 	u.tracingService.TraceEvent(span, "Agent sync with relationships completed successfully")
 	u.logger.InfoLog("Agent sync with relationships completed successfully",
