@@ -78,7 +78,10 @@ func (m *Manager) Connect(ctx context.Context) error {
 				if retryCount >= maxRetries {
 					_ = client.Close()
 					return fmt.Errorf(
-						"failed to connect to Redis after %d attempts: %w",
+						"failed to connect to Redis at %s:%d (DB: %d) after %d attempts: %w",
+						m.config.Redis.Domain,
+						m.config.Redis.Port,
+						m.config.Redis.DB,
 						maxRetries,
 						pingErr,
 					)
