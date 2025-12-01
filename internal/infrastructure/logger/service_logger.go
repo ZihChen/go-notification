@@ -1,0 +1,259 @@
+package logger
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"runtime"
+	"time"
+
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
+	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+)
+
+type LogLevel string
+
+const (
+	LevelDebug LogLevel = "DEBUG"
+	LevelInfo  LogLevel = "INFO"
+	LevelWarn  LogLevel = "WARN"
+	LevelError LogLevel = "ERROR"
+	LevelFatal LogLevel = "FATAL"
+)
+
+type ServiceLogger struct {
+	logger  *zap.Logger
+	AppName string
+	Env     string
+}
+
+// NewServiceLogger creates a new ServiceLogger
+func NewServiceLogger(cfg *config.Config) infrastructure.Logger {
+	config := createZapConfig(cfg.App.Debug)
+	logger, err := config.Build()
+	if err != nil {
+		fmt.Printf("Failed to initialize logger: %v\n", err)
+		os.Exit(1)
+	}
+
+	logger = logger.With(
+		zap.String("app", cfg.App.Name),
+		zap.String("env", cfg.App.Env),
+	)
+	logger = logger.WithOptions(zap.AddCallerSkip(2))
+	return &ServiceLogger{
+		logger:  logger,
+		AppName: cfg.App.Name,
+		Env:     cfg.App.Env,
+	}
+}
+
+func createZapConfig(debug bool) zap.Config {
+	var config zap.Config
+	config.EncoderConfig.NameKey = "app"
+
+	if debug {
+		config = zap.NewDevelopmentConfig()
+		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	} else {
+		config = zap.NewProductionConfig()
+		config.EncoderConfig.TimeKey = "timestamp"
+		config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	}
+
+	return config
+}
+
+func (s *ServiceLogger) logWithLevel(
+	ctx context.Context,
+	level LogLevel,
+	msg string,
+	fields ...*entity.LoggerFiled,
+) {
+	spanCtx := trace.SpanContextFromContext(ctx)
+	var traceID, spanID string
+	if spanCtx.IsValid() {
+		traceID = spanCtx.TraceID().String()
+		spanID = spanCtx.SpanID().String()
+	}
+
+	fileName := getCallerInfo(3)
+	fields = append(fields,
+		s.String("file_path", fileName),
+	)
+
+	zapFields := s.createZapFields(traceID, spanID, fields)
+
+	switch level {
+	case LevelDebug:
+		s.logger.Debug(msg, zapFields...)
+	case LevelInfo:
+		s.logger.Info(msg, zapFields...)
+	case LevelWarn:
+		s.logger.Warn(msg, zapFields...)
+	case LevelError:
+		s.logger.Error(msg, zapFields...)
+	case LevelFatal:
+		s.logger.Fatal(msg, zapFields...)
+	}
+
+	s.outputJSONLog(level, msg, traceID, spanID, fields)
+}
+
+func (s *ServiceLogger) createZapFields(
+	traceID, spanID string,
+	fields []*entity.LoggerFiled,
+) []zap.Field {
+	zapFields := make([]zap.Field, 0, len(fields)+2)
+	if traceID != "" {
+		zapFields = append(zapFields, zap.String("trace_id", traceID))
+	}
+	if spanID != "" {
+		zapFields = append(zapFields, zap.String("span_id", spanID))
+	}
+	for _, field := range fields {
+		zapFields = append(zapFields, zap.Any(field.Key, field.Value))
+	}
+	return zapFields
+}
+
+func (s *ServiceLogger) outputJSONLog(
+	level LogLevel,
+	msg, traceID, spanID string,
+	fields []*entity.LoggerFiled,
+) {
+	logData := map[string]interface{}{
+		"app":       s.AppName,
+		"env":       s.Env,
+		"timestamp": time.Now().Format(time.RFC3339),
+		"level":     level,
+		"message":   msg,
+	}
+
+	if traceID != "" {
+		logData["trace_id"] = traceID
+	}
+	if spanID != "" {
+		logData["span_id"] = spanID
+	}
+	for _, field := range fields {
+		logData[field.Key] = field.Value
+	}
+
+	jsonData, err := json.Marshal(logData)
+	if err != nil {
+		s.logger.Error("Failed to marshal log data to JSON", zap.Error(err))
+		return
+	}
+	fmt.Println(string(jsonData))
+}
+
+// 獲取調用者信息
+func getCallerInfo(skip int) (fileName string) {
+	_, path, line, ok := runtime.Caller(skip)
+	if !ok {
+		return "unknown"
+	}
+	return fmt.Sprintf("%s:%v", path, line)
+}
+
+func (s *ServiceLogger) InfoWithContext(
+	ctx context.Context,
+	msg string,
+	fields ...*entity.LoggerFiled,
+) {
+	s.logWithLevel(ctx, LevelInfo, msg, fields...)
+}
+
+func (s *ServiceLogger) DebugWithContext(
+	ctx context.Context,
+	msg string,
+	fields ...*entity.LoggerFiled,
+) {
+	s.logWithLevel(ctx, LevelDebug, msg, fields...)
+}
+
+func (s *ServiceLogger) ErrorWithContext(
+	ctx context.Context,
+	msg string,
+	fields ...*entity.LoggerFiled,
+) {
+	s.logWithLevel(ctx, LevelError, msg, fields...)
+}
+
+func (s *ServiceLogger) WarnWithContext(
+	ctx context.Context,
+	msg string,
+	fields ...*entity.LoggerFiled,
+) {
+	s.logWithLevel(ctx, LevelWarn, msg, fields...)
+}
+
+func (s *ServiceLogger) FatalWithContext(
+	ctx context.Context,
+	msg string,
+	fields ...*entity.LoggerFiled,
+) {
+	s.logWithLevel(ctx, LevelFatal, msg, fields...)
+}
+
+func (s *ServiceLogger) DebugLog(msg string, fields ...*entity.LoggerFiled) {
+	s.logWithLevel(context.TODO(), LevelDebug, msg, fields...)
+}
+
+func (s *ServiceLogger) InfoLog(msg string, fields ...*entity.LoggerFiled) {
+	s.logWithLevel(context.TODO(), LevelInfo, msg, fields...)
+}
+
+func (s *ServiceLogger) ErrorLog(msg string, fields ...*entity.LoggerFiled) {
+	s.logWithLevel(context.TODO(), LevelError, msg, fields...)
+}
+
+func (s *ServiceLogger) WarnLog(msg string, fields ...*entity.LoggerFiled) {
+	s.logWithLevel(context.TODO(), LevelWarn, msg, fields...)
+}
+
+func (s *ServiceLogger) FatalLog(msg string, fields ...*entity.LoggerFiled) {
+	s.logWithLevel(context.TODO(), LevelFatal, msg, fields...)
+}
+
+func (s *ServiceLogger) Error(key string, value error) *entity.LoggerFiled {
+	return &entity.LoggerFiled{Key: key, Value: value}
+}
+
+func (s *ServiceLogger) String(key string, value string) *entity.LoggerFiled {
+	return &entity.LoggerFiled{Key: key, Value: value}
+}
+
+func (s *ServiceLogger) Int(key string, value int) *entity.LoggerFiled {
+	return &entity.LoggerFiled{Key: key, Value: value}
+}
+
+func (s *ServiceLogger) Int64(key string, value int64) *entity.LoggerFiled {
+	return &entity.LoggerFiled{Key: key, Value: value}
+}
+
+func (s *ServiceLogger) UInt64(key string, value uint64) *entity.LoggerFiled {
+	return &entity.LoggerFiled{Key: key, Value: value}
+}
+
+func (s *ServiceLogger) Float64(key string, value float64) *entity.LoggerFiled {
+	return &entity.LoggerFiled{Key: key, Value: value}
+}
+
+func (s *ServiceLogger) Bool(key string, value bool) *entity.LoggerFiled {
+	return &entity.LoggerFiled{Key: key, Value: value}
+}
+
+func (s *ServiceLogger) Any(key string, value interface{}) *entity.LoggerFiled {
+	return &entity.LoggerFiled{Key: key, Value: value}
+}
+
+func (s *ServiceLogger) Close() {
+
+}

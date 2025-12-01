@@ -1,0 +1,71 @@
+package middleware
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/utils/response"
+)
+
+// ErrorHandler 全局錯誤處理中間件
+func ErrorHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		defer func() {
+			if r := recover(); r != nil {
+				// 檢查是否是我們的響應已發送錯誤
+				if _, ok := r.(response.ResponseSentError); ok {
+					// 這是預期的響應中斷，不需要額外處理
+					c.Header("X-Response-Sent", "true")
+					return
+				}
+
+				// 其他 panic 情況，記錄錯誤並返回 500
+				response.InternalServerError(c, "Internal server error").Abort()
+			}
+		}()
+
+		c.Next()
+
+		// 處理請求過程中的錯誤
+		if len(c.Errors) > 0 {
+			err := c.Errors.Last()
+
+			// 根據錯誤類型返回適當的響應
+			switch err.Type {
+			case gin.ErrorTypePublic:
+				response.NewResponse(c).
+					Status(http.StatusBadRequest).
+					Success(false).
+					Error(response.ErrCodeBadRequest, err.Error()).
+					Abort()
+			case gin.ErrorTypeBind:
+				response.NewResponse(c).
+					Status(http.StatusBadRequest).
+					Success(false).
+					Error(response.ErrCodeValidationFailed, "Request validation failed", err.Meta).
+					Abort()
+			default:
+				response.InternalServerError(c, "An unexpected error occurred").Abort()
+			}
+
+			c.Abort()
+		}
+	}
+}
+
+// RateLimitExceeded 速率限制響應
+func RateLimitExceeded(c *gin.Context) {
+	response.NewResponse(c).
+		Status(http.StatusTooManyRequests).
+		Success(false).
+		Error(response.ErrCodeTooManyRequests, "Rate limit exceeded").
+		Meta(map[string]interface{}{
+			"retry_after": 60, // seconds
+		}).
+		Abort()
+}
+
+// NotFoundHandler 404 處理
+func NotFoundHandler(c *gin.Context) {
+	response.NotFound(c, "The requested resource was not found").Abort()
+}

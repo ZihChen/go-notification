@@ -1,0 +1,2830 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "用於管理商戶、玩家和管理員的通知服務",
+        "title": "Notification Service API",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "API Support",
+            "url": "http://www.jvdiamondtech.com/support",
+            "email": "support@jvdiamondtech.com"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "1.0"
+    },
+    "paths": {
+        "/api/v1/agent-campaigns": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "分頁列出代理訊息活動，支持多條件篩選\n查詢參數說明：\n- page: 頁碼，從1開始，預設為1\n- page_size: 每頁數量，範圍1-100，預設為10\n- status: 狀態篩選（多選），可選值：draft(草稿)、scheduled(已排程)、sent(已發送)、cancelled(已取消)\n- created_by: 創建者篩選\n- created_start_at: 創建時間區間開始（ISO 8601格式）\n- created_end_at: 創建時間區間結束（ISO 8601格式）\n- scheduled_start_at: 發送時間區間開始（ISO 8601格式）\n- scheduled_end_at: 發送時間區間結束（ISO 8601格式）",
+                "tags": [
+                    "代理訊息活動"
+                ],
+                "summary": "列出代理訊息活動",
+                "parameters": [
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "example": 1,
+                        "description": "頁碼",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 10,
+                        "example": 10,
+                        "description": "每頁數量",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"draft,scheduled,sent\"",
+                        "description": "狀態篩選（逗號分隔）",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"admin@example.com\"",
+                        "description": "創建者",
+                        "name": "created_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "\"2024-01-01T00:00:00Z\"",
+                        "description": "創建時間區間開始",
+                        "name": "created_start_at",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "\"2024-12-31T23:59:59Z\"",
+                        "description": "創建時間區間結束",
+                        "name": "created_end_at",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "\"2024-01-01T00:00:00Z\"",
+                        "description": "發送時間區間開始",
+                        "name": "scheduled_start_at",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "\"2024-12-31T23:59:59Z\"",
+                        "description": "發送時間區間結束",
+                        "name": "scheduled_end_at",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AgentCampaignListResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "創建新的代理訊息活動，支持全代理、指定代理、代理線等目標類型\n參數說明：\n- status: 訊息狀態，必填，可選值：draft(草稿)、scheduled(排程)\n- target_type: 目標類型，可選值：all(全部代理)、specific(指定代理)、line(代理線)\n- target_details: 目標詳情，當target_type為specific時填入代理帳號陣列，當target_type為line時填入上級代理帳號\n- scheduled_at: 排程時間，根據status決定是否必填\n* 預約發送：status=draft，scheduled_at可帶可不帶\n* 立即發送：status=scheduled，scheduled_at不得帶入\n* 預約發送：status=scheduled，scheduled_at必須帶入\n\n範例請求（預約發送）：\n```json\n{\n\"title\": \"Test title\",\n\"content\": \"test45678\",\n\"status\": \"scheduled\",\n\"target_type\": \"all\",\n\"target_details\": [],\n\"scheduled_at\": \"2025-11-11T18:00:00Z\",\n\"created_by\": \"winston888\"\n}\n```\n\n範例請求（立即發送）：\n```json\n{\n\"title\": \"Immediate Message\",\n\"content\": \"Immediate sending\",\n\"status\": \"scheduled\",\n\"target_type\": \"all\",\n\"target_details\": [],\n\"created_by\": \"winston888\"\n}\n```",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "代理訊息活動"
+                ],
+                "summary": "創建代理訊息活動",
+                "parameters": [
+                    {
+                        "description": "創建代理訊息活動請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateAgentCampaignRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/entity.AgentCampaign"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "根據ID列表批量刪除代理訊息活動，支援高效能批量操作\n\n**請求說明:**\n- ids: 要删除的活動ID數組，必須提供至少一個有效ID\n- 無效ID（不存在或不能删除）會被自動跳過\n- 只有狀態允許删除的活動才會被處理\n\n**響應說明:**\n- 200: 批量删除成功（部分成功也返回200）\n- 400: 請求參數錯誤\n- 500: 服務器內部錯誤",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "代理訊息活動"
+                ],
+                "summary": "批量刪除代理訊息活動",
+                "parameters": [
+                    {
+                        "description": "批量刪除請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.BatchDeleteAgentCampaignsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent-campaigns/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "根據ID獲取代理訊息活動詳情",
+                "tags": [
+                    "代理訊息活動"
+                ],
+                "summary": "獲取代理訊息活動",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 12345,
+                        "description": "代理訊息活動ID - 系統內部唯一識別碼，必須為正整數",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/entity.AgentCampaign"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "更新指定ID的代理訊息活動\n參數說明：\n- status: 訊息狀態，可選，可選值：draft(草稿)、scheduled(排程)\n- target_type: 目標類型，可選值：all(全部代理)、specific(指定代理)、line(代理線)\n- target_details: 目標詳情，當target_type為specific時填入代理帳號陣列，當target_type為line時填入上級代理帳號\n- scheduled_at: 排程時間，根據status決定是否必填\n* 預約發送：status=draft，scheduled_at可帶可不帶\n* 立即發送：status=scheduled，scheduled_at不得帶入\n* 預約發送：status=scheduled，scheduled_at必須帶入\n\n範例請求（預約發送）：\n```json\n{\n\"title\": \"Test update\",\n\"content\": \"hello mey friend\",\n\"status\": \"scheduled\",\n\"target_type\": \"specific\",\n\"target_details\": [\"fatcat-john01\", \"fatcat-yoyo\"],\n\"scheduled_at\": \"2025-11-11T18:00:00Z\",\n\"updated_by\": \"winston888\"\n}\n```\n\n範例請求（立即發送）：\n```json\n{\n\"title\": \"Immediate Update\",\n\"content\": \"Immediate update message\",\n\"status\": \"scheduled\",\n\"target_type\": \"all\",\n\"target_details\": [],\n\"updated_by\": \"winston888\"\n}\n```",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "代理訊息活動"
+                ],
+                "summary": "更新代理訊息活動",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 12345,
+                        "description": "代理訊息活動ID - 系統內部唯一識別碼，必須為正整數",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新代理訊息活動請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateAgentCampaignRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/entity.AgentCampaign"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "刪除指定ID的代理訊息活動",
+                "tags": [
+                    "代理訊息活動"
+                ],
+                "summary": "刪除代理訊息活動",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 12345,
+                        "description": "代理訊息活動ID - 系統內部唯一識別碼，必須為正整數",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agents/{global_agent_id}/messages": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "分頁獲取指定代理的站內信列表，按創建時間由近到遠排序",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "代理站內信"
+                ],
+                "summary": "獲取代理站內信列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"agent-123e4567-e89b-12d3-a456-426614174000\"",
+                        "description": "全域代理ID - 跨系統代理唯一識別符，用於標識特定代理",
+                        "name": "global_agent_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "example": 1,
+                        "description": "頁碼 - 分頁查詢的第几頁，必須大於0",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 50,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 10,
+                        "example": 10,
+                        "description": "每頁數量 - 每頁返回的記錄數，範圍1-50",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AgentMessageListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agents/{global_agent_id}/messages/{message_id}/read": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "將指定代理的指定訊息標記為已讀",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "代理站內信"
+                ],
+                "summary": "標記訊息為已讀",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"agent-123e4567-e89b-12d3-a456-426614174000\"",
+                        "description": "全域代理ID - 跨系統代理唯一識別符，用於標識特定代理",
+                        "name": "global_agent_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 98765,
+                        "description": "訊息ID - 系統內部訊息唯一識別碼，必須為正整數",
+                        "name": "message_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/managers/global/{global_id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "根據管理員全局ID獲取管理員信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "管理員"
+                ],
+                "summary": "通過全局ID獲取管理員",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"987fcdeb-51a2-43d1-9c4b-123456789abc\"",
+                        "description": "管理員全局ID - 跨系統唯一識別符，由系統自動生成的UUID格式",
+                        "name": "global_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/entity.Manager"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/merchants/global/{global_id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "根據商戶全局ID獲取商戶信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "商戶"
+                ],
+                "summary": "通過全局ID獲取商戶",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"550e8400-e29b-41d4-a716-446655440000\"",
+                        "description": "商戶全局ID - 跨系統唯一識別符，由系統自動生成的UUID格式",
+                        "name": "global_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/entity.Merchant"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/merchants/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "根據商戶ID獲取商戶信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "商戶"
+                ],
+                "summary": "通過ID獲取商戶",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 12345,
+                        "description": "商戶ID - 系統內部唯一識別碼，必須為正整數",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/entity.Merchant"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/message-campaigns": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "分頁列出會員訊息活動，支持多條件篩選\n查詢參數說明：\n- page: 頁碼，從1開始，預設為1\n- page_size: 每頁數量，範圍1-100，預設為10\n- category: 消息類型篩選，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)\n- item: 消息項目篩選，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)\n- status: 狀態篩選，可選值：draft(草稿)、scheduled(已排程)、sent(已發送)、cancelled(已取消)、failed(發送失敗)，支持多選\n- show_auto_send: 是否顯示系統自動創建的訊息，預設為false\n- created_by: 創建者篩選\n- start_at: 創建時間起始篩選，格式：2024-01-01T00:00:00Z\n- end_at: 創建時間結束篩選，格式：2024-01-01T23:59:59Z",
+                "tags": [
+                    "會員訊息活動"
+                ],
+                "summary": "列出會員訊息活動",
+                "parameters": [
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "example": 1,
+                        "description": "頁碼",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 10,
+                        "example": 10,
+                        "description": "每頁數量",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "member",
+                            "bonus",
+                            "others"
+                        ],
+                        "type": "string",
+                        "example": "\"member\"",
+                        "description": "消息類型",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "registration",
+                            "identity_verification",
+                            "bank_card",
+                            "others",
+                            "event",
+                            "all",
+                            "mission"
+                        ],
+                        "type": "string",
+                        "example": "\"registration\"",
+                        "description": "消息項目",
+                        "name": "item",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "enum": [
+                                "draft",
+                                "scheduled",
+                                "sent",
+                                "cancelled",
+                                "failed"
+                            ],
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "example": "\"scheduled,sent\"",
+                        "description": "狀態篩選",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "default": false,
+                        "example": false,
+                        "description": "是否顯示系統自動創建",
+                        "name": "show_auto_send",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"admin@example.com\"",
+                        "description": "創建者",
+                        "name": "created_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "\"2024-01-01T00:00:00Z\"",
+                        "description": "創建起始時間",
+                        "name": "start_at",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "\"2024-01-01T23:59:59Z\"",
+                        "description": "創建結束時間",
+                        "name": "end_at",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "default": false,
+                        "example": false,
+                        "description": "是否包含已刪除記錄",
+                        "name": "include_deleted",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MessageCampaignListResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "創建新的會員訊息活動，支持站內信和App推播兩種通知方式\n參數說明：\n- category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)\n- item: 消息項目，可選值：registration(註冊)、identity_verification(身分驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)\n- notification_types: 推送類型位元遮罩，1=站內信，2=App推播，3=兩者皆有，範圍1-7\n- target: 目標用戶，可選值：high_activity(高活躍)、low_activity(低活躍)、not_activity(無活躍)、player(指定玩家)、level(玩家等級)、tag(玩家標籤)、all(全部用戶)\n- target_detail: 目標詳情，當target為player時填入玩家賬號數組，當target為level/tag時填入對應ID字符串數組\n- status: 活動狀態，可選值：draft(草稿)、scheduled(已排程)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "會員訊息活動"
+                ],
+                "summary": "創建會員訊息活動",
+                "parameters": [
+                    {
+                        "description": "創建消息活動請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateMessageCampaignRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/entity.MessageCampaign"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/message-campaigns/auto-settings": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "根據商戶ID獲取會員訊息自動派發設定",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "會員訊息自動設定"
+                ],
+                "summary": "獲取商戶自動設定",
+                "responses": {
+                    "200": {
+                        "description": "成功獲取自動設定",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MerchantAutoSettingsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "為特定商戶建立或更新會員訊息自動派發設定，支持批量設定多個自動發送規則\n\n**必需包含所有6種組合：**\n1. member + registration + success (註冊成功)\n2. member + identity_verification + success (實名驗證成功)\n3. member + identity_verification + failure (實名驗證失敗)\n4. member + bank_card + failure (取款方式綁定失敗)\n5. bonus + mission + success (優惠派發成功)\n6. bonus + mission + failure (優惠派發失敗)\n\n**完整範例：**\n```json\n{\n\"settings\": [\n{\"category\": \"member\", \"item\": \"registration\", \"trigger_type\": \"success\", \"title\": \"註冊成功\", \"content\": \"恭喜，註冊成功\", \"active\": true},\n{\"category\": \"member\", \"item\": \"identity_verification\", \"trigger_type\": \"success\", \"title\": \"身分驗證成功\", \"content\": \"恭喜，身分驗證成功\", \"active\": true},\n{\"category\": \"member\", \"item\": \"identity_verification\", \"trigger_type\": \"failure\", \"title\": \"身分驗證失敗\", \"content\": \"抱歉，身分驗證失敗\", \"active\": false},\n{\"category\": \"member\", \"item\": \"bank_card\", \"trigger_type\": \"failure\", \"title\": \"銀行卡綁定失敗\", \"content\": \"抱歉，銀行卡綁定失敗\", \"active\": true},\n{\"category\": \"bonus\", \"item\": \"mission\", \"trigger_type\": \"success\", \"title\": \"任務完成\", \"content\": \"恭喜，任務完成\", \"active\": true},\n{\"category\": \"bonus\", \"item\": \"mission\", \"trigger_type\": \"failure\", \"title\": \"任務失敗\", \"content\": \"抱歉，任務失敗\", \"active\": false}\n]\n}\n```\n\n**參數說明：**\n- settings: 自動設定項目列表，必須包含上述6種組合\n- category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)\n- item: 消息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、mission(任務)\n- trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)\n- title: 消息標題，必填，最大255個字符\n- content: 消息內容，必填\n- active: 是否啟用自動發送，必填，設定為false時該項目將不會自動發送通知",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "會員訊息自動設定"
+                ],
+                "summary": "新增或更新商戶自動設定",
+                "parameters": [
+                    {
+                        "description": "商戶自動設定請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.MerchantAutoSettingsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "更新成功",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AutoSettingsOperationResponse"
+                        }
+                    },
+                    "201": {
+                        "description": "建立成功",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AutoSettingsOperationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "為特定商戶建立或更新會員訊息自動派發設定，支持批量設定多個自動發送規則\n\n**必需包含所有6種組合：**\n1. member + registration + success (註冊成功)\n2. member + identity_verification + success (實名驗證成功)\n3. member + identity_verification + failure (實名驗證失敗)\n4. member + bank_card + failure (取款方式綁定失敗)\n5. bonus + mission + success (優惠派發成功)\n6. bonus + mission + failure (優惠派發失敗)\n\n**完整範例：**\n```json\n{\n\"settings\": [\n{\"category\": \"member\", \"item\": \"registration\", \"trigger_type\": \"success\", \"title\": \"註冊成功\", \"content\": \"恭喜，註冊成功\", \"active\": true},\n{\"category\": \"member\", \"item\": \"identity_verification\", \"trigger_type\": \"success\", \"title\": \"身分驗證成功\", \"content\": \"恭喜，身分驗證成功\", \"active\": true},\n{\"category\": \"member\", \"item\": \"identity_verification\", \"trigger_type\": \"failure\", \"title\": \"身分驗證失敗\", \"content\": \"抱歉，身分驗證失敗\", \"active\": false},\n{\"category\": \"member\", \"item\": \"bank_card\", \"trigger_type\": \"failure\", \"title\": \"銀行卡綁定失敗\", \"content\": \"抱歉，銀行卡綁定失敗\", \"active\": true},\n{\"category\": \"bonus\", \"item\": \"mission\", \"trigger_type\": \"success\", \"title\": \"任務完成\", \"content\": \"恭喜，任務完成\", \"active\": true},\n{\"category\": \"bonus\", \"item\": \"mission\", \"trigger_type\": \"failure\", \"title\": \"任務失敗\", \"content\": \"抱歉，任務失敗\", \"active\": false}\n]\n}\n```\n\n**參數說明：**\n- settings: 自動設定項目列表，必須包含上述6種組合\n- category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)\n- item: 消息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、mission(任務)\n- trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)\n- title: 消息標題，必填，最大255個字符\n- content: 消息內容，必填\n- active: 是否啟用自動發送，必填，設定為false時該項目將不會自動發送通知",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "會員訊息自動設定"
+                ],
+                "summary": "新增或更新商戶自動設定",
+                "parameters": [
+                    {
+                        "description": "商戶自動設定請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.MerchantAutoSettingsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "更新成功",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AutoSettingsOperationResponse"
+                        }
+                    },
+                    "201": {
+                        "description": "建立成功",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AutoSettingsOperationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/message-campaigns/{global_id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "根據GlobalID獲取會員訊息活動詳情",
+                "tags": [
+                    "會員訊息活動"
+                ],
+                "summary": "獲取會員訊息活動",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"msg-550e8400-e29b-41d4-a716-446655440000\"",
+                        "description": "訊息活動全局ID - 跨系統唯一識別符，用於標識特定訊息活動",
+                        "name": "global_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/entity.MessageCampaign"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "更新指定GlobalID的會員訊息活動，支持站內信和App推播兩種通知方式\n參數說明：\n- category: 消息類型，可選值：member(會員消息)、bonus(紅利消息)、others(其他消息)\n- item: 消息項目，可選值：registration(註冊)、identity_verification(身分驗證)、bank_card(銀行卡)、others(其他)、event(活動)、all(全部)、mission(任務)\n- notification_types: 推送類型位元遮罩，1=站內信，2=App推播，4=其他，可組合使用，範圍1-7，可選參數\n- target: 目標用戶，可選值：high_activity(高活躍)、low_activity(低活躍)、not_activity(無活躍)、player(指定玩家)、level(玩家等級)、tag(玩家標籤)、all(全部用戶)\n- target_detail: 目標詳情，當target為player時填入玩家賬號數組，當target為level/tag時填入對應ID字符串數組，可選參數\n- status: 活動狀態，可選值：draft(草稿)、scheduled(已排程)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "會員訊息活動"
+                ],
+                "summary": "更新會員訊息活動",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"msg-550e8400-e29b-41d4-a716-446655440000\"",
+                        "description": "訊息活動全局ID - 跨系統唯一識別符，用於標識特定訊息活動",
+                        "name": "global_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新消息活動請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateMessageCampaignRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/entity.MessageCampaign"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "刪除指定GlobalID的會員訊息活動",
+                "tags": [
+                    "會員訊息活動"
+                ],
+                "summary": "刪除會員訊息活動",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"msg-550e8400-e29b-41d4-a716-446655440000\"",
+                        "description": "訊息活動全局ID - 跨系統唯一識別符，用於標識特定訊息活動",
+                        "name": "global_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/messages/player/{global_player_id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "分頁獲取指定玩家的訊息列表",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "玩家訊息"
+                ],
+                "summary": "獲取玩家訊息列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"player-123e4567-e89b-12d3-a456-426614174000\"",
+                        "description": "全域玩家ID - 跨系統玩家唯一識別符，用於標識特定玩家",
+                        "name": "global_player_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "example": 1,
+                        "description": "頁碼 - 分頁查詢的第几頁，必須大於0",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 50,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 10,
+                        "example": 10,
+                        "description": "每頁數量 - 每頁返回的記錄數，範圍1-50",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MessageListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/messages/player/{global_player_id}/{message_id}/read": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "將指定玩家的指定訊息標記為已讀",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "玩家訊息"
+                ],
+                "summary": "標記訊息為已讀",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"player-123e4567-e89b-12d3-a456-426614174000\"",
+                        "description": "全域玩家ID - 跨系統玩家唯一識別符，用於標識特定玩家",
+                        "name": "global_player_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 98765,
+                        "description": "訊息ID - 系統內部訊息唯一識別碼，必須為正整數",
+                        "name": "message_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/auto-send": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "根據指定的category、item、trigger_type向特定玩家發送系統自動推播訊息\n參數說明：\n- global_player_id: 玩家全局ID，必填，格式為UUID\n- category: 訊息類別，可選值：member(會員訊息)、bonus(紅利訊息)\n- item: 訊息項目，可選值：registration(註冊)、identity_verification(身份驗證)、bank_card(銀行卡)、mission(任務)\n- trigger_type: 觸發類型，可選值：success(成功)、failure(失敗)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "系統自動推播"
+                ],
+                "summary": "發送系統自動推播訊息",
+                "parameters": [
+                    {
+                        "description": "自動推播訊息請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SendAutoNotificationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SendAutoNotificationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/players/global/{global_id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "根據玩家全局ID獲取玩家信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "玩家"
+                ],
+                "summary": "通過全局ID獲取玩家",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"123e4567-e89b-12d3-a456-426614174000\"",
+                        "description": "玩家全局ID - 跨系統唯一識別符，由系統自動生成的UUID格式",
+                        "name": "global_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/entity.Player"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/players/levels": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "獲取當前商戶的所有玩家等級",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "玩家等級"
+                ],
+                "summary": "獲取玩家等級列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.LevelListResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/players/tags": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "獲取當前商戶的所有玩家標籤",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "玩家標籤"
+                ],
+                "summary": "獲取玩家標籤列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.TagListResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/players/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "根據玩家ID獲取玩家信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "玩家"
+                ],
+                "summary": "通過ID獲取玩家",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 67890,
+                        "description": "玩家ID - 系統內部唯一識別碼，必須為正整數",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/entity.Player"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/players/{id}/active": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "將玩家的最後活躍時間更新為當前時間",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "玩家"
+                ],
+                "summary": "更新玩家最後活躍時間",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 67890,
+                        "description": "玩家ID - 系統內部唯一識別碼，必須為正整數",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "檢查服務是否正常運行，包含基本服務狀態",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "系統"
+                ],
+                "summary": "健康檢查",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "api.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "An error occurred"
+                }
+            }
+        },
+        "api.SuccessResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "consts.AgentCampaignStatus": {
+            "type": "string",
+            "enum": [
+                "draft",
+                "scheduled",
+                "sending",
+                "sent",
+                "failed",
+                "cancelled"
+            ],
+            "x-enum-varnames": [
+                "AgentCampaignStatusDraft",
+                "AgentCampaignStatusScheduled",
+                "AgentCampaignStatusSending",
+                "AgentCampaignStatusSent",
+                "AgentCampaignStatusFailed",
+                "AgentCampaignStatusCancelled"
+            ]
+        },
+        "dto.AgentCampaignListResponse": {
+            "type": "object",
+            "properties": {
+                "campaigns": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.AgentCampaignResponse"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.AgentCampaignResponse": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "merchant_id": {
+                    "type": "integer"
+                },
+                "real_sent_count": {
+                    "type": "integer"
+                },
+                "scheduled_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "target_count": {
+                    "type": "integer"
+                },
+                "target_details": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "target_type": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "updated_by": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.AgentMessageListResponse": {
+            "type": "object",
+            "properties": {
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.AgentMessageResponse"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "stats": {
+                    "$ref": "#/definitions/dto.AgentMessageStats"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.AgentMessageResponse": {
+            "type": "object",
+            "properties": {
+                "agent_campaign_id": {
+                    "type": "integer"
+                },
+                "agent_id": {
+                    "type": "integer"
+                },
+                "content": {
+                    "description": "通過關聯取得",
+                    "type": "string"
+                },
+                "global_agent_id": {
+                    "description": "通過關聯取得",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_read": {
+                    "type": "boolean"
+                },
+                "sent_at": {
+                    "type": "string"
+                },
+                "title": {
+                    "description": "通過關聯取得",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.AgentMessageStats": {
+            "type": "object",
+            "properties": {
+                "read_count": {
+                    "type": "integer"
+                },
+                "total_count": {
+                    "type": "integer"
+                },
+                "unread_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.AutoSettingItem": {
+            "type": "object",
+            "required": [
+                "active",
+                "category",
+                "content",
+                "item",
+                "title",
+                "trigger_type"
+            ],
+            "properties": {
+                "active": {
+                    "description": "是否啟用自動發送，必填",
+                    "type": "boolean",
+                    "example": true
+                },
+                "category": {
+                    "description": "消息类型：member=会员消息，bonus=红利消息，others=其他消息。可選值：member, bonus, others",
+                    "type": "string",
+                    "enum": [
+                        "member",
+                        "bonus",
+                        "others"
+                    ],
+                    "example": "member"
+                },
+                "content": {
+                    "description": "消息内容，必填",
+                    "type": "string",
+                    "example": "恭喜，註冊成功"
+                },
+                "item": {
+                    "description": "消息项目。可選值：registration(註冊), identity_verification(身份驗證), bank_card(銀行卡), others(其他), event(活動), all(全部), mission(任務)",
+                    "type": "string",
+                    "enum": [
+                        "registration",
+                        "identity_verification",
+                        "bank_card",
+                        "others",
+                        "event",
+                        "all",
+                        "mission"
+                    ],
+                    "example": "registration"
+                },
+                "title": {
+                    "description": "消息标题，最大255个字符",
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "註冊成功"
+                },
+                "trigger_type": {
+                    "description": "触发类型：success=成功，failure=失败。可選值：success, failure",
+                    "type": "string",
+                    "enum": [
+                        "success",
+                        "failure"
+                    ],
+                    "example": "success"
+                }
+            }
+        },
+        "dto.AutoSettingSummary": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "description": "是否啟用",
+                    "type": "boolean"
+                },
+                "category": {
+                    "description": "消息類型",
+                    "type": "string"
+                },
+                "content": {
+                    "description": "消息內容",
+                    "type": "string"
+                },
+                "created_at": {
+                    "description": "創建時間",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "設定ID",
+                    "type": "integer"
+                },
+                "item": {
+                    "description": "消息項目",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "消息標題",
+                    "type": "string"
+                },
+                "trigger_type": {
+                    "description": "觸發類型",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "更新時間",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.AutoSettingsOperationResponse": {
+            "type": "object",
+            "properties": {
+                "created_count": {
+                    "type": "integer"
+                },
+                "global_merchant_id": {
+                    "type": "string"
+                },
+                "operation": {
+                    "description": "create, update",
+                    "type": "string"
+                },
+                "updated_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.BatchDeleteAgentCampaignsRequest": {
+            "type": "object",
+            "required": [
+                "ids"
+            ],
+            "properties": {
+                "ids": {
+                    "description": "要删除的活动ID列表，至少包含一个有效ID",
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "dto.CreateAgentCampaignRequest": {
+            "type": "object",
+            "required": [
+                "content",
+                "created_by",
+                "status",
+                "target_type",
+                "title"
+            ],
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "description": "创建者，最大100个字符",
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "scheduled_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "draft",
+                        "scheduled"
+                    ]
+                },
+                "target_details": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "target_type": {
+                    "type": "string",
+                    "enum": [
+                        "all",
+                        "specific",
+                        "line"
+                    ]
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 255
+                }
+            }
+        },
+        "dto.CreateMessageCampaignRequest": {
+            "type": "object",
+            "required": [
+                "category",
+                "content",
+                "created_by",
+                "item",
+                "notification_types",
+                "status",
+                "target",
+                "title"
+            ],
+            "properties": {
+                "app_content": {
+                    "description": "App推播內容，可選，最大255個字符",
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "恭喜您成功注册！"
+                },
+                "category": {
+                    "description": "消息类型：member=会员消息，bonus=红利消息，others=其他消息。可選值：member, bonus, others",
+                    "type": "string",
+                    "enum": [
+                        "member",
+                        "bonus",
+                        "others"
+                    ],
+                    "example": "member"
+                },
+                "content": {
+                    "description": "消息内容，必填",
+                    "type": "string",
+                    "example": "恭喜您成功注册成为我们的会员！"
+                },
+                "created_by": {
+                    "description": "创建者，最大100个字符",
+                    "type": "string",
+                    "maxLength": 100,
+                    "example": "admin@example.com"
+                },
+                "item": {
+                    "description": "消息项目。可選值：registration(註冊), identity_verification(身份驗證), bank_card(銀行卡), others(其他), event(活動), all(全部), mission(任務)",
+                    "type": "string",
+                    "enum": [
+                        "registration",
+                        "identity_verification",
+                        "bank_card",
+                        "others",
+                        "event",
+                        "all",
+                        "mission"
+                    ],
+                    "example": "registration"
+                },
+                "notification_types": {
+                    "description": "推送類型位元遮罩：1=站內信，2=App推播，4=其他，可組合使用，範圍1-7，必填。示例：1(僅站內信), 2(僅App推播), 3(站內信+App推播)",
+                    "type": "integer",
+                    "maximum": 7,
+                    "minimum": 1,
+                    "example": 3
+                },
+                "send_end_time": {
+                    "description": "发送结束时间（可选）",
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2024-01-01T18:00:00Z"
+                },
+                "send_start_time": {
+                    "description": "发送开始时间（可选）",
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2024-01-01T10:00:00Z"
+                },
+                "status": {
+                    "description": "活动状态。可選值：draft(草稿), scheduled(已排程)",
+                    "type": "string",
+                    "enum": [
+                        "draft",
+                        "scheduled"
+                    ],
+                    "example": "scheduled"
+                },
+                "target": {
+                    "description": "目标用户。可選值：high_activity(高活躍), low_activity(低活躍), not_activity(無活躍), player(指定玩家), level(玩家等級), tag(玩家標籤), all(全部用戶)",
+                    "type": "string",
+                    "enum": [
+                        "high_activity",
+                        "low_activity",
+                        "not_activity",
+                        "player",
+                        "level",
+                        "tag",
+                        "all"
+                    ],
+                    "example": "player"
+                },
+                "target_detail": {
+                    "description": "目标详情：player为账号数组，level/tag为ID字符串数组",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "['winston123'",
+                        " 'winston888']"
+                    ]
+                },
+                "title": {
+                    "description": "消息标题，最大255个字符",
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "欢迎新用户"
+                }
+            }
+        },
+        "dto.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.LevelListResponse": {
+            "type": "object",
+            "properties": {
+                "levels": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.LevelResponse"
+                    }
+                }
+            }
+        },
+        "dto.LevelResponse": {
+            "type": "object",
+            "properties": {
+                "global_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.MerchantAutoSettingsRequest": {
+            "description": "需要提供全部6種組合：member+registration+success, member+identity_verification+success, member+identity_verification+failure, member+bank_card+failure, bonus+mission+success, bonus+mission+failure",
+            "type": "object",
+            "required": [
+                "settings"
+            ],
+            "properties": {
+                "settings": {
+                    "description": "自动设置项目列表，必須包含全部6種組合",
+                    "type": "array",
+                    "maxItems": 10,
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/dto.AutoSettingItem"
+                    }
+                }
+            }
+        },
+        "dto.MerchantAutoSettingsResponse": {
+            "type": "object",
+            "properties": {
+                "global_merchant_id": {
+                    "type": "string"
+                },
+                "settings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.AutoSettingSummary"
+                    }
+                }
+            }
+        },
+        "dto.MessageCampaignListResponse": {
+            "type": "object",
+            "properties": {
+                "campaigns": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.MessageCampaignResponse"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.MessageCampaignResponse": {
+            "type": "object",
+            "properties": {
+                "app_content": {
+                    "description": "App推播內容",
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "global_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_scheduled": {
+                    "type": "boolean"
+                },
+                "merchant_id": {
+                    "type": "integer"
+                },
+                "notification_types": {
+                    "description": "推送類型位元遮罩: 1=站內信, 2=App推播, 4=其他",
+                    "type": "integer"
+                },
+                "processed_at": {
+                    "type": "string"
+                },
+                "read_count": {
+                    "type": "integer"
+                },
+                "scheduled_at": {
+                    "type": "string"
+                },
+                "sent_count": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "target_detail": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "target_type": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.MessageListResponse": {
+            "type": "object",
+            "properties": {
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.MessageSummary"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "stats": {
+                    "$ref": "#/definitions/dto.PlayerMessageStats"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.MessageSummary": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_read": {
+                    "type": "boolean"
+                },
+                "summary": {
+                    "description": "內容摘要",
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.PlayerMessageStats": {
+            "type": "object",
+            "properties": {
+                "read_count": {
+                    "type": "integer"
+                },
+                "total_count": {
+                    "type": "integer"
+                },
+                "unread_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.SendAutoNotificationRequest": {
+            "type": "object",
+            "required": [
+                "category",
+                "global_player_id",
+                "item",
+                "trigger_type"
+            ],
+            "properties": {
+                "category": {
+                    "description": "訊息類別：member=會員訊息，bonus=紅利訊息。可選值：member, bonus",
+                    "type": "string",
+                    "enum": [
+                        "member",
+                        "bonus"
+                    ],
+                    "example": "member"
+                },
+                "global_player_id": {
+                    "description": "玩家全局ID，必填，格式為UUID",
+                    "type": "string",
+                    "example": "player-123e4567-e89b-12d3-a456-426614174000"
+                },
+                "item": {
+                    "description": "訊息項目：registration=註冊，identity_verification=身分驗證，bank_card=銀行卡，mission=任務。可選值：registration, identity_verification, bank_card, mission",
+                    "type": "string",
+                    "enum": [
+                        "registration",
+                        "identity_verification",
+                        "bank_card",
+                        "mission"
+                    ],
+                    "example": "registration"
+                },
+                "trigger_type": {
+                    "description": "觸發類型：success=成功，failure=失敗。可選值：success, failure",
+                    "type": "string",
+                    "enum": [
+                        "success",
+                        "failure"
+                    ],
+                    "example": "success"
+                }
+            }
+        },
+        "dto.SendAutoNotificationResponse": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "description": "訊息類別",
+                    "type": "string"
+                },
+                "item": {
+                    "description": "訊息項目",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "狀態訊息",
+                    "type": "string"
+                },
+                "player_id": {
+                    "description": "玩家ID",
+                    "type": "string"
+                },
+                "sent_channels": {
+                    "description": "已發送的渠道：[\"in_app\", \"push\"]",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "status": {
+                    "description": "發送狀態：sent=已發送，not_found=找不到對應訊息設定，failed=發送失敗",
+                    "type": "string"
+                },
+                "trigger_type": {
+                    "description": "觸發類型",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.TagListResponse": {
+            "type": "object",
+            "properties": {
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.TagResponse"
+                    }
+                }
+            }
+        },
+        "dto.TagResponse": {
+            "type": "object",
+            "properties": {
+                "global_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.UpdateAgentCampaignRequest": {
+            "type": "object",
+            "required": [
+                "updated_by"
+            ],
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "scheduled_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "draft",
+                        "scheduled"
+                    ]
+                },
+                "target_details": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "target_type": {
+                    "type": "string",
+                    "enum": [
+                        "all",
+                        "specific",
+                        "line"
+                    ]
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "updated_by": {
+                    "type": "string",
+                    "maxLength": 100
+                }
+            }
+        },
+        "dto.UpdateMessageCampaignRequest": {
+            "type": "object",
+            "required": [
+                "category",
+                "content",
+                "item",
+                "status",
+                "target",
+                "title",
+                "updated_by"
+            ],
+            "properties": {
+                "app_content": {
+                    "description": "App推播內容，可選，最大255個字符",
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "恭喜您成功注册！"
+                },
+                "category": {
+                    "description": "消息类型：member=会员消息，bonus=红利消息，others=其他消息。可選值：member, bonus, others",
+                    "type": "string",
+                    "enum": [
+                        "member",
+                        "bonus",
+                        "others"
+                    ],
+                    "example": "member"
+                },
+                "content": {
+                    "description": "消息内容，必填",
+                    "type": "string",
+                    "example": "恭喜您成功注册成为我们的会员！"
+                },
+                "item": {
+                    "description": "消息项目。可選值：registration(註冊), identity_verification(身份驗證), bank_card(銀行卡), others(其他), event(活動), all(全部), mission(任務)",
+                    "type": "string",
+                    "enum": [
+                        "registration",
+                        "identity_verification",
+                        "bank_card",
+                        "others",
+                        "event",
+                        "all",
+                        "mission"
+                    ],
+                    "example": "registration"
+                },
+                "notification_types": {
+                    "description": "推送類型位元遮罩：1=站內信，2=App推播，4=其他，可組合使用，範圍1-7，可選。示例：1(僅站內信), 2(僅App推播), 3(站內信+App推播)",
+                    "type": "integer",
+                    "maximum": 7,
+                    "minimum": 1,
+                    "example": 3
+                },
+                "send_end_time": {
+                    "description": "发送结束时间（可选）",
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2024-01-01T18:00:00Z"
+                },
+                "send_start_time": {
+                    "description": "发送开始时间（可选）",
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2024-01-01T10:00:00Z"
+                },
+                "status": {
+                    "description": "活动状态。可選值：draft(草稿), scheduled(已排程)",
+                    "type": "string",
+                    "enum": [
+                        "draft",
+                        "scheduled"
+                    ],
+                    "example": "scheduled"
+                },
+                "target": {
+                    "description": "目标用户。可選值：high_activity(高活躍), low_activity(低活躍), not_activity(無活躍), player(指定玩家), level(玩家等級), tag(玩家標籤), all(全部用戶)",
+                    "type": "string",
+                    "enum": [
+                        "high_activity",
+                        "low_activity",
+                        "not_activity",
+                        "player",
+                        "level",
+                        "tag",
+                        "all"
+                    ],
+                    "example": "all"
+                },
+                "target_detail": {
+                    "description": "目标详情：player为账号数组，level/tag为ID字符串数组",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "['123'",
+                        " '456']"
+                    ]
+                },
+                "title": {
+                    "description": "消息标题，最大255个字符",
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "欢迎新用户"
+                },
+                "updated_by": {
+                    "description": "更新者，最大100个字符",
+                    "type": "string",
+                    "maxLength": 100,
+                    "example": "admin@example.com"
+                }
+            }
+        },
+        "entity.AgentCampaign": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "description": "建立者",
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "merchant_id": {
+                    "type": "integer"
+                },
+                "real_sent_count": {
+                    "description": "實際發送數量",
+                    "type": "integer"
+                },
+                "scheduled_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "draft, scheduled, sending, completed, failed, cancelled",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/consts.AgentCampaignStatus"
+                        }
+                    ]
+                },
+                "target_count": {
+                    "description": "目標代理數量",
+                    "type": "integer"
+                },
+                "target_details": {
+                    "description": "目標詳情 (account列表或line路徑)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "target_type": {
+                    "description": "all, specific, line",
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "updated_by": {
+                    "description": "修改者",
+                    "type": "string"
+                }
+            }
+        },
+        "entity.Manager": {
+            "type": "object",
+            "properties": {
+                "account": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "global_manager_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "merchant_id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.Merchant": {
+            "type": "object",
+            "properties": {
+                "api_key": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "global_merchant_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.MessageCampaign": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "description": "是否啟用自動發送（僅適用於AutoSend=true的訊息）",
+                    "type": "boolean"
+                },
+                "app_content": {
+                    "description": "App推播內容",
+                    "type": "string"
+                },
+                "auto_send": {
+                    "description": "是否為系統自動訊息",
+                    "type": "boolean"
+                },
+                "category": {
+                    "description": "member, bonus, others",
+                    "type": "string"
+                },
+                "content": {
+                    "description": "可包含 HTML Tag",
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "description": "建立者帳號或名稱",
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "global_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "item": {
+                    "description": "registration, identity_verification, bank_card, others, event, all, mission",
+                    "type": "string"
+                },
+                "legacy_id": {
+                    "description": "舊系統的 notification ID，用於資料遷移",
+                    "type": "integer"
+                },
+                "merchant_id": {
+                    "type": "integer"
+                },
+                "notification_types": {
+                    "description": "推送類型位元遮罩: 1=站內信, 2=App推播, 4=其他",
+                    "type": "integer"
+                },
+                "real_sent_count": {
+                    "description": "實際成功發送人數",
+                    "type": "integer"
+                },
+                "send_end_time": {
+                    "type": "string"
+                },
+                "send_start_time": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "draft, scheduled, sent, cancelled, failed",
+                    "type": "string"
+                },
+                "target": {
+                    "description": "high_activity, low_activity, not_activity, player, level, tag, all",
+                    "type": "string"
+                },
+                "target_detail": {
+                    "description": "JSON string containing target-specific details (player accounts, level names, tag names)",
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "trigger_type": {
+                    "description": "success, failure (for auto-send settings)",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "updated_by": {
+                    "description": "最後更新者帳號或名稱",
+                    "type": "string"
+                }
+            }
+        },
+        "entity.Player": {
+            "type": "object",
+            "properties": {
+                "account": {
+                    "type": "string"
+                },
+                "api_key": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "global_player_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "last_active_at": {
+                    "type": "string"
+                },
+                "level_id": {
+                    "type": "integer"
+                },
+                "merchant_id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "name": "API-Key",
+            "in": "header"
+        }
+    }
+}

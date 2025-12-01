@@ -1,0 +1,695 @@
+package repository
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"regexp"
+	"testing"
+	"time"
+
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+)
+
+type AgentCampaignTestCase struct {
+	name             string
+	id               uint64
+	setupMock        func(sqlmock.Sqlmock)
+	expectedCampaign *entity.AgentCampaign
+	expectedError    error
+}
+
+func setupAgentCampaignMockDB(t *testing.T) (*gorm.DB, sqlmock.Sqlmock, *sql.DB) {
+	// Create a new SQL mock
+	mockDB, mock, err := sqlmock.New()
+	require.NoError(t, err)
+
+	// Create a GORM DB instance using the mock database
+	dialector := mysql.New(mysql.Config{
+		Conn:                      mockDB,
+		SkipInitializeWithVersion: true,
+	})
+
+	db, err := gorm.Open(dialector, &gorm.Config{})
+	require.NoError(t, err)
+
+	return db, mock, mockDB
+}
+
+func TestAgentCampaignRepository_Create(t *testing.T) {
+	now := time.Now()
+	testCases := []AgentCampaignTestCase{
+		{
+			name: "create agent campaign successfully",
+			id:   1,
+			setupMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `agent_campaigns`")).
+					WithArgs(
+						sqlmock.AnyArg(), // merchant_id
+						sqlmock.AnyArg(), // title
+						sqlmock.AnyArg(), // content
+						sqlmock.AnyArg(), // scheduled_at
+						sqlmock.AnyArg(), // status
+						sqlmock.AnyArg(), // target_type
+						sqlmock.AnyArg(), // target_details
+						sqlmock.AnyArg(), // target_count
+						sqlmock.AnyArg(), // real_sent_count
+						sqlmock.AnyArg(), // created_by
+						sqlmock.AnyArg(), // updated_by
+						sqlmock.AnyArg(), // created_at
+						sqlmock.AnyArg(), // updated_at
+						sqlmock.AnyArg(), // deleted_at
+					).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
+			},
+			expectedCampaign: &entity.AgentCampaign{
+				ID:            0, // ID會在 Create 後被設定
+				MerchantID:    1,
+				Title:         "Test Campaign",
+				Content:       "Test Content",
+				ScheduledAt:   &now,
+				Status:        "draft",
+				TargetType:    "all",
+				TargetDetails: []string{},
+				TargetCount:   0,
+				RealSentCount: 0,
+				CreatedBy:     "test_user",
+				UpdatedBy:     "test_user",
+				CreatedAt:     now,
+				UpdatedAt:     now,
+			},
+			expectedError: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock, sqlDB := setupAgentCampaignMockDB(t)
+			defer func() {
+				_ = sqlDB.Close()
+			}()
+
+			tc.setupMock(mock)
+
+			repo := NewAgentCampaignRepository(db)
+
+			result, err := repo.Create(context.Background(), tc.expectedCampaign)
+
+			if tc.expectedError != nil {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedError.Error())
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, result)
+				assert.Equal(t, uint64(1), result.ID)
+				assert.Equal(t, tc.expectedCampaign.Title, result.Title)
+				assert.Equal(t, tc.expectedCampaign.Content, result.Content)
+			}
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+func TestAgentCampaignRepository_GetByID(t *testing.T) {
+	now := time.Now()
+	testCases := []AgentCampaignTestCase{
+		{
+			name: "get agent campaign by ID successfully",
+			id:   1,
+			setupMock: func(mock sqlmock.Sqlmock) {
+				rows := sqlmock.NewRows([]string{
+					"id", "merchant_id", "title", "content", "scheduled_at",
+					"status", "target_type", "target_details", "target_count",
+					"real_sent_count", "created_by", "updated_by", "created_at", "updated_at", "deleted_at",
+				}).AddRow(
+					1, 1, "Test Campaign", "Test Content", &now,
+					"draft", "all", "[]", 0,
+					0, "test_user", "test_user", now, now, nil,
+				)
+
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `agent_campaigns`")).
+					WithArgs(1, 1).
+					WillReturnRows(rows)
+			},
+			expectedCampaign: &entity.AgentCampaign{
+				ID:            1,
+				MerchantID:    1,
+				Title:         "Test Campaign",
+				Content:       "Test Content",
+				ScheduledAt:   &now,
+				Status:        "draft",
+				TargetType:    "all",
+				TargetDetails: []string{},
+				TargetCount:   0,
+				RealSentCount: 0,
+				CreatedBy:     "test_user",
+				UpdatedBy:     "test_user",
+				CreatedAt:     now,
+				UpdatedAt:     now,
+				DeletedAt:     nil,
+			},
+			expectedError: nil,
+		},
+		{
+			name: "campaign not found",
+			id:   999,
+			setupMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `agent_campaigns`")).
+					WithArgs(999, 1).
+					WillReturnError(gorm.ErrRecordNotFound)
+			},
+			expectedCampaign: nil,
+			expectedError:    nil, // Repository returns nil for not found
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock, sqlDB := setupAgentCampaignMockDB(t)
+			defer func() {
+				_ = sqlDB.Close()
+			}()
+
+			tc.setupMock(mock)
+
+			repo := NewAgentCampaignRepository(db)
+
+			result, err := repo.GetByID(context.Background(), tc.id)
+
+			if tc.expectedError != nil {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				if tc.expectedCampaign == nil {
+					assert.Nil(t, result)
+				} else {
+					assert.NotNil(t, result)
+					assert.Equal(t, tc.expectedCampaign.ID, result.ID)
+					assert.Equal(t, tc.expectedCampaign.Title, result.Title)
+					assert.Equal(t, tc.expectedCampaign.Content, result.Content)
+					assert.Equal(t, tc.expectedCampaign.Status, result.Status)
+				}
+			}
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+func TestAgentCampaignRepository_Update(t *testing.T) {
+	now := time.Now()
+	testCases := []AgentCampaignTestCase{
+		{
+			name: "update agent campaign successfully",
+			id:   1,
+			setupMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("UPDATE `agent_campaigns`")).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectCommit()
+			},
+			expectedCampaign: &entity.AgentCampaign{
+				ID:            1,
+				MerchantID:    1,
+				Title:         "Updated Campaign",
+				Content:       "Updated Content",
+				Status:        "scheduled",
+				TargetType:    "specific",
+				TargetDetails: []string{"agent1", "agent2"},
+				CreatedBy:     "test_user",
+				UpdatedBy:     "test_user",
+				CreatedAt:     now,
+				UpdatedAt:     now,
+			},
+			expectedError: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock, sqlDB := setupAgentCampaignMockDB(t)
+			defer func() {
+				_ = sqlDB.Close()
+			}()
+
+			tc.setupMock(mock)
+
+			repo := NewAgentCampaignRepository(db)
+
+			err := repo.Update(context.Background(), tc.expectedCampaign)
+
+			if tc.expectedError != nil {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+func TestAgentCampaignRepository_Delete(t *testing.T) {
+	testCases := []struct {
+		name          string
+		id            uint64
+		setupMock     func(sqlmock.Sqlmock)
+		expectedError error
+	}{
+		{
+			name: "delete agent campaign successfully",
+			id:   1,
+			setupMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("UPDATE `agent_campaigns` SET `deleted_at`")).
+					WithArgs(sqlmock.AnyArg(), 1).
+					WillReturnResult(sqlmock.NewResult(0, 1))
+				mock.ExpectCommit()
+			},
+			expectedError: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock, sqlDB := setupAgentCampaignMockDB(t)
+			defer func() {
+				_ = sqlDB.Close()
+			}()
+
+			tc.setupMock(mock)
+
+			repo := NewAgentCampaignRepository(db)
+
+			err := repo.Delete(context.Background(), tc.id)
+
+			if tc.expectedError != nil {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+func TestAgentCampaignRepository_UpdateFields(t *testing.T) {
+	testCases := []struct {
+		name          string
+		id            uint64
+		fields        map[string]interface{}
+		setupMock     func(sqlmock.Sqlmock)
+		expectedError error
+	}{
+		{
+			name: "update fields successfully",
+			id:   1,
+			fields: map[string]interface{}{
+				"status":     "cancelled",
+				"updated_by": "admin",
+			},
+			setupMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("UPDATE `agent_campaigns`")).
+					WithArgs("cancelled", "admin", sqlmock.AnyArg(), 1).
+					WillReturnResult(sqlmock.NewResult(0, 1))
+				mock.ExpectCommit()
+			},
+			expectedError: nil,
+		},
+		{
+			name:   "no fields to update",
+			id:     1,
+			fields: map[string]interface{}{},
+			setupMock: func(mock sqlmock.Sqlmock) {
+				// No database calls expected
+			},
+			expectedError: errors.New("no fields to update"),
+		},
+		{
+			name: "record not found",
+			id:   999,
+			fields: map[string]interface{}{
+				"status": "cancelled",
+			},
+			setupMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("UPDATE `agent_campaigns`")).
+					WithArgs("cancelled", sqlmock.AnyArg(), 999).
+					WillReturnResult(sqlmock.NewResult(0, 0)) // No rows affected
+				mock.ExpectCommit()
+			},
+			expectedError: errors.New("record not found"),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock, sqlDB := setupAgentCampaignMockDB(t)
+			defer func() {
+				_ = sqlDB.Close()
+			}()
+
+			tc.setupMock(mock)
+
+			repo := NewAgentCampaignRepository(db)
+
+			err := repo.UpdateFields(context.Background(), tc.id, tc.fields)
+
+			if tc.expectedError != nil {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedError.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+func TestAgentCampaignRepository_List(t *testing.T) {
+	now := time.Now()
+	testCases := []struct {
+		name          string
+		query         *dto.AgentCampaignsQueryForRepo
+		setupMock     func(sqlmock.Sqlmock)
+		expectedCount int
+		expectedTotal int
+		expectedError error
+	}{
+		{
+			name: "list campaigns with pagination",
+			query: &dto.AgentCampaignsQueryForRepo{
+				MerchantID: 1,
+				Page:       1,
+				PageSize:   10,
+				Limit:      10,
+				Offset:     0,
+			},
+			setupMock: func(mock sqlmock.Sqlmock) {
+				// Count query
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT count(*)")).
+					WithArgs(1).
+					WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(2))
+
+				// List query
+				rows := sqlmock.NewRows([]string{
+					"id", "merchant_id", "title", "content", "scheduled_at",
+					"status", "target_type", "target_details", "target_count",
+					"real_sent_count", "created_by", "updated_by", "created_at", "updated_at", "deleted_at",
+				}).
+					AddRow(1, 1, "Campaign 1", "Content 1", &now, "draft", "all", "[]", 0, 0, "user1", "user1", now, now, nil).
+					AddRow(2, 1, "Campaign 2", "Content 2", &now, "scheduled", "specific", "[\"agent1\"]", 1, 0, "user2", "user2", now, now, nil)
+
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `agent_campaigns`")).
+					WithArgs(1, 10).
+					WillReturnRows(rows)
+			},
+			expectedCount: 2,
+			expectedTotal: 2,
+			expectedError: nil,
+		},
+		{
+			name: "list campaigns with filters",
+			query: &dto.AgentCampaignsQueryForRepo{
+				MerchantID: 1,
+				Status:     []string{"draft"},
+				CreatedBy:  "user1",
+				Page:       1,
+				PageSize:   10,
+				Limit:      10,
+				Offset:     0,
+			},
+			setupMock: func(mock sqlmock.Sqlmock) {
+				// Count query with filters
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT count(*)")).
+					WithArgs(1, "draft", "user1").
+					WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(1))
+
+				// List query with filters
+				rows := sqlmock.NewRows([]string{
+					"id", "merchant_id", "title", "content", "scheduled_at",
+					"status", "target_type", "target_details", "target_count",
+					"real_sent_count", "created_by", "updated_by", "created_at", "updated_at", "deleted_at",
+				}).
+					AddRow(1, 1, "Campaign 1", "Content 1", &now, "draft", "all", "[]", 0, 0, "user1", "user1", now, now, nil)
+
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `agent_campaigns`")).
+					WithArgs(1, "draft", "user1", 10).
+					WillReturnRows(rows)
+			},
+			expectedCount: 1,
+			expectedTotal: 1,
+			expectedError: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock, sqlDB := setupAgentCampaignMockDB(t)
+			defer func() {
+				_ = sqlDB.Close()
+			}()
+
+			tc.setupMock(mock)
+
+			repo := NewAgentCampaignRepository(db)
+
+			campaigns, total, err := repo.List(context.Background(), tc.query)
+
+			if tc.expectedError != nil {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Len(t, campaigns, tc.expectedCount)
+				assert.Equal(t, tc.expectedTotal, total)
+			}
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+func TestAgentCampaignRepository_BatchDelete(t *testing.T) {
+	testCases := []struct {
+		name          string
+		ids           []uint64
+		setupMock     func(sqlmock.Sqlmock)
+		expectedError error
+	}{
+		{
+			name: "batch delete campaigns successfully",
+			ids:  []uint64{1, 2, 3},
+			setupMock: func(mock sqlmock.Sqlmock) {
+				// Begin transaction
+				mock.ExpectBegin()
+
+				// Update status to cancelled (GORM also updates updated_at)
+				mock.ExpectExec(regexp.QuoteMeta("UPDATE `agent_campaigns` SET `status`")).
+					WithArgs("cancelled", sqlmock.AnyArg(), 1, 2, 3).
+					WillReturnResult(sqlmock.NewResult(0, 3))
+
+				// Soft delete
+				mock.ExpectExec(regexp.QuoteMeta("UPDATE `agent_campaigns` SET `deleted_at`")).
+					WithArgs(sqlmock.AnyArg(), 1, 2, 3).
+					WillReturnResult(sqlmock.NewResult(0, 3))
+
+				// Commit transaction
+				mock.ExpectCommit()
+			},
+			expectedError: nil,
+		},
+		{
+			name: "empty IDs array",
+			ids:  []uint64{},
+			setupMock: func(mock sqlmock.Sqlmock) {
+				// No database calls expected
+			},
+			expectedError: errors.New("no IDs provided for batch delete"),
+		},
+		{
+			name: "update status fails",
+			ids:  []uint64{1, 2},
+			setupMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("UPDATE `agent_campaigns` SET `status`")).
+					WithArgs("cancelled", sqlmock.AnyArg(), 1, 2).
+					WillReturnError(errors.New("update failed"))
+				mock.ExpectRollback()
+			},
+			expectedError: errors.New("batch update campaigns status to cancelled failed"),
+		},
+		{
+			name: "delete fails",
+			ids:  []uint64{1},
+			setupMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta("UPDATE `agent_campaigns` SET `status`")).
+					WithArgs("cancelled", sqlmock.AnyArg(), 1).
+					WillReturnResult(sqlmock.NewResult(0, 1))
+				mock.ExpectExec(regexp.QuoteMeta("UPDATE `agent_campaigns` SET `deleted_at`")).
+					WithArgs(sqlmock.AnyArg(), 1).
+					WillReturnError(errors.New("delete failed"))
+				mock.ExpectRollback()
+			},
+			expectedError: errors.New("batch delete agent campaigns failed"),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock, sqlDB := setupAgentCampaignMockDB(t)
+			defer func() {
+				_ = sqlDB.Close()
+			}()
+
+			tc.setupMock(mock)
+
+			repo := NewAgentCampaignRepository(db)
+
+			err := repo.BatchDelete(context.Background(), tc.ids)
+
+			if tc.expectedError != nil {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedError.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+func TestAgentCampaignRepository_GetScheduledCampaigns(t *testing.T) {
+	now := time.Now()
+	testCases := []struct {
+		name          string
+		setupMock     func(sqlmock.Sqlmock)
+		expectedCount int
+		expectedError error
+	}{
+		{
+			name: "get scheduled campaigns successfully",
+			setupMock: func(mock sqlmock.Sqlmock) {
+				rows := sqlmock.NewRows([]string{
+					"id", "merchant_id", "title", "content", "scheduled_at",
+					"status", "target_type", "target_details", "target_count",
+					"real_sent_count", "created_by", "updated_by", "created_at", "updated_at", "deleted_at",
+				}).
+					AddRow(1, 1, "Scheduled Campaign", "Content", &now, "scheduled", "all", "[]", 0, 0, "user1", "user1", now, now, nil)
+
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `agent_campaigns`")).
+					WithArgs("scheduled", sqlmock.AnyArg()).
+					WillReturnRows(rows)
+			},
+			expectedCount: 1,
+			expectedError: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock, sqlDB := setupAgentCampaignMockDB(t)
+			defer func() {
+				_ = sqlDB.Close()
+			}()
+
+			tc.setupMock(mock)
+
+			repo := NewAgentCampaignRepository(db)
+
+			campaigns, err := repo.GetScheduledCampaigns(context.Background(), time.Now())
+
+			if tc.expectedError != nil {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Len(t, campaigns, tc.expectedCount)
+			}
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+func TestAgentCampaignRepository_FindSentCampaignsForBackfillPaginated(t *testing.T) {
+	now := time.Now()
+	testCases := []struct {
+		name              string
+		merchantID        uint64
+		limit             int
+		offset            int
+		setupMock         func(sqlmock.Sqlmock)
+		expectedCampaigns []*entity.AgentCampaign
+		expectedError     error
+	}{
+		{
+			name:       "find sent campaigns for backfill successfully",
+			merchantID: 1,
+			limit:      100,
+			offset:     0,
+			setupMock: func(mock sqlmock.Sqlmock) {
+				rows := sqlmock.NewRows([]string{
+					"id", "merchant_id", "title", "content", "scheduled_at", "status",
+					"target_type", "target_details", "target_count", "real_sent_count",
+					"created_by", "updated_by", "created_at", "updated_at",
+				}).AddRow(
+					1, 1, "Test Campaign", "Test Content", now, "sent",
+					"all", "", 100, 100, "admin", "admin", now, now,
+				)
+
+				mock.ExpectQuery("SELECT .* FROM `agent_campaigns` WHERE \\(merchant_id = .+ AND target_type IN \\(.+\\) AND status = .+ AND created_at < .+\\) AND .*deleted_at.* IS NULL ORDER BY created_at DESC LIMIT .+").
+					WithArgs(1, "all", "specific", "line", "sent", sqlmock.AnyArg(), 100).
+					WillReturnRows(rows)
+			},
+			expectedCampaigns: []*entity.AgentCampaign{
+				{
+					ID:         1,
+					MerchantID: 1,
+					Title:      "Test Campaign",
+					Content:    "Test Content",
+				},
+			},
+			expectedError: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, mock, sqlDB := setupAgentCampaignMockDB(t)
+			defer func() {
+				_ = sqlDB.Close()
+			}()
+
+			tc.setupMock(mock)
+
+			repo := NewAgentCampaignRepository(db)
+
+			targetTypes := []string{"all", "specific", "line"}
+			campaigns, err := repo.FindSentCampaignsForBackfillPaginated(
+				context.Background(),
+				tc.merchantID,
+				targetTypes,
+				tc.limit,
+				tc.offset,
+			)
+
+			if tc.expectedError != nil {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedError.Error())
+			} else {
+				assert.NoError(t, err)
+				assert.Len(t, campaigns, len(tc.expectedCampaigns))
+				if len(campaigns) > 0 {
+					assert.Equal(t, tc.expectedCampaigns[0].ID, campaigns[0].ID)
+					assert.Equal(t, tc.expectedCampaigns[0].Title, campaigns[0].Title)
+				}
+			}
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}

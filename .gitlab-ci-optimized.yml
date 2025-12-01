@@ -1,0 +1,206 @@
+stages:
+  - lint
+  - test
+  - build
+
+# 緩存配置 - 提升速度的關鍵
+.cache_config: &cache_config
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}"
+    paths:
+      - /go/pkg/mod/
+      - .cache/
+    policy: pull-push
+
+# Go 模組快取配置
+.go_cache_config: &go_cache_config
+  cache:
+    key: "go-${CI_COMMIT_REF_SLUG}"
+    paths:
+      - /go/pkg/mod/
+      - .cache/go-build/
+    policy: pull-push
+
+variables:
+  AWS_REGION: "ap-northeast-1"
+  ECR_REGISTRY: "637423324672.dkr.ecr.${AWS_REGION}.amazonaws.com"
+  ECR_REPO: "${ECR_REGISTRY}/quantumcat"
+  # Go 優化變數
+  GOPROXY: "https://proxy.golang.org,direct"
+  GOSUMDB: "sum.golang.org"
+  GOCACHE: ".cache/go-build"
+  GOMODCACHE: "/go/pkg/mod"
+  # Docker 優化變數
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+  BUILDKIT_PROGRESS: plain
+
+# 精簡清理腳本 - 只清理必要項目
+.minimal_cleanup: &minimal_cleanup |
+  echo "清理臨時文件..."
+  rm -rf /tmp/ci_* || true
+  rm -f coverage.out || true
+  echo "清理完成"
+
+# Golang-lint 檢查 - 並行優化
+lint:
+  stage: lint
+  image: golangci/golangci-lint:latest  # 使用更輕量的 alpine 版本
+  <<: *cache_config
+  before_script:
+    - echo "開始 lint 檢查..."
+    - df -h
+  script:
+    - go mod tidy
+    - go mod download  
+    - golangci-lint run --timeout 5m --concurrency 2 --enable govet --enable errcheck --enable staticcheck --enable ineffassign --disable unused ./...
+  after_script:
+    - *minimal_cleanup
+  only:
+    - dev
+    - merge_requests
+
+# 單元測試 - 並行和快取優化
+unit-tests:
+  stage: test
+  image: golang:1.21-alpine  # 使用 alpine 版本更快
+  <<: *go_cache_config
+  before_script:
+    - apk add --no-cache git make  # 只安裝必要的包
+    - echo "設置 Go 模組代理..."
+  script:
+    # 並行測試，設置合理的超時
+    - |
+      echo "下載依賴..."
+      go mod download
+      
+      echo "運行測試..."
+      # 並行運行測試，設置合理的超時和輸出
+      go test -v -timeout 10m -parallel 4 -race -coverprofile=coverage.out ./internal/...
+      
+      # 計算覆蓋率
+      if [ -f coverage.out ]; then
+        coverage=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//' | awk '{print int($1)}')
+        echo "測試覆蓋率：$coverage%"
+        
+        # 上傳覆蓋率報告到 GitLab
+        go tool cover -html=coverage.out -o coverage.html
+      else
+        echo "未生成覆蓋率報告"
+        exit 1
+      fi
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    paths:
+      - coverage.html
+    expire_in: 7 days
+  coverage: '/coverage: \d+\.\d+% of statements/'
+  after_script:
+    - *minimal_cleanup
+  only:
+    - dev
+
+# 建構 Docker 映像 - 多階段優化
+build:
+  stage: build
+  # 使用更快的 buildx 映像
+  image: docker:24-cli
+  services:
+    - name: docker:24-dind
+      alias: docker
+  variables:
+    # 優化 Docker 設定
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+    BUILDX_NO_DEFAULT_ATTESTATIONS: 1
+  before_script:
+    # 使用 cache mount 加速包安裝
+    - |
+      apk add --no-cache --virtual .build-deps \
+        aws-cli jq git curl
+    
+    # 快速身份驗證
+    - |
+      echo "檢查 AWS 認證..."
+      aws sts get-caller-identity --output table
+      
+      echo "承擔角色..."
+      creds=$(aws sts assume-role \
+        --role-arn arn:aws:iam::637423324672:role/FatcatInternalRunnerAssumeRole \
+        --role-session-name "ci-${CI_PIPELINE_ID}-${CI_JOB_ID}" \
+        --duration-seconds 3600 \
+        --output json)
+      
+      export AWS_ACCESS_KEY_ID=$(echo "$creds" | jq -r '.Credentials.AccessKeyId')
+      export AWS_SECRET_ACCESS_KEY=$(echo "$creds" | jq -r '.Credentials.SecretAccessKey')
+      export AWS_SESSION_TOKEN=$(echo "$creds" | jq -r '.Credentials.SessionToken')
+    
+    # 優化的 ECR 登入
+    - |
+      echo "ECR 登入..."
+      aws ecr get-login-password --region ${AWS_REGION} | \
+        docker login --username AWS --password-stdin ${ECR_REGISTRY}
+
+  script:
+    - |
+      # 設置高效的 buildx
+      docker buildx create --name ci-builder \
+        --driver docker-container \
+        --driver-opt network=host \
+        --use --bootstrap || docker buildx use ci-builder
+      
+      # 準備標籤
+      SHORT_SHA=${CI_COMMIT_SHA:0:8}
+      BASE_TAG="${ECR_REPO}/fatnotificationcat"
+      
+      TAGS=(
+        "${BASE_TAG}:latest"
+        "${BASE_TAG}:${SHORT_SHA}"
+        "${BASE_TAG}:${CI_COMMIT_REF_SLUG}"
+      )
+      
+      # 如果有標籤，添加版本標籤
+      if [ -n "${CI_COMMIT_TAG}" ]; then
+        TAGS+=("${BASE_TAG}:${CI_COMMIT_TAG}")
+      fi
+      
+      # 構建標籤參數
+      TAG_ARGS=""
+      for tag in "${TAGS[@]}"; do
+        TAG_ARGS="$TAG_ARGS -t $tag"
+      done
+      
+      echo "構建標籤: ${TAGS[*]}"
+      
+      # 高效構建和推送
+      docker buildx build \
+        --push \
+        --platform linux/amd64 \
+        --build-arg BUILDKIT_INLINE_CACHE=1 \
+        --build-arg TARGETOS=linux \
+        --build-arg TARGETARCH=amd64 \
+        --build-arg CI_COMMIT_SHA=${CI_COMMIT_SHA} \
+        --cache-from type=registry,ref=${BASE_TAG}:buildcache \
+        --cache-to type=registry,ref=${BASE_TAG}:buildcache,mode=max \
+        $TAG_ARGS \
+        .
+
+  after_script:
+    # 最小清理
+    - |
+      docker buildx rm ci-builder --force || true
+      docker system prune -f --filter "until=1h" || true
+  only:
+    - dev
+
+# 可選：添加並行作業
+.parallel_jobs:
+  parallel:
+    matrix:
+      - TEST_SUITE: ["unit", "integration"]
+        GO_VERSION: ["1.21"]
