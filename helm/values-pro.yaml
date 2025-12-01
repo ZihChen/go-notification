@@ -85,6 +85,6 @@ app:
   name: fatnotificationcat
   appName: fatnotificationcat
   image:
-    repository: 416777209679.dkr.ecr.ap-northeast-1.amazonaws.com/fatcat-extension/fatnotificationcat
+    repository: 416777209679.dkr.ecr.ap-northeast-1.amazonaws.com/fatcat-extension/fat-notification-cat
     tag: latest
   replicas: 1

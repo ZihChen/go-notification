@@ -55,7 +55,7 @@ func runWorker(cobraCmd *cobra.Command, args []string) {
 	cfg := cmd.GetConfig()
 	logger := cmd.GetLogger()
 
-	// 主程序的Context
+	// 主程序的 Context
 	rootCtx, rootCancel := context.WithCancel(context.Background())
 	defer rootCancel()
 
