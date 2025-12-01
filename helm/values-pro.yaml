@@ -32,7 +32,7 @@ data:
   DB_MAX_IDLE_TIME: "30m"
 
   # Redis設置
-  REDIS_DOMAIN: {{  include "fatnotificationcat.redis-name" . }}
+  REDIS_DOMAIN: "fatnotificationcat-redis"
   REDIS_PORT: "6379"
   REDIS_DB: "0"
 
