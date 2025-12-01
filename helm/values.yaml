@@ -11,11 +11,11 @@ app:
     tag: latest
   resources:
     requests:
-      cpu: 10m
-      memory: 64Mi
+      cpu: 20m
+      memory: 80Mi
     limits:
-      cpu: 50m
-      memory: 64Mi
+      cpu: 60m
+      memory: 96Mi
 
 redis:
   resources:

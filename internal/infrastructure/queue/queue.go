@@ -49,9 +49,13 @@ func NewQueueService(
 		logger.Int("redis_db", cfg.Redis.DB))
 
 	redisOpt := asynq.RedisClientOpt{
-		Addr:     redisAddr,
-		Password: cfg.Redis.Password,
-		DB:       cfg.Redis.DB,
+		Addr:         redisAddr,
+		Password:     cfg.Redis.Password,
+		DB:           cfg.Redis.DB,
+		PoolSize:     8,
+		DialTimeout:  5 * time.Second,
+		ReadTimeout:  3 * time.Second,
+		WriteTimeout: 3 * time.Second,
 	}
 
 	client := asynq.NewClient(redisOpt)
@@ -300,16 +304,21 @@ func NewWorkerServer(
 		logger.Int("redis_db", cfg.Redis.DB))
 
 	redisOpt := asynq.RedisClientOpt{
-		Addr:     redisAddr,
-		Password: cfg.Redis.Password,
-		DB:       cfg.Redis.DB,
+		Addr:         redisAddr,
+		Password:     cfg.Redis.Password,
+		DB:           cfg.Redis.DB,
+		PoolSize:     15, // 每個pod最多15個連接 (3×15=45 < 120)
+		DialTimeout:  5 * time.Second,
+		ReadTimeout:  3 * time.Second,
+		WriteTimeout: 3 * time.Second,
 	}
 
 	// 設置服務器配置
-	concurrency := 10
+	concurrency := 12
 	queues := map[string]int{
-		"default":  5,  // 默認優先級
-		"critical": 10, // 高優先級
+		"critical": 5, // 41.7%資源 (高優先級)
+		"agent":    4, // 33.3%資源 (代理同步優化)
+		"default":  3, // 25%資源   (一般任務)
 	}
 
 	logger.InfoLog("Worker server configuration",
@@ -346,6 +355,8 @@ func NewWorkerServer(
 				}
 				return delay
 			},
+			ShutdownTimeout: 15 * time.Second,
+			StrictPriority:  true,
 			ErrorHandler: asynq.ErrorHandlerFunc(
 				func(ctx context.Context, task *asynq.Task, err error) {
 					taskID := "unknown"
