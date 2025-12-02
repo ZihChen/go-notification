@@ -52,7 +52,7 @@ func NewQueueService(
 		Addr:         redisAddr,
 		Password:     cfg.Redis.Password,
 		DB:           cfg.Redis.DB,
-		PoolSize:     8,
+		PoolSize:     5,
 		DialTimeout:  5 * time.Second,
 		ReadTimeout:  3 * time.Second,
 		WriteTimeout: 3 * time.Second,
@@ -307,14 +307,14 @@ func NewWorkerServer(
 		Addr:         redisAddr,
 		Password:     cfg.Redis.Password,
 		DB:           cfg.Redis.DB,
-		PoolSize:     15, // 每個pod最多15個連接 (3×15=45 < 120)
+		PoolSize:     10,
 		DialTimeout:  5 * time.Second,
 		ReadTimeout:  3 * time.Second,
 		WriteTimeout: 3 * time.Second,
 	}
 
 	// 設置服務器配置
-	concurrency := 12
+	concurrency := 6
 	queues := map[string]int{
 		"critical": 5, // 41.7%資源 (高優先級)
 		"agent":    4, // 33.3%資源 (代理同步優化)
