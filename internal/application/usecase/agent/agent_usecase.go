@@ -945,7 +945,7 @@ func (u *AgentUseCase) processBatchAgentsForAll(
 		attribute.Int64("merchant.id", int64(campaign.MerchantID)))
 
 	offset := 0
-	limit := 5000 // 批次大小，可配置
+	limit := 1000 // 批次大小，可配置
 	totalTargetCount := 0
 	totalSentCount := 0
 
@@ -1027,7 +1027,7 @@ func (u *AgentUseCase) processBatchAgentsForSpecific(
 		attribute.Int64("campaign.id", int64(campaign.ID)),
 		attribute.Int("target_accounts_count", len(targetAccounts)))
 
-	batchSize := 5000 // 批次大小，可配置
+	batchSize := 1000 // 批次大小，可配置
 	totalSentCount := 0
 
 	u.logger.InfoLog("Starting batch processing for specific agents",
