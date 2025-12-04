@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -241,7 +242,7 @@ func WrapHandlerWithTracing(
 				codes.Error,
 				fmt.Sprintf("task processing failed: %v", err),
 			)
-			
+
 			// 檢查錯誤類型，決定是否需要跳過重試
 			if strings.Contains(err.Error(), "(skip retry)") {
 				// 明確標記不重試的錯誤
@@ -249,7 +250,7 @@ func WrapHandlerWithTracing(
 					attribute.String("error", err.Error()))
 				return asynq.SkipRetry
 			}
-			
+
 			// 預設行為：讓 Asynq 自動重試所有其他錯誤
 			tracingService.TraceEvent(span, "Task processing failed, will retry",
 				attribute.String("error", err.Error()))
@@ -381,9 +382,23 @@ func NewWorkerServer(
 						)
 					}
 
+					// 分析失敗原因並記錄詳細信息
+					failureReason := "unknown"
+					if err != nil {
+						switch {
+						case errors.Is(ctx.Err(), context.DeadlineExceeded):
+							failureReason = "timeout"
+						case errors.Is(ctx.Err(), context.Canceled):
+							failureReason = "canceled"
+						default:
+							failureReason = "retry_exhausted"
+						}
+					}
+
 					logger.ErrorLog("Task processing failed - storing to DB",
 						logger.String("task_id", taskID),
 						logger.String("type", task.Type()),
+						logger.String("failure_reason", failureReason),
 						logger.Error("err", err))
 
 					// 異步處理：存儲錯誤事件到DB
@@ -393,13 +408,16 @@ func NewWorkerServer(
 
 						// 記錄失敗任務事件到資料庫
 						redisKey := fmt.Sprintf("asynq:default:t:%s", taskID)
+						// 構建包含失敗原因的錯誤訊息
+						errorMessage := fmt.Sprintf("[%s] %s", failureReason, err.Error())
+
 						if createErr := failedTaskUseCase.CreateFailedTaskEventWithRedisInfo(
 							bgCtx,
 							taskID,
 							task.Type(),
 							"default", // 默認queue
 							string(task.Payload()),
-							err.Error(),
+							errorMessage,
 							redisKey,
 							"failed", // 設置為失敗狀態
 							0,        // ErrorHandler中的重試次數為0（不會重試）
