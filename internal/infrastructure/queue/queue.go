@@ -241,18 +241,19 @@ func WrapHandlerWithTracing(
 				codes.Error,
 				fmt.Sprintf("task processing failed: %v", err),
 			)
-			// 檢查錯誤類型，決定是否需要重試
-			if strings.Contains(err.Error(), "(will retry)") {
-				// 可重試錯誤，例如暫時性的資源不可用
-				tracingService.TraceEvent(span, "Task processing failed, will retry",
+			
+			// 檢查錯誤類型，決定是否需要跳過重試
+			if strings.Contains(err.Error(), "(skip retry)") {
+				// 明確標記不重試的錯誤
+				tracingService.TraceEvent(span, "Task processing failed, skipping retry",
 					attribute.String("error", err.Error()))
-				return fmt.Errorf("retriable error: %w", err)
-			} else {
-				// 無法重試的錯誤
-				tracingService.TraceEvent(span, "Task processing failed, will not retry",
-					attribute.String("error", err.Error()))
-				return err
+				return asynq.SkipRetry
 			}
+			
+			// 預設行為：讓 Asynq 自動重試所有其他錯誤
+			tracingService.TraceEvent(span, "Task processing failed, will retry",
+				attribute.String("error", err.Error()))
+			return err
 		}
 
 		// 記錄成功處理
