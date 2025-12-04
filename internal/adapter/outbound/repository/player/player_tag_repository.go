@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
@@ -24,13 +25,44 @@ func (r *PlayerTagRepository) BatchUpdate(
 	playerID uint64,
 	tagIDs []uint64,
 ) error {
+	const maxRetries = 5
+	const baseDelay = 100 * time.Millisecond
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		err := r.batchUpdateWithoutRetry(ctx, playerID, tagIDs)
+
+		if err == nil {
+			return nil
+		}
+
+		// 檢查是否為 deadlock 錯誤或其他可重試的錯誤
+		if r.isRetriableError(err) && attempt < maxRetries {
+			// 指數退避：100ms, 200ms, 400ms, 800ms, 1600ms
+			delay := baseDelay * time.Duration(1<<uint(attempt))
+			time.Sleep(delay)
+			continue
+		}
+
+		// 非可重試錯誤或達到最大重試次數
+		return err
+	}
+
+	return fmt.Errorf("batch update failed after %d retries", maxRetries)
+}
+
+// batchUpdateWithoutRetry 原始的 BatchUpdate 邏輯，不含重試機制
+func (r *PlayerTagRepository) batchUpdateWithoutRetry(
+	ctx context.Context,
+	playerID uint64,
+	tagIDs []uint64,
+) error {
 	// 處理空標籤情況
 	if len(tagIDs) == 0 {
 		// 如果tagIDs為空，只需刪除所有關聯
 		return r.DeleteByPlayerID(ctx, playerID)
 	}
 
-	// 排序以確保一致的鎖定順序
+	// 排序以確保一致的鎖定順序，避免死鎖
 	sort.Slice(tagIDs, func(i, j int) bool {
 		return tagIDs[i] < tagIDs[j]
 	})
@@ -92,6 +124,30 @@ func (r *PlayerTagRepository) DeleteByPlayerID(ctx context.Context, playerID uin
 		return fmt.Errorf("delete player tags failed: %w", result.Error)
 	}
 	return nil
+}
+
+// isRetriableError 檢查是否為可重試的錯誤
+func (r *PlayerTagRepository) isRetriableError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errorStr := err.Error()
+
+	// MySQL 死鎖錯誤
+	if strings.Contains(errorStr, "Deadlock found") ||
+		strings.Contains(errorStr, "1213") ||
+		strings.Contains(errorStr, "40001") {
+		return true
+	}
+
+	// MySQL 鎖等待超時
+	if strings.Contains(errorStr, "Lock wait timeout") ||
+		strings.Contains(errorStr, "1205") {
+		return true
+	}
+
+	return false
 }
 
 // difference 計算兩個切片的差集：在 a 中但不在 b 中的元素
