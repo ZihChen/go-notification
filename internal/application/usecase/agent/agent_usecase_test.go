@@ -272,7 +272,7 @@ func TestAgentUseCase_DeleteAgentCampaign(t *testing.T) {
 		agentCampaignRepo.AssertExpectations()
 	})
 
-	t.Run("cannot delete active campaign", func(t *testing.T) {
+	t.Run("delete active campaign successfully", func(t *testing.T) {
 		// 準備測試數據
 		campaignID := uint64(2)
 		activeCampaign := createTestAgentCampaign()
@@ -284,13 +284,16 @@ func TestAgentUseCase_DeleteAgentCampaign(t *testing.T) {
 		// 設置mock期望
 		agentCampaignRepo.On("GetByID", mock.Anything, campaignID).
 			Return(activeCampaign, nil)
+		agentCampaignRepo.On("UpdateFields", mock.Anything, campaignID, mock.Anything).
+			Return(nil)
+		agentCampaignRepo.On("Delete", mock.Anything, campaignID).
+			Return(nil)
 
 		// 執行測試
 		err := useCase.DeleteAgentCampaign(context.Background(), campaignID)
 
 		// 驗證結果
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "cannot delete campaign with status")
+		assert.NoError(t, err)
 		agentCampaignRepo.AssertExpectations()
 	})
 }
@@ -1117,24 +1120,25 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "campaigns cannot be deleted",
+			name: "delete sent campaigns successfully",
 			request: &dto.BatchDeleteAgentCampaignsRequest{
 				IDs: []uint64{1, 2},
 			},
 			setupMock: func() {
-				// Both campaigns exist but cannot be deleted (sent status)
+				// Both campaigns exist and can be deleted (even sent status)
 				for _, id := range []uint64{1, 2} {
 					campaign := createTestAgentCampaign()
 					campaign.ID = id
-					campaign.Status = consts.AgentCampaignStatusSent // Cannot be deleted
+					campaign.Status = consts.AgentCampaignStatusSent // Can now be deleted
 
 					agentCampaignRepo.On("GetByID", mock.Anything, id).
 						Return(campaign, nil)
 				}
-				// No BatchDelete call expected since no valid campaigns
+				// BatchDelete call expected for all valid campaigns
+				agentCampaignRepo.On("BatchDelete", mock.Anything, []uint64{1, 2}).
+					Return(nil)
 			},
-			expectError: true,
-			errorMsg:    "no valid campaigns found for deletion",
+			expectError: false,
 		},
 		{
 			name: "repository batch delete fails",

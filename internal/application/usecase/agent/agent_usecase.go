@@ -412,10 +412,6 @@ func (u *AgentUseCase) DeleteAgentCampaign(ctx context.Context, id uint64) error
 		return fmt.Errorf("get campaign for deletion: %w", err)
 	}
 
-	// 檢查活動狀態是否允許刪除
-	if err = campaign.CanDelete(); err != nil {
-		return err
-	}
 
 	// 先更新狀態為 cancelled
 	u.tracingService.TraceEvent(span, "Updating campaign status to cancelled before deletion")
@@ -480,15 +476,6 @@ func (u *AgentUseCase) BatchDeleteAgentCampaigns(
 			continue
 		}
 
-		// 檢查活動狀態是否允許刪除
-		if err = campaign.CanDelete(); err != nil {
-			u.logger.WarnLog("Campaign cannot be deleted",
-				u.logger.UInt64("campaign_id", id),
-				u.logger.String("status", campaign.Status.String()),
-				u.logger.Error("error", err))
-			invalidCampaigns = append(invalidCampaigns, id)
-			continue
-		}
 
 		validIDs = append(validIDs, id)
 	}
