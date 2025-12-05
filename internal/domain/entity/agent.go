@@ -70,8 +70,8 @@ func (ac *AgentCampaign) UpdateFromRequest(req *dto.UpdateAgentCampaignRequest) 
 	if req.Content != nil {
 		ac.Content = *req.Content
 	}
-	if req.Status != nil {
-		ac.Status = consts.AgentCampaignStatus(*req.Status)
+	if req.Status != "" {
+		ac.Status = consts.AgentCampaignStatus(req.Status)
 	}
 	if req.ScheduledAt != nil {
 		ac.ScheduledAt = req.ScheduledAt
@@ -85,14 +85,6 @@ func (ac *AgentCampaign) UpdateFromRequest(req *dto.UpdateAgentCampaignRequest) 
 
 	ac.UpdatedBy = req.UpdatedBy
 	ac.UpdatedAt = now
-
-	// 處理立即排程：status 更新為 scheduled 且目前 scheduled_at 為 nil
-	if req.Status != nil &&
-		consts.AgentCampaignStatus(*req.Status) == consts.AgentCampaignStatusScheduled &&
-		req.ScheduledAt == nil &&
-		ac.ScheduledAt == nil {
-		ac.ScheduledAt = &now
-	}
 
 	// 驗證更新後的資料
 	return ac.ValidateForUpdate(req)
@@ -195,11 +187,8 @@ func NewAgentCampaign(
 		UpdatedAt:     now,
 	}
 
-	// 處理立即排程：status=scheduled 且 scheduled_at 為 nil
-	if consts.AgentCampaignStatus(req.Status) == consts.AgentCampaignStatusScheduled &&
-		req.ScheduledAt == nil {
-		campaign.ScheduledAt = &now
-	}
+	// 立即發送邏輯：status=scheduled 且 scheduled_at=nil 保持為 nil
+	// 不需要特殊處理，scheduled_at 保持原樣
 
 	// 執行完整驗證
 	if err := campaign.ValidateForCreate(); err != nil {

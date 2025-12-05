@@ -226,6 +226,40 @@ func (u *AgentUseCase) CreateAgentCampaign(
 		u.logger.String("title", createdCampaign.Title),
 		u.logger.String("target_type", createdCampaign.TargetType))
 
+	// 如果是立即發送 (status=scheduled 且 scheduled_at=nil)，異步進行發送
+	if u.isImmediateSend(consts.AgentCampaignStatus(req.Status), req.ScheduledAt) {
+		u.tracingService.TraceEvent(span, "Starting asynchronous immediate campaign processing")
+
+		// 使用 goroutine 異步處理，避免阻塞 API 響應
+		go func() {
+			// 創建新的 context，避免與原始請求的 context 綁定
+			asyncCtx := context.Background()
+
+			// 記錄開始處理
+			u.logger.InfoLog("Starting asynchronous immediate agent campaign processing",
+				u.logger.UInt64("campaign_id", createdCampaign.ID),
+				u.logger.String("title", createdCampaign.Title))
+
+			// 執行立即發送處理
+			if err = u.processCampaignImmediate(asyncCtx, createdCampaign); err != nil {
+				// 異步錯誤記錄，不影響 API 響應
+				u.logger.ErrorLog("Asynchronous immediate campaign processing failed",
+					u.logger.UInt64("campaign_id", createdCampaign.ID),
+					u.logger.String("error", err.Error()))
+			} else {
+				// 記錄成功完成
+				u.logger.InfoLog("Asynchronous immediate agent campaign processing completed successfully",
+					u.logger.UInt64("campaign_id", createdCampaign.ID))
+			}
+		}()
+
+		// API 立即響應，不等待發送完成
+		u.tracingService.TraceEvent(span, "Immediate campaign queued for asynchronous processing")
+		u.logger.InfoLog("Immediate agent campaign queued for asynchronous processing",
+			u.logger.UInt64("campaign_id", createdCampaign.ID),
+			u.logger.String("title", createdCampaign.Title))
+	}
+
 	return createdCampaign, nil
 }
 
@@ -280,6 +314,48 @@ func (u *AgentUseCase) UpdateAgentCampaign(
 		u.logger.UInt64("campaign_id", campaignEntity.ID),
 		u.logger.String("title", campaignEntity.Title),
 		u.logger.String("status", campaignEntity.Status.String()))
+
+	// 如果更新後變成立即發送 (status=scheduled 且 scheduled_at=nil)，異步進行發送
+	if u.isImmediateSend(consts.AgentCampaignStatus(req.Status), req.ScheduledAt) {
+		u.tracingService.TraceEvent(
+			span,
+			"Starting asynchronous immediate campaign processing after update",
+		)
+
+		// 使用 goroutine 異步處理，避免阻塞 API 響應
+		go func() {
+			// 創建新的 context，避免與原始請求的 context 綁定
+			asyncCtx := context.Background()
+
+			// 記錄開始處理
+			u.logger.InfoLog(
+				"Starting asynchronous immediate agent campaign processing after update",
+				u.logger.UInt64("campaign_id", campaignEntity.ID),
+				u.logger.String("title", campaignEntity.Title),
+			)
+
+			// 執行立即發送處理
+			if err = u.processCampaignImmediate(asyncCtx, campaignEntity); err != nil {
+				// 異步錯誤記錄，不影響 API 響應
+				u.logger.ErrorLog("Asynchronous immediate campaign processing failed after update",
+					u.logger.UInt64("campaign_id", campaignEntity.ID),
+					u.logger.String("error", err.Error()))
+			} else {
+				// 記錄成功完成
+				u.logger.InfoLog("Asynchronous immediate agent campaign processing completed successfully after update",
+					u.logger.UInt64("campaign_id", campaignEntity.ID))
+			}
+		}()
+
+		// API 立即響應，不等待發送完成
+		u.tracingService.TraceEvent(
+			span,
+			"Immediate campaign queued for asynchronous processing after update",
+		)
+		u.logger.InfoLog("Immediate agent campaign queued for asynchronous processing after update",
+			u.logger.UInt64("campaign_id", campaignEntity.ID),
+			u.logger.String("title", campaignEntity.Title))
+	}
 
 	return campaignEntity, nil
 }
@@ -412,7 +488,6 @@ func (u *AgentUseCase) DeleteAgentCampaign(ctx context.Context, id uint64) error
 		return fmt.Errorf("get campaign for deletion: %w", err)
 	}
 
-
 	// 先更新狀態為 cancelled
 	u.tracingService.TraceEvent(span, "Updating campaign status to cancelled before deletion")
 	setColumn := map[string]interface{}{
@@ -475,7 +550,6 @@ func (u *AgentUseCase) BatchDeleteAgentCampaigns(
 			invalidCampaigns = append(invalidCampaigns, id)
 			continue
 		}
-
 
 		validIDs = append(validIDs, id)
 	}
@@ -1425,4 +1499,66 @@ func (u *AgentUseCase) shouldAgentReceiveLineCampaign(
 
 	// 檢查父代理 GlobalAgentID 是否在 Ancestry 路徑中
 	return strings.Contains(agent.Ancestry, parentAgent.GlobalAgentID), nil
+}
+
+// processCampaignImmediate 處理立即發送活動
+func (u *AgentUseCase) processCampaignImmediate(
+	ctx context.Context,
+	campaign *entity.AgentCampaign,
+) error {
+	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.processCampaignImmediate")
+	defer u.tracingService.SpanEnd(span)
+
+	u.tracingService.RecordSpanAttributes(span, attribute.Int64("campaign.id", int64(campaign.ID)))
+
+	u.logger.InfoLog("Processing immediate agent campaign",
+		u.logger.UInt64("campaign_id", campaign.ID),
+		u.logger.String("title", campaign.Title))
+
+	// 1. 更新狀態為發送中：sending
+	if err := u.UpdateCampaignStatus(ctx, campaign.ID, consts.AgentCampaignStatusSending); err != nil {
+		u.logger.ErrorLog("Failed to mark campaign as sending",
+			u.logger.UInt64("campaign_id", campaign.ID),
+			u.logger.String("update_error", err.Error()))
+		u.tracingService.RecordSpanError(span, err)
+		return err
+	}
+
+	// 2. 委託UseCase執行完整發送流程
+	targetCount, sentCount, err := u.SendMessageToCampaignTargets(ctx, campaign)
+	if err != nil {
+		// 標記活動失敗
+		if updateErr := u.UpdateCampaignStatus(ctx, campaign.ID, consts.AgentCampaignStatusFailed); updateErr != nil {
+			u.logger.ErrorLog("Failed to mark campaign as failed",
+				u.logger.UInt64("campaign_id", campaign.ID),
+				u.logger.String("update_error", updateErr.Error()))
+		}
+		u.tracingService.RecordSpanError(span, err)
+		return err
+	}
+
+	// 3. 更新統計與完成狀態
+	if err = u.CompleteCampaign(ctx, campaign.ID, targetCount, sentCount); err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return err
+	}
+
+	u.tracingService.TraceEvent(span, "Immediate agent campaign completed successfully",
+		attribute.Int("target_count", targetCount),
+		attribute.Int("sent_count", sentCount))
+
+	u.logger.InfoLog("Immediate agent campaign completed successfully",
+		u.logger.UInt64("campaign_id", campaign.ID),
+		u.logger.Int("target_count", targetCount),
+		u.logger.Int("sent_count", sentCount))
+
+	return nil
+}
+
+// isImmediateSend 檢查是否為立即發送 (status=scheduled 且 scheduled_at=nil)
+func (u *AgentUseCase) isImmediateSend(
+	status consts.AgentCampaignStatus,
+	scheduledAt *time.Time,
+) bool {
+	return status == consts.AgentCampaignStatusScheduled && scheduledAt == nil
 }

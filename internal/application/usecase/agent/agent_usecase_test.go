@@ -1271,3 +1271,91 @@ func TestAgentUseCase_BackfillMissedMessages_LineTargetType_NotInAncestry(t *tes
 	agentCampaignRepo.AssertExpectations()
 	agentMessageRepo.AssertExpectations()
 }
+
+// 這個測試驗證創建活動的基本流程，使用draft狀態避免觸發異步處理
+func TestAgentUseCase_CreateAgentCampaign_DraftStatus(t *testing.T) {
+	// 創建模擬repositories
+	agentRepo := mocks.NewAgentRepositoryMock(t)
+	agentCampaignRepo := mocks.NewAgentCampaignRepositoryMock(t)
+	agentMessageRepo := mocks.NewAgentMessageRepositoryMock(t)
+	agentRelationshipRepo := mocks.NewAgentRelationshipRepositoryMock(t)
+	merchantRepo := mocks.NewMerchantRepositoryMock(t)
+
+	// 創建模擬服務
+	agentService := mocks.NewAgentServiceMock(t)
+	eventProducer := mocks.NewEventProducerMock(t)
+	tracingService := mocks.NewTracingServiceMock(t)
+
+	// 創建記錄器
+	logger := helper.NewMockLogger()
+
+	// 創建用例
+	tracingService.SetupSuccess()
+	useCase := NewAgentUseCase(
+		agentRepo,
+		agentCampaignRepo,
+		agentMessageRepo,
+		agentRelationshipRepo,
+		merchantRepo,
+		agentService,
+		eventProducer,
+		logger,
+		tracingService,
+	)
+
+	// 準備測試數據 - 使用draft狀態避免觸發立即發送
+	req := &dto.CreateAgentCampaignRequest{
+		GlobalMerchantID: "test-merchant",
+		Title:            "Draft Test Campaign",
+		Content:          "Test Content",
+		Status:           "draft", // 使用draft狀態，不觸發立即發送
+		ScheduledAt:      nil,
+		TargetType:       "all",
+		CreatedBy:        "test-user",
+	}
+
+	// Mock 商戶
+	merchant := &entity.Merchant{ID: 1}
+	merchantRepo.On("FindByGlobalID", mock.Anything, "test-merchant").Return(merchant, nil)
+
+	// Mock 活動創建
+	expectedCampaign := &entity.AgentCampaign{
+		ID:          1,
+		Title:       "Draft Test Campaign",
+		Content:     "Test Content",
+		Status:      consts.AgentCampaignStatusDraft,
+		ScheduledAt: nil,
+		TargetType:  "all",
+		MerchantID:  1,
+		CreatedBy:   "test-user",
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+	agentCampaignRepo.On("Create", mock.Anything, mock.AnythingOfType("*entity.AgentCampaign")).
+		Return(expectedCampaign, nil)
+
+	// 記錄API響應時間
+	start := time.Now()
+
+	// 執行測試
+	result, err := useCase.CreateAgentCampaign(context.Background(), req)
+
+	// 計算響應時間
+	responseTime := time.Since(start)
+
+	// 驗證結果
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, "Draft Test Campaign", result.Title)
+	assert.Equal(t, consts.AgentCampaignStatusDraft, result.Status)
+	assert.Nil(t, result.ScheduledAt)
+
+	// 驗證響應時間很快
+	assert.Less(t, responseTime, 100*time.Millisecond, "API response should be fast")
+
+	t.Logf("API response time: %v", responseTime)
+
+	// 驗證基本 mock 調用
+	merchantRepo.AssertExpectations()
+	agentCampaignRepo.AssertExpectations()
+}

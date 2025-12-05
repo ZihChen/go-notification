@@ -148,7 +148,7 @@ type UpdateAgentCampaignRequest struct {
 	GlobalMerchantID string     `json:"global_merchant_id"       swaggerignore:"true"` // 商户全局ID，由中间件自动设置
 	Title            *string    `json:"title,omitempty"                               binding:"omitempty,max=255"`
 	Content          *string    `json:"content,omitempty"`
-	Status           *string    `json:"status,omitempty"                              binding:"omitempty,oneof=draft scheduled"`
+	Status           string     `json:"status,omitempty"                              binding:"omitempty,oneof=draft scheduled"`
 	ScheduledAt      *time.Time `json:"scheduled_at,omitempty"`
 	TargetType       *string    `json:"target_type,omitempty"                         binding:"omitempty,oneof=all specific line"`
 	TargetDetails    []string   `json:"target_details,omitempty"`
