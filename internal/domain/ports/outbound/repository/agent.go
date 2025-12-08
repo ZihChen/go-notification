@@ -92,6 +92,8 @@ type AgentMessageRepository interface {
 	GetByID(ctx context.Context, id uint64) (*entity.AgentMessage, error)
 	Update(ctx context.Context, message *entity.AgentMessage) error
 	Delete(ctx context.Context, id uint64) error
+	DeleteByCampaignID(ctx context.Context, campaignID uint64) error
+	BatchDeleteByCampaignIDs(ctx context.Context, campaignIDs []uint64) error
 
 	// 批量操作
 	CreateBatch(ctx context.Context, messages []*entity.AgentMessage) error

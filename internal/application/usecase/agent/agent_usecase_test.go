@@ -255,11 +255,14 @@ func TestAgentUseCase_DeleteAgentCampaign(t *testing.T) {
 
 		// 重置mock
 		agentCampaignRepo.Mock = mock.Mock{}
+		agentMessageRepo.Mock = mock.Mock{}
 
 		// 設置mock期望
 		agentCampaignRepo.On("GetByID", mock.Anything, campaignID).
 			Return(draftCampaign, nil)
 		agentCampaignRepo.On("UpdateFields", mock.Anything, campaignID, mock.Anything).
+			Return(nil)
+		agentMessageRepo.On("DeleteByCampaignID", mock.Anything, campaignID).
 			Return(nil)
 		agentCampaignRepo.On("Delete", mock.Anything, campaignID).
 			Return(nil)
@@ -270,6 +273,7 @@ func TestAgentUseCase_DeleteAgentCampaign(t *testing.T) {
 		// 驗證結果
 		assert.NoError(t, err)
 		agentCampaignRepo.AssertExpectations()
+		agentMessageRepo.AssertExpectations()
 	})
 
 	t.Run("delete active campaign successfully", func(t *testing.T) {
@@ -280,11 +284,14 @@ func TestAgentUseCase_DeleteAgentCampaign(t *testing.T) {
 
 		// 重置mock
 		agentCampaignRepo.Mock = mock.Mock{}
+		agentMessageRepo.Mock = mock.Mock{}
 
 		// 設置mock期望
 		agentCampaignRepo.On("GetByID", mock.Anything, campaignID).
 			Return(activeCampaign, nil)
 		agentCampaignRepo.On("UpdateFields", mock.Anything, campaignID, mock.Anything).
+			Return(nil)
+		agentMessageRepo.On("DeleteByCampaignID", mock.Anything, campaignID).
 			Return(nil)
 		agentCampaignRepo.On("Delete", mock.Anything, campaignID).
 			Return(nil)
@@ -295,6 +302,7 @@ func TestAgentUseCase_DeleteAgentCampaign(t *testing.T) {
 		// 驗證結果
 		assert.NoError(t, err)
 		agentCampaignRepo.AssertExpectations()
+		agentMessageRepo.AssertExpectations()
 	})
 }
 
@@ -1073,6 +1081,8 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 						Return(campaign, nil)
 				}
 
+				agentMessageRepo.On("BatchDeleteByCampaignIDs", mock.Anything, []uint64{1, 2, 3}).
+					Return(nil)
 				agentCampaignRepo.On("BatchDelete", mock.Anything, []uint64{1, 2, 3}).
 					Return(nil)
 			},
@@ -1114,6 +1124,8 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 					Return(campaign3, nil)
 
 				// Only valid campaigns are deleted
+				agentMessageRepo.On("BatchDeleteByCampaignIDs", mock.Anything, []uint64{1, 3}).
+					Return(nil)
 				agentCampaignRepo.On("BatchDelete", mock.Anything, []uint64{1, 3}).
 					Return(nil)
 			},
@@ -1135,6 +1147,8 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 						Return(campaign, nil)
 				}
 				// BatchDelete call expected for all valid campaigns
+				agentMessageRepo.On("BatchDeleteByCampaignIDs", mock.Anything, []uint64{1, 2}).
+					Return(nil)
 				agentCampaignRepo.On("BatchDelete", mock.Anything, []uint64{1, 2}).
 					Return(nil)
 			},
@@ -1152,6 +1166,8 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 
 				agentCampaignRepo.On("GetByID", mock.Anything, uint64(1)).
 					Return(campaign, nil)
+				agentMessageRepo.On("BatchDeleteByCampaignIDs", mock.Anything, []uint64{1}).
+					Return(nil)
 				agentCampaignRepo.On("BatchDelete", mock.Anything, []uint64{1}).
 					Return(errors.New("database error"))
 			},
@@ -1165,6 +1181,8 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 			// 重置mock以避免測試間干擾
 			agentCampaignRepo.ExpectedCalls = agentCampaignRepo.ExpectedCalls[:0]
 			agentCampaignRepo.Calls = agentCampaignRepo.Calls[:0]
+			agentMessageRepo.ExpectedCalls = agentMessageRepo.ExpectedCalls[:0]
+			agentMessageRepo.Calls = agentMessageRepo.Calls[:0]
 
 			tc.setupMock()
 

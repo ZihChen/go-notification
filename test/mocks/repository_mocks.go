@@ -1227,6 +1227,22 @@ func (m *AgentMessageRepositoryMock) Delete(ctx context.Context, id uint64) erro
 	return args.Error(0)
 }
 
+func (m *AgentMessageRepositoryMock) DeleteByCampaignID(
+	ctx context.Context,
+	campaignID uint64,
+) error {
+	args := m.Called(ctx, campaignID)
+	return args.Error(0)
+}
+
+func (m *AgentMessageRepositoryMock) BatchDeleteByCampaignIDs(
+	ctx context.Context,
+	campaignIDs []uint64,
+) error {
+	args := m.Called(ctx, campaignIDs)
+	return args.Error(0)
+}
+
 func (m *AgentMessageRepositoryMock) CreateBatch(
 	ctx context.Context,
 	messages []*entity.AgentMessage,

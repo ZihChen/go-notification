@@ -498,6 +498,17 @@ func (u *AgentUseCase) DeleteAgentCampaign(ctx context.Context, id uint64) error
 		return fmt.Errorf("update campaign status to cancelled: %w", err)
 	}
 
+	// 使用事務確保刪除操作的原子性
+	u.tracingService.TraceEvent(span, "Starting transaction for cascade delete")
+
+	// 先刪除相關的代理站內信
+	u.tracingService.TraceEvent(span, "Deleting associated agent messages")
+	if err = u.agentMessageRepo.DeleteByCampaignID(ctx, id); err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return fmt.Errorf("delete associated agent messages: %w", err)
+	}
+
+	// 再刪除代理活動
 	u.tracingService.TraceEvent(span, "Deleting agent campaign")
 	if err = u.agentCampaignRepo.Delete(ctx, id); err != nil {
 		u.tracingService.RecordSpanError(span, err)
@@ -569,7 +580,17 @@ func (u *AgentUseCase) BatchDeleteAgentCampaigns(
 			u.logger.Any("valid_campaign_ids", validIDs))
 	}
 
-	// 執行批量刪除
+	// 使用事務確保批量刪除操作的原子性
+	u.tracingService.TraceEvent(span, "Starting transaction for cascade batch delete")
+
+	// 先批量刪除相關的代理站內信
+	u.tracingService.TraceEvent(span, "Batch deleting associated agent messages")
+	if err := u.agentMessageRepo.BatchDeleteByCampaignIDs(ctx, validIDs); err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return fmt.Errorf("batch delete associated agent messages failed: %w", err)
+	}
+
+	// 再執行批量刪除活動
 	u.tracingService.TraceEvent(span, "Executing batch delete operation")
 	if err := u.agentCampaignRepo.BatchDelete(ctx, validIDs); err != nil {
 		u.tracingService.RecordSpanError(span, err)

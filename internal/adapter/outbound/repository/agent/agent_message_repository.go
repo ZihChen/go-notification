@@ -87,6 +87,35 @@ func (r *AgentMessageRepository) Delete(ctx context.Context, id uint64) error {
 	return nil
 }
 
+// DeleteByCampaignID 根據活動ID刪除所有關聯的代理站內信 (軟刪除)
+func (r *AgentMessageRepository) DeleteByCampaignID(ctx context.Context, campaignID uint64) error {
+	result := r.db.WithContext(ctx).
+		Where("agent_campaign_id = ?", campaignID).
+		Delete(&models.AgentMessage{})
+	if result.Error != nil {
+		return fmt.Errorf("delete agent messages by campaign ID failed: %w", result.Error)
+	}
+	return nil
+}
+
+// BatchDeleteByCampaignIDs 根據活動ID列表批量刪除所有關聯的代理站內信 (軟刪除)
+func (r *AgentMessageRepository) BatchDeleteByCampaignIDs(
+	ctx context.Context,
+	campaignIDs []uint64,
+) error {
+	if len(campaignIDs) == 0 {
+		return nil
+	}
+
+	result := r.db.WithContext(ctx).
+		Where("agent_campaign_id IN ?", campaignIDs).
+		Delete(&models.AgentMessage{})
+	if result.Error != nil {
+		return fmt.Errorf("batch delete agent messages by campaign IDs failed: %w", result.Error)
+	}
+	return nil
+}
+
 // CreateBatch 批量創建代理站內信 (使用UPSERT避免重複寫入)
 func (r *AgentMessageRepository) CreateBatch(
 	ctx context.Context,
