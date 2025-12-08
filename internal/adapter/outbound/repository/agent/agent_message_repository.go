@@ -253,7 +253,8 @@ func (r *AgentMessageRepository) ListByAgent(
 			agents.global_agent_id
 		`).
 		Joins("LEFT JOIN agent_campaigns ON agent_messages.agent_campaign_id = agent_campaigns.id").
-		Joins("LEFT JOIN agents ON agent_messages.agent_id = agents.id")
+		Joins("LEFT JOIN agents ON agent_messages.agent_id = agents.id").
+		Where("agent_messages.deleted_at IS NULL")
 
 	// 只保留 agent_id 查詢條件
 	if query.AgentID > 0 {
@@ -354,6 +355,7 @@ func (r *AgentMessageRepository) GetMessageStats(
 			SUM(CASE WHEN is_read = false THEN 1 ELSE 0 END) as unread_count
 		`).
 		Where("agent_id = ?", agentID).
+		Where("deleted_at IS NULL").
 		Scan(&result).Error; err != nil {
 		return nil, fmt.Errorf("get message stats failed: %w", err)
 	}
