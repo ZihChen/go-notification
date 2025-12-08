@@ -45,18 +45,24 @@ func NewQueueService(
 ) (service.QueueService, error) {
 	redisAddr := fmt.Sprintf("%s:%d", cfg.Redis.Domain, cfg.Redis.Port)
 
-	logger.InfoLog("Connecting to Redis",
+	// 根據環境獲取佇列配置
+	queueConfig := getQueueConfigByEnv(cfg.App.Env)
+
+	logger.InfoLog("Connecting to Redis with environment-specific config",
 		logger.String("redis_addr", redisAddr),
-		logger.Int("redis_db", cfg.Redis.DB))
+		logger.Int("redis_db", cfg.Redis.DB),
+		logger.String("environment", cfg.App.Env),
+		logger.Int("pool_size", queueConfig.RedisPoolSize),
+		logger.String("dial_timeout", queueConfig.RedisDialTimeout.String()))
 
 	redisOpt := asynq.RedisClientOpt{
 		Addr:         redisAddr,
 		Password:     cfg.Redis.Password,
 		DB:           cfg.Redis.DB,
-		PoolSize:     5,
-		DialTimeout:  5 * time.Second,
-		ReadTimeout:  3 * time.Second,
-		WriteTimeout: 3 * time.Second,
+		PoolSize:     queueConfig.RedisPoolSize,
+		DialTimeout:  queueConfig.RedisDialTimeout,
+		ReadTimeout:  queueConfig.RedisReadTimeout,
+		WriteTimeout: queueConfig.RedisWriteTimeout,
 	}
 
 	client := asynq.NewClient(redisOpt)
@@ -301,37 +307,40 @@ func NewWorkerServer(
 ) (*asynq.Server, error) {
 	redisAddr := fmt.Sprintf("%s:%d", cfg.Redis.Domain, cfg.Redis.Port)
 
-	logger.InfoLog("Creating worker server",
+	// 根據環境獲取工作器配置
+	workerConfig := getQueueConfigByEnv(cfg.App.Env)
+
+	logger.InfoLog("Creating worker server with environment-specific config",
 		logger.String("redis_addr", redisAddr),
-		logger.Int("redis_db", cfg.Redis.DB))
+		logger.Int("redis_db", cfg.Redis.DB),
+		logger.String("environment", cfg.App.Env),
+		logger.Int("pool_size", workerConfig.RedisPoolSize),
+		logger.String("dial_timeout", workerConfig.RedisDialTimeout.String()))
 
 	redisOpt := asynq.RedisClientOpt{
 		Addr:         redisAddr,
 		Password:     cfg.Redis.Password,
 		DB:           cfg.Redis.DB,
-		PoolSize:     10,
-		DialTimeout:  5 * time.Second,
-		ReadTimeout:  3 * time.Second,
-		WriteTimeout: 3 * time.Second,
+		PoolSize:     workerConfig.RedisPoolSize,
+		DialTimeout:  workerConfig.RedisDialTimeout,
+		ReadTimeout:  workerConfig.RedisReadTimeout,
+		WriteTimeout: workerConfig.RedisWriteTimeout,
 	}
 
-	// 設置服務器配置
-	concurrency := 6
-	queues := map[string]int{
-		"critical": 5, // 41.7%資源 (高優先級)
-		"agent":    4, // 33.3%資源 (代理同步優化)
-		"default":  3, // 25%資源   (一般任務)
-	}
-
-	logger.InfoLog("Worker server configuration",
-		logger.Int("concurrency", concurrency),
-		logger.Any("queues", queues))
+	logger.InfoLog("Worker server environment-specific configuration",
+		logger.String("environment", cfg.App.Env),
+		logger.Int("concurrency", workerConfig.Concurrency),
+		logger.Any("queue_priorities", workerConfig.QueuePriorities),
+		logger.Int("max_retries", workerConfig.MaxRetries),
+		logger.String("task_timeout", workerConfig.TaskTimeout.String()))
 
 	server := asynq.NewServer(
 		redisOpt,
 		asynq.Config{
-			Concurrency: concurrency,
-			Queues:      queues,
+			Concurrency:     workerConfig.Concurrency,
+			Queues:          workerConfig.QueuePriorities,
+			ShutdownTimeout: 30 * time.Second,
+			StrictPriority:  true,
 			RetryDelayFunc: func(n int, err error, task *asynq.Task) time.Duration {
 				defer func() {
 					if r := recover(); r != nil {
@@ -349,16 +358,9 @@ func NewWorkerServer(
 						logger.String("payload", string(task.Payload())))
 				}
 
-				// 使用指數退避策略，但設置上限
-				delay := time.Duration(n*n) * time.Second
-				maxDelay := 5 * time.Minute
-				if delay > maxDelay {
-					delay = maxDelay
-				}
-				return delay
+				// 使用環境配置的重試延遲策略
+				return workerConfig.RetryDelay(n)
 			},
-			ShutdownTimeout: 15 * time.Second,
-			StrictPriority:  true,
 			ErrorHandler: asynq.ErrorHandlerFunc(
 				func(ctx context.Context, task *asynq.Task, err error) {
 					taskID := "unknown"
