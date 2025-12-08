@@ -4,7 +4,7 @@ global:
 env:
   # 應用程序設置
   APP_NAME: "fat-notification-cat"
-  APP_ENV: "development"
+  APP_ENV: "production"
   APP_PORT: "8080"
   APP_DEBUG: "true"
 
@@ -75,6 +75,11 @@ env:
   EVENT_IDENTITY_PLAYER_TAGS_SYNC: "tw.jvd.fatidentitycat.playertags.sync.v1"
   EVENT_IDENTITY_AGENT_SYNC: "tw.jvd.fatidentitycat.agent.sync.v1"
 
+  # API AUTH 設置
+  AUTH_ENABLED: "true"
+  AUTH_API_KEYS: 'REDACTED_API_KEYS'
+  AUTH_HEADER_KEY: "API-Key"
+  AUTH_ENCRYPTION_TYPE: "base64"
 
 encryptedEnv:
   DB_PASSWORD: AgA8NSAcBkWMeqqydEht+eku/fWJTQtsBz9RTsUTHR46l7iCRCtbdOjfZy4g6lylZrworjIwNwLMSZOpZO8TREThu3kln+gjQoZHpBewMtuaREkt8sZQqvpo/N8e3ccgyDJnI3+gkTsKmaYQvhREkcLe6kE5o6eNEP0JF62c0bMqfzR76Wik06uRvY36AU1ymILNYqFJiGHtM4nnobYvqhZaOWYAooJsvxpA7E01GczHEOC2UVuBtskU9tkgHuE+023aBAPQezIRdC17cEsZLio3PeNfq+YSAQVIy3W0oNGLthRPHtuwgdOZ2R7+bUqeS1k4jL7wTDIfJYZZaWpj/Hp+FQH+7k49Chd2jUwjjF3gkMAUO+E6elw96azqT2XD2ZNwBFIubfa+O10Z2fGjD46WzUH6rdsmiirjORu4DW8O8XsDrhaHXNsd2G9BE10zqw3goK8a2INBaS5Nlfzanh1S2AN2N8R2ew8j8zKDQTclxRhRaBinArrd6eCtJaYQINthjzyRgFu7aeASk4uGThAK+185suU50uTc20fNvwzvenfhQXo8AlCh4c+6ywrkt5M3jhtJ+hIfGQM9E69oY6lyCiOBma1nmE9AwyehntcX3TldfZGhejmKJllp5KfKzfPryVynZFw3535BoQYxUR4q+nJygDCaIhRTc6COkPakXec0mJlyyujelrRNuFiYdMFp8UQJQRDxVJ7g3ypmTuPOqKudWgwTzESK5DfZljd1JWcvr4QrjgHnoRVz8J9OOMk1Ef4iuQ==
