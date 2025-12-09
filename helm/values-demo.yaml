@@ -50,6 +50,15 @@ env:
   # AWS KDS設置
   AWS_REGION: "ap-northeast-1"
 
+  # Consumer 設置
+  CONSUMER_BATCH_SIZE: "300"
+  CONSUMER_KDS_RECORD_LIMIT: "2000"
+  CONSUMER_WORKER_POOL_SIZE: "15"
+  CONSUMER_WORKER_BUFFER_SIZE: "500"
+  CONSUMER_MIN_BACKOFF: "500ms"
+  CONSUMER_MAX_BACKOFF: "5s"
+  CONSUMER_MAX_SHARD_CONCURRENCY: "8"
+
   # Producer 發送事件用
   KINESIS_STREAM_NAME: "ms-identity-lab"
   KINESIS_STREAM_ARN: "arn:aws:kinesis:ap-northeast-1:637423324672:stream/ms-bonus-rd"
