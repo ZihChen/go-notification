@@ -153,7 +153,14 @@ func (k *KDSService) ConsumeAllEvents(ctx context.Context) error {
 		case <-ctx.Done():
 			// 上下文已取消，直接退出
 			if shardMutex != nil {
-				shardMutex.Unlock()
+				if ok, unlockErr := shardMutex.Unlock(); !ok || unlockErr != nil {
+					k.logger.WarnWithContext(
+						ctx,
+						"Context has been cancelled and failed to release shard lock",
+						k.logger.String("shard_id", shardId),
+						k.logger.Error("err", unlockErr),
+					)
+				}
 			}
 			shardWaiters.Done()
 			return ctx.Err()
@@ -164,7 +171,14 @@ func (k *KDSService) ConsumeAllEvents(ctx context.Context) error {
 				k.logger.String("shard_id", shardId),
 				k.logger.Int("max_concurrent_shards", maxConcurrentShards))
 			if shardMutex != nil {
-				shardMutex.Unlock()
+				if ok, unlockErr := shardMutex.Unlock(); !ok || unlockErr != nil {
+					k.logger.WarnWithContext(
+						ctx,
+						"Shard semaphore full and failed to release shard lock",
+						k.logger.String("shard_id", shardId),
+						k.logger.Error("err", unlockErr),
+					)
+				}
 			}
 			shardWaiters.Done()
 		}
