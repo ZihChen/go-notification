@@ -29,10 +29,6 @@ const (
 	// processedEventKeyPrefix 處理過的事件在Redis中的key前綴
 	// 格式：kds:processed:{eventId}
 	processedEventKeyPrefix = "kds:processed:"
-
-	// consumerProcessedTTL 分片處理的分佈式鎖最大持有時間
-	// 防止多個消費者同時處理同一個分片
-	consumerProcessedTTL = 1 * time.Minute
 )
 
 // EventPayload 代表從Kinesis中解析出的事件負載
@@ -213,7 +209,7 @@ func (k *KDSService) consumeShardEventsWithSemaphore(
 			k.logger.String("shard_id", shardId))
 	}()
 
-	k.logger.InfoWithContext(ctx, "Acquired shard semaphore permit", 
+	k.logger.InfoWithContext(ctx, "Acquired shard semaphore permit",
 		k.logger.String("shard_id", shardId))
 
 	// 調用原有的分片處理邏輯
@@ -236,7 +232,7 @@ func (k *KDSService) acquireShardLock(
 	shardId string,
 ) infrastructure.DistributedMutex {
 	mutexKey := fmt.Sprintf(constants.ShardMutexRedisKey, k.consumeStream, shardId)
-	mutex, mutexErr := k.lockManager.GetMutex(mutexKey, consumerProcessedTTL)
+	mutex, mutexErr := k.lockManager.GetMutex(mutexKey, k.config.Consumer.ShardLockTimeout)
 	if mutexErr != nil {
 		// Redis連線異常仍執行後面程序
 		k.logger.WarnWithContext(ctx, "Failed to create mutex, skipping lock logic",
