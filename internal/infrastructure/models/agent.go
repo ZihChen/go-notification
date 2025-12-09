@@ -29,7 +29,7 @@ type AgentCampaign struct {
 	ID            uint64         `gorm:"primaryKey;autoIncrement"                                                                            json:"id"`
 	MerchantID    uint64         `gorm:"index;not null"                                                                                      json:"merchant_id"`
 	Title         string         `gorm:"size:255;not null"                                                                                   json:"title"`
-	Content       string         `gorm:"type:text;not null"                                                                                  json:"content"`
+	Content       string         `gorm:"type:mediumtext;not null"                                                                                  json:"content"`
 	ScheduledAt   *time.Time     `gorm:"type:datetime;index"                                                                                 json:"scheduled_at,omitempty"`
 	Status        string         `gorm:"type:enum('draft','scheduled','sending','sent','failed','cancelled');not null;default:'draft';index" json:"status"`
 	TargetType    string         `gorm:"type:enum('all','specific','line');not null"                                                         json:"target_type"`

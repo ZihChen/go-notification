@@ -1,4 +1,4 @@
-h1:o6rgeGN/CrmJO3bXam/2l47J/REReYBvEc8WcFzxgQM=
+h1:xvczRYzCHzVV4UEiBMmRoRNT8JOIUad2AJ9hrI8EB4Q=
 20250714052909_init.sql h1:VLYnlk762Xa/xC+kB3ZAuSl8cJ8sUuYSx4I4kP2K0tQ=
 20250731063541_create_level_table.sql h1:9TAZCgjx6HWhMg3bo3IK3XskS/ksCx+usnp/UXJ3cio=
 20250731073029_create_player_tags_table.sql h1:p2kmgsa2hL7S6qL3Q9dg4fXBbEFik1X7jtH6Fn7wwqM=
@@ -21,3 +21,4 @@ h1:o6rgeGN/CrmJO3bXam/2l47J/REReYBvEc8WcFzxgQM=
 20251112080625_alter_agent_campaign_status.sql h1:qokIiOPv1YC+b0HUlCLB/ZTYjnxUIFhrjW2JH3DVQcE=
 20251118053620_add_unique_constraint_to_agent_messages.sql h1:0h1U2R3CubqVk6kUJJUkYyRdFGaV9vVBx4Eppq+hDgY=
 20251118065803_create_failed_task_events_table.sql h1:fRznuLrvHsEWzA+RhYuRYANLWB53GkOqWNrmgq5EplQ=
+20251209084118_alter_agent_campaign_content.sql h1:x9TsBJQmYD1bRH6mOFZMIclHdtjMKhQo8Su6FznMCTM=
