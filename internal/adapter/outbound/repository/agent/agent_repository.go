@@ -346,7 +346,7 @@ func (r *AgentRepository) BatchGetOrCreateAgentsByGlobalIDs(
 			return nil, fmt.Errorf("batch create agents failed: %w", err)
 		}
 
-		// 重新查詢所有需要創建的代理以獲取正確的ID
+		// 重新查詢新創建的代理以獲取ID（只查詢剛創建的，減少查詢範圍）
 		var createdAgents []models.Agent
 		if err := r.db.WithContext(ctx).
 			Where("global_agent_id IN ? AND merchant_id = ?", toCreateGlobalIDs, merchantID).
@@ -354,7 +354,7 @@ func (r *AgentRepository) BatchGetOrCreateAgentsByGlobalIDs(
 			return nil, fmt.Errorf("query created agents failed: %w", err)
 		}
 
-		// 將代理ID添加到結果中
+		// 將新創建的代理ID添加到結果中
 		for _, agent := range createdAgents {
 			result[agent.GlobalAgentID] = agent.ID
 		}

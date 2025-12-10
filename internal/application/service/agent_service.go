@@ -142,12 +142,22 @@ func (s *AgentService) SyncAgentRelationshipsUpsert(
 		return fmt.Errorf("current agent ID not found for %s", agentEvent.GlobalAgentID)
 	}
 
-	// 批量更新關係 (效能優化)
-	s.tracingService.TraceEvent(span, "Batch updating agent relationships")
+	// 🔍 詳細追踪：批量更新關係處理
+	ctx, updateSpan := s.tracingService.StartSpan(ctx, "AgentService.BatchUpdateRelationships")
+	s.tracingService.RecordSpanAttributes(updateSpan,
+		attribute.Int64("update.target_agent_id", int64(currentAgentID)),
+		attribute.Int("update.relationships_count", len(relationships)))
+
 	if err = s.relationRepo.BatchUpdate(ctx, currentAgentID, relationships); err != nil {
 		s.tracingService.RecordSpanError(span, err)
+		s.tracingService.RecordSpanError(updateSpan, err)
+		s.tracingService.SpanEnd(updateSpan)
 		return fmt.Errorf("batch update relationships: %w", err)
 	}
+
+	s.tracingService.RecordSpanAttributes(updateSpan,
+		attribute.Bool("update.success", true))
+	s.tracingService.SpanEnd(updateSpan)
 
 	// 清除相關快取
 	s.clearCache(agentEvent.GlobalAgentID)

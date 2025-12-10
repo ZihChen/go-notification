@@ -29,7 +29,7 @@ type AgentCampaign struct {
 	ID            uint64         `gorm:"primaryKey;autoIncrement"                                                                            json:"id"`
 	MerchantID    uint64         `gorm:"index;not null"                                                                                      json:"merchant_id"`
 	Title         string         `gorm:"size:255;not null"                                                                                   json:"title"`
-	Content       string         `gorm:"type:mediumtext;not null"                                                                                  json:"content"`
+	Content       string         `gorm:"type:mediumtext;not null"                                                                            json:"content"`
 	ScheduledAt   *time.Time     `gorm:"type:datetime;index"                                                                                 json:"scheduled_at,omitempty"`
 	Status        string         `gorm:"type:enum('draft','scheduled','sending','sent','failed','cancelled');not null;default:'draft';index" json:"status"`
 	TargetType    string         `gorm:"type:enum('all','specific','line');not null"                                                         json:"target_type"`
@@ -67,8 +67,8 @@ func (*AgentMessage) TableName() string {
 
 // AgentRelationship 代理關係數據模型 - 雙主鍵設計
 type AgentRelationship struct {
-	ParentID   uint64    `gorm:"primaryKey;not null"                                                 json:"parent_id"`   // 父代理 agents.id (複合主鍵1)
-	ChildID    uint64    `gorm:"primaryKey;not null"                                                 json:"child_id"`    // 子代理 agents.id (複合主鍵2)
+	ParentID   uint64    `gorm:"primaryKey;not null;index"                                           json:"parent_id"`   // 父代理 agents.id (複合主鍵1)
+	ChildID    uint64    `gorm:"primaryKey;not null;index"                                           json:"child_id"`    // 子代理 agents.id (複合主鍵2)
 	DepthLevel int       `gorm:"not null;index"                                                      json:"depth_level"` // 層級深度
 	PathHash   string    `gorm:"size:64;index"                                                       json:"path_hash"`   // 路徑hash，用於快速比對
 	CreatedAt  time.Time `gorm:"type:datetime;default:CURRENT_TIMESTAMP"                             json:"created_at"`  // 創建時間

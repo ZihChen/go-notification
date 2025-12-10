@@ -61,7 +61,7 @@ func (r *AgentRelationshipRepository) BatchUpdate(
 		return r.clearAgentRelationships(ctx, targetAgentID)
 	}
 
-	// 檢查是否已有相同AgentID正在處理
+	// 檢查是否已有相同AgentID正在處理（保留併發保護）
 	if _, isProcessing := r.processing.LoadOrStore(targetAgentID, true); isProcessing {
 		// 如果正在處理，直接返回成功（去重複）
 		log.Printf("Agent %d is already being processed, skipping duplicate request", targetAgentID)
@@ -79,7 +79,7 @@ func (r *AgentRelationshipRepository) BatchUpdate(
 		ctx:           ctx,
 	}
 
-	// 非阻塞式放入佇列
+	// 非阻塞式放入佇列，避免共同祖先競爭
 	select {
 	case r.batchQueue <- req:
 		// 等待處理結果
