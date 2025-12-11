@@ -12,7 +12,7 @@ import (
 type AgentRepository interface {
 	// 基本 CRUD 操作
 	GetByGlobalID(ctx context.Context, globalAgentID string) (*entity.Agent, error)
-	GetByAccount(ctx context.Context, account string) (*entity.Agent, error)
+	GetByAccount(ctx context.Context, merchantID uint64, account string) (*entity.Agent, error)
 
 	// 冪等性操作
 	Upsert(ctx context.Context, agent *entity.Agent) error
@@ -33,7 +33,11 @@ type AgentRepository interface {
 		merchantID uint64,
 	) (map[string]uint64, error)
 	BatchGetAgentsByIDs(ctx context.Context, agentIDs []uint64) ([]*entity.Agent, error)
-	BatchGetAgentsByAccounts(ctx context.Context, accounts []string) ([]*entity.Agent, error)
+	BatchGetAgentsByAccounts(
+		ctx context.Context,
+		merchantID uint64,
+		accounts []string,
+	) ([]*entity.Agent, error)
 	BatchGetActiveAgentsByGlobalIDs(
 		ctx context.Context,
 		globalIDs []string,

@@ -88,13 +88,17 @@ func (r *AgentRepository) FindAgents(
 	return agents, nil
 }
 
-func (r *AgentRepository) GetByAccount(ctx context.Context, account string) (*entity.Agent, error) {
+func (r *AgentRepository) GetByAccount(
+	ctx context.Context,
+	merchantID uint64,
+	account string,
+) (*entity.Agent, error) {
 	var agentModel models.Agent
-	if err := r.db.WithContext(ctx).Where("account = ?", account).First(&agentModel).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("account = ? AND merchant_id = ?", account, merchantID).First(&agentModel).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("get agent by gaccount failed: %w", err)
+		return nil, fmt.Errorf("get agent by account failed: %w", err)
 	}
 
 	return r.modelToEntity(&agentModel), nil
@@ -418,6 +422,7 @@ func (r *AgentRepository) BatchGetAgentsByIDs(
 // BatchGetAgentsByAccounts 批量根據賬號獲取代理
 func (r *AgentRepository) BatchGetAgentsByAccounts(
 	ctx context.Context,
+	merchantID uint64,
 	accounts []string,
 ) ([]*entity.Agent, error) {
 	if len(accounts) == 0 {
@@ -426,7 +431,7 @@ func (r *AgentRepository) BatchGetAgentsByAccounts(
 
 	var agentModels []models.Agent
 	if err := r.db.WithContext(ctx).
-		Where("account IN ?", accounts).
+		Where("account IN ? AND merchant_id = ?", accounts, merchantID).
 		Find(&agentModels).Error; err != nil {
 		return nil, fmt.Errorf("batch get agents by accounts failed: %w", err)
 	}

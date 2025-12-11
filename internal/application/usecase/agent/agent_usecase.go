@@ -1126,7 +1126,11 @@ func (u *AgentUseCase) processBatchAgentsForSpecific(
 		batchAccounts := targetAccounts[i:end]
 
 		// 批量獲取代理詳細資訊
-		batchAgents, err := u.agentRepo.BatchGetAgentsByAccounts(ctx, batchAccounts)
+		batchAgents, err := u.agentRepo.BatchGetAgentsByAccounts(
+			ctx,
+			campaign.MerchantID,
+			batchAccounts,
+		)
 		if err != nil {
 			u.tracingService.RecordSpanError(span, err)
 			u.logger.WarnLog("Failed to get batch agents",
@@ -1176,7 +1180,7 @@ func (u *AgentUseCase) processBatchAgentsForLine(
 		attribute.Int64("campaign.id", int64(campaign.ID)),
 		attribute.String("account", account))
 
-	parentAgent, err := u.agentRepo.GetByAccount(ctx, account)
+	parentAgent, err := u.agentRepo.GetByAccount(ctx, campaign.MerchantID, account)
 	if err != nil {
 		u.tracingService.RecordSpanError(span, err)
 		return 0, 0, fmt.Errorf("get agent by account: %w", err)
@@ -1501,7 +1505,7 @@ func (u *AgentUseCase) shouldAgentReceiveLineCampaign(
 	parentAccount := campaign.TargetDetails[0]
 
 	// 獲取父代理信息以取得其 GlobalAgentID
-	parentAgent, err := u.agentRepo.GetByAccount(ctx, parentAccount)
+	parentAgent, err := u.agentRepo.GetByAccount(ctx, campaign.MerchantID, parentAccount)
 	if err != nil {
 		return false, fmt.Errorf("get parent agent by account: %w", err)
 	}

@@ -955,9 +955,10 @@ func (m *AgentRepositoryMock) GetByGlobalID(
 
 func (m *AgentRepositoryMock) GetByAccount(
 	ctx context.Context,
+	merchantID uint64,
 	account string,
 ) (*entity.Agent, error) {
-	args := m.Called(ctx, account)
+	args := m.Called(ctx, merchantID, account)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -1015,9 +1016,10 @@ func (m *AgentRepositoryMock) BatchGetAgentsByIDs(
 
 func (m *AgentRepositoryMock) BatchGetAgentsByAccounts(
 	ctx context.Context,
+	merchantID uint64,
 	accounts []string,
 ) ([]*entity.Agent, error) {
-	args := m.Called(ctx, accounts)
+	args := m.Called(ctx, merchantID, accounts)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

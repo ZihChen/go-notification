@@ -971,12 +971,13 @@ func TestAgentUseCase_BackfillMissedMessages_LineTargetType(t *testing.T) {
 		Account:       "parent-account",
 		GlobalAgentID: "parent-account", // 需要 GlobalAgentID 進行字串比對
 	}
-	agentRepo.On("GetByAccount", ctx, "parent-account").Return(parentAgent, nil)
+	agentRepo.On("GetByAccount", ctx, uint64(1), "parent-account").Return(parentAgent, nil)
 
 	// 創建 line 類型的活動
 	campaigns := []*entity.AgentCampaign{
 		{
 			ID:            1,
+			MerchantID:    1,
 			TargetType:    "line",
 			TargetDetails: []string{"parent-account"}, // 父代理帳號
 		},
@@ -1256,12 +1257,13 @@ func TestAgentUseCase_BackfillMissedMessages_LineTargetType_NotInAncestry(t *tes
 		Account:       "parent-account",
 		GlobalAgentID: "parent-account",
 	}
-	agentRepo.On("GetByAccount", ctx, "parent-account").Return(parentAgent, nil)
+	agentRepo.On("GetByAccount", ctx, uint64(1), "parent-account").Return(parentAgent, nil)
 
 	// 創建 line 類型的活動
 	campaigns := []*entity.AgentCampaign{
 		{
 			ID:            1,
+			MerchantID:    1,
 			TargetType:    "line",
 			TargetDetails: []string{"parent-account"},
 		},

@@ -239,19 +239,21 @@ func TestAgentRepository_GetByAccount(t *testing.T) {
 
 	tests := []struct {
 		name          string
+		merchantID    uint64
 		account       string
 		setupMock     func(sqlmock.Sqlmock)
 		expectedAgent *entity.Agent
 		expectedError error
 	}{
 		{
-			name:    "get agent by account successfully",
-			account: "agent123",
+			name:       "get agent by account successfully",
+			merchantID: 100,
+			account:    "agent123",
 			setupMock: func(mock sqlmock.Sqlmock) {
 				rows := sqlmock.NewRows([]string{"id", "merchant_id", "global_agent_id", "account", "ancestry", "current_sign_in_at", "created_at", "updated_at"}).
 					AddRow(1, 100, "AGENT-123", "agent123", "", time.Now(), time.Now(), time.Now())
-				mock.ExpectQuery("SELECT .* FROM `agents` WHERE account = .* AND .*deleted_at.* IS NULL ORDER BY .*id.* LIMIT .*").
-					WithArgs("agent123", 1).
+				mock.ExpectQuery("SELECT .* FROM `agents` WHERE \\(account = \\? AND merchant_id = \\?\\) AND .*deleted_at.* IS NULL ORDER BY .*id.* LIMIT .*").
+					WithArgs("agent123", 100, 1).
 					WillReturnRows(rows)
 			},
 			expectedAgent: &entity.Agent{
@@ -268,7 +270,7 @@ func TestAgentRepository_GetByAccount(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setupMock(mock)
 
-			agent, err := repo.GetByAccount(ctx, tt.account)
+			agent, err := repo.GetByAccount(ctx, tt.merchantID, tt.account)
 
 			if tt.expectedError != nil {
 				assert.Error(t, err)
@@ -297,20 +299,22 @@ func TestAgentRepository_BatchGetAgentsByAccounts(t *testing.T) {
 
 	tests := []struct {
 		name           string
+		merchantID     uint64
 		accounts       []string
 		setupMock      func(sqlmock.Sqlmock)
 		expectedAgents []*entity.Agent
 		expectedError  error
 	}{
 		{
-			name:     "batch get agents by accounts successfully",
-			accounts: []string{"agent123", "agent456"},
+			name:       "batch get agents by accounts successfully",
+			merchantID: 100,
+			accounts:   []string{"agent123", "agent456"},
 			setupMock: func(mock sqlmock.Sqlmock) {
 				rows := sqlmock.NewRows([]string{"id", "merchant_id", "global_agent_id", "account", "ancestry", "current_sign_in_at", "created_at", "updated_at"}).
 					AddRow(1, 100, "AGENT-123", "agent123", "", time.Now(), time.Now(), time.Now()).
 					AddRow(2, 100, "AGENT-456", "agent456", "", time.Now(), time.Now(), time.Now())
-				mock.ExpectQuery("SELECT .* FROM `agents` WHERE account IN \\(.+\\) AND .*deleted_at.* IS NULL").
-					WithArgs("agent123", "agent456").
+				mock.ExpectQuery("SELECT .* FROM `agents` WHERE \\(account IN \\(.+\\) AND merchant_id = \\?\\) AND .*deleted_at.* IS NULL").
+					WithArgs("agent123", "agent456", 100).
 					WillReturnRows(rows)
 			},
 			expectedAgents: []*entity.Agent{
@@ -321,6 +325,7 @@ func TestAgentRepository_BatchGetAgentsByAccounts(t *testing.T) {
 		},
 		{
 			name:           "empty accounts slice",
+			merchantID:     100,
 			accounts:       []string{},
 			setupMock:      func(mock sqlmock.Sqlmock) {},
 			expectedAgents: []*entity.Agent{},
@@ -332,7 +337,7 @@ func TestAgentRepository_BatchGetAgentsByAccounts(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setupMock(mock)
 
-			agents, err := repo.BatchGetAgentsByAccounts(ctx, tt.accounts)
+			agents, err := repo.BatchGetAgentsByAccounts(ctx, tt.merchantID, tt.accounts)
 
 			if tt.expectedError != nil {
 				assert.Error(t, err)
