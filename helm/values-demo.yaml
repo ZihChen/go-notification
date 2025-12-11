@@ -67,12 +67,12 @@ env:
   DYNAMODB_PARTITION_KEY: "partition_key"
 
   # OpenObserve設置
-  OPENOBSERVE_TRACE_API_ENDPOINT: "https://watchdog-ob.panpancat.click/api/jvd-dev/traces"
+  OPENOBSERVE_TRACE_API_ENDPOINT: "https://watchdog-ob.panpancat.click/api/jvd-staging/traces"
   # OPENOBSERVE_TRACE_API_KEY: <secret>
-  OPENOBSERVE_TRACE_STREAM_NAME: "fat_notification_cat"
+  OPENOBSERVE_TRACE_STREAM_NAME: "quantumcat"
 
   # OpenObserve logs設置
-  OPENOBSERVE_LOGS_API_ENDPOINT: "https://watchdog-ob.panpancat.click/api/jvd-dev/default/_json"
+  OPENOBSERVE_LOGS_API_ENDPOINT: "https://watchdog-ob.panpancat.click/api/jvd-staging/default/_json"
   OPENOBSERVE_LOGS_USERNAME: "REDACTED_OO_USERNAME"
   # OPENOBSERVE_LOGS_PASSWORD: <secret>
 

@@ -69,7 +69,7 @@ env:
   # OpenObserve設置
   OPENOBSERVE_TRACE_API_ENDPOINT: "https://watchdog-ob.panpancat.click/api/jvd-prod/traces"
   # OPENOBSERVE_TRACE_API_KEY: <secret>
-  OPENOBSERVE_TRACE_STREAM_NAME: "fat_notification_cat"
+  OPENOBSERVE_TRACE_STREAM_NAME: "quantumcat"
 
   # OpenObserve logs設置
   OPENOBSERVE_LOGS_API_ENDPOINT: "https://watchdog-ob.panpancat.click/api/jvd-prod/default/_json"
