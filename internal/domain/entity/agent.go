@@ -70,12 +70,23 @@ func (ac *AgentCampaign) UpdateFromRequest(req *dto.UpdateAgentCampaignRequest) 
 	if req.Content != nil {
 		ac.Content = *req.Content
 	}
+
+	// 處理狀態更新
 	if req.Status != "" {
 		ac.Status = consts.AgentCampaignStatus(req.Status)
 	}
+
+	// 處理 ScheduledAt 更新
 	if req.ScheduledAt != nil {
 		ac.ScheduledAt = req.ScheduledAt
 	}
+
+	// 處理立即發送邏輯：當 status=scheduled 且 scheduled_at=nil 時，設定 scheduled_at 為當下時間
+	if consts.AgentCampaignStatus(req.Status) == consts.AgentCampaignStatusScheduled &&
+		req.ScheduledAt == nil {
+		ac.ScheduledAt = &now
+	}
+
 	if req.TargetType != nil {
 		ac.TargetType = *req.TargetType
 	}
@@ -171,11 +182,18 @@ func NewAgentCampaign(
 ) (*AgentCampaign, error) {
 	now := time.Now()
 
+	// 處理立即發送邏輯：當 status=scheduled 且 scheduled_at=nil 時，設定 scheduled_at 為當下時間
+	scheduledAt := req.ScheduledAt
+	if consts.AgentCampaignStatus(req.Status) == consts.AgentCampaignStatusScheduled &&
+		req.ScheduledAt == nil {
+		scheduledAt = &now
+	}
+
 	campaign := &AgentCampaign{
 		Title:         req.Title,
 		Content:       req.Content,
 		Status:        consts.AgentCampaignStatus(req.Status),
-		ScheduledAt:   req.ScheduledAt,
+		ScheduledAt:   scheduledAt,
 		MerchantID:    merchantID,
 		TargetType:    req.TargetType,
 		TargetDetails: req.TargetDetails,

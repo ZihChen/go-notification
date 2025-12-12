@@ -1379,3 +1379,103 @@ func TestAgentUseCase_CreateAgentCampaign_DraftStatus(t *testing.T) {
 	merchantRepo.AssertExpectations()
 	agentCampaignRepo.AssertExpectations()
 }
+
+// TestAgentCampaign_NewAgentCampaign_ImmediateSending 測試創建時的立即發送邏輯
+func TestAgentCampaign_NewAgentCampaign_ImmediateSending(t *testing.T) {
+	req := &dto.CreateAgentCampaignRequest{
+		Title:       "Test Campaign",
+		Content:     "Test content",
+		Status:      "scheduled", // scheduled 狀態
+		ScheduledAt: nil,         // nil 表示立即發送
+		TargetType:  "all",
+		CreatedBy:   "test-user",
+	}
+
+	campaign, err := entity.NewAgentCampaign(req, 1)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, campaign)
+	assert.Equal(t, consts.AgentCampaignStatusScheduled, campaign.Status)
+	assert.NotNil(
+		t,
+		campaign.ScheduledAt,
+		"ScheduledAt should be set to current time for immediate sending",
+	)
+
+	// 驗證 ScheduledAt 是當下時間（允許 1 秒誤差）
+	timeDiff := time.Since(*campaign.ScheduledAt)
+	assert.Less(t, timeDiff, time.Second, "ScheduledAt should be set to current time")
+}
+
+// TestAgentCampaign_UpdateFromRequest_ImmediateSending 測試更新時的立即發送邏輯
+func TestAgentCampaign_UpdateFromRequest_ImmediateSending(t *testing.T) {
+	// 創建一個現有的 draft 活動
+	campaign := &entity.AgentCampaign{
+		ID:          1,
+		MerchantID:  1,
+		Title:       "Existing Campaign",
+		Content:     "Existing content",
+		Status:      consts.AgentCampaignStatusDraft,
+		ScheduledAt: nil, // draft 狀態沒有排程時間
+		TargetType:  "all",
+		CreatedAt:   time.Now().Add(-time.Hour),
+		UpdatedAt:   time.Now().Add(-time.Hour),
+	}
+
+	// 更新請求：改為 scheduled 且不提供 ScheduledAt（立即發送）
+	req := &dto.UpdateAgentCampaignRequest{
+		Status:    "scheduled",
+		UpdatedBy: "test-user",
+	}
+
+	err := campaign.UpdateFromRequest(req)
+
+	assert.NoError(t, err)
+	assert.Equal(t, consts.AgentCampaignStatusScheduled, campaign.Status)
+	assert.NotNil(
+		t,
+		campaign.ScheduledAt,
+		"ScheduledAt should be set to current time for immediate sending",
+	)
+
+	// 驗證 ScheduledAt 是當下時間（允許 1 秒誤差）
+	timeDiff := time.Since(*campaign.ScheduledAt)
+	assert.Less(t, timeDiff, time.Second, "ScheduledAt should be set to current time")
+}
+
+// TestAgentCampaign_UpdateFromRequest_ScheduledWithTime 測試更新時提供具體排程時間
+func TestAgentCampaign_UpdateFromRequest_ScheduledWithTime(t *testing.T) {
+	// 創建一個現有的 draft 活動
+	campaign := &entity.AgentCampaign{
+		ID:          1,
+		MerchantID:  1,
+		Title:       "Existing Campaign",
+		Content:     "Existing content",
+		Status:      consts.AgentCampaignStatusDraft,
+		ScheduledAt: nil,
+		TargetType:  "all",
+		CreatedAt:   time.Now().Add(-time.Hour),
+		UpdatedAt:   time.Now().Add(-time.Hour),
+	}
+
+	// 指定的排程時間（未來時間）
+	futureTime := time.Now().Add(time.Hour)
+
+	// 更新請求：改為 scheduled 並提供具體的 ScheduledAt
+	req := &dto.UpdateAgentCampaignRequest{
+		Status:      "scheduled",
+		ScheduledAt: &futureTime,
+		UpdatedBy:   "test-user",
+	}
+
+	err := campaign.UpdateFromRequest(req)
+
+	assert.NoError(t, err)
+	assert.Equal(t, consts.AgentCampaignStatusScheduled, campaign.Status)
+	assert.Equal(
+		t,
+		futureTime,
+		*campaign.ScheduledAt,
+		"ScheduledAt should be set to the provided time",
+	)
+}
