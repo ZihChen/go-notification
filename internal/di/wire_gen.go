@@ -19,7 +19,7 @@ import (
 	repository4 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository"
 	repository3 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/agent"
 	repository2 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/manager"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/merchant"
+	merchant2 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/merchant"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/message"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/repository/player"
 	service3 "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/service"
@@ -28,7 +28,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/failed_task_event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/level"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/manager"
-	merchant2 "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/merchant"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/merchant"
 	message2 "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/message"
 	migrate2 "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/migrate"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/player"
@@ -51,7 +51,7 @@ import (
 
 // InitializeWebServer 初始化 Web 服務的 HTTP 處理器
 func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, cacheManager infrastructure.CacheManager, db *gorm.DB) (*api.HTTPHandler, error) {
-	merchantRepository := merchant.NewMerchantRepository(db)
+	merchantRepository := provideMerchantRepository(db, cacheManager)
 	tracingService := provideTracingService()
 	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
 	if err != nil {
@@ -63,7 +63,7 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, cache
 		return nil, err
 	}
 	eventProducer := service.NewEventService(kdsService, logger)
-	merchantUseCase := merchant2.NewMerchantUseCase(merchantRepository, eventProducer, logger, tracingService)
+	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger, tracingService)
 	playerRepository := repository.NewPlayerRepository(db)
 	levelRepository := repository.NewLevelRepository(db)
 	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger, tracingService)
@@ -73,7 +73,7 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, cache
 	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
 	playerMessageRepository := providePlayerMessageRepository(db, distributedLockManager)
 	tagRepository := repository.NewTagRepository(db)
-	pushKeyRepository := merchant.NewPushKeyRepository(db)
+	pushKeyRepository := merchant2.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
 	messageUseCase := message2.NewMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger, tracingService)
@@ -90,7 +90,7 @@ func InitializeAgentHandler(cfg *config.Config, logger infrastructure.Logger, ca
 	agentMessageRepository := repository3.NewAgentMessageRepository(db)
 	distributedLockManager := provideDistributedLockManager(cacheManager)
 	agentRelationshipRepository := provideAgentRelationshipRepository(db, distributedLockManager)
-	merchantRepository := merchant.NewMerchantRepository(db)
+	merchantRepository := provideMerchantRepository(db, cacheManager)
 	tracingService := provideTracingService()
 	agentService := service.NewAgentService(agentRepository, agentRelationshipRepository, merchantRepository, logger, tracingService)
 	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
@@ -109,7 +109,7 @@ func InitializeAgentHandler(cfg *config.Config, logger infrastructure.Logger, ca
 
 // InitializeWebComponents 初始化 Web 服務的所有組件
 func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, cacheManager infrastructure.CacheManager, db *gorm.DB) (*WebComponents, error) {
-	merchantRepository := merchant.NewMerchantRepository(db)
+	merchantRepository := provideMerchantRepository(db, cacheManager)
 	tracingService := provideTracingService()
 	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
 	if err != nil {
@@ -121,7 +121,7 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 		return nil, err
 	}
 	eventProducer := service.NewEventService(kdsService, logger)
-	merchantUseCase := merchant2.NewMerchantUseCase(merchantRepository, eventProducer, logger, tracingService)
+	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger, tracingService)
 	playerRepository := repository.NewPlayerRepository(db)
 	levelRepository := repository.NewLevelRepository(db)
 	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger, tracingService)
@@ -131,7 +131,7 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
 	playerMessageRepository := providePlayerMessageRepository(db, distributedLockManager)
 	tagRepository := repository.NewTagRepository(db)
-	pushKeyRepository := merchant.NewPushKeyRepository(db)
+	pushKeyRepository := merchant2.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
 	messageUseCase := message2.NewMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger, tracingService)
@@ -154,7 +154,7 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 
 // InitializeWorkerServer 初始化 Worker 服務的處理器
 func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, cacheManager infrastructure.CacheManager, db *gorm.DB) (*worker.WorkerHandler, error) {
-	merchantRepository := merchant.NewMerchantRepository(db)
+	merchantRepository := provideMerchantRepository(db, cacheManager)
 	tracingService := provideTracingService()
 	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
 	if err != nil {
@@ -166,7 +166,7 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, ca
 		return nil, err
 	}
 	eventProducer := service.NewEventService(kdsService, logger)
-	merchantUseCase := merchant2.NewMerchantUseCase(merchantRepository, eventProducer, logger, tracingService)
+	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger, tracingService)
 	playerRepository := repository.NewPlayerRepository(db)
 	levelRepository := repository.NewLevelRepository(db)
 	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger, tracingService)
@@ -179,7 +179,7 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, ca
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
 	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
 	playerMessageRepository := providePlayerMessageRepository(db, distributedLockManager)
-	pushKeyRepository := merchant.NewPushKeyRepository(db)
+	pushKeyRepository := merchant2.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
 	messageUseCase := message2.NewMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
 	agentRepository := repository3.NewAgentRepository(db)
@@ -194,7 +194,7 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, ca
 
 // InitializeWorkerComponents 初始化 Worker 服務的所有組件
 func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger, cacheManager infrastructure.CacheManager, db *gorm.DB) (*WorkerComponents, error) {
-	merchantRepository := merchant.NewMerchantRepository(db)
+	merchantRepository := provideMerchantRepository(db, cacheManager)
 	tracingService := provideTracingService()
 	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
 	if err != nil {
@@ -206,7 +206,7 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 		return nil, err
 	}
 	eventProducer := service.NewEventService(kdsService, logger)
-	merchantUseCase := merchant2.NewMerchantUseCase(merchantRepository, eventProducer, logger, tracingService)
+	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger, tracingService)
 	playerRepository := repository.NewPlayerRepository(db)
 	levelRepository := repository.NewLevelRepository(db)
 	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger, tracingService)
@@ -219,7 +219,7 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
 	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
 	playerMessageRepository := providePlayerMessageRepository(db, distributedLockManager)
-	pushKeyRepository := merchant.NewPushKeyRepository(db)
+	pushKeyRepository := merchant2.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
 	messageUseCase := message2.NewMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
 	agentRepository := repository3.NewAgentRepository(db)
@@ -280,12 +280,12 @@ func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Log
 	tracingService := provideTracingService()
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
 	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
-	merchantRepository := merchant.NewMerchantRepository(db)
+	merchantRepository := provideMerchantRepository(db, cacheManager)
 	playerMessageRepository := providePlayerMessageRepository(db, distributedLockManager)
 	playerRepository := repository.NewPlayerRepository(db)
 	levelRepository := repository.NewLevelRepository(db)
 	tagRepository := repository.NewTagRepository(db)
-	pushKeyRepository := merchant.NewPushKeyRepository(db)
+	pushKeyRepository := merchant2.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
 	messageUseCase := message2.NewMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
 	messageCampaignTriggerJob := job.NewMessageCampaignTriggerJob(messageUseCase, logger)
@@ -318,9 +318,9 @@ func InitializeMigrateHandler(cfg *config.Config, logger infrastructure.Logger, 
 	}
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
 	playerRepository := repository.NewPlayerRepository(db)
-	merchantRepository := merchant.NewMerchantRepository(db)
+	merchantRepository := provideMigrateMerchantRepository(db)
 	playerMessageRepository := provideMigratePlayerMessageRepository(db)
-	pushKeyRepository := merchant.NewPushKeyRepository(db)
+	pushKeyRepository := merchant2.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
 	migrateUseCase := provideMigrateUseCase(legacyDB, messageCampaignRepository, playerRepository, merchantRepository, playerMessageRepository, pushKeyRepository, pushNotificationService, logger)
 	migrateHandler := migrate.NewMigrateHandler(migrateUseCase, logger)
@@ -344,7 +344,9 @@ type WebComponents struct {
 
 var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient,
 	provideTracingService,
-	provideDistributedLockManager, merchant.NewMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, message.NewMessageCampaignRepository, message.NewCampaignTargetRepository, providePlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant.NewPushKeyRepository, repository3.NewAgentRepository, repository3.NewAgentCampaignRepository, repository3.NewAgentMessageRepository, provideAgentRelationshipRepository, repository4.NewFailedTaskEventRepository, service.NewEventService, service.NewAgentService, providePushNotificationService, merchant2.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message2.NewMessageUseCase, level.NewLevelUseCase, player.NewTagUseCase, agent.NewAgentUseCase, usecase.NewFailedTaskEventUseCase,
+	provideDistributedLockManager,
+
+	provideMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, message.NewMessageCampaignRepository, message.NewCampaignTargetRepository, providePlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant2.NewPushKeyRepository, repository3.NewAgentRepository, repository3.NewAgentCampaignRepository, repository3.NewAgentMessageRepository, provideAgentRelationshipRepository, repository4.NewFailedTaskEventRepository, service.NewEventService, service.NewAgentService, providePushNotificationService, merchant.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message2.NewMessageUseCase, level.NewLevelUseCase, player.NewTagUseCase, agent.NewAgentUseCase, usecase.NewFailedTaskEventUseCase,
 )
 
 // 事件生產者提供者 (保留作為別名)
@@ -397,9 +399,19 @@ func provideDistributedLockManager(cacheManager infrastructure.CacheManager) inf
 	return redis.NewRedisDistributedLockManager(cacheManager)
 }
 
+// 提供帶快取的 MerchantRepository
+func provideMerchantRepository(db *gorm.DB, cacheManager infrastructure.CacheManager) repository5.MerchantRepository {
+	return merchant2.NewMerchantRepository(db, cacheManager)
+}
+
 // 提供 PlayerMessageRepository (migrate 專用，不需要 redis)
 func provideMigratePlayerMessageRepository(db *gorm.DB) repository5.PlayerMessageRepository {
 	return message.NewPlayerMessageRepository(db, nil)
+}
+
+// 提供 MerchantRepository (migrate 專用，不需要快取)
+func provideMigrateMerchantRepository(db *gorm.DB) repository5.MerchantRepository {
+	return merchant2.NewMerchantRepository(db, nil)
 }
 
 func provideRedisClient(cacheManager infrastructure.CacheManager) (*redis2.Client, error) {

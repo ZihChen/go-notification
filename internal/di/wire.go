@@ -64,7 +64,7 @@ var baseSet = wire.NewSet(
 	provideDistributedLockManager,
 
 	// 資料庫
-	merchantRepo.NewMerchantRepository,
+	provideMerchantRepository,
 	playerRepo.NewPlayerRepository,
 	managerRepo.NewManagerRepository,
 	messageRepo.NewMessageCampaignRepository,
@@ -202,9 +202,19 @@ func provideDistributedLockManager(cacheManager infrastructure.CacheManager) inf
 	return redisCache.NewRedisDistributedLockManager(cacheManager)
 }
 
+// 提供帶快取的 MerchantRepository
+func provideMerchantRepository(db *gorm.DB, cacheManager infrastructure.CacheManager) repository.MerchantRepository {
+	return merchantRepo.NewMerchantRepository(db, cacheManager)
+}
+
 // 提供 PlayerMessageRepository (migrate 專用，不需要 redis)
 func provideMigratePlayerMessageRepository(db *gorm.DB) repository.PlayerMessageRepository {
 	return messageRepo.NewPlayerMessageRepository(db, nil)
+}
+
+// 提供 MerchantRepository (migrate 專用，不需要快取)
+func provideMigrateMerchantRepository(db *gorm.DB) repository.MerchantRepository {
+	return merchantRepo.NewMerchantRepository(db, nil)
 }
 
 // InitializeConsumer 初始化 Consumer 服務的 KDS 服務 (已廢棄)
@@ -264,7 +274,7 @@ func InitializeMigrateHandler(cfg *config.Config, logger infrastructure.Logger, 
 		// 為 migrate 提供一個不需要 redis 的版本
 		provideMigratePlayerMessageRepository,
 		// 基礎設施層 (使用傳入的 db 作為目標資料庫)
-		merchantRepo.NewMerchantRepository,
+		provideMigrateMerchantRepository,
 		playerRepo.NewPlayerRepository,
 		messageRepo.NewMessageCampaignRepository,
 		merchantRepo.NewPushKeyRepository,

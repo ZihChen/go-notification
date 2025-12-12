@@ -78,7 +78,7 @@ func TestMerchantRepository_FindByID(t *testing.T) {
 
 			tc.setupMock(mock)
 
-			repo := NewMerchantRepository(db)
+			repo := NewMerchantRepository(db, nil)
 
 			merchant, err := repo.FindByID(context.Background(), tc.expectedMerchant.ID)
 
@@ -135,7 +135,7 @@ func TestMerchantRepository_FindByGlobalID(t *testing.T) {
 
 			tc.setupMock(mock)
 
-			repo := NewMerchantRepository(db)
+			repo := NewMerchantRepository(db, nil)
 
 			merchant, err := repo.FindByGlobalID(
 				context.Background(),
@@ -286,7 +286,7 @@ func TestMerchantRepository_FirstOrCreate(t *testing.T) {
 			tc.setupMock(mock)
 
 			// Create repository
-			repo := NewMerchantRepository(db)
+			repo := NewMerchantRepository(db, nil)
 
 			// Execute
 			err := repo.FirstOrCreate(context.Background(), tc.merchant)
@@ -340,7 +340,7 @@ func TestMerchantRepository_Create(t *testing.T) {
 
 			tc.setupMock(mock)
 
-			repo := NewMerchantRepository(db)
+			repo := NewMerchantRepository(db, nil)
 
 			err := repo.Create(context.Background(), tc.expectedMerchant)
 
@@ -392,7 +392,7 @@ func TestMerchantRepository_Update(t *testing.T) {
 
 			tc.setupMock(mock)
 
-			repo := NewMerchantRepository(db)
+			repo := NewMerchantRepository(db, nil)
 
 			err := repo.Update(context.Background(), tc.expectedMerchant)
 
@@ -443,7 +443,7 @@ func TestMerchantRepository_Delete(t *testing.T) {
 
 			tc.setupMock(mock)
 
-			repo := NewMerchantRepository(db)
+			repo := NewMerchantRepository(db, nil)
 
 			err := repo.Delete(context.Background(), tc.id)
 
@@ -494,7 +494,7 @@ func TestMerchantRepository_Upsert(t *testing.T) {
 
 			tc.setupMock(mock)
 
-			repo := NewMerchantRepository(db)
+			repo := NewMerchantRepository(db, nil)
 
 			err := repo.Upsert(context.Background(), tc.expectedMerchant)
 

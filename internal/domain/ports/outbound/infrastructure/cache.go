@@ -27,6 +27,9 @@ type CacheManager interface {
 		value interface{},
 		expiration time.Duration,
 	) (bool, error)
+	Get(ctx context.Context, key string) (string, error)
+	Del(ctx context.Context, keys ...string) (int64, error)
+	Exists(ctx context.Context, keys ...string) (int64, error)
 	MGet(ctx context.Context, keys ...string) ([]interface{}, error)
 
 	// Pipeline操作 (修復後的版本)

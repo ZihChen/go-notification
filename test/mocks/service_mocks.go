@@ -5,9 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-redsync/redsync/v4"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/mock"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -410,5 +412,107 @@ func (m *DistributedMutexMock) SetupSuccess() {}
 func (m *DistributedMutexMock) SetupError()   {}
 func (m *DistributedMutexMock) SetupEmpty()   {}
 func (m *DistributedMutexMock) Reset() {
+	m.Mock = mock.Mock{}
+}
+
+// MockCacheManager 統一的 CacheManager Mock
+type MockCacheManager struct {
+	*BaseMock
+}
+
+func NewMockCacheManager(t *testing.T) *MockCacheManager {
+	return &MockCacheManager{
+		BaseMock: NewBaseMock(t),
+	}
+}
+
+func (m *MockCacheManager) Connect(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+func (m *MockCacheManager) Close() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
+func (m *MockCacheManager) Set(
+	ctx context.Context,
+	key string,
+	value interface{},
+	expiration time.Duration,
+) (string, error) {
+	args := m.Called(ctx, key, value, expiration)
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockCacheManager) SetNX(
+	ctx context.Context,
+	key string,
+	value interface{},
+	expiration time.Duration,
+) (bool, error) {
+	args := m.Called(ctx, key, value, expiration)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockCacheManager) Get(ctx context.Context, key string) (string, error) {
+	args := m.Called(ctx, key)
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockCacheManager) Del(ctx context.Context, keys ...string) (int64, error) {
+	// 使用可變參數展開來適配mock調用
+	callArgs := []interface{}{ctx}
+	for _, key := range keys {
+		callArgs = append(callArgs, key)
+	}
+	args := m.Called(callArgs...)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockCacheManager) Exists(ctx context.Context, keys ...string) (int64, error) {
+	args := m.Called(ctx, keys)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockCacheManager) MGet(ctx context.Context, keys ...string) ([]interface{}, error) {
+	args := m.Called(ctx, keys)
+	return args.Get(0).([]interface{}), args.Error(1)
+}
+
+func (m *MockCacheManager) Pipeline() (redis.Pipeliner, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(redis.Pipeliner), args.Error(1)
+}
+
+func (m *MockCacheManager) GetClient() (*redis.Client, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*redis.Client), args.Error(1)
+}
+
+func (m *MockCacheManager) HealthCheck(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+func (m *MockCacheManager) GetRedsync() (*redsync.Redsync, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*redsync.Redsync), args.Error(1)
+}
+
+func (m *MockCacheManager) SetupSuccess() {}
+func (m *MockCacheManager) SetupError()   {}
+func (m *MockCacheManager) SetupEmpty()   {}
+func (m *MockCacheManager) Reset() {
 	m.Mock = mock.Mock{}
 }

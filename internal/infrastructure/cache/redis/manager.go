@@ -197,6 +197,45 @@ func (m *Manager) Set(
 	return status, nil
 }
 
+// Get 獲取指定key的值
+func (m *Manager) Get(ctx context.Context, key string) (string, error) {
+	client, err := m.GetClient()
+	if err != nil {
+		return "", err
+	}
+	result, err := client.Get(ctx, key).Result()
+	if err != nil {
+		return "", err
+	}
+	return result, nil
+}
+
+// Del 刪除指定的key(s)
+func (m *Manager) Del(ctx context.Context, keys ...string) (int64, error) {
+	client, err := m.GetClient()
+	if err != nil {
+		return 0, err
+	}
+	result, err := client.Del(ctx, keys...).Result()
+	if err != nil {
+		return 0, err
+	}
+	return result, nil
+}
+
+// Exists 檢查指定key是否存在
+func (m *Manager) Exists(ctx context.Context, keys ...string) (int64, error) {
+	client, err := m.GetClient()
+	if err != nil {
+		return 0, err
+	}
+	result, err := client.Exists(ctx, keys...).Result()
+	if err != nil {
+		return 0, err
+	}
+	return result, nil
+}
+
 // Pipeline 返回 Redis Pipeline 用於批次操作
 func (m *Manager) Pipeline() (redis.Pipeliner, error) {
 	client, err := m.GetClient()
