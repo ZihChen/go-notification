@@ -163,6 +163,7 @@ type AgentCampaignResponse struct {
 	Content       string     `json:"content"`
 	ScheduledAt   *time.Time `json:"scheduled_at,omitempty"`
 	Status        string     `json:"status"`
+	ScheduleType  string     `json:"schedule_type"`
 	TargetType    string     `json:"target_type"`
 	TargetDetails []string   `json:"target_details"`
 	TargetCount   int64      `json:"target_count"`

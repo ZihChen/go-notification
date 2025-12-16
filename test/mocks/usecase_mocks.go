@@ -502,12 +502,12 @@ func (m *AgentUseCaseMock) UpdateAgentCampaign(
 func (m *AgentUseCaseMock) GetAgentCampaign(
 	ctx context.Context,
 	id uint64,
-) (*entity.AgentCampaign, error) {
+) (*dto.AgentCampaignResponse, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*entity.AgentCampaign), args.Error(1)
+	return args.Get(0).(*dto.AgentCampaignResponse), args.Error(1)
 }
 
 func (m *AgentUseCaseMock) GetAgentCampaigns(

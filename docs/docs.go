@@ -244,7 +244,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/entity.AgentCampaign"
+                            "$ref": "#/definitions/dto.AgentCampaignResponse"
                         }
                     },
                     "400": {
@@ -1707,6 +1707,9 @@ const docTemplate = `{
                 "real_sent_count": {
                     "type": "integer"
                 },
+                "schedule_type": {
+                    "type": "string"
+                },
                 "scheduled_at": {
                     "type": "string"
                 },
@@ -2600,6 +2603,9 @@ const docTemplate = `{
                 "real_sent_count": {
                     "description": "實際發送數量",
                     "type": "integer"
+                },
+                "schedule_type": {
+                    "type": "string"
                 },
                 "scheduled_at": {
                     "type": "string"

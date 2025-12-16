@@ -186,7 +186,7 @@ func (h *AgentHandler) UpdateAgentCampaign(c *gin.Context) {
 // @Description 根據ID獲取代理訊息活動詳情
 // @Tags 代理訊息活動
 // @Param id path uint64 true "代理訊息活動ID - 系統內部唯一識別碼，必須為正整數" example(12345)
-// @Success 200 {object} entity.AgentCampaign
+// @Success 200 {object} dto.AgentCampaignResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse

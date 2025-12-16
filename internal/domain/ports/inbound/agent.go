@@ -33,7 +33,7 @@ type AgentUseCase interface {
 		ctx context.Context,
 		req *dto.UpdateAgentCampaignRequest,
 	) (*entity.AgentCampaign, error)
-	GetAgentCampaign(ctx context.Context, id uint64) (*entity.AgentCampaign, error)
+	GetAgentCampaign(ctx context.Context, id uint64) (*dto.AgentCampaignResponse, error)
 	GetAgentCampaigns(
 		ctx context.Context,
 		query *dto.AgentCampaignsQuery,

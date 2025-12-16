@@ -364,7 +364,7 @@ func (u *AgentUseCase) UpdateAgentCampaign(
 func (u *AgentUseCase) GetAgentCampaign(
 	ctx context.Context,
 	id uint64,
-) (*entity.AgentCampaign, error) {
+) (*dto.AgentCampaignResponse, error) {
 	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.GetAgentCampaign")
 	defer u.tracingService.SpanEnd(span)
 
@@ -377,8 +377,27 @@ func (u *AgentUseCase) GetAgentCampaign(
 		return nil, fmt.Errorf("get agent campaign: %w", err)
 	}
 
+	// 轉換為回應DTO
+	response := &dto.AgentCampaignResponse{
+		ID:            campaign.ID,
+		MerchantID:    campaign.MerchantID,
+		Title:         campaign.Title,
+		Content:       campaign.Content,
+		ScheduledAt:   campaign.ScheduledAt,
+		Status:        campaign.Status.String(),
+		ScheduleType:  campaign.ScheduleType,
+		TargetType:    campaign.TargetType,
+		TargetDetails: campaign.TargetDetails,
+		TargetCount:   campaign.TargetCount,
+		RealSentCount: campaign.RealSentCount,
+		CreatedBy:     campaign.CreatedBy,
+		UpdatedBy:     campaign.UpdatedBy,
+		CreatedAt:     campaign.CreatedAt,
+		UpdatedAt:     campaign.UpdatedAt,
+	}
+
 	u.tracingService.TraceEvent(span, "Agent campaign retrieved successfully")
-	return campaign, nil
+	return response, nil
 }
 
 // GetAgentCampaigns 獲取代理訊息活動列表
@@ -451,6 +470,7 @@ func (u *AgentUseCase) GetAgentCampaigns(
 			Content:       campaign.Content,
 			ScheduledAt:   campaign.ScheduledAt,
 			Status:        campaign.Status.String(),
+			ScheduleType:  campaign.ScheduleType,
 			TargetType:    campaign.TargetType,
 			TargetDetails: campaign.TargetDetails,
 			TargetCount:   campaign.TargetCount,

@@ -31,6 +31,7 @@ type AgentCampaign struct {
 	Title         string         `gorm:"size:255;not null"                                                                                   json:"title"`
 	Content       string         `gorm:"type:mediumtext;not null"                                                                            json:"content"`
 	ScheduledAt   *time.Time     `gorm:"type:datetime;index"                                                                                 json:"scheduled_at,omitempty"`
+	ScheduleType  string         `gorm:"type:enum('scheduled','immediate');not null;default:'scheduled'"                                     json:"schedule_type"`
 	Status        string         `gorm:"type:enum('draft','scheduled','sending','sent','failed','cancelled');not null;default:'draft';index" json:"status"`
 	TargetType    string         `gorm:"type:enum('all','specific','line');not null"                                                         json:"target_type"`
 	TargetDetails string         `gorm:"type:text"                                                                                           json:"target_details"`  // JSON格式的目標詳情

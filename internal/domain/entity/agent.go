@@ -28,6 +28,7 @@ type AgentCampaign struct {
 	Title         string                     `json:"title"`
 	Content       string                     `json:"content"`
 	ScheduledAt   *time.Time                 `json:"scheduled_at,omitempty"`
+	ScheduleType  string                     `json:"schedule_type"`
 	Status        consts.AgentCampaignStatus `json:"status"`          // draft, scheduled, sending, completed, failed, cancelled
 	TargetType    string                     `json:"target_type"`     // all, specific, line
 	TargetDetails []string                   `json:"target_details"`  // 目標詳情 (account列表或line路徑)
@@ -85,6 +86,7 @@ func (ac *AgentCampaign) UpdateFromRequest(req *dto.UpdateAgentCampaignRequest) 
 	if consts.AgentCampaignStatus(req.Status) == consts.AgentCampaignStatusScheduled &&
 		req.ScheduledAt == nil {
 		ac.ScheduledAt = &now
+		ac.ScheduleType = consts.AgentScheduleTypeImmediate
 	}
 
 	if req.TargetType != nil {
@@ -183,10 +185,12 @@ func NewAgentCampaign(
 	now := time.Now()
 
 	// 處理立即發送邏輯：當 status=scheduled 且 scheduled_at=nil 時，設定 scheduled_at 為當下時間
-	scheduledAt := req.ScheduledAt
+	// ScheduleType預設為預約發送(scheduled)，請求沒有scheduledAt則為立即發送(immediate)
+	scheduledAt, scheduleType := req.ScheduledAt, consts.AgentScheduleTypeScheduled
 	if consts.AgentCampaignStatus(req.Status) == consts.AgentCampaignStatusScheduled &&
 		req.ScheduledAt == nil {
 		scheduledAt = &now
+		scheduleType = consts.AgentScheduleTypeImmediate
 	}
 
 	campaign := &AgentCampaign{
@@ -194,6 +198,7 @@ func NewAgentCampaign(
 		Content:       req.Content,
 		Status:        consts.AgentCampaignStatus(req.Status),
 		ScheduledAt:   scheduledAt,
+		ScheduleType:  scheduleType,
 		MerchantID:    merchantID,
 		TargetType:    req.TargetType,
 		TargetDetails: req.TargetDetails,

@@ -29,6 +29,13 @@ const (
 	AgentTargetTypeLine = "line"
 )
 
+const (
+	// AgentScheduleTypeScheduled 預約發送
+	AgentScheduleTypeScheduled = "scheduled"
+	// AgentScheduleTypeImmediate 立即發送
+	AgentScheduleTypeImmediate = "immediate"
+)
+
 // 代理訊息狀態常數
 const (
 	// AgentMessageStatusPending 待發送狀態
