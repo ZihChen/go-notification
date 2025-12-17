@@ -184,10 +184,11 @@ func NewAgentCampaign(
 ) (*AgentCampaign, error) {
 	now := time.Now()
 
-	// 處理立即發送邏輯：當 status=scheduled 且 scheduled_at=nil 時，設定 scheduled_at 為當下時間
+	// 處理立即發送邏輯：當 status=scheduled、draft 且 scheduled_at=nil 時，設定 scheduled_at 為當下時間
 	// ScheduleType預設為預約發送(scheduled)，請求沒有scheduledAt則為立即發送(immediate)
 	scheduledAt, scheduleType := req.ScheduledAt, consts.AgentScheduleTypeScheduled
-	if consts.AgentCampaignStatus(req.Status) == consts.AgentCampaignStatusScheduled &&
+	if (consts.AgentCampaignStatus(req.Status) == consts.AgentCampaignStatusScheduled ||
+		consts.AgentCampaignStatus(req.Status) == consts.AgentCampaignStatusDraft) &&
 		req.ScheduledAt == nil {
 		scheduledAt = &now
 		scheduleType = consts.AgentScheduleTypeImmediate
