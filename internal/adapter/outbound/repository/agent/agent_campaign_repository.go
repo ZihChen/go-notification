@@ -142,6 +142,39 @@ func (r *AgentCampaignRepository) UpdateFields(
 	return nil
 }
 
+// UpdateFieldsWithCondition 根據條件更新指定欄位
+func (r *AgentCampaignRepository) UpdateFieldsWithCondition(
+	ctx context.Context,
+	id uint64,
+	columns map[string]interface{},
+	conditions map[string]interface{},
+) error {
+	if len(columns) == 0 {
+		return fmt.Errorf("no fields to update")
+	}
+
+	builder := r.db.WithContext(ctx).Model(&models.AgentCampaign{})
+	
+	// 添加 ID 條件
+	builder = builder.Where("id = ?", id)
+	
+	// 添加額外條件
+	for key, value := range conditions {
+		builder = builder.Where(fmt.Sprintf("%s = ?", key), value)
+	}
+	
+	result := builder.Updates(columns)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("no records updated - conditions not met or record not found")
+	}
+	
+	return nil
+}
+
 // List 分頁查詢代理訊息活動列表
 func (r *AgentCampaignRepository) List(
 	ctx context.Context,

@@ -23,15 +23,16 @@ import (
 
 // AgentUseCase 代理業務用例實作
 type AgentUseCase struct {
-	agentRepo         repository.AgentRepository
-	agentCampaignRepo repository.AgentCampaignRepository
-	agentMessageRepo  repository.AgentMessageRepository
-	agentRelationRepo repository.AgentRelationshipRepository
-	merchantRepo      repository.MerchantRepository
-	agentService      service.AgentService
-	eventProducer     service.EventProducer
-	logger            infrastructure.Logger
-	tracingService    infrastructure.TracingService
+	agentRepo          repository.AgentRepository
+	agentCampaignRepo  repository.AgentCampaignRepository
+	agentMessageRepo   repository.AgentMessageRepository
+	agentRelationRepo  repository.AgentRelationshipRepository
+	merchantRepo       repository.MerchantRepository
+	agentService       service.AgentService
+	eventProducer      service.EventProducer
+	logger             infrastructure.Logger
+	tracingService     infrastructure.TracingService
+	distributedLockMgr infrastructure.DistributedLockManager
 }
 
 // NewAgentUseCase 創建代理用例
@@ -45,17 +46,19 @@ func NewAgentUseCase(
 	eventProducer service.EventProducer,
 	logger infrastructure.Logger,
 	tracingService infrastructure.TracingService,
+	distributedLockMgr infrastructure.DistributedLockManager,
 ) inbound.AgentUseCase {
 	return &AgentUseCase{
-		agentRepo:         agentRepo,
-		agentCampaignRepo: agentCampaignRepo,
-		agentMessageRepo:  agentMessageRepo,
-		agentRelationRepo: agentRelationRepo,
-		merchantRepo:      merchantRepo,
-		agentService:      agentService,
-		eventProducer:     eventProducer,
-		logger:            logger,
-		tracingService:    tracingService,
+		agentRepo:          agentRepo,
+		agentCampaignRepo:  agentCampaignRepo,
+		agentMessageRepo:   agentMessageRepo,
+		agentRelationRepo:  agentRelationRepo,
+		merchantRepo:       merchantRepo,
+		agentService:       agentService,
+		eventProducer:      eventProducer,
+		logger:             logger,
+		tracingService:     tracingService,
+		distributedLockMgr: distributedLockMgr,
 	}
 }
 
@@ -230,8 +233,42 @@ func (u *AgentUseCase) CreateAgentCampaign(
 	if u.isImmediateSend(consts.AgentCampaignStatus(req.Status), req.ScheduledAt) {
 		u.tracingService.TraceEvent(span, "Starting asynchronous immediate campaign processing")
 
+		// 獲取活動鎖以防止立即發送期間的修改（嚴格模式）
+		campaignLockKey := fmt.Sprintf("agent_campaign:lock:%d", createdCampaign.ID)
+		campaignMutex, err := u.distributedLockMgr.GetLockWithOptions(ctx, campaignLockKey, infrastructure.LockOptions{
+			Expiry:     90 * time.Second, // 90秒過期
+			Tries:      1,                // 不重試，快速失敗
+			RetryDelay: 0,
+		})
+		if err != nil {
+			u.logger.ErrorLog("Failed to get campaign lock for immediate send",
+				u.logger.UInt64("campaign_id", createdCampaign.ID),
+				u.logger.String("error", err.Error()))
+			// 鎖失敗不影響活動創建，但不進行立即發送
+			return createdCampaign, nil
+		}
+
+		// 嘗試獲取活動鎖
+		err = campaignMutex.TryLock()
+		if err != nil {
+			u.logger.InfoLog("Campaign lock busy, skipping immediate send",
+				u.logger.UInt64("campaign_id", createdCampaign.ID),
+				u.logger.String("title", createdCampaign.Title))
+			// 鎖忙碌不影響活動創建，但不進行立即發送
+			return createdCampaign, nil
+		}
+
 		// 使用 goroutine 異步處理，避免阻塞 API 響應
 		go func() {
+			// 確保在異步處理完成後釋放活動鎖
+			defer func() {
+				if unlocked, unlockErr := campaignMutex.Unlock(); unlockErr != nil || !unlocked {
+					u.logger.ErrorLog("Failed to unlock campaign mutex after async processing",
+						u.logger.UInt64("campaign_id", createdCampaign.ID),
+						u.logger.String("error", unlockErr.Error()))
+				}
+			}()
+
 			// 創建新的 context，避免與原始請求的 context 綁定
 			asyncCtx := context.Background()
 
@@ -273,7 +310,26 @@ func (u *AgentUseCase) UpdateAgentCampaign(
 
 	u.tracingService.RecordSpanAttributes(span, attribute.Int64("campaign.id", int64(req.ID)))
 
-	// 先獲取現有的活動
+	// 1. 獲取活動鎖以防止併發修改同一活動（嚴格模式）
+	campaignLockKey := fmt.Sprintf("agent_campaign:lock:%d", req.ID)
+	campaignMutex, err := u.distributedLockMgr.GetLockWithOptions(ctx, campaignLockKey, infrastructure.LockOptions{
+		Expiry:     90 * time.Second, // 90秒過期
+		Tries:      3,                // 重試3次
+		RetryDelay: 100 * time.Millisecond,
+	})
+	if err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return nil, fmt.Errorf("failed to get campaign lock for %d: %w", req.ID, err)
+	}
+
+	// 嘗試獲取活動鎖
+	err = campaignMutex.TryLock()
+	if err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return nil, fmt.Errorf("failed to acquire campaign lock for %d: campaign is being processed by another operation", req.ID)
+	}
+
+	// 2. 先獲取現有的活動
 	u.tracingService.TraceEvent(span, "Getting existing campaign")
 	existing, err := u.agentCampaignRepo.GetByID(ctx, req.ID)
 	if err != nil {
@@ -324,6 +380,15 @@ func (u *AgentUseCase) UpdateAgentCampaign(
 
 		// 使用 goroutine 異步處理，避免阻塞 API 響應
 		go func() {
+			// 確保在異步處理完成後釋放活動鎖
+			defer func() {
+				if unlocked, unlockErr := campaignMutex.Unlock(); unlockErr != nil || !unlocked {
+					u.logger.ErrorLog("Failed to unlock campaign mutex after async processing",
+						u.logger.UInt64("campaign_id", campaignEntity.ID),
+						u.logger.String("error", unlockErr.Error()))
+				}
+			}()
+
 			// 創建新的 context，避免與原始請求的 context 綁定
 			asyncCtx := context.Background()
 
@@ -355,6 +420,13 @@ func (u *AgentUseCase) UpdateAgentCampaign(
 		u.logger.InfoLog("Immediate agent campaign queued for asynchronous processing after update",
 			u.logger.UInt64("campaign_id", campaignEntity.ID),
 			u.logger.String("title", campaignEntity.Title))
+	} else {
+		// 非立即發送，可以立即釋放活動鎖
+		if unlocked, unlockErr := campaignMutex.Unlock(); unlockErr != nil || !unlocked {
+			u.logger.ErrorLog("Failed to unlock campaign mutex for non-immediate send",
+				u.logger.UInt64("campaign_id", campaignEntity.ID),
+				u.logger.String("error", unlockErr.Error()))
+		}
 	}
 
 	return campaignEntity, nil
@@ -872,7 +944,7 @@ func (u *AgentUseCase) UpdateCampaignStatus(
 	}
 
 	// 3. 驗證狀態轉換是否合法
-	currentStatus := consts.AgentCampaignStatus(campaign.Status)
+	currentStatus := campaign.Status
 	if !currentStatus.CanTransitionTo(status) {
 		err := fmt.Errorf(
 			"invalid status transition from %s to %s",
@@ -883,14 +955,11 @@ func (u *AgentUseCase) UpdateCampaignStatus(
 		return err
 	}
 
-	// 4. 更新狀態
-	setColumn := map[string]interface{}{
-		"status": status.String(),
-	}
-
-	if err := u.agentCampaignRepo.UpdateFields(ctx, campaignID, setColumn); err != nil {
+	// 4. 使用樂觀鎖更新狀態 - 通過 repository 實現條件更新
+	err = u.updateCampaignStatusWithOptimisticLock(ctx, campaignID, currentStatus, status)
+	if err != nil {
 		u.tracingService.RecordSpanError(span, err)
-		return fmt.Errorf("update campaign status: %w", err)
+		return err
 	}
 
 	u.tracingService.TraceEvent(span, "Campaign status updated successfully",
@@ -901,6 +970,30 @@ func (u *AgentUseCase) UpdateCampaignStatus(
 		u.logger.UInt64("campaign_id", campaignID),
 		u.logger.String("previous_status", currentStatus.String()),
 		u.logger.String("new_status", status.String()))
+
+	return nil
+}
+
+// updateCampaignStatusWithOptimisticLock 使用樂觀鎖機制更新活動狀態
+func (u *AgentUseCase) updateCampaignStatusWithOptimisticLock(
+	ctx context.Context,
+	campaignID uint64,
+	expectedStatus consts.AgentCampaignStatus,
+	newStatus consts.AgentCampaignStatus,
+) error {
+	// 使用 UpdateFieldsWithCondition 實現真正的樂觀鎖
+	setColumns := map[string]interface{}{
+		"status": newStatus.String(),
+	}
+
+	conditions := map[string]interface{}{
+		"status": expectedStatus.String(),
+	}
+
+	err := u.agentCampaignRepo.UpdateFieldsWithCondition(ctx, campaignID, setColumns, conditions)
+	if err != nil {
+		return fmt.Errorf("failed to update campaign status with optimistic lock: %w", err)
+	}
 
 	return nil
 }
@@ -1577,7 +1670,24 @@ func (u *AgentUseCase) processCampaignImmediate(
 		u.logger.UInt64("campaign_id", campaign.ID),
 		u.logger.String("title", campaign.Title))
 
-	// 1. 更新狀態為發送中：sending
+	// 1. 冪等性檢查 - 重新獲取活動狀態確保只有 scheduled 狀態才能處理
+	u.tracingService.TraceEvent(span, "Checking campaign status for idempotency")
+	currentCampaign, err := u.agentCampaignRepo.GetByID(ctx, campaign.ID)
+	if err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return fmt.Errorf("failed to get current campaign status: %w", err)
+	}
+
+	// 檢查活動是否還是 scheduled 狀態，如果不是則表示已被處理
+	if currentCampaign.Status != consts.AgentCampaignStatusScheduled {
+		u.logger.InfoLog("Campaign is no longer in scheduled status, skipping processing",
+			u.logger.UInt64("campaign_id", campaign.ID),
+			u.logger.String("current_status", currentCampaign.Status.String()),
+			u.logger.String("title", campaign.Title))
+		return nil // 不是錯誤，只是已經被其他進程處理過了
+	}
+
+	// 2. 更新狀態為發送中：sending
 	if err := u.UpdateCampaignStatus(ctx, campaign.ID, consts.AgentCampaignStatusSending); err != nil {
 		u.logger.ErrorLog("Failed to mark campaign as sending",
 			u.logger.UInt64("campaign_id", campaign.ID),
@@ -1586,7 +1696,7 @@ func (u *AgentUseCase) processCampaignImmediate(
 		return err
 	}
 
-	// 2. 委託UseCase執行完整發送流程
+	// 3. 委託UseCase執行完整發送流程
 	targetCount, sentCount, err := u.SendMessageToCampaignTargets(ctx, campaign)
 	if err != nil {
 		// 標記活動失敗
@@ -1599,7 +1709,7 @@ func (u *AgentUseCase) processCampaignImmediate(
 		return err
 	}
 
-	// 3. 更新統計與完成狀態
+	// 4. 更新統計與完成狀態
 	if err = u.CompleteCampaign(ctx, campaign.ID, targetCount, sentCount); err != nil {
 		u.tracingService.RecordSpanError(span, err)
 		return err

@@ -67,6 +67,12 @@ type AgentCampaignRepository interface {
 		id uint64,
 		columns map[string]interface{},
 	) error
+	UpdateFieldsWithCondition(
+		ctx context.Context,
+		id uint64,
+		columns map[string]interface{},
+		conditions map[string]interface{},
+	) error
 
 	// 查詢操作
 	List(

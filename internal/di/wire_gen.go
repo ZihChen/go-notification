@@ -102,7 +102,7 @@ func InitializeAgentHandler(cfg *config.Config, logger infrastructure.Logger, ca
 		return nil, err
 	}
 	eventProducer := service.NewEventService(kdsService, logger)
-	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService)
+	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService, distributedLockManager)
 	agentHandler := api.NewAgentHandler(agentUseCase, logger)
 	return agentHandler, nil
 }
@@ -143,7 +143,7 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 	agentMessageRepository := repository3.NewAgentMessageRepository(db)
 	agentRelationshipRepository := provideAgentRelationshipRepository(db, distributedLockManager)
 	agentService := service.NewAgentService(agentRepository, agentRelationshipRepository, merchantRepository, logger, tracingService)
-	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService)
+	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService, distributedLockManager)
 	agentHandler := api.NewAgentHandler(agentUseCase, logger)
 	webComponents := &WebComponents{
 		HTTPHandler:  httpHandler,
@@ -187,7 +187,7 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, ca
 	agentMessageRepository := repository3.NewAgentMessageRepository(db)
 	agentRelationshipRepository := provideAgentRelationshipRepository(db, distributedLockManager)
 	agentService := service.NewAgentService(agentRepository, agentRelationshipRepository, merchantRepository, logger, tracingService)
-	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService)
+	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService, distributedLockManager)
 	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, messageUseCase, agentUseCase, logger, tracingService)
 	return workerHandler, nil
 }
@@ -227,7 +227,7 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 	agentMessageRepository := repository3.NewAgentMessageRepository(db)
 	agentRelationshipRepository := provideAgentRelationshipRepository(db, distributedLockManager)
 	agentService := service.NewAgentService(agentRepository, agentRelationshipRepository, merchantRepository, logger, tracingService)
-	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService)
+	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService, distributedLockManager)
 	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, messageUseCase, agentUseCase, logger, tracingService)
 	failedTaskEventRepository := repository4.NewFailedTaskEventRepository(db)
 	failedTaskEventUseCase := usecase.NewFailedTaskEventUseCase(failedTaskEventRepository, logger)
@@ -303,7 +303,7 @@ func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Log
 		return nil, err
 	}
 	eventProducer := service.NewEventService(kdsService, logger)
-	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService)
+	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService, distributedLockManager)
 	agentCampaignTriggerJob := ProvideAgentCampaignTriggerJob(agentUseCase, logger, tracingService, distributedLockManager)
 	registry := job.NewRegistry(messageCampaignTriggerJob, agentCampaignTriggerJob)
 	handler := scheduler.NewSchedulerHandler(logger, distributedLockManager, tracingService, registry)
