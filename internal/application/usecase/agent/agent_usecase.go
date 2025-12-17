@@ -1670,24 +1670,7 @@ func (u *AgentUseCase) processCampaignImmediate(
 		u.logger.UInt64("campaign_id", campaign.ID),
 		u.logger.String("title", campaign.Title))
 
-	// 1. 冪等性檢查 - 重新獲取活動狀態確保只有 scheduled 狀態才能處理
-	u.tracingService.TraceEvent(span, "Checking campaign status for idempotency")
-	currentCampaign, err := u.agentCampaignRepo.GetByID(ctx, campaign.ID)
-	if err != nil {
-		u.tracingService.RecordSpanError(span, err)
-		return fmt.Errorf("failed to get current campaign status: %w", err)
-	}
-
-	// 檢查活動是否還是 scheduled 狀態，如果不是則表示已被處理
-	if currentCampaign.Status != consts.AgentCampaignStatusScheduled {
-		u.logger.InfoLog("Campaign is no longer in scheduled status, skipping processing",
-			u.logger.UInt64("campaign_id", campaign.ID),
-			u.logger.String("current_status", currentCampaign.Status.String()),
-			u.logger.String("title", campaign.Title))
-		return nil // 不是錯誤，只是已經被其他進程處理過了
-	}
-
-	// 2. 更新狀態為發送中：sending
+	// 1. 更新狀態為發送中：sending（外層鎖已保證併發安全）
 	if err := u.UpdateCampaignStatus(ctx, campaign.ID, consts.AgentCampaignStatusSending); err != nil {
 		u.logger.ErrorLog("Failed to mark campaign as sending",
 			u.logger.UInt64("campaign_id", campaign.ID),
@@ -1696,7 +1679,7 @@ func (u *AgentUseCase) processCampaignImmediate(
 		return err
 	}
 
-	// 3. 委託UseCase執行完整發送流程
+	// 2. 委託UseCase執行完整發送流程
 	targetCount, sentCount, err := u.SendMessageToCampaignTargets(ctx, campaign)
 	if err != nil {
 		// 標記活動失敗
@@ -1709,7 +1692,7 @@ func (u *AgentUseCase) processCampaignImmediate(
 		return err
 	}
 
-	// 4. 更新統計與完成狀態
+	// 3. 更新統計與完成狀態
 	if err = u.CompleteCampaign(ctx, campaign.ID, targetCount, sentCount); err != nil {
 		u.tracingService.RecordSpanError(span, err)
 		return err
