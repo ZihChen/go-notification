@@ -1135,6 +1135,16 @@ func (m *AgentCampaignRepositoryMock) UpdateFields(
 	return args.Error(0)
 }
 
+func (m *AgentCampaignRepositoryMock) UpdateFieldsWithCondition(
+	ctx context.Context,
+	id uint64,
+	columns map[string]interface{},
+	conditions map[string]interface{},
+) error {
+	args := m.Called(ctx, id, columns, conditions)
+	return args.Error(0)
+}
+
 func (m *AgentCampaignRepositoryMock) List(
 	ctx context.Context,
 	query *dto.AgentCampaignsQueryForRepo,

@@ -54,8 +54,8 @@ func TestAgentCampaignTriggerJob_Execute(t *testing.T) {
 				mocks.agentUseCase.On("CompleteCampaign", mock.Anything, uint64(1), 10, 8).
 					Return(nil)
 
-				// Mock distributed lock
-				mocks.distributedLockMgr.On("GetLockWithOptions", mock.Anything, "job:agent_campaigns:trigger", mock.Anything).
+				// Mock distributed lock for campaign processing (per-campaign lock)
+				mocks.distributedLockMgr.On("GetLockWithOptions", mock.Anything, "agent_campaign:processing:1", mock.Anything).
 					Return(mocks.mutex, nil)
 				mocks.mutex.On("TryLock").Return(nil)
 				mocks.mutex.On("Unlock").Return(true, nil)
@@ -71,11 +71,7 @@ func TestAgentCampaignTriggerJob_Execute(t *testing.T) {
 				mocks.agentUseCase.On("GetScheduledCampaigns", mock.Anything, mock.AnythingOfType("time.Time")).
 					Return([]*entity.AgentCampaign{}, nil)
 
-				// Mock distributed lock
-				mocks.distributedLockMgr.On("GetLockWithOptions", mock.Anything, "job:agent_campaigns:trigger", mock.Anything).
-					Return(mocks.mutex, nil)
-				mocks.mutex.On("TryLock").Return(nil)
-				mocks.mutex.On("Unlock").Return(true, nil)
+				// No lock needed since there are no campaigns to process
 			},
 			expectError: false,
 		},
@@ -88,26 +84,10 @@ func TestAgentCampaignTriggerJob_Execute(t *testing.T) {
 				mocks.agentUseCase.On("GetScheduledCampaigns", mock.Anything, mock.AnythingOfType("time.Time")).
 					Return(nil, errors.New("database error"))
 
-				// Mock distributed lock
-				mocks.distributedLockMgr.On("GetLockWithOptions", mock.Anything, "job:agent_campaigns:trigger", mock.Anything).
-					Return(mocks.mutex, nil)
-				mocks.mutex.On("TryLock").Return(nil)
-				mocks.mutex.On("Unlock").Return(true, nil)
+				// No lock needed since the method returns early on error
 			},
 			expectError:      true,
 			expectedErrorMsg: "database error",
-		},
-		{
-			name: "鎖已被其他實例占用時跳過執行",
-			setupMocks: func(mocks *AgentJobMocks) {
-				// Mock tracing service
-				mocks.tracingService.SetupSuccess()
-
-				mocks.distributedLockMgr.On("GetLockWithOptions", mock.Anything, "job:agent_campaigns:trigger", mock.Anything).
-					Return(mocks.mutex, nil)
-				mocks.mutex.On("TryLock").Return(errors.New("lock already acquired")) // 鎖已被占用
-			},
-			expectError: false,
 		},
 		{
 			name: "發送訊息失敗但不中斷整個Job",
@@ -141,8 +121,8 @@ func TestAgentCampaignTriggerJob_Execute(t *testing.T) {
 				mocks.agentUseCase.On("UpdateCampaignStatus", mock.Anything, uint64(1), consts.AgentCampaignStatusFailed).
 					Return(nil)
 
-				// Mock distributed lock
-				mocks.distributedLockMgr.On("GetLockWithOptions", mock.Anything, "job:agent_campaigns:trigger", mock.Anything).
+				// Mock distributed lock for campaign processing (per-campaign lock)
+				mocks.distributedLockMgr.On("GetLockWithOptions", mock.Anything, "agent_campaign:processing:1", mock.Anything).
 					Return(mocks.mutex, nil)
 				mocks.mutex.On("TryLock").Return(nil)
 				mocks.mutex.On("Unlock").Return(true, nil)

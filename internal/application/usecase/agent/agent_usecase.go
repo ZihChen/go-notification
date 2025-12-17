@@ -235,11 +235,15 @@ func (u *AgentUseCase) CreateAgentCampaign(
 
 		// 獲取活動鎖以防止立即發送期間的修改（嚴格模式）
 		campaignLockKey := fmt.Sprintf(consts.RedisAgentCampaignProcessingKey, createdCampaign.ID)
-		campaignMutex, err := u.distributedLockMgr.GetLockWithOptions(ctx, campaignLockKey, infrastructure.LockOptions{
-			Expiry:     90 * time.Second, // 90秒過期
-			Tries:      1,                // 不重試，快速失敗
-			RetryDelay: 0,
-		})
+		campaignMutex, err := u.distributedLockMgr.GetLockWithOptions(
+			ctx,
+			campaignLockKey,
+			infrastructure.LockOptions{
+				Expiry:     90 * time.Second, // 90秒過期
+				Tries:      1,                // 不重試，快速失敗
+				RetryDelay: 0,
+			},
+		)
 		if err != nil {
 			u.logger.ErrorLog("Failed to get campaign lock for immediate send",
 				u.logger.UInt64("campaign_id", createdCampaign.ID),
@@ -312,11 +316,15 @@ func (u *AgentUseCase) UpdateAgentCampaign(
 
 	// 1. 獲取活動鎖以防止併發修改同一活動（嚴格模式）
 	campaignLockKey := fmt.Sprintf(consts.RedisAgentCampaignProcessingKey, req.ID)
-	campaignMutex, err := u.distributedLockMgr.GetLockWithOptions(ctx, campaignLockKey, infrastructure.LockOptions{
-		Expiry:     90 * time.Second, // 90秒過期
-		Tries:      3,                // 重試3次
-		RetryDelay: 100 * time.Millisecond,
-	})
+	campaignMutex, err := u.distributedLockMgr.GetLockWithOptions(
+		ctx,
+		campaignLockKey,
+		infrastructure.LockOptions{
+			Expiry:     90 * time.Second, // 90秒過期
+			Tries:      3,                // 重試3次
+			RetryDelay: 100 * time.Millisecond,
+		},
+	)
 	if err != nil {
 		u.tracingService.RecordSpanError(span, err)
 		return nil, fmt.Errorf("failed to get campaign lock for %d: %w", req.ID, err)
@@ -326,7 +334,10 @@ func (u *AgentUseCase) UpdateAgentCampaign(
 	err = campaignMutex.TryLock()
 	if err != nil {
 		u.tracingService.RecordSpanError(span, err)
-		return nil, fmt.Errorf("failed to acquire campaign lock for %d: campaign is being processed by another operation", req.ID)
+		return nil, fmt.Errorf(
+			"failed to acquire campaign lock for %d: campaign is being processed by another operation",
+			req.ID,
+		)
 	}
 
 	// 2. 先獲取現有的活動

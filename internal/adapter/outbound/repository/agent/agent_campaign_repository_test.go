@@ -56,6 +56,7 @@ func TestAgentCampaignRepository_Create(t *testing.T) {
 						sqlmock.AnyArg(), // title
 						sqlmock.AnyArg(), // content
 						sqlmock.AnyArg(), // scheduled_at
+						sqlmock.AnyArg(), // schedule_type
 						sqlmock.AnyArg(), // status
 						sqlmock.AnyArg(), // target_type
 						sqlmock.AnyArg(), // target_details
@@ -63,9 +64,9 @@ func TestAgentCampaignRepository_Create(t *testing.T) {
 						sqlmock.AnyArg(), // real_sent_count
 						sqlmock.AnyArg(), // created_by
 						sqlmock.AnyArg(), // updated_by
+						sqlmock.AnyArg(), // deleted_at
 						sqlmock.AnyArg(), // created_at
 						sqlmock.AnyArg(), // updated_at
-						sqlmock.AnyArg(), // deleted_at
 					).
 					WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectCommit()

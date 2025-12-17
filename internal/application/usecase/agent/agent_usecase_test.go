@@ -52,12 +52,14 @@ func TestAgentUseCase_CreateAgentCampaign(t *testing.T) {
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
 	tracingService := mocks.NewTracingServiceMock(t)
+	distributedLockMgr := mocks.NewDistributedLockManagerMock(t)
 
 	// 創建記錄器
 	logger := helper.NewMockLogger()
 
 	// 創建用例
 	tracingService.SetupSuccess()
+	distributedLockMgr.SetupSuccess()
 	useCase := NewAgentUseCase(
 		agentRepo,
 		agentCampaignRepo,
@@ -68,6 +70,7 @@ func TestAgentUseCase_CreateAgentCampaign(t *testing.T) {
 		eventProducer,
 		logger,
 		tracingService,
+		distributedLockMgr,
 	)
 
 	// 準備測試數據
@@ -120,12 +123,14 @@ func TestAgentUseCase_GetAgentCampaign(t *testing.T) {
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
 	tracingService := mocks.NewTracingServiceMock(t)
+	distributedLockMgr := mocks.NewDistributedLockManagerMock(t)
 
 	// 創建記錄器
 	logger := helper.NewMockLogger()
 
 	// 創建用例
 	tracingService.SetupSuccess()
+	distributedLockMgr.SetupSuccess()
 	useCase := NewAgentUseCase(
 		agentRepo,
 		agentCampaignRepo,
@@ -136,6 +141,7 @@ func TestAgentUseCase_GetAgentCampaign(t *testing.T) {
 		eventProducer,
 		logger,
 		tracingService,
+		distributedLockMgr,
 	)
 
 	// 準備測試數據
@@ -171,12 +177,14 @@ func TestAgentUseCase_UpdateAgentCampaign(t *testing.T) {
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
 	tracingService := mocks.NewTracingServiceMock(t)
+	distributedLockMgr := mocks.NewDistributedLockManagerMock(t)
 
 	// 創建記錄器
 	logger := helper.NewMockLogger()
 
 	// 創建用例
 	tracingService.SetupSuccess()
+	distributedLockMgr.SetupSuccess()
 	useCase := NewAgentUseCase(
 		agentRepo,
 		agentCampaignRepo,
@@ -187,6 +195,7 @@ func TestAgentUseCase_UpdateAgentCampaign(t *testing.T) {
 		eventProducer,
 		logger,
 		tracingService,
+		distributedLockMgr,
 	)
 
 	// 準備測試數據
@@ -200,12 +209,17 @@ func TestAgentUseCase_UpdateAgentCampaign(t *testing.T) {
 	}
 
 	existingCampaign := createTestAgentCampaign()
+	mockMutex := mocks.NewDistributedMutexMock(t)
 
 	// 設置mock期望
 	agentCampaignRepo.On("GetByID", mock.Anything, request.ID).
 		Return(existingCampaign, nil)
 	agentCampaignRepo.On("Update", mock.Anything, mock.AnythingOfType("*entity.AgentCampaign")).
 		Return(nil)
+	distributedLockMgr.On("GetLockWithOptions", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("infrastructure.LockOptions")).
+		Return(mockMutex, nil)
+	mockMutex.On("TryLock").Return(nil)
+	mockMutex.On("Unlock").Return(true, nil)
 
 	// 執行測試
 	result, err := useCase.UpdateAgentCampaign(context.Background(), request)
@@ -229,12 +243,14 @@ func TestAgentUseCase_DeleteAgentCampaign(t *testing.T) {
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
 	tracingService := mocks.NewTracingServiceMock(t)
+	distributedLockMgr := mocks.NewDistributedLockManagerMock(t)
 
 	// 創建記錄器
 	logger := helper.NewMockLogger()
 
 	// 創建用例
 	tracingService.SetupSuccess()
+	distributedLockMgr.SetupSuccess()
 	useCase := NewAgentUseCase(
 		agentRepo,
 		agentCampaignRepo,
@@ -245,6 +261,7 @@ func TestAgentUseCase_DeleteAgentCampaign(t *testing.T) {
 		eventProducer,
 		logger,
 		tracingService,
+		distributedLockMgr,
 	)
 
 	t.Run("delete draft campaign successfully", func(t *testing.T) {
@@ -318,12 +335,14 @@ func TestAgentUseCase_GetAgentCampaigns(t *testing.T) {
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
 	tracingService := mocks.NewTracingServiceMock(t)
+	distributedLockMgr := mocks.NewDistributedLockManagerMock(t)
 
 	// 創建記錄器
 	logger := helper.NewMockLogger()
 
 	// 創建用例
 	tracingService.SetupSuccess()
+	distributedLockMgr.SetupSuccess()
 	useCase := NewAgentUseCase(
 		agentRepo,
 		agentCampaignRepo,
@@ -334,6 +353,7 @@ func TestAgentUseCase_GetAgentCampaigns(t *testing.T) {
 		eventProducer,
 		logger,
 		tracingService,
+		distributedLockMgr,
 	)
 
 	// 準備測試數據
@@ -385,12 +405,14 @@ func TestAgentUseCase_GetAgentMessages(t *testing.T) {
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
 	tracingService := mocks.NewTracingServiceMock(t)
+	distributedLockMgr := mocks.NewDistributedLockManagerMock(t)
 
 	// 創建記錄器
 	logger := helper.NewMockLogger()
 
 	// 創建用例
 	tracingService.SetupSuccess()
+	distributedLockMgr.SetupSuccess()
 	useCase := NewAgentUseCase(
 		agentRepo,
 		agentCampaignRepo,
@@ -401,6 +423,7 @@ func TestAgentUseCase_GetAgentMessages(t *testing.T) {
 		eventProducer,
 		logger,
 		tracingService,
+		distributedLockMgr,
 	)
 
 	// 準備測試數據
@@ -464,12 +487,14 @@ func TestAgentUseCase_MarkMessageAsRead(t *testing.T) {
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
 	tracingService := mocks.NewTracingServiceMock(t)
+	distributedLockMgr := mocks.NewDistributedLockManagerMock(t)
 
 	// 創建記錄器
 	logger := helper.NewMockLogger()
 
 	// 創建用例
 	tracingService.SetupSuccess()
+	distributedLockMgr.SetupSuccess()
 	useCase := NewAgentUseCase(
 		agentRepo,
 		agentCampaignRepo,
@@ -480,6 +505,7 @@ func TestAgentUseCase_MarkMessageAsRead(t *testing.T) {
 		eventProducer,
 		logger,
 		tracingService,
+		distributedLockMgr,
 	)
 
 	// 準備測試數據
@@ -510,12 +536,14 @@ func TestAgentUseCase_GetAgentByGlobalID(t *testing.T) {
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
 	tracingService := mocks.NewTracingServiceMock(t)
+	distributedLockMgr := mocks.NewDistributedLockManagerMock(t)
 
 	// 創建記錄器
 	logger := helper.NewMockLogger()
 
 	// 創建用例
 	tracingService.SetupSuccess()
+	distributedLockMgr.SetupSuccess()
 	useCase := NewAgentUseCase(
 		agentRepo,
 		agentCampaignRepo,
@@ -526,6 +554,7 @@ func TestAgentUseCase_GetAgentByGlobalID(t *testing.T) {
 		eventProducer,
 		logger,
 		tracingService,
+		distributedLockMgr,
 	)
 
 	// 準備測試數據
@@ -561,12 +590,14 @@ func TestAgentUseCase_GetActiveAgents(t *testing.T) {
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
 	tracingService := mocks.NewTracingServiceMock(t)
+	distributedLockMgr := mocks.NewDistributedLockManagerMock(t)
 
 	// 創建記錄器
 	logger := helper.NewMockLogger()
 
 	// 創建用例
 	tracingService.SetupSuccess()
+	distributedLockMgr.SetupSuccess()
 	useCase := NewAgentUseCase(
 		agentRepo,
 		agentCampaignRepo,
@@ -577,6 +608,7 @@ func TestAgentUseCase_GetActiveAgents(t *testing.T) {
 		eventProducer,
 		logger,
 		tracingService,
+		distributedLockMgr,
 	)
 
 	// 準備測試數據
@@ -616,12 +648,14 @@ func TestAgentUseCase_GetAgentCampaign_NotFound(t *testing.T) {
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
 	tracingService := mocks.NewTracingServiceMock(t)
+	distributedLockMgr := mocks.NewDistributedLockManagerMock(t)
 
 	// 創建記錄器
 	logger := helper.NewMockLogger()
 
 	// 創建用例
 	tracingService.SetupSuccess()
+	distributedLockMgr.SetupSuccess()
 	useCase := NewAgentUseCase(
 		agentRepo,
 		agentCampaignRepo,
@@ -632,6 +666,7 @@ func TestAgentUseCase_GetAgentCampaign_NotFound(t *testing.T) {
 		eventProducer,
 		logger,
 		tracingService,
+		distributedLockMgr,
 	)
 
 	// 準備測試數據
@@ -665,12 +700,14 @@ func TestAgentUseCase_CreateAgentCampaign_RepositoryError(t *testing.T) {
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
 	tracingService := mocks.NewTracingServiceMock(t)
+	distributedLockMgr := mocks.NewDistributedLockManagerMock(t)
 
 	// 創建記錄器
 	logger := helper.NewMockLogger()
 
 	// 創建用例
 	tracingService.SetupSuccess()
+	distributedLockMgr.SetupSuccess()
 	useCase := NewAgentUseCase(
 		agentRepo,
 		agentCampaignRepo,
@@ -681,6 +718,7 @@ func TestAgentUseCase_CreateAgentCampaign_RepositoryError(t *testing.T) {
 		eventProducer,
 		logger,
 		tracingService,
+		distributedLockMgr,
 	)
 
 	// 準備測試數據
@@ -1040,12 +1078,14 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
 	tracingService := mocks.NewTracingServiceMock(t)
+	distributedLockMgr := mocks.NewDistributedLockManagerMock(t)
 
 	// 創建記錄器
 	logger := helper.NewMockLogger()
 
 	// 創建用例
 	tracingService.SetupSuccess()
+	distributedLockMgr.SetupSuccess()
 	useCase := NewAgentUseCase(
 		agentRepo,
 		agentCampaignRepo,
@@ -1056,6 +1096,7 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 		eventProducer,
 		logger,
 		tracingService,
+		distributedLockMgr,
 	)
 
 	testCases := []struct {
@@ -1305,12 +1346,14 @@ func TestAgentUseCase_CreateAgentCampaign_DraftStatus(t *testing.T) {
 	agentService := mocks.NewAgentServiceMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
 	tracingService := mocks.NewTracingServiceMock(t)
+	distributedLockMgr := mocks.NewDistributedLockManagerMock(t)
 
 	// 創建記錄器
 	logger := helper.NewMockLogger()
 
 	// 創建用例
 	tracingService.SetupSuccess()
+	distributedLockMgr.SetupSuccess()
 	useCase := NewAgentUseCase(
 		agentRepo,
 		agentCampaignRepo,
@@ -1321,6 +1364,7 @@ func TestAgentUseCase_CreateAgentCampaign_DraftStatus(t *testing.T) {
 		eventProducer,
 		logger,
 		tracingService,
+		distributedLockMgr,
 	)
 
 	// 準備測試數據 - 使用draft狀態避免觸發立即發送

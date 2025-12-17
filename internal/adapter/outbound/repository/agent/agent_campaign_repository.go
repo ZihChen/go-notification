@@ -154,15 +154,15 @@ func (r *AgentCampaignRepository) UpdateFieldsWithCondition(
 	}
 
 	builder := r.db.WithContext(ctx).Model(&models.AgentCampaign{})
-	
+
 	// 添加 ID 條件
 	builder = builder.Where("id = ?", id)
-	
+
 	// 添加額外條件
 	for key, value := range conditions {
 		builder = builder.Where(fmt.Sprintf("%s = ?", key), value)
 	}
-	
+
 	result := builder.Updates(columns)
 	if result.Error != nil {
 		return result.Error
@@ -171,7 +171,7 @@ func (r *AgentCampaignRepository) UpdateFieldsWithCondition(
 	if result.RowsAffected == 0 {
 		return fmt.Errorf("no records updated - conditions not met or record not found")
 	}
-	
+
 	return nil
 }
 

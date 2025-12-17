@@ -21,14 +21,28 @@ func TestAgentMessageRepository_BatchHardDeleteByCampaignIDs(t *testing.T) {
 	t.Run("successful batch hard delete", func(t *testing.T) {
 		campaignIDs := []uint64{1, 2, 3}
 
-		// Mock DELETE query with Unscoped()
-		mock.ExpectBegin()
-		mock.ExpectExec(regexp.QuoteMeta("DELETE FROM `agent_messages` WHERE agent_campaign_id IN (?,?,?)")).
-			WithArgs(1, 2, 3).
-			WillReturnResult(sqlmock.NewResult(0, 5))
+		// Mock the sequential processing for each campaign
+		// Campaign 1: Has 2 messages (< 5000, so loop ends after first batch)
+		mock.ExpectQuery(regexp.QuoteMeta("SELECT id FROM agent_messages WHERE agent_campaign_id = ? LIMIT ?")).
+			WithArgs(1, 5000).
+			WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(101).AddRow(102))
+		mock.ExpectExec(regexp.QuoteMeta("DELETE FROM agent_messages WHERE id IN (?,?)")).
+			WithArgs(101, 102).
+			WillReturnResult(sqlmock.NewResult(0, 2))
 
-		// 假設刪除了5條記錄
-		mock.ExpectCommit()
+		// Campaign 2: No messages found
+		mock.ExpectQuery(regexp.QuoteMeta("SELECT id FROM agent_messages WHERE agent_campaign_id = ? LIMIT ?")).
+			WithArgs(2, 5000).
+			WillReturnRows(sqlmock.NewRows([]string{"id"}))
+			// empty result
+
+		// Campaign 3: Has 3 messages (< 5000, so loop ends after first batch)
+		mock.ExpectQuery(regexp.QuoteMeta("SELECT id FROM agent_messages WHERE agent_campaign_id = ? LIMIT ?")).
+			WithArgs(3, 5000).
+			WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(201).AddRow(202).AddRow(203))
+		mock.ExpectExec(regexp.QuoteMeta("DELETE FROM agent_messages WHERE id IN (?,?,?)")).
+			WithArgs(201, 202, 203).
+			WillReturnResult(sqlmock.NewResult(0, 3))
 
 		err := repo.BatchHardDeleteByCampaignIDs(context.Background(), campaignIDs)
 		assert.NoError(t, err)
@@ -45,15 +59,14 @@ func TestAgentMessageRepository_BatchHardDeleteByCampaignIDs(t *testing.T) {
 	t.Run("database error", func(t *testing.T) {
 		campaignIDs := []uint64{1}
 
-		mock.ExpectBegin()
-		mock.ExpectExec(regexp.QuoteMeta("DELETE FROM `agent_messages` WHERE agent_campaign_id IN (?)")).
-			WithArgs(1).
+		// Mock the SELECT query that will fail
+		mock.ExpectQuery(regexp.QuoteMeta("SELECT id FROM agent_messages WHERE agent_campaign_id = ? LIMIT ?")).
+			WithArgs(1, 5000).
 			WillReturnError(errors.New("database error"))
-		mock.ExpectRollback()
 
 		err := repo.BatchHardDeleteByCampaignIDs(context.Background(), campaignIDs)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "batch hard delete agent messages by campaign IDs failed")
+		assert.Contains(t, err.Error(), "delete campaign 1 messages failed")
 
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})

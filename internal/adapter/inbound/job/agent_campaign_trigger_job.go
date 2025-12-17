@@ -156,11 +156,15 @@ func (j *AgentCampaignTriggerJob) processCampaign(
 
 	// 1. 獲取活動級鎖以防止與 API 操作衝突（與 API 使用相同鎖策略）
 	campaignLockKey := fmt.Sprintf(consts.RedisAgentCampaignProcessingKey, campaign.ID)
-	campaignMutex, err := j.distributedLockMgr.GetLockWithOptions(ctx, campaignLockKey, infrastructure.LockOptions{
-		Expiry:     90 * time.Second, // 90秒過期，與 API 保持一致
-		Tries:      1,                // 不重試，如果忙碌則跳過此活動
-		RetryDelay: 0,
-	})
+	campaignMutex, err := j.distributedLockMgr.GetLockWithOptions(
+		ctx,
+		campaignLockKey,
+		infrastructure.LockOptions{
+			Expiry:     90 * time.Second, // 90秒過期，與 API 保持一致
+			Tries:      1,                // 不重試，如果忙碌則跳過此活動
+			RetryDelay: 0,
+		},
+	)
 	if err != nil {
 		j.logger.ErrorLog("Failed to get campaign lock for scheduled processing",
 			j.logger.UInt64("campaign_id", campaign.ID),
