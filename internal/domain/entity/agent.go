@@ -82,8 +82,9 @@ func (ac *AgentCampaign) UpdateFromRequest(req *dto.UpdateAgentCampaignRequest) 
 		ac.ScheduledAt = req.ScheduledAt
 	}
 
-	// 處理立即發送邏輯：當 status=scheduled 且 scheduled_at=nil 時，設定 scheduled_at 為當下時間
-	if consts.AgentCampaignStatus(req.Status) == consts.AgentCampaignStatusScheduled &&
+	// 處理立即發送邏輯：當 status=scheduled、draft 且 scheduled_at=nil 時，設定 scheduled_at 為當下時間
+	if (consts.AgentCampaignStatus(req.Status) == consts.AgentCampaignStatusScheduled ||
+		consts.AgentCampaignStatus(req.Status) == consts.AgentCampaignStatusDraft) &&
 		req.ScheduledAt == nil {
 		ac.ScheduledAt = &now
 		ac.ScheduleType = consts.AgentScheduleTypeImmediate
