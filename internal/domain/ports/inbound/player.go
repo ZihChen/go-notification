@@ -12,6 +12,10 @@ type PlayerUseCase interface {
 	GetPlayerByID(ctx context.Context, id uint64) (*dto.PlayerResponse, error)
 	GetPlayerByGlobalID(ctx context.Context, globalID string) (*dto.PlayerResponse, error)
 	UpdatePlayerLastActive(ctx context.Context, id uint64) error
+
+	// 批次處理器
+	StartBatchProcessor(ctx context.Context) error
+	StopBatchProcessor(ctx context.Context) error
 }
 
 type PlayerLevelUseCase interface {

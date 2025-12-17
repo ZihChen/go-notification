@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
@@ -271,6 +272,89 @@ func (r *PlayerRepository) Upsert(ctx context.Context, player *entity.Player) er
 		return fmt.Errorf("timestamp-based upsert failed: %w", result.Error)
 	}
 	return nil
+}
+
+// BatchUpsert 批次冪等性創建或更新玩家
+func (r *PlayerRepository) BatchUpsert(ctx context.Context, players []*entity.Player) error {
+	if len(players) == 0 {
+		return nil
+	}
+
+	// 將領域模型轉換為資料庫模型
+	playerModels := make([]*models.Player, len(players))
+	for i, player := range players {
+		playerModels[i] = mapToDBPlayer(player)
+	}
+
+	// 批次處理含死鎖重試機制
+	maxRetries := 5
+	baseDelay := 100 * time.Millisecond
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		err := r.processBatchUpsert(ctx, playerModels)
+		if err == nil {
+			return nil
+		}
+
+		// 檢查是否為死鎖錯誤
+		if r.isDeadlockError(err) && attempt < maxRetries-1 {
+			// 指數退避等待重試
+			delay := time.Duration(1<<attempt) * baseDelay
+			time.Sleep(delay)
+			continue
+		}
+
+		return err
+	}
+
+	return fmt.Errorf("batch upsert failed after %d retries", maxRetries)
+}
+
+// processBatchUpsert 執行實際的批次更新操作
+func (r *PlayerRepository) processBatchUpsert(ctx context.Context, chunk []*models.Player) error {
+	// 使用 GORM CreateInBatches + OnConflict 進行批次 upsert
+	result := r.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "global_player_id"}},
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"account": gorm.Expr(
+				"CASE WHEN VALUES(updated_at) > updated_at AND VALUES(account) != account THEN VALUES(account) ELSE account END",
+			),
+			"api_key": gorm.Expr(
+				"CASE WHEN VALUES(updated_at) > updated_at AND VALUES(api_key) != api_key THEN VALUES(api_key) ELSE api_key END",
+			),
+			"level_id": gorm.Expr(
+				"CASE WHEN VALUES(updated_at) > updated_at AND VALUES(level_id) != level_id THEN VALUES(level_id) ELSE level_id END",
+			),
+			"email": gorm.Expr(
+				"CASE WHEN VALUES(updated_at) > updated_at THEN VALUES(email) ELSE email END"),
+			"last_active_at": gorm.Expr(
+				"CASE WHEN VALUES(updated_at) > updated_at THEN VALUES(last_active_at) ELSE last_active_at END",
+			),
+			"updated_at": gorm.Expr(
+				"CASE WHEN VALUES(updated_at) > updated_at THEN VALUES(updated_at) ELSE updated_at END",
+			),
+			"deleted_at": gorm.Expr(
+				"CASE WHEN VALUES(updated_at) > updated_at AND deleted_at IS NULL THEN VALUES(deleted_at) ELSE deleted_at END",
+			),
+		}),
+	}).CreateInBatches(chunk, len(chunk))
+
+	if result.Error != nil {
+		return fmt.Errorf("batch upsert operation failed: %w", result.Error)
+	}
+
+	return nil
+}
+
+// isDeadlockError 檢查是否為 MySQL deadlock 錯誤
+func (r *PlayerRepository) isDeadlockError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errorStr := err.Error()
+	return strings.Contains(errorStr, "Deadlock found") ||
+		strings.Contains(errorStr, "1213") ||
+		strings.Contains(errorStr, "40001")
 }
 
 // 將DB模型映射到領域模型

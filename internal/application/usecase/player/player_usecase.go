@@ -27,6 +27,7 @@ type PlayerUseCase struct {
 	eventProducer  service.EventProducer
 	logger         infrastructure.Logger
 	tracingService infrastructure.TracingService
+	batchProcessor *PlayerBatchProcessor // 批次處理器
 }
 
 // NewPlayerUseCase 創建玩家用例
@@ -38,14 +39,22 @@ func NewPlayerUseCase(
 	logger infrastructure.Logger,
 	tracingService infrastructure.TracingService,
 ) inbound.PlayerUseCase {
-	return &PlayerUseCase{
+	useCase := &PlayerUseCase{
 		playerRepo:     playerRepo,
 		merchantRepo:   merchantRepo,
 		levelRepo:      levelRepo,
 		eventProducer:  eventProducer,
 		logger:         logger,
 		tracingService: tracingService,
+		// 創建批次處理器
+		batchProcessor: NewPlayerBatchProcessor(
+			playerRepo,
+			logger,
+			tracingService,
+		),
 	}
+
+	return useCase
 }
 
 // SyncPlayer 同步玩家信息
@@ -95,14 +104,26 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, data *event.PlayerEvent)
 	// 使用領域方法生成API密鑰
 	player.RegenerateAPIKey()
 
-	u.tracingService.TraceEvent(span, "Upsert player")
-	if err = u.playerRepo.Upsert(ctx, &player); err != nil {
-		u.tracingService.RecordSpanError(span, err)
-		return fmt.Errorf("upsert player: %w", err)
+	u.tracingService.TraceEvent(span, "Submit player to batch processor")
+
+	// 提交到批次處理器
+	resultChannel := u.batchProcessor.SubmitPlayer(&player, data.GlobalMerchantID)
+
+	// 等待批次處理結果
+	select {
+	case err = <-resultChannel:
+		if err != nil {
+			u.tracingService.RecordSpanError(span, err)
+			return fmt.Errorf("batch process player: %w", err)
+		}
+	case <-ctx.Done():
+		u.tracingService.RecordSpanError(span, ctx.Err())
+		return fmt.Errorf("context cancelled while waiting for batch processing: %w", ctx.Err())
 	}
+
 	// 記錄處理完成
 	u.tracingService.TraceEvent(span, "Player sync completed successfully")
-	u.logger.InfoLog("Player upserted successfully",
+	u.logger.InfoWithContext(ctx, "Player processed successfully via batch processor",
 		u.logger.String("global_id", player.GlobalPlayerID),
 		u.logger.String("account", player.Account),
 		u.logger.Any("event_data", data))
@@ -346,4 +367,14 @@ func (u *PlayerUseCase) UpdatePlayerLastActive(ctx context.Context, id uint64) e
 		attribute.String("last_active_at", player.LastActiveAt.Format(time.RFC3339)))
 
 	return nil
+}
+
+// StartBatchProcessor 啟動批次處理器
+func (u *PlayerUseCase) StartBatchProcessor(ctx context.Context) error {
+	return u.batchProcessor.Start(ctx)
+}
+
+// StopBatchProcessor 停止批次處理器
+func (u *PlayerUseCase) StopBatchProcessor(ctx context.Context) error {
+	return u.batchProcessor.Stop(ctx)
 }

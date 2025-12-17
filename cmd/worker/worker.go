@@ -70,6 +70,15 @@ func runWorker(cobraCmd *cobra.Command, args []string) {
 	}
 	defer svc.cleanup(rootCtx, logger)
 
+	// 啟動 Worker 批次處理器
+	if err = svc.workerHandler.StartProcessor(rootCtx); err != nil {
+		logger.FatalWithContext(
+			rootCtx,
+			"Failed to start worker processor",
+			logger.Error("err", err),
+		)
+	}
+
 	// 創建並註冊任務處理器
 	mux := asynq.NewServeMux()
 	svc.workerHandler.RegisterHandlers(mux)
@@ -106,8 +115,15 @@ func runWorker(cobraCmd *cobra.Command, args []string) {
 
 	done := make(chan struct{})
 	go func() {
+		defer close(done)
+		// 先關閉批次處理器
+		if err = svc.workerHandler.ShutdownProcessor(shutdownCtx); err != nil {
+			logger.ErrorWithContext(shutdownCtx, "Failed to shutdown worker processor",
+				logger.Error("err", err))
+		}
+
+		// 再關閉 Worker Server
 		svc.workerServer.Shutdown()
-		close(done)
 	}()
 
 	select {

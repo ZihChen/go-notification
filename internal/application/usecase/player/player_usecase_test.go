@@ -43,7 +43,8 @@ func TestPlayerUseCase_SyncPlayer(t *testing.T) {
 
 	playerRepo, merchantRepo, levelRepo, eventProducer, logger, _ := createMockDependencies(t)
 
-	playerRepo.On("Upsert", mock.Anything, mock.AnythingOfType("*entity.Player")).Return(nil)
+	// 批次處理器相關的mock設置
+	playerRepo.On("BatchUpsert", mock.Anything, mock.AnythingOfType("[]*entity.Player")).Return(nil)
 
 	merchantRepo.On("FindByGlobalID", mock.Anything, globalMerchantID).Return(&entity.Merchant{
 		ID:               1,
@@ -66,8 +67,15 @@ func TestPlayerUseCase_SyncPlayer(t *testing.T) {
 		tracingService,
 	)
 
+	// 啟動批次處理器
+	err := useCase.StartBatchProcessor(context.Background())
+	assert.NoError(t, err)
+	defer func() {
+		_ = useCase.StopBatchProcessor(context.Background())
+	}()
+
 	// 執行測試
-	err := useCase.SyncPlayer(context.Background(), createPlayerEvent())
+	err = useCase.SyncPlayer(context.Background(), createPlayerEvent())
 
 	// 驗證結果
 	assert.NoError(t, err)

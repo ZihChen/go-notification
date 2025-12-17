@@ -281,6 +281,16 @@ func (m *PlayerUseCaseMock) UpdatePlayerLastActive(ctx context.Context, id uint6
 	return args.Error(0)
 }
 
+func (m *PlayerUseCaseMock) StartBatchProcessor(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+func (m *PlayerUseCaseMock) StopBatchProcessor(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
 func (m *PlayerUseCaseMock) SetupSuccess() {}
 func (m *PlayerUseCaseMock) SetupError()   {}
 func (m *PlayerUseCaseMock) SetupEmpty()   {}
