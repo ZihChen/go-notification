@@ -205,7 +205,6 @@ func NewAgentCampaign(
 		TargetCount:   0, // 將在排程時計算
 		RealSentCount: 0,
 		CreatedBy:     req.CreatedBy,
-		UpdatedBy:     req.CreatedBy,
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
