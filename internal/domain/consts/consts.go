@@ -43,3 +43,7 @@ const (
 	TriggerTypeSuccess = "success"
 	TriggerTypeFailure = "failure"
 )
+
+const (
+	RedisAgentCampaignProcessingKey = "agent_campaign:processing:%d"
+)

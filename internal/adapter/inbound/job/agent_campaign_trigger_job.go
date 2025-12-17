@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
@@ -54,32 +55,7 @@ func (j *AgentCampaignTriggerJob) Execute(ctx context.Context) error {
 			j.logger.String("duration", duration.String()))
 	}()
 
-	// 1. 獲取分佈式鎖確保單實例執行
-	lockKey := "job:agent_campaigns:trigger"
-	mutex, err := j.distributedLockMgr.GetLockWithOptions(ctx, lockKey, infrastructure.LockOptions{
-		Expiry:     5 * time.Second,
-		Tries:      1, // 不重試，避免重複執行
-		RetryDelay: 0,
-	})
-	if err != nil {
-		j.logger.WarnLog("Failed to get distributed lock, continuing without lock",
-			j.logger.String("error", err.Error()))
-		// 繼續執行，但記錄警告
-	} else {
-		err := mutex.TryLock()
-		if err != nil {
-			j.logger.InfoLog("Agent campaign job already running on another instance, skipping")
-			return nil
-		}
-		defer func() {
-			if unlocked, unlockErr := mutex.Unlock(); unlockErr != nil || !unlocked {
-				j.logger.ErrorLog("Failed to unlock job mutex",
-					j.logger.String("error", unlockErr.Error()))
-			}
-		}()
-	}
-
-	// 2. 查詢到期的排程活動
+	// 1. 查詢到期的排程活動
 	campaigns, err := j.agentUseCase.GetScheduledCampaigns(ctx, time.Now())
 	if err != nil {
 		j.tracingService.RecordSpanError(span, err)
@@ -95,7 +71,7 @@ func (j *AgentCampaignTriggerJob) Execute(ctx context.Context) error {
 	j.logger.InfoLog("Processing scheduled agent campaigns",
 		j.logger.Int("campaign_count", len(campaigns)))
 
-	// 3. 併發處理活動
+	// 2. 併發處理活動（每個活動使用獨立鎖）
 	return j.processCampaignsConcurrently(ctx, campaigns)
 }
 
@@ -178,12 +154,44 @@ func (j *AgentCampaignTriggerJob) processCampaign(
 
 	j.tracingService.RecordSpanAttributes(span, attribute.Int64("campaign.id", int64(campaign.ID)))
 
+	// 1. 獲取活動級鎖以防止與 API 操作衝突（與 API 使用相同鎖策略）
+	campaignLockKey := fmt.Sprintf(consts.RedisAgentCampaignProcessingKey, campaign.ID)
+	campaignMutex, err := j.distributedLockMgr.GetLockWithOptions(ctx, campaignLockKey, infrastructure.LockOptions{
+		Expiry:     90 * time.Second, // 90秒過期，與 API 保持一致
+		Tries:      1,                // 不重試，如果忙碌則跳過此活動
+		RetryDelay: 0,
+	})
+	if err != nil {
+		j.logger.ErrorLog("Failed to get campaign lock for scheduled processing",
+			j.logger.UInt64("campaign_id", campaign.ID),
+			j.logger.String("error", err.Error()))
+		return err
+	}
+
+	// 嘗試獲取活動鎖
+	err = campaignMutex.TryLock()
+	if err != nil {
+		j.logger.InfoLog("Campaign is being processed by API or another job, skipping",
+			j.logger.UInt64("campaign_id", campaign.ID),
+			j.logger.String("title", campaign.Title))
+		return nil // 跳過此活動，不算錯誤
+	}
+
+	// 確保釋放活動鎖
+	defer func() {
+		if unlocked, unlockErr := campaignMutex.Unlock(); unlockErr != nil || !unlocked {
+			j.logger.ErrorLog("Failed to unlock campaign mutex in scheduled job",
+				j.logger.UInt64("campaign_id", campaign.ID),
+				j.logger.String("error", unlockErr.Error()))
+		}
+	}()
+
 	j.logger.InfoLog("Processing agent campaign",
 		j.logger.UInt64("campaign_id", campaign.ID),
 		j.logger.String("title", campaign.Title))
 
-	// 1. 更新狀態為發送中：sending
-	if err := j.agentUseCase.UpdateCampaignStatus(ctx, campaign.ID, consts.AgentCampaignStatusSending); err != nil {
+	// 2. 更新狀態為發送中：sending
+	if err = j.agentUseCase.UpdateCampaignStatus(ctx, campaign.ID, consts.AgentCampaignStatusSending); err != nil {
 		j.logger.ErrorLog("Failed to mark campaign as sending",
 			j.logger.UInt64("campaign_id", campaign.ID),
 			j.logger.String("update_error", err.Error()))
@@ -191,7 +199,7 @@ func (j *AgentCampaignTriggerJob) processCampaign(
 		return err
 	}
 
-	// 2. 委託UseCase執行完整發送流程
+	// 3. 委託UseCase執行完整發送流程
 	targetCount, sentCount, err := j.agentUseCase.SendMessageToCampaignTargets(ctx, campaign)
 	if err != nil {
 		// 標記活動失敗
@@ -204,7 +212,7 @@ func (j *AgentCampaignTriggerJob) processCampaign(
 		return err
 	}
 
-	// 3. 更新統計與完成狀態
+	// 4. 更新統計與完成狀態
 	if err = j.agentUseCase.CompleteCampaign(ctx, campaign.ID, targetCount, sentCount); err != nil {
 		j.tracingService.RecordSpanError(span, err)
 		return err

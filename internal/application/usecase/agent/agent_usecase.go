@@ -234,7 +234,7 @@ func (u *AgentUseCase) CreateAgentCampaign(
 		u.tracingService.TraceEvent(span, "Starting asynchronous immediate campaign processing")
 
 		// 獲取活動鎖以防止立即發送期間的修改（嚴格模式）
-		campaignLockKey := fmt.Sprintf("agent_campaign:lock:%d", createdCampaign.ID)
+		campaignLockKey := fmt.Sprintf(consts.RedisAgentCampaignProcessingKey, createdCampaign.ID)
 		campaignMutex, err := u.distributedLockMgr.GetLockWithOptions(ctx, campaignLockKey, infrastructure.LockOptions{
 			Expiry:     90 * time.Second, // 90秒過期
 			Tries:      1,                // 不重試，快速失敗
@@ -311,7 +311,7 @@ func (u *AgentUseCase) UpdateAgentCampaign(
 	u.tracingService.RecordSpanAttributes(span, attribute.Int64("campaign.id", int64(req.ID)))
 
 	// 1. 獲取活動鎖以防止併發修改同一活動（嚴格模式）
-	campaignLockKey := fmt.Sprintf("agent_campaign:lock:%d", req.ID)
+	campaignLockKey := fmt.Sprintf(consts.RedisAgentCampaignProcessingKey, req.ID)
 	campaignMutex, err := u.distributedLockMgr.GetLockWithOptions(ctx, campaignLockKey, infrastructure.LockOptions{
 		Expiry:     90 * time.Second, // 90秒過期
 		Tries:      3,                // 重試3次
