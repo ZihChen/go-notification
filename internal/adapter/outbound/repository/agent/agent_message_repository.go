@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
@@ -113,6 +114,100 @@ func (r *AgentMessageRepository) BatchDeleteByCampaignIDs(
 	if result.Error != nil {
 		return fmt.Errorf("batch delete agent messages by campaign IDs failed: %w", result.Error)
 	}
+	return nil
+}
+
+// BatchHardDeleteByCampaignIDs 根據活動ID列表批量硬刪除所有關聯的代理站內信 (永久刪除)
+// 使用遞迴處理每個campaignID，分頁批次刪除，最大化性能
+func (r *AgentMessageRepository) BatchHardDeleteByCampaignIDs(
+	ctx context.Context,
+	campaignIDs []uint64,
+) error {
+	if len(campaignIDs) == 0 {
+		return nil
+	}
+
+	// 遞迴處理每一個campaignID，避免WHERE IN條件
+	for _, campaignID := range campaignIDs {
+		if err := r.deleteByCampaignIDWithPagination(ctx, campaignID); err != nil {
+			return fmt.Errorf("delete campaign %d messages failed: %w", campaignID, err)
+		}
+	}
+
+	return nil
+}
+
+// deleteByCampaignIDWithPagination 單一campaignID的分頁批次刪除
+func (r *AgentMessageRepository) deleteByCampaignIDWithPagination(
+	ctx context.Context,
+	campaignID uint64,
+) error {
+	const batchSize = 5000 // 每批次5000筆
+
+	for {
+		// 使用原生SQL獲取要刪除的ID（分頁）
+		query := "SELECT id FROM agent_messages WHERE agent_campaign_id = ? LIMIT ?"
+
+		var messageIDs []uint64
+		rows, err := r.db.WithContext(ctx).Raw(query, campaignID, batchSize).Rows()
+		if err != nil {
+			return fmt.Errorf("query message IDs failed: %w", err)
+		}
+
+		// 讀取ID列表
+		for rows.Next() {
+			var id uint64
+			if err := rows.Scan(&id); err != nil {
+				_ = rows.Close()
+				return fmt.Errorf("scan message ID failed: %w", err)
+			}
+			messageIDs = append(messageIDs, id)
+		}
+		_ = rows.Close()
+
+		// 如果沒有更多記錄，退出循環
+		if len(messageIDs) == 0 {
+			break
+		}
+
+		// 使用原生SQL批次刪除（最高性能）
+		if err = r.deleteMessagesByIDs(ctx, messageIDs); err != nil {
+			return fmt.Errorf("batch delete message IDs failed: %w", err)
+		}
+
+		// 如果這批記錄數少於批次大小，表示已經處理完成
+		if len(messageIDs) < batchSize {
+			break
+		}
+	}
+
+	return nil
+}
+
+// deleteMessagesByIDs 使用原生SQL批次刪除指定ID的記錄
+func (r *AgentMessageRepository) deleteMessagesByIDs(
+	ctx context.Context,
+	messageIDs []uint64,
+) error {
+	if len(messageIDs) == 0 {
+		return nil
+	}
+
+	// 構建原生SQL DELETE語句
+	placeholders := make([]string, len(messageIDs))
+	args := make([]interface{}, len(messageIDs))
+	for i, id := range messageIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	deleteSQL := fmt.Sprintf("DELETE FROM agent_messages WHERE id IN (%s)",
+		strings.Join(placeholders, ","))
+
+	if err := r.db.WithContext(ctx).Exec(deleteSQL, args...).Error; err != nil {
+		return fmt.Errorf("execute batch delete SQL failed: %w", err)
+	}
+
 	return nil
 }
 

@@ -93,7 +93,10 @@ func (r *APIRouter) RegisterRoutes(router *gin.Engine, authMiddleware gin.Handle
 	{
 		agentCampaigns.POST("", r.agentHandler.CreateAgentCampaign)
 		agentCampaigns.GET("", r.agentHandler.GetAgentCampaigns)
-		agentCampaigns.DELETE("", r.agentHandler.BatchDeleteAgentCampaigns) // 批量刪除（使用JSON body）
+		agentCampaigns.DELETE(
+			"",
+			r.agentHandler.BatchDeleteAgentCampaigns,
+		) // 批量刪除（agent_message異步刪除）
 		agentCampaigns.GET("/:id", r.agentHandler.GetAgentCampaign)
 		agentCampaigns.PUT("/:id", r.agentHandler.UpdateAgentCampaign)
 		agentCampaigns.DELETE("/:id", r.agentHandler.DeleteAgentCampaign) // 單個刪除（使用路徑參數）

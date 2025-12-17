@@ -543,7 +543,7 @@ func (u *AgentUseCase) DeleteAgentCampaign(ctx context.Context, id uint64) error
 	return nil
 }
 
-// BatchDeleteAgentCampaigns 批量刪除代理訊息活動
+// BatchDeleteAgentCampaigns 批量刪除代理訊息活動（同步版本）
 func (u *AgentUseCase) BatchDeleteAgentCampaigns(
 	ctx context.Context,
 	req *dto.BatchDeleteAgentCampaignsRequest,
@@ -603,12 +603,29 @@ func (u *AgentUseCase) BatchDeleteAgentCampaigns(
 	// 使用事務確保批量刪除操作的原子性
 	u.tracingService.TraceEvent(span, "Starting transaction for cascade batch delete")
 
-	// 先批量刪除相關的代理站內信
-	u.tracingService.TraceEvent(span, "Batch deleting associated agent messages")
-	if err := u.agentMessageRepo.BatchDeleteByCampaignIDs(ctx, validIDs); err != nil {
-		u.tracingService.RecordSpanError(span, err)
-		return fmt.Errorf("batch delete associated agent messages failed: %w", err)
-	}
+	// 異步硬刪除相關的代理站內信 (避免API超時)
+	u.tracingService.TraceEvent(span, "Starting async agent messages deletion")
+	go func() {
+		// 使用新的context避免被原始請求取消
+		deleteCtx := context.Background()
+
+		u.logger.InfoLog("Starting async agent messages deletion",
+			u.logger.Any("campaign_ids", validIDs),
+			u.logger.Int("campaign_count", len(validIDs)))
+
+		if err := u.agentMessageRepo.BatchHardDeleteByCampaignIDs(deleteCtx, validIDs); err != nil {
+			u.logger.ErrorLog("Async agent messages deletion failed",
+				u.logger.Any("campaign_ids", validIDs),
+				u.logger.Error("error", err))
+		} else {
+			u.logger.InfoLog("Async agent messages deletion completed successfully",
+				u.logger.Any("campaign_ids", validIDs),
+				u.logger.Int("campaign_count", len(validIDs)))
+		}
+	}()
+
+	u.logger.InfoLog("Async agent messages deletion task started",
+		u.logger.Any("campaign_ids", validIDs))
 
 	// 再執行批量刪除活動
 	u.tracingService.TraceEvent(span, "Executing batch delete operation")

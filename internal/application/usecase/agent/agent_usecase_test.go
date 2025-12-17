@@ -1082,7 +1082,7 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 						Return(campaign, nil)
 				}
 
-				agentMessageRepo.On("BatchDeleteByCampaignIDs", mock.Anything, []uint64{1, 2, 3}).
+				agentMessageRepo.On("BatchHardDeleteByCampaignIDs", mock.Anything, []uint64{1, 2, 3}).
 					Return(nil)
 				agentCampaignRepo.On("BatchDelete", mock.Anything, []uint64{1, 2, 3}).
 					Return(nil)
@@ -1125,7 +1125,7 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 					Return(campaign3, nil)
 
 				// Only valid campaigns are deleted
-				agentMessageRepo.On("BatchDeleteByCampaignIDs", mock.Anything, []uint64{1, 3}).
+				agentMessageRepo.On("BatchHardDeleteByCampaignIDs", mock.Anything, []uint64{1, 3}).
 					Return(nil)
 				agentCampaignRepo.On("BatchDelete", mock.Anything, []uint64{1, 3}).
 					Return(nil)
@@ -1148,7 +1148,7 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 						Return(campaign, nil)
 				}
 				// BatchDelete call expected for all valid campaigns
-				agentMessageRepo.On("BatchDeleteByCampaignIDs", mock.Anything, []uint64{1, 2}).
+				agentMessageRepo.On("BatchHardDeleteByCampaignIDs", mock.Anything, []uint64{1, 2}).
 					Return(nil)
 				agentCampaignRepo.On("BatchDelete", mock.Anything, []uint64{1, 2}).
 					Return(nil)
@@ -1167,7 +1167,7 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 
 				agentCampaignRepo.On("GetByID", mock.Anything, uint64(1)).
 					Return(campaign, nil)
-				agentMessageRepo.On("BatchDeleteByCampaignIDs", mock.Anything, []uint64{1}).
+				agentMessageRepo.On("BatchHardDeleteByCampaignIDs", mock.Anything, []uint64{1}).
 					Return(nil)
 				agentCampaignRepo.On("BatchDelete", mock.Anything, []uint64{1}).
 					Return(errors.New("database error"))
