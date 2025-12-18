@@ -260,5 +260,6 @@ type AgentMessageStats struct {
 
 // BatchDeleteAgentCampaignsRequest 批量刪除代理訊息活動請求 DTO
 type BatchDeleteAgentCampaignsRequest struct {
-	IDs []uint64 `json:"ids" binding:"required,min=1,dive,min=1"` // 要删除的活动ID列表，至少包含一个有效ID
+	IDs       []uint64 `json:"ids"        binding:"required,min=1,dive,min=1"` // 要删除的活动ID列表，至少包含一个有效ID
+	UpdatedBy string   `json:"updated_by" binding:"required,max=100"`          // 執行刪除操作的用戶標識
 }

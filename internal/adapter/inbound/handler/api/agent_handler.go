@@ -282,6 +282,7 @@ func (h *AgentHandler) GetAgentCampaigns(c *gin.Context) {
 // @Description 刪除指定ID的代理訊息活動
 // @Tags 代理訊息活動
 // @Param id path uint64 true "代理訊息活動ID - 系統內部唯一識別碼，必須為正整數" example(12345)
+// @Param updated_by query string true "執行刪除操作的用戶標識" example("admin001")
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
@@ -294,7 +295,15 @@ func (h *AgentHandler) DeleteAgentCampaign(c *gin.Context) {
 		response.BadRequest(c, "invalid campaign ID", err.Error()).Return()
 	}
 
-	if err = h.agentUseCase.DeleteAgentCampaign(c.Request.Context(), id); err != nil {
+	// 獲取執行刪除操作的用戶標識
+	updatedBy := c.Query("updated_by")
+	if updatedBy == "" {
+		response.BadRequest(c, "updated_by parameter is required", "updated_by query parameter must be provided").
+			Return()
+		return
+	}
+
+	if err = h.agentUseCase.DeleteAgentCampaign(c.Request.Context(), id, updatedBy); err != nil {
 		if err.Error() == "record not found" {
 			response.NotFound(c, "agent campaign not found", err.Error()).Return()
 		}
@@ -315,6 +324,7 @@ func (h *AgentHandler) DeleteAgentCampaign(c *gin.Context) {
 // @Description
 // @Description **請求說明:**
 // @Description - ids: 要删除的活動ID數組，必須提供至少一個有效ID
+// @Description - updated_by: 執行刪除操作的用戶標識，必須提供
 // @Description - 無效ID（不存在或不能删除）會被自動跳過
 // @Description - 只有狀態允許删除的活動才會被處理
 // @Description
@@ -325,7 +335,7 @@ func (h *AgentHandler) DeleteAgentCampaign(c *gin.Context) {
 // @Tags 代理訊息活動
 // @Accept json
 // @Produce json
-// @Param request body dto.BatchDeleteAgentCampaignsRequest true "批量刪除請求" example({"ids": [1, 2, 3, 4]})
+// @Param request body dto.BatchDeleteAgentCampaignsRequest true "批量刪除請求" example({"ids": [1, 2, 3, 4], "updated_by": "admin001"})
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse

@@ -577,7 +577,7 @@ func (u *AgentUseCase) GetAgentCampaigns(
 }
 
 // DeleteAgentCampaign 刪除代理訊息活動
-func (u *AgentUseCase) DeleteAgentCampaign(ctx context.Context, id uint64) error {
+func (u *AgentUseCase) DeleteAgentCampaign(ctx context.Context, id uint64, updatedBy string) error {
 	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.DeleteAgentCampaign")
 	defer u.tracingService.SpanEnd(span)
 
@@ -591,10 +591,11 @@ func (u *AgentUseCase) DeleteAgentCampaign(ctx context.Context, id uint64) error
 		return fmt.Errorf("get campaign for deletion: %w", err)
 	}
 
-	// 先更新狀態為 cancelled
+	// 先更新狀態為 cancelled 並設置 updated_by
 	u.tracingService.TraceEvent(span, "Updating campaign status to cancelled before deletion")
 	setColumn := map[string]interface{}{
-		"status": consts.MessageCampaignStatusCancelled,
+		"status":     consts.MessageCampaignStatusCancelled,
+		"updated_by": updatedBy,
 	}
 	if err = u.agentCampaignRepo.UpdateFields(ctx, id, setColumn); err != nil {
 		u.tracingService.RecordSpanError(span, err)
@@ -613,7 +614,7 @@ func (u *AgentUseCase) DeleteAgentCampaign(ctx context.Context, id uint64) error
 
 	// 再刪除代理活動
 	u.tracingService.TraceEvent(span, "Deleting agent campaign")
-	if err = u.agentCampaignRepo.Delete(ctx, id); err != nil {
+	if err = u.agentCampaignRepo.Delete(ctx, id, updatedBy); err != nil {
 		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("delete agent campaign: %w", err)
 	}
@@ -621,7 +622,8 @@ func (u *AgentUseCase) DeleteAgentCampaign(ctx context.Context, id uint64) error
 	u.tracingService.TraceEvent(span, "Agent campaign deleted successfully")
 	u.logger.InfoLog("Agent campaign deleted successfully",
 		u.logger.UInt64("campaign_id", id),
-		u.logger.String("title", campaign.Title))
+		u.logger.String("title", campaign.Title),
+		u.logger.String("updated_by", updatedBy))
 
 	return nil
 }
@@ -712,7 +714,7 @@ func (u *AgentUseCase) BatchDeleteAgentCampaigns(
 
 	// 再執行批量刪除活動
 	u.tracingService.TraceEvent(span, "Executing batch delete operation")
-	if err := u.agentCampaignRepo.BatchDelete(ctx, validIDs); err != nil {
+	if err := u.agentCampaignRepo.BatchDelete(ctx, validIDs, req.UpdatedBy); err != nil {
 		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("batch delete agent campaigns failed: %w", err)
 	}
@@ -721,7 +723,8 @@ func (u *AgentUseCase) BatchDeleteAgentCampaigns(
 	u.logger.InfoLog("Batch delete agent campaigns completed successfully",
 		u.logger.Any("deleted_campaign_ids", validIDs),
 		u.logger.Int("deleted_count", len(validIDs)),
-		u.logger.Int("skipped_count", len(invalidCampaigns)))
+		u.logger.Int("skipped_count", len(invalidCampaigns)),
+		u.logger.String("updated_by", req.UpdatedBy))
 
 	return nil
 }

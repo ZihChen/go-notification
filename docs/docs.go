@@ -173,7 +173,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "根據ID列表批量刪除代理訊息活動，支援高效能批量操作\n\n**請求說明:**\n- ids: 要删除的活動ID數組，必須提供至少一個有效ID\n- 無效ID（不存在或不能删除）會被自動跳過\n- 只有狀態允許删除的活動才會被處理\n\n**響應說明:**\n- 200: 批量删除成功（部分成功也返回200）\n- 400: 請求參數錯誤\n- 500: 服務器內部錯誤",
+                "description": "根據ID列表批量刪除代理訊息活動，支援高效能批量操作\n\n**請求說明:**\n- ids: 要删除的活動ID數組，必須提供至少一個有效ID\n- updated_by: 執行刪除操作的用戶標識，必須提供\n- 無效ID（不存在或不能删除）會被自動跳過\n- 只有狀態允許删除的活動才會被處理\n\n**響應說明:**\n- 200: 批量删除成功（部分成功也返回200）\n- 400: 請求參數錯誤\n- 500: 服務器內部錯誤",
                 "consumes": [
                     "application/json"
                 ],
@@ -350,6 +350,14 @@ const docTemplate = `{
                         "description": "代理訊息活動ID - 系統內部唯一識別碼，必須為正整數",
                         "name": "id",
                         "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"admin001\"",
+                        "description": "執行刪除操作的用戶標識",
+                        "name": "updated_by",
+                        "in": "query",
                         "required": true
                     }
                 ],
@@ -1932,7 +1940,8 @@ const docTemplate = `{
         "dto.BatchDeleteAgentCampaignsRequest": {
             "type": "object",
             "required": [
-                "ids"
+                "ids",
+                "updated_by"
             ],
             "properties": {
                 "ids": {
@@ -1942,6 +1951,11 @@ const docTemplate = `{
                     "items": {
                         "type": "integer"
                     }
+                },
+                "updated_by": {
+                    "description": "執行刪除操作的用戶標識",
+                    "type": "string",
+                    "maxLength": 100
                 }
             }
         },

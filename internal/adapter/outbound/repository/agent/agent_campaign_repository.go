@@ -72,15 +72,25 @@ func (r *AgentCampaignRepository) Update(
 }
 
 // Delete 刪除代理訊息活動 (軟刪除)
-func (r *AgentCampaignRepository) Delete(ctx context.Context, id uint64) error {
-	if err := r.db.WithContext(ctx).Delete(&models.AgentCampaign{}, id).Error; err != nil {
+func (r *AgentCampaignRepository) Delete(ctx context.Context, id uint64, updatedBy string) error {
+	// 使用 Select 方法設置 updated_by 字段，然後執行軟刪除
+	if err := r.db.WithContext(ctx).Model(&models.AgentCampaign{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{
+			"updated_by": updatedBy,
+			"deleted_at": time.Now(),
+		}).Error; err != nil {
 		return fmt.Errorf("delete agent campaign failed: %w", err)
 	}
 	return nil
 }
 
 // BatchDelete 批量刪除代理訊息活動 (軟刪除)
-func (r *AgentCampaignRepository) BatchDelete(ctx context.Context, ids []uint64) error {
+func (r *AgentCampaignRepository) BatchDelete(
+	ctx context.Context,
+	ids []uint64,
+	updatedBy string,
+) error {
 	if len(ids) == 0 {
 		return fmt.Errorf("no IDs provided for batch delete")
 	}
@@ -93,10 +103,13 @@ func (r *AgentCampaignRepository) BatchDelete(ctx context.Context, ids []uint64)
 		}
 	}()
 
-	// 先批量更新狀態為 cancelled（與單個刪除邏輯一致）
+	// 先批量更新狀態為 cancelled 並設置 updated_by（與單個刪除邏輯一致）
 	updateResult := tx.Model(&models.AgentCampaign{}).
 		Where("id IN ?", ids).
-		Update("status", "cancelled")
+		Updates(map[string]interface{}{
+			"status":     consts.MessageCampaignStatusCancelled,
+			"updated_by": updatedBy,
+		})
 	if updateResult.Error != nil {
 		tx.Rollback()
 		return fmt.Errorf(
@@ -105,8 +118,13 @@ func (r *AgentCampaignRepository) BatchDelete(ctx context.Context, ids []uint64)
 		)
 	}
 
-	// 批量軟刪除
-	deleteResult := tx.Where("id IN ?", ids).Delete(&models.AgentCampaign{})
+	// 批量軟刪除，同時更新 updated_by
+	deleteResult := tx.Model(&models.AgentCampaign{}).
+		Where("id IN ?", ids).
+		Updates(map[string]interface{}{
+			"updated_by": updatedBy,
+			"deleted_at": time.Now(),
+		})
 	if deleteResult.Error != nil {
 		tx.Rollback()
 		return fmt.Errorf("batch delete agent campaigns failed: %w", deleteResult.Error)

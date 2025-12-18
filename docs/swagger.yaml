@@ -222,8 +222,13 @@ definitions:
           type: integer
         minItems: 1
         type: array
+      updated_by:
+        description: 執行刪除操作的用戶標識
+        maxLength: 100
+        type: string
     required:
     - ids
+    - updated_by
     type: object
   dto.CreateAgentCampaignRequest:
     properties:
@@ -899,6 +904,7 @@ paths:
 
         **請求說明:**
         - ids: 要删除的活動ID數組，必須提供至少一個有效ID
+        - updated_by: 執行刪除操作的用戶標識，必須提供
         - 無效ID（不存在或不能删除）會被自動跳過
         - 只有狀態允許删除的活動才會被處理
 
@@ -1085,6 +1091,12 @@ paths:
         name: id
         required: true
         type: integer
+      - description: 執行刪除操作的用戶標識
+        example: '"admin001"'
+        in: query
+        name: updated_by
+        required: true
+        type: string
       responses:
         "200":
           description: OK

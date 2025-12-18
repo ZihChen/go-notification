@@ -531,8 +531,12 @@ func (m *AgentUseCaseMock) GetAgentCampaigns(
 	return args.Get(0).(*dto.AgentCampaignListResponse), args.Error(1)
 }
 
-func (m *AgentUseCaseMock) DeleteAgentCampaign(ctx context.Context, id uint64) error {
-	args := m.Called(ctx, id)
+func (m *AgentUseCaseMock) DeleteAgentCampaign(
+	ctx context.Context,
+	id uint64,
+	updatedBy string,
+) error {
+	args := m.Called(ctx, id, updatedBy)
 	return args.Error(0)
 }
 

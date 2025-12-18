@@ -80,6 +80,7 @@ func (ac *AgentCampaign) UpdateFromRequest(req *dto.UpdateAgentCampaignRequest) 
 	// 處理 ScheduledAt 更新
 	if req.ScheduledAt != nil {
 		ac.ScheduledAt = req.ScheduledAt
+		ac.ScheduleType = consts.AgentScheduleTypeScheduled
 	}
 
 	// 處理立即發送邏輯：當 status=scheduled、draft 且 scheduled_at=nil 時，設定 scheduled_at 為當下時間

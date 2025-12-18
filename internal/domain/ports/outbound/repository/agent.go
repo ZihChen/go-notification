@@ -60,8 +60,8 @@ type AgentCampaignRepository interface {
 	Create(ctx context.Context, campaign *entity.AgentCampaign) (*entity.AgentCampaign, error)
 	GetByID(ctx context.Context, id uint64) (*entity.AgentCampaign, error)
 	Update(ctx context.Context, campaign *entity.AgentCampaign) error
-	Delete(ctx context.Context, id uint64) error
-	BatchDelete(ctx context.Context, ids []uint64) error
+	Delete(ctx context.Context, id uint64, updatedBy string) error
+	BatchDelete(ctx context.Context, ids []uint64, updatedBy string) error
 	UpdateFields(
 		ctx context.Context,
 		id uint64,

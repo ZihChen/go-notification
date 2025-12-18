@@ -268,8 +268,8 @@ func TestAgentCampaignRepository_Delete(t *testing.T) {
 			id:   1,
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
-				mock.ExpectExec(regexp.QuoteMeta("UPDATE `agent_campaigns` SET `deleted_at`")).
-					WithArgs(sqlmock.AnyArg(), 1).
+				mock.ExpectExec("UPDATE `agent_campaigns` SET .* WHERE id = \\?").
+					WithArgs(sqlmock.AnyArg(), "test_user", sqlmock.AnyArg(), 1).
 					WillReturnResult(sqlmock.NewResult(0, 1))
 				mock.ExpectCommit()
 			},
@@ -288,7 +288,7 @@ func TestAgentCampaignRepository_Delete(t *testing.T) {
 
 			repo := NewAgentCampaignRepository(db)
 
-			err := repo.Delete(context.Background(), tc.id)
+			err := repo.Delete(context.Background(), tc.id, "test_user")
 
 			if tc.expectedError != nil {
 				assert.Error(t, err)
@@ -490,14 +490,14 @@ func TestAgentCampaignRepository_BatchDelete(t *testing.T) {
 				// Begin transaction
 				mock.ExpectBegin()
 
-				// Update status to cancelled (GORM also updates updated_at)
-				mock.ExpectExec(regexp.QuoteMeta("UPDATE `agent_campaigns` SET `status`")).
-					WithArgs("cancelled", sqlmock.AnyArg(), 1, 2, 3).
+				// Update status to cancelled and set updated_by
+				mock.ExpectExec("UPDATE `agent_campaigns` SET .* WHERE id IN \\(\\?,\\?,\\?\\)").
+					WithArgs("cancelled", "test_user", sqlmock.AnyArg(), 1, 2, 3).
 					WillReturnResult(sqlmock.NewResult(0, 3))
 
-				// Soft delete
-				mock.ExpectExec(regexp.QuoteMeta("UPDATE `agent_campaigns` SET `deleted_at`")).
-					WithArgs(sqlmock.AnyArg(), 1, 2, 3).
+				// Soft delete with updated_by
+				mock.ExpectExec("UPDATE `agent_campaigns` SET .* WHERE id IN \\(\\?,\\?,\\?\\)").
+					WithArgs(sqlmock.AnyArg(), "test_user", sqlmock.AnyArg(), 1, 2, 3).
 					WillReturnResult(sqlmock.NewResult(0, 3))
 
 				// Commit transaction
@@ -518,8 +518,8 @@ func TestAgentCampaignRepository_BatchDelete(t *testing.T) {
 			ids:  []uint64{1, 2},
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
-				mock.ExpectExec(regexp.QuoteMeta("UPDATE `agent_campaigns` SET `status`")).
-					WithArgs("cancelled", sqlmock.AnyArg(), 1, 2).
+				mock.ExpectExec("UPDATE `agent_campaigns` SET .* WHERE id IN \\(\\?,\\?\\)").
+					WithArgs("cancelled", "test_user", sqlmock.AnyArg(), 1, 2).
 					WillReturnError(errors.New("update failed"))
 				mock.ExpectRollback()
 			},
@@ -530,11 +530,11 @@ func TestAgentCampaignRepository_BatchDelete(t *testing.T) {
 			ids:  []uint64{1},
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectBegin()
-				mock.ExpectExec(regexp.QuoteMeta("UPDATE `agent_campaigns` SET `status`")).
-					WithArgs("cancelled", sqlmock.AnyArg(), 1).
+				mock.ExpectExec("UPDATE `agent_campaigns` SET .* WHERE id IN \\(\\?\\)").
+					WithArgs("cancelled", "test_user", sqlmock.AnyArg(), 1).
 					WillReturnResult(sqlmock.NewResult(0, 1))
-				mock.ExpectExec(regexp.QuoteMeta("UPDATE `agent_campaigns` SET `deleted_at`")).
-					WithArgs(sqlmock.AnyArg(), 1).
+				mock.ExpectExec("UPDATE `agent_campaigns` SET .* WHERE id IN \\(\\?\\)").
+					WithArgs(sqlmock.AnyArg(), "test_user", sqlmock.AnyArg(), 1).
 					WillReturnError(errors.New("delete failed"))
 				mock.ExpectRollback()
 			},
@@ -553,7 +553,7 @@ func TestAgentCampaignRepository_BatchDelete(t *testing.T) {
 
 			repo := NewAgentCampaignRepository(db)
 
-			err := repo.BatchDelete(context.Background(), tc.ids)
+			err := repo.BatchDelete(context.Background(), tc.ids, "test_user")
 
 			if tc.expectedError != nil {
 				assert.Error(t, err)

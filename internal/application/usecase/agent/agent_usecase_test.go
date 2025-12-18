@@ -281,11 +281,11 @@ func TestAgentUseCase_DeleteAgentCampaign(t *testing.T) {
 			Return(nil)
 		agentMessageRepo.On("DeleteByCampaignID", mock.Anything, campaignID).
 			Return(nil)
-		agentCampaignRepo.On("Delete", mock.Anything, campaignID).
+		agentCampaignRepo.On("Delete", mock.Anything, campaignID, "test_user").
 			Return(nil)
 
 		// 執行測試
-		err := useCase.DeleteAgentCampaign(context.Background(), campaignID)
+		err := useCase.DeleteAgentCampaign(context.Background(), campaignID, "test_user")
 
 		// 驗證結果
 		assert.NoError(t, err)
@@ -310,11 +310,11 @@ func TestAgentUseCase_DeleteAgentCampaign(t *testing.T) {
 			Return(nil)
 		agentMessageRepo.On("DeleteByCampaignID", mock.Anything, campaignID).
 			Return(nil)
-		agentCampaignRepo.On("Delete", mock.Anything, campaignID).
+		agentCampaignRepo.On("Delete", mock.Anything, campaignID, "test_user").
 			Return(nil)
 
 		// 執行測試
-		err := useCase.DeleteAgentCampaign(context.Background(), campaignID)
+		err := useCase.DeleteAgentCampaign(context.Background(), campaignID, "test_user")
 
 		// 驗證結果
 		assert.NoError(t, err)
@@ -1083,6 +1083,8 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 	// 創建記錄器
 	logger := helper.NewMockLogger()
 
+	// Note: BatchHardDeleteByCampaignIDs expectations are set per-test due to async goroutines
+
 	// 創建用例
 	tracingService.SetupSuccess()
 	distributedLockMgr.SetupSuccess()
@@ -1109,7 +1111,8 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 		{
 			name: "successful batch delete",
 			request: &dto.BatchDeleteAgentCampaignsRequest{
-				IDs: []uint64{1, 2, 3},
+				IDs:       []uint64{1, 2, 3},
+				UpdatedBy: "test_user",
 			},
 			setupMock: func() {
 				// Mock campaigns that can be deleted
@@ -1123,9 +1126,10 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 						Return(campaign, nil)
 				}
 
+				// async call - use specific expectation for this test
 				agentMessageRepo.On("BatchHardDeleteByCampaignIDs", mock.Anything, []uint64{1, 2, 3}).
 					Return(nil)
-				agentCampaignRepo.On("BatchDelete", mock.Anything, []uint64{1, 2, 3}).
+				agentCampaignRepo.On("BatchDelete", mock.Anything, []uint64{1, 2, 3}, "test_user").
 					Return(nil)
 			},
 			expectError: false,
@@ -1133,7 +1137,8 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 		{
 			name: "empty IDs array",
 			request: &dto.BatchDeleteAgentCampaignsRequest{
-				IDs: []uint64{},
+				IDs:       []uint64{},
+				UpdatedBy: "test_user",
 			},
 			setupMock: func() {
 				// No mock setup needed
@@ -1144,7 +1149,8 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 		{
 			name: "some campaigns not found",
 			request: &dto.BatchDeleteAgentCampaignsRequest{
-				IDs: []uint64{1, 999, 3},
+				IDs:       []uint64{1, 999, 3},
+				UpdatedBy: "test_user",
 			},
 			setupMock: func() {
 				// Campaign 1 exists and can be deleted
@@ -1168,7 +1174,7 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 				// Only valid campaigns are deleted
 				agentMessageRepo.On("BatchHardDeleteByCampaignIDs", mock.Anything, []uint64{1, 3}).
 					Return(nil)
-				agentCampaignRepo.On("BatchDelete", mock.Anything, []uint64{1, 3}).
+				agentCampaignRepo.On("BatchDelete", mock.Anything, []uint64{1, 3}, "test_user").
 					Return(nil)
 			},
 			expectError: false,
@@ -1176,7 +1182,8 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 		{
 			name: "delete sent campaigns successfully",
 			request: &dto.BatchDeleteAgentCampaignsRequest{
-				IDs: []uint64{1, 2},
+				IDs:       []uint64{1, 2},
+				UpdatedBy: "test_user",
 			},
 			setupMock: func() {
 				// Both campaigns exist and can be deleted (even sent status)
@@ -1189,9 +1196,10 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 						Return(campaign, nil)
 				}
 				// BatchDelete call expected for all valid campaigns
+				// async call - use specific expectation for this test
 				agentMessageRepo.On("BatchHardDeleteByCampaignIDs", mock.Anything, []uint64{1, 2}).
 					Return(nil)
-				agentCampaignRepo.On("BatchDelete", mock.Anything, []uint64{1, 2}).
+				agentCampaignRepo.On("BatchDelete", mock.Anything, []uint64{1, 2}, "test_user").
 					Return(nil)
 			},
 			expectError: false,
@@ -1199,7 +1207,8 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 		{
 			name: "repository batch delete fails",
 			request: &dto.BatchDeleteAgentCampaignsRequest{
-				IDs: []uint64{1},
+				IDs:       []uint64{1},
+				UpdatedBy: "test_user",
 			},
 			setupMock: func() {
 				campaign := createTestAgentCampaign()
@@ -1208,9 +1217,10 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 
 				agentCampaignRepo.On("GetByID", mock.Anything, uint64(1)).
 					Return(campaign, nil)
+				// async call - use specific expectation for this test
 				agentMessageRepo.On("BatchHardDeleteByCampaignIDs", mock.Anything, []uint64{1}).
 					Return(nil)
-				agentCampaignRepo.On("BatchDelete", mock.Anything, []uint64{1}).
+				agentCampaignRepo.On("BatchDelete", mock.Anything, []uint64{1}, "test_user").
 					Return(errors.New("database error"))
 			},
 			expectError: true,
@@ -1220,11 +1230,10 @@ func TestAgentUseCase_BatchDeleteAgentCampaigns(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// 重置mock以避免測試間干擾
+			// 重置mock以避免測試間干擾 - 但保留agentMessageRepo的expectations因為async goroutines可能仍在執行
 			agentCampaignRepo.ExpectedCalls = agentCampaignRepo.ExpectedCalls[:0]
 			agentCampaignRepo.Calls = agentCampaignRepo.Calls[:0]
-			agentMessageRepo.ExpectedCalls = agentMessageRepo.ExpectedCalls[:0]
-			agentMessageRepo.Calls = agentMessageRepo.Calls[:0]
+			// 不重置agentMessageRepo期望，因為異步goroutines可能仍在執行BatchHardDeleteByCampaignIDs
 
 			tc.setupMock()
 
