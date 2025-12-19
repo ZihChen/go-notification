@@ -34,6 +34,7 @@ func TestAgentMessageRepository_BatchHardDeleteByCampaignIDs(t *testing.T) {
 		mock.ExpectQuery(regexp.QuoteMeta("SELECT id FROM agent_messages WHERE agent_campaign_id = ? LIMIT ?")).
 			WithArgs(2, 5000).
 			WillReturnRows(sqlmock.NewRows([]string{"id"}))
+
 			// empty result
 
 		// Campaign 3: Has 3 messages (< 5000, so loop ends after first batch)
