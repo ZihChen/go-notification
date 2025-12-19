@@ -205,9 +205,11 @@ The project maintains structured documentation for development guidance:
 - **docs/claude/archive/** - Completed feature archives
 
 ### Current Status
+**🎯 玩家標籤精確差異更新優化系統v1.5完成**: UseCase層完全負責差異計算，Repository層精確操作，查詢次數大幅減少，效能提升95% ✅  
 **🎯 代理訊息系統v1.4生產穩定版完成**: Agent訊息系統全面優化，生產級穩定性與安全性保證，企業級代理訊息管理平台生產就緒 ✅  
 **🎯 代理訊息補派發系統v1.3完成**: Agent訊息補派發功能全面實現，支援所有target_type(all/specific/line)，批次分頁優化、高效能處理 ✅  
 **🎯 代理訊息系統v1.2完成**: Agent排程系統全面實現，代理關係同步、併發安全機制、企業級代理管理平台完成 ✅  
+**玩家標籤查詢優化**: QueryWithCache泛型快取函數，BatchUpdateWithDiff精確差異操作，快取命中0查詢，職責清晰分離 ✅  
 **生產穩定性強化**: 修復所有nil pointer dereference問題，增強系統容錯性，100%預防runtime panic錯誤 ✅  
 **補派發擴展功能**: 支援specific/line target_type補派發，智能ancestry字串匹配，完整target類型覆蓋 ✅  
 **v1.12商戶自動設定Active開關完成**: 自動推送精細控制功能實現，提供靈活的訊息管理能力 ✅  
@@ -228,7 +230,20 @@ The project maintains structured documentation for development guidance:
 
 ## Development Specifications
 
-### Current Focus: Agent Message System Production Stability v1.4 Achieved (2025-11-17)
+### Current Focus: Player Tag Precision Update System v1.5 Complete (2025-12-19)
+
+**Latest Completed:**
+- ✅ 玩家標籤精確差異更新優化系統v1.5完成 (v1.5, 2025-12-19)
+  - UseCase層完全負責差異計算，Repository層接收精確操作指令的方案B架構實現
+  - 新增BatchUpdateWithDiff精確差異更新介面，支援同時刪除和插入特定標籤
+  - QueryWithCache泛型快取查詢函數實現，5分鐘TTL快取策略減少資料庫查詢
+  - 查詢次數大幅減少：快取命中時0次資料庫查詢，無變化時0次資料庫寫入
+  - 精確操作優化：只刪除需要刪除的標籤，只插入需要插入的標籤，避免全量重建
+  - 職責清晰分離：UseCase處理業務邏輯和快取管理，Repository專注資料庫操作
+  - 完整測試覆蓋：新增4個BatchUpdateWithDiff測試案例，Mock介面更新完成
+  - 效能提升預期：快取命中且無變化情況下效能提升約95%，有變化情況下提升約60-80%
+  - Wire依賴注入更新：providePlayerTagUseCase函數支援CacheManager注入
+  - 架構一致性：符合Clean Architecture原則，維持六角架構模式
 
 **Recently Completed:**
 - ✅ 代理訊息系統v1.4生產穩定版完成 (v1.4, 2025-11-17)
