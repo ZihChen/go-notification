@@ -66,7 +66,7 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, cache
 	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger, tracingService)
 	playerRepository := repository.NewPlayerRepository(db)
 	levelRepository := repository.NewLevelRepository(db)
-	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger, tracingService)
+	playerUseCase := providePlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger, tracingService, cacheManager)
 	managerRepository := repository2.NewManagerRepository(db)
 	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger, tracingService)
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
@@ -124,7 +124,7 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger, tracingService)
 	playerRepository := repository.NewPlayerRepository(db)
 	levelRepository := repository.NewLevelRepository(db)
-	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger, tracingService)
+	playerUseCase := providePlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger, tracingService, cacheManager)
 	managerRepository := repository2.NewManagerRepository(db)
 	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger, tracingService)
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
@@ -169,7 +169,7 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, ca
 	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger, tracingService)
 	playerRepository := repository.NewPlayerRepository(db)
 	levelRepository := repository.NewLevelRepository(db)
-	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger, tracingService)
+	playerUseCase := providePlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger, tracingService, cacheManager)
 	managerRepository := repository2.NewManagerRepository(db)
 	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger, tracingService)
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger, tracingService)
@@ -209,7 +209,7 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger, tracingService)
 	playerRepository := repository.NewPlayerRepository(db)
 	levelRepository := repository.NewLevelRepository(db)
-	playerUseCase := player.NewPlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger, tracingService)
+	playerUseCase := providePlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger, tracingService, cacheManager)
 	managerRepository := repository2.NewManagerRepository(db)
 	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger, tracingService)
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger, tracingService)
@@ -346,7 +346,7 @@ var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient,
 	provideTracingService,
 	provideDistributedLockManager,
 
-	provideMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, message.NewMessageCampaignRepository, message.NewCampaignTargetRepository, providePlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant2.NewPushKeyRepository, repository3.NewAgentRepository, repository3.NewAgentCampaignRepository, repository3.NewAgentMessageRepository, provideAgentRelationshipRepository, repository4.NewFailedTaskEventRepository, service.NewEventService, service.NewAgentService, providePushNotificationService, merchant.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message2.NewMessageUseCase, level.NewLevelUseCase, providePlayerTagUseCase, agent.NewAgentUseCase, usecase.NewFailedTaskEventUseCase,
+	provideMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, message.NewMessageCampaignRepository, message.NewCampaignTargetRepository, providePlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant2.NewPushKeyRepository, repository3.NewAgentRepository, repository3.NewAgentCampaignRepository, repository3.NewAgentMessageRepository, provideAgentRelationshipRepository, repository4.NewFailedTaskEventRepository, service.NewEventService, service.NewAgentService, providePushNotificationService, merchant.NewMerchantUseCase, providePlayerUseCase, manager.NewManagerUseCase, message2.NewMessageUseCase, level.NewLevelUseCase, providePlayerTagUseCase, agent.NewAgentUseCase, usecase.NewFailedTaskEventUseCase,
 )
 
 // 事件生產者提供者 (保留作為別名)
@@ -412,6 +412,27 @@ func provideMigratePlayerMessageRepository(db *gorm.DB) repository5.PlayerMessag
 // 提供 MerchantRepository (migrate 專用，不需要快取)
 func provideMigrateMerchantRepository(db *gorm.DB) repository5.MerchantRepository {
 	return merchant2.NewMerchantRepository(db, nil)
+}
+
+// 提供 PlayerUseCase
+func providePlayerUseCase(
+	playerRepo repository5.PlayerRepository,
+	merchantRepo repository5.MerchantRepository,
+	levelRepo repository5.LevelRepository,
+	eventProducer service2.EventProducer,
+	logger infrastructure.Logger,
+	tracingService infrastructure.TracingService,
+	cacheManager infrastructure.CacheManager,
+) inbound.PlayerUseCase {
+	return player.NewPlayerUseCase(
+		playerRepo,
+		merchantRepo,
+		levelRepo,
+		eventProducer,
+		logger,
+		tracingService,
+		cacheManager,
+	)
 }
 
 // 提供 PlayerTagUseCase

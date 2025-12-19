@@ -89,7 +89,7 @@ var baseSet = wire.NewSet(
 
 	// 用例層
 	merchantUseCase.NewMerchantUseCase,
-	playerUseCase.NewPlayerUseCase,
+	providePlayerUseCase,
 	managerUseCase.NewManagerUseCase,
 	messageUseCase.NewMessageUseCase,
 	levelUseCase.NewLevelUseCase,
@@ -215,6 +215,27 @@ func provideMigratePlayerMessageRepository(db *gorm.DB) repository.PlayerMessage
 // 提供 MerchantRepository (migrate 專用，不需要快取)
 func provideMigrateMerchantRepository(db *gorm.DB) repository.MerchantRepository {
 	return merchantRepo.NewMerchantRepository(db, nil)
+}
+
+// 提供 PlayerUseCase
+func providePlayerUseCase(
+	playerRepo repository.PlayerRepository,
+	merchantRepo repository.MerchantRepository,
+	levelRepo repository.LevelRepository,
+	eventProducer servicePort.EventProducer,
+	logger infrastructure.Logger,
+	tracingService infrastructure.TracingService,
+	cacheManager infrastructure.CacheManager,
+) inbound.PlayerUseCase {
+	return playerUseCase.NewPlayerUseCase(
+		playerRepo,
+		merchantRepo,
+		levelRepo,
+		eventProducer,
+		logger,
+		tracingService,
+		cacheManager,
+	)
 }
 
 // 提供 PlayerTagUseCase

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,6 +16,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/utils"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -27,6 +29,7 @@ type PlayerUseCase struct {
 	eventProducer  service.EventProducer
 	logger         infrastructure.Logger
 	tracingService infrastructure.TracingService
+	cacheManager   infrastructure.CacheManager
 	batchProcessor *PlayerBatchProcessor // 批次處理器
 }
 
@@ -38,6 +41,7 @@ func NewPlayerUseCase(
 	eventProducer service.EventProducer,
 	logger infrastructure.Logger,
 	tracingService infrastructure.TracingService,
+	cacheManager infrastructure.CacheManager,
 ) inbound.PlayerUseCase {
 	useCase := &PlayerUseCase{
 		playerRepo:     playerRepo,
@@ -46,6 +50,7 @@ func NewPlayerUseCase(
 		eventProducer:  eventProducer,
 		logger:         logger,
 		tracingService: tracingService,
+		cacheManager:   cacheManager,
 		// 創建批次處理器
 		batchProcessor: NewPlayerBatchProcessor(
 			playerRepo,
@@ -68,9 +73,19 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, data *event.PlayerEvent)
 		attribute.String("player.global_id", data.GlobalPlayerID),
 		attribute.String("player.account", data.Account))
 
-	// 查找對應的商戶
-	u.tracingService.TraceEvent(span, "Finding merchant")
-	merchant, err := u.merchantRepo.FindByGlobalID(ctx, data.GlobalMerchantID)
+	// 查找對應的商戶 (使用快取優化)
+	u.tracingService.TraceEvent(span, "Finding merchant with cache")
+	cacheKey := fmt.Sprintf(consts.RedisMerchantGlobalIDKey, data.GlobalMerchantID)
+	merchant, err := utils.QueryWithCache(
+		ctx,
+		u.cacheManager,
+		cacheKey,
+		10*time.Minute, // 商戶資訊快取10分鐘
+		"merchant",
+		func(ctx context.Context) (*entity.Merchant, error) {
+			return u.merchantRepo.FindByGlobalID(ctx, data.GlobalMerchantID)
+		},
+	)
 	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
 		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("find merchant: %w", err)

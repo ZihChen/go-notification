@@ -46,4 +46,8 @@ const (
 
 const (
 	RedisAgentCampaignProcessingKey = "agent_campaign:processing:%d"
+	RedisMerchantGlobalIDKey        = "merchant:global_id:%s"
+	RedisPlayerGlobalIDKey          = "player:global_id:%s"
+	RedisPlayerLevelGlobalIDKey     = "player_level:global_id:%s"
+	RedisPlayerTagsKey              = "player_tags:%d"
 )

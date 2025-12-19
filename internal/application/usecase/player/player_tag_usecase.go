@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"sort"
 	"time"
 
@@ -59,14 +60,34 @@ func (u *PlayerTagUseCase) SyncPlayerTags(
 	defer u.tracingService.SpanEnd(span)
 
 	u.tracingService.TraceEvent(span, "Checking if merchant exists")
-	merchant, err := u.merchantRepo.FindByGlobalID(ctx, data.GlobalMerchantID)
+	cacheKey := fmt.Sprintf(consts.RedisMerchantGlobalIDKey, data.GlobalMerchantID)
+	merchant, err := utils.QueryWithCache(
+		ctx,
+		u.cacheManager,
+		cacheKey,
+		10*time.Minute, // 商戶資訊快取10分鐘
+		"merchant",
+		func(ctx context.Context) (*entity.Merchant, error) {
+			return u.merchantRepo.FindByGlobalID(ctx, data.GlobalMerchantID)
+		},
+	)
 	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
 		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("find merchant: %w", err)
 	}
 
 	u.tracingService.TraceEvent(span, "Checking if player exists")
-	player, err := u.playerRepo.FindByGlobalID(ctx, data.GlobalPlayerID)
+	playerCacheKey := fmt.Sprintf(consts.RedisPlayerGlobalIDKey, data.GlobalPlayerID)
+	player, err := utils.QueryWithCache(
+		ctx,
+		u.cacheManager,
+		playerCacheKey,
+		5*time.Minute,
+		"player",
+		func(ctx context.Context) (*entity.Player, error) {
+			return u.playerRepo.FindByGlobalID(ctx, data.GlobalPlayerID)
+		},
+	)
 	if err != nil {
 		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("find player by global_id: %w", err)
@@ -128,7 +149,17 @@ func (u *PlayerTagUseCase) SyncTag(ctx context.Context, data *event.IdentityTagS
 	defer u.tracingService.SpanEnd(span)
 
 	u.tracingService.TraceEvent(span, "Checking if merchant exists")
-	merchant, err := u.merchantRepo.FindByGlobalID(ctx, data.GlobalMerchantID)
+	cacheKey := fmt.Sprintf(consts.RedisMerchantGlobalIDKey, data.GlobalMerchantID)
+	merchant, err := utils.QueryWithCache(
+		ctx,
+		u.cacheManager,
+		cacheKey,
+		10*time.Minute, // 商戶資訊快取10分鐘
+		"merchant",
+		func(ctx context.Context) (*entity.Merchant, error) {
+			return u.merchantRepo.FindByGlobalID(ctx, data.GlobalMerchantID)
+		},
+	)
 	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
 		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("find merchant: %w", err)
@@ -314,7 +345,7 @@ func (u *PlayerTagUseCase) syncPlayerTagsWithDifference(
 	})
 
 	// 1. 使用快取查詢現有關聯
-	cacheKey := fmt.Sprintf("player_tags:%d", playerID)
+	cacheKey := fmt.Sprintf(consts.RedisPlayerTagsKey, playerID)
 	existingTagIDs, err := utils.QueryWithCache(
 		ctx,
 		u.cacheManager,
