@@ -93,7 +93,7 @@ var baseSet = wire.NewSet(
 	managerUseCase.NewManagerUseCase,
 	messageUseCase.NewMessageUseCase,
 	levelUseCase.NewLevelUseCase,
-	playerUseCase.NewTagUseCase,
+	providePlayerTagUseCase,
 	agentUseCase.NewAgentUseCase,
 	failedTaskEventUseCase.NewFailedTaskEventUseCase,
 )
@@ -215,6 +215,29 @@ func provideMigratePlayerMessageRepository(db *gorm.DB) repository.PlayerMessage
 // 提供 MerchantRepository (migrate 專用，不需要快取)
 func provideMigrateMerchantRepository(db *gorm.DB) repository.MerchantRepository {
 	return merchantRepo.NewMerchantRepository(db, nil)
+}
+
+// 提供 PlayerTagUseCase
+func providePlayerTagUseCase(
+	tagRepo repository.TagRepository,
+	merchantRepo repository.MerchantRepository,
+	playerRepo repository.PlayerRepository,
+	playerTagRepo repository.PlayerTagRepository,
+	logger infrastructure.Logger,
+	lockManager infrastructure.DistributedLockManager,
+	tracingService infrastructure.TracingService,
+	cacheManager infrastructure.CacheManager,
+) inbound.PlayerTagUseCase {
+	return playerUseCase.NewTagUseCase(
+		tagRepo,
+		merchantRepo,
+		playerRepo,
+		playerTagRepo,
+		logger,
+		lockManager,
+		tracingService,
+		cacheManager,
+	)
 }
 
 // InitializeConsumer 初始化 Consumer 服務的 KDS 服務 (已廢棄)

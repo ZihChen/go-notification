@@ -49,4 +49,11 @@ type TagRepository interface {
 type PlayerTagRepository interface {
 	BatchUpdate(ctx context.Context, playerID uint64, tagIDs []uint64) error
 	DeleteByPlayerID(ctx context.Context, playerID uint64) error
+	// 精確的批量操作：支持同時刪除和插入特定標籤
+	BatchUpdateWithDiff(
+		ctx context.Context,
+		playerID uint64,
+		toDelete []uint64,
+		toInsert []uint64,
+	) error
 }

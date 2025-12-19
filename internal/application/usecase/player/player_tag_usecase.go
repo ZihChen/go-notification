@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
@@ -14,6 +15,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/constants"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/utils"
 )
 
 type PlayerTagUseCase struct {
@@ -24,6 +26,7 @@ type PlayerTagUseCase struct {
 	logger         infrastructure.Logger
 	lockManager    infrastructure.DistributedLockManager
 	tracingService infrastructure.TracingService
+	cacheManager   infrastructure.CacheManager
 }
 
 func NewTagUseCase(
@@ -34,6 +37,7 @@ func NewTagUseCase(
 	logger infrastructure.Logger,
 	lockManager infrastructure.DistributedLockManager,
 	tracingService infrastructure.TracingService,
+	cacheManager infrastructure.CacheManager,
 ) inbound.PlayerTagUseCase {
 	return &PlayerTagUseCase{
 		tagRepo:        tagRepo,
@@ -43,6 +47,7 @@ func NewTagUseCase(
 		logger:         logger,
 		lockManager:    lockManager,
 		tracingService: tracingService,
+		cacheManager:   cacheManager,
 	}
 }
 
@@ -108,17 +113,7 @@ func (u *PlayerTagUseCase) SyncPlayerTags(
 	// 建立Player Tags關聯
 	u.tracingService.TraceEvent(span, "Start sync player tags relation")
 	if err = u.executeLocked(ctx, player.ID, func() error {
-		err = u.playerTagRepo.BatchUpdate(ctx, player.ID, tagIDs)
-		if err != nil {
-			u.tracingService.RecordSpanError(span, err)
-			return fmt.Errorf("batch update player tags failed: %w", err)
-		}
-		u.logger.InfoWithContext(ctx, "Batch upsert player tags completed",
-			u.logger.UInt64("player_id", player.ID),
-			u.logger.Int("count", len(tagIDs)),
-			u.logger.Any("tag_ids", tagIDs),
-		)
-		return nil
+		return u.syncPlayerTagsWithDifference(ctx, player.ID, tagIDs)
 	}); err != nil {
 		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("batch upsert player tags failed: %w", err)
@@ -294,4 +289,96 @@ func (u *PlayerTagUseCase) GetTagsByMerchantID(
 	return &dto.TagListResponse{
 		Tags: tagResponses,
 	}, nil
+}
+
+// syncPlayerTagsWithDifference 使用快取查詢現有標籤並計算差異
+func (u *PlayerTagUseCase) syncPlayerTagsWithDifference(
+	ctx context.Context,
+	playerID uint64,
+	newTagIDs []uint64,
+) error {
+	// 處理空標籤情況
+	if len(newTagIDs) == 0 {
+		if err := u.playerTagRepo.DeleteByPlayerID(ctx, playerID); err != nil {
+			return fmt.Errorf("delete all player tags failed: %w", err)
+		}
+		u.logger.InfoWithContext(ctx, "Deleted all player tags",
+			u.logger.UInt64("player_id", playerID),
+		)
+		return nil
+	}
+
+	// 排序以確保一致的鎖定順序，避免死鎖
+	sort.Slice(newTagIDs, func(i, j int) bool {
+		return newTagIDs[i] < newTagIDs[j]
+	})
+
+	// 1. 使用快取查詢現有關聯
+	cacheKey := fmt.Sprintf("player_tags:%d", playerID)
+	existingTagIDs, err := utils.QueryWithCache(
+		ctx,
+		u.cacheManager,
+		cacheKey,
+		5*time.Minute, // 快取5分鐘
+		"player_tags",
+		func(ctx context.Context) ([]uint64, error) {
+			return u.playerRepo.GetPlayerTagIDs(ctx, playerID)
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("query existing player tags failed: %w", err)
+	}
+
+	// 2. 計算差異
+	toDelete := u.difference(existingTagIDs, newTagIDs)
+	toInsert := u.difference(newTagIDs, existingTagIDs)
+
+	// 3. 無變化直接返回
+	if len(toDelete) == 0 && len(toInsert) == 0 {
+		u.logger.InfoWithContext(ctx, "No changes needed for player tags",
+			u.logger.UInt64("player_id", playerID),
+		)
+		return nil
+	}
+
+	// 4. 執行精確的批量更新（只操作真正需要變化的部分）
+	if err = u.playerTagRepo.BatchUpdateWithDiff(ctx, playerID, toDelete, toInsert); err != nil {
+		return fmt.Errorf("batch update player tags with diff failed: %w", err)
+	}
+
+	// 5. 清除快取
+	if _, err := u.cacheManager.Del(ctx, cacheKey); err != nil {
+		u.logger.WarnWithContext(ctx, "Failed to clear cache after update",
+			u.logger.String("cache_key", cacheKey),
+			u.logger.Error("err", err),
+		)
+	}
+
+	u.logger.InfoWithContext(ctx, "Player tags sync completed with precise diff update",
+		u.logger.UInt64("player_id", playerID),
+		u.logger.Int("total_new_tags", len(newTagIDs)),
+		u.logger.Int("existing_tags", len(existingTagIDs)),
+		u.logger.Int("to_delete", len(toDelete)),
+		u.logger.Int("to_insert", len(toInsert)),
+		u.logger.String("optimization", "only_changed_tags_updated"),
+	)
+
+	return nil
+}
+
+// difference 計算兩個切片的差集：在 a 中但不在 b 中的元素
+func (u *PlayerTagUseCase) difference(a, b []uint64) []uint64 {
+	bMap := make(map[uint64]bool, len(b))
+	for _, item := range b {
+		bMap[item] = true
+	}
+
+	var result []uint64
+	for _, item := range a {
+		if !bMap[item] {
+			result = append(result, item)
+		}
+	}
+
+	return result
 }

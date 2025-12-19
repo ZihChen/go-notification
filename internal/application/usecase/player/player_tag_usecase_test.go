@@ -214,6 +214,8 @@ func TestPlayerTagUseCase_SyncTag(t *testing.T) {
 
 	tracingService := mocks.NewTracingServiceMock(t)
 	tracingService.SetupSuccess()
+	cacheManager := mocks.NewMockCacheManager(t)
+	cacheManager.SetupSuccess()
 	useCase := NewTagUseCase(
 		tagRepo,
 		merchantRepo,
@@ -222,6 +224,7 @@ func TestPlayerTagUseCase_SyncTag(t *testing.T) {
 		logger,
 		nil,
 		tracingService,
+		cacheManager,
 	)
 
 	event := createIdentityTagSyncEvent()
@@ -260,6 +263,8 @@ func TestPlayerTagUseCase_SyncTag_WithDeletedTag(t *testing.T) {
 
 	tracingService := mocks.NewTracingServiceMock(t)
 	tracingService.SetupSuccess()
+	cacheManager := mocks.NewMockCacheManager(t)
+	cacheManager.SetupSuccess()
 	useCase := NewTagUseCase(
 		tagRepo,
 		merchantRepo,
@@ -268,6 +273,7 @@ func TestPlayerTagUseCase_SyncTag_WithDeletedTag(t *testing.T) {
 		logger,
 		nil,
 		tracingService,
+		cacheManager,
 	)
 
 	event := createIdentityTagSyncEvent()
@@ -295,6 +301,8 @@ func TestPlayerTagUseCase_SyncTag_MerchantRepositoryError(t *testing.T) {
 
 	tracingService := mocks.NewTracingServiceMock(t)
 	tracingService.SetupSuccess()
+	cacheManager := mocks.NewMockCacheManager(t)
+	cacheManager.SetupSuccess()
 	useCase := NewTagUseCase(
 		tagRepo,
 		merchantRepo,
@@ -303,6 +311,7 @@ func TestPlayerTagUseCase_SyncTag_MerchantRepositoryError(t *testing.T) {
 		logger,
 		nil,
 		tracingService,
+		cacheManager,
 	)
 
 	event := createIdentityTagSyncEvent()
@@ -327,6 +336,8 @@ func TestPlayerTagUseCase_SyncTag_UpsertError(t *testing.T) {
 
 	tracingService := mocks.NewTracingServiceMock(t)
 	tracingService.SetupSuccess()
+	cacheManager := mocks.NewMockCacheManager(t)
+	cacheManager.SetupSuccess()
 	useCase := NewTagUseCase(
 		tagRepo,
 		merchantRepo,
@@ -335,6 +346,7 @@ func TestPlayerTagUseCase_SyncTag_UpsertError(t *testing.T) {
 		logger,
 		nil,
 		tracingService,
+		cacheManager,
 	)
 
 	event := createIdentityTagSyncEvent()
@@ -361,6 +373,8 @@ func TestPlayerTagUseCase_SyncTag_TracingAndLogging(t *testing.T) {
 
 	tracingService := mocks.NewTracingServiceMock(t)
 	tracingService.SetupSuccess()
+	cacheManager := mocks.NewMockCacheManager(t)
+	cacheManager.SetupSuccess()
 	useCase := NewTagUseCase(
 		tagRepo,
 		merchantRepo,
@@ -369,6 +383,7 @@ func TestPlayerTagUseCase_SyncTag_TracingAndLogging(t *testing.T) {
 		logger,
 		nil,
 		tracingService,
+		cacheManager,
 	)
 
 	event := createIdentityTagSyncEvent()

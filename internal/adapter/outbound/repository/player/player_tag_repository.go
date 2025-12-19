@@ -50,7 +50,7 @@ func (r *PlayerTagRepository) BatchUpdate(
 	return fmt.Errorf("batch update failed after %d retries", maxRetries)
 }
 
-// batchUpdateWithoutRetry 原始的 BatchUpdate 邏輯，不含重試機制
+// batchUpdateWithoutRetry 簡化的 BatchUpdate 邏輯，只負責資料庫操作
 func (r *PlayerTagRepository) batchUpdateWithoutRetry(
 	ctx context.Context,
 	playerID uint64,
@@ -67,24 +67,94 @@ func (r *PlayerTagRepository) batchUpdateWithoutRetry(
 		return tagIDs[i] < tagIDs[j]
 	})
 
-	// 1. 查詢現有關聯
-	var existingTagIDs []uint64
-	if err := r.db.WithContext(ctx).Model(&models.PlayerTag{}).
-		Where("player_id = ?", playerID).
-		Pluck("tag_id", &existingTagIDs).Error; err != nil {
-		return fmt.Errorf("query existing player tags failed: %w", err)
+	// 準備數據
+	now := time.Now()
+	insertItems := make([]*models.PlayerTag, len(tagIDs))
+	for i, tagID := range tagIDs {
+		insertItems[i] = &models.PlayerTag{
+			PlayerID:  playerID,
+			TagID:     tagID,
+			CreatedAt: now,
+		}
 	}
 
-	// 2. 計算差異
-	toDelete := r.difference(existingTagIDs, tagIDs)
-	toInsert := r.difference(tagIDs, existingTagIDs)
+	// 事務操作：先刪除所有舊關聯，再插入新關聯
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 刪除所有現有關聯
+		if err := tx.Where("player_id = ?", playerID).Delete(&models.PlayerTag{}).Error; err != nil {
+			return fmt.Errorf("delete existing player tags failed: %w", err)
+		}
 
-	// 3. 無變化直接返回
+		// 插入新關聯
+		if err := tx.Create(&insertItems).Error; err != nil {
+			return fmt.Errorf("insert new player tags failed: %w", err)
+		}
+
+		return nil
+	})
+}
+
+func (r *PlayerTagRepository) DeleteByPlayerID(ctx context.Context, playerID uint64) error {
+	result := r.db.WithContext(ctx).
+		Where("player_id = ?", playerID).
+		Delete(&models.PlayerTag{})
+	if result.Error != nil {
+		return fmt.Errorf("delete player tags failed: %w", result.Error)
+	}
+	return nil
+}
+
+// BatchUpdateWithDiff 精確的批量差異更新：只操作真正需要變化的部分
+func (r *PlayerTagRepository) BatchUpdateWithDiff(
+	ctx context.Context,
+	playerID uint64,
+	toDelete []uint64,
+	toInsert []uint64,
+) error {
+	// 如果沒有任何操作需要執行，直接返回
 	if len(toDelete) == 0 && len(toInsert) == 0 {
 		return nil
 	}
 
-	// 4. 在事務外準備數據
+	const maxRetries = 3
+	const baseDelay = 100 * time.Millisecond
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		err := r.batchUpdateWithDiffWithoutRetry(ctx, playerID, toDelete, toInsert)
+
+		if err == nil {
+			return nil
+		}
+
+		// 檢查是否為可重試的錯誤
+		if r.isRetriableError(err) && attempt < maxRetries {
+			delay := baseDelay * time.Duration(1<<uint(attempt))
+			time.Sleep(delay)
+			continue
+		}
+
+		return err
+	}
+
+	return fmt.Errorf("batch update with diff failed after %d retries", maxRetries)
+}
+
+// batchUpdateWithDiffWithoutRetry 執行精確的差異更新
+func (r *PlayerTagRepository) batchUpdateWithDiffWithoutRetry(
+	ctx context.Context,
+	playerID uint64,
+	toDelete []uint64,
+	toInsert []uint64,
+) error {
+	// 排序以確保一致的鎖定順序，避免死鎖
+	sort.Slice(toDelete, func(i, j int) bool {
+		return toDelete[i] < toDelete[j]
+	})
+	sort.Slice(toInsert, func(i, j int) bool {
+		return toInsert[i] < toInsert[j]
+	})
+
+	// 在事務外準備數據
 	now := time.Now()
 	insertItems := make([]*models.PlayerTag, len(toInsert))
 	for i, tagID := range toInsert {
@@ -95,7 +165,7 @@ func (r *PlayerTagRepository) batchUpdateWithoutRetry(
 		}
 	}
 
-	// 5. 高效事務操作
+	// 高效事務操作：只操作真正需要變化的部分
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 只刪除需要刪除的
 		if len(toDelete) > 0 {
@@ -114,16 +184,6 @@ func (r *PlayerTagRepository) batchUpdateWithoutRetry(
 
 		return nil
 	})
-}
-
-func (r *PlayerTagRepository) DeleteByPlayerID(ctx context.Context, playerID uint64) error {
-	result := r.db.WithContext(ctx).
-		Where("player_id = ?", playerID).
-		Delete(&models.PlayerTag{})
-	if result.Error != nil {
-		return fmt.Errorf("delete player tags failed: %w", result.Error)
-	}
-	return nil
 }
 
 // isRetriableError 檢查是否為可重試的錯誤
@@ -148,21 +208,4 @@ func (r *PlayerTagRepository) isRetriableError(err error) bool {
 	}
 
 	return false
-}
-
-// difference 計算兩個切片的差集：在 a 中但不在 b 中的元素
-func (r *PlayerTagRepository) difference(a, b []uint64) []uint64 {
-	bMap := make(map[uint64]bool, len(b))
-	for _, item := range b {
-		bMap[item] = true
-	}
-
-	var result []uint64
-	for _, item := range a {
-		if !bMap[item] {
-			result = append(result, item)
-		}
-	}
-
-	return result
 }

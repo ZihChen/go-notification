@@ -43,22 +43,18 @@ func setupPlayerTagMockDB(t *testing.T) (*gorm.DB, sqlmock.Sqlmock, *sql.DB) {
 func TestPlayerTagRepository_BatchUpdate(t *testing.T) {
 	now := time.Now()
 	testCase := PlayerTagTestCase{
-		name: "player tag upsert with difference calculation",
+		name: "player tag upsert with simple delete-insert strategy",
 		id:   1,
 		setupMock: func(mock sqlmock.Sqlmock) {
-			// 優化後的邏輯：先查詢現有標籤
-			mock.ExpectQuery(regexp.QuoteMeta("SELECT `tag_id` FROM `player_tags` WHERE player_id = ?")).
-				WithArgs(2).
-				WillReturnRows(sqlmock.NewRows([]string{"tag_id"}).AddRow(1).AddRow(2))
-
+			// 簡化後的邏輯：直接事務操作
 			mock.ExpectBegin()
 
-			// 刪除不需要的標籤 (1, 2 不在新的 [3, 4] 中)
-			mock.ExpectExec(regexp.QuoteMeta("DELETE FROM `player_tags` WHERE player_id = ? AND tag_id IN")).
-				WithArgs(2, 1, 2).
+			// 刪除所有現有標籤
+			mock.ExpectExec(regexp.QuoteMeta("DELETE FROM `player_tags` WHERE player_id = ?")).
+				WithArgs(2).
 				WillReturnResult(sqlmock.NewResult(0, 2))
 
-			// 插入新標籤 ([3, 4] 不在現有的 [1, 2] 中)
+			// 插入新標籤
 			mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `player_tags`")).
 				WillReturnResult(sqlmock.NewResult(0, 2))
 
@@ -173,16 +169,25 @@ func TestPlayerTagRepository_BatchUpdate_EmptyTags(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestPlayerTagRepository_BatchUpdate_NoChanges(t *testing.T) {
+func TestPlayerTagRepository_BatchUpdate_SameTags(t *testing.T) {
 	db, mock, sqlDB := setupPlayerTagMockDB(t)
 	defer func() {
 		_ = sqlDB.Close()
 	}()
 
-	// 模擬現有標籤與新標籤相同的情況
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT `tag_id` FROM `player_tags` WHERE player_id = ?")).
+	// 簡化邏輯：即使標籤相同，也會執行delete-then-insert操作
+	mock.ExpectBegin()
+
+	// 刪除所有現有標籤
+	mock.ExpectExec(regexp.QuoteMeta("DELETE FROM `player_tags` WHERE player_id = ?")).
 		WithArgs(uint64(123)).
-		WillReturnRows(sqlmock.NewRows([]string{"tag_id"}).AddRow(1).AddRow(2))
+		WillReturnResult(sqlmock.NewResult(0, 2))
+
+	// 插入標籤
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `player_tags`")).
+		WillReturnResult(sqlmock.NewResult(0, 2))
+
+	mock.ExpectCommit()
 
 	repo := NewPlayerTagRepository(db)
 	err := repo.BatchUpdate(context.Background(), 123, []uint64{1, 2})
@@ -191,57 +196,82 @@ func TestPlayerTagRepository_BatchUpdate_NoChanges(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestPlayerTagRepository_difference(t *testing.T) {
-	repo := &PlayerTagRepository{}
+func TestPlayerTagRepository_BatchUpdateWithDiff(t *testing.T) {
+	db, mock, sqlDB := setupPlayerTagMockDB(t)
+	defer func() {
+		_ = sqlDB.Close()
+	}()
 
-	tests := []struct {
-		name     string
-		a        []uint64
-		b        []uint64
-		expected []uint64
-	}{
-		{
-			name:     "simple difference",
-			a:        []uint64{1, 2, 3, 4},
-			b:        []uint64{2, 3},
-			expected: []uint64{1, 4},
-		},
-		{
-			name:     "no difference",
-			a:        []uint64{1, 2, 3},
-			b:        []uint64{1, 2, 3},
-			expected: []uint64{},
-		},
-		{
-			name:     "empty a",
-			a:        []uint64{},
-			b:        []uint64{1, 2, 3},
-			expected: []uint64{},
-		},
-		{
-			name:     "empty b",
-			a:        []uint64{1, 2, 3},
-			b:        []uint64{},
-			expected: []uint64{1, 2, 3},
-		},
-		{
-			name:     "both empty",
-			a:        []uint64{},
-			b:        []uint64{},
-			expected: []uint64{},
-		},
-		{
-			name:     "disjoint sets",
-			a:        []uint64{1, 3, 5},
-			b:        []uint64{2, 4, 6},
-			expected: []uint64{1, 3, 5},
-		},
-	}
+	// 測試精確差異更新
+	mock.ExpectBegin()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := repo.difference(tt.a, tt.b)
-			assert.ElementsMatch(t, tt.expected, result)
-		})
-	}
+	// 刪除特定標籤 [1, 2]
+	mock.ExpectExec(regexp.QuoteMeta("DELETE FROM `player_tags` WHERE player_id = ? AND tag_id IN")).
+		WithArgs(uint64(123), 1, 2).
+		WillReturnResult(sqlmock.NewResult(0, 2))
+
+	// 插入新標籤 [3, 4]
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `player_tags`")).
+		WillReturnResult(sqlmock.NewResult(0, 2))
+
+	mock.ExpectCommit()
+
+	repo := NewPlayerTagRepository(db)
+	err := repo.BatchUpdateWithDiff(context.Background(), 123, []uint64{1, 2}, []uint64{3, 4})
+
+	assert.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestPlayerTagRepository_BatchUpdateWithDiff_NoChanges(t *testing.T) {
+	db, mock, sqlDB := setupPlayerTagMockDB(t)
+	defer func() {
+		_ = sqlDB.Close()
+	}()
+
+	// 無變化情況下不應該有任何數據庫操作
+	repo := NewPlayerTagRepository(db)
+	err := repo.BatchUpdateWithDiff(context.Background(), 123, []uint64{}, []uint64{})
+
+	assert.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestPlayerTagRepository_BatchUpdateWithDiff_OnlyDelete(t *testing.T) {
+	db, mock, sqlDB := setupPlayerTagMockDB(t)
+	defer func() {
+		_ = sqlDB.Close()
+	}()
+
+	// 只刪除，不插入
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta("DELETE FROM `player_tags` WHERE player_id = ? AND tag_id IN")).
+		WithArgs(uint64(123), 1, 2).
+		WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectCommit()
+
+	repo := NewPlayerTagRepository(db)
+	err := repo.BatchUpdateWithDiff(context.Background(), 123, []uint64{1, 2}, []uint64{})
+
+	assert.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestPlayerTagRepository_BatchUpdateWithDiff_OnlyInsert(t *testing.T) {
+	db, mock, sqlDB := setupPlayerTagMockDB(t)
+	defer func() {
+		_ = sqlDB.Close()
+	}()
+
+	// 只插入，不刪除
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `player_tags`")).
+		WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectCommit()
+
+	repo := NewPlayerTagRepository(db)
+	err := repo.BatchUpdateWithDiff(context.Background(), 123, []uint64{}, []uint64{3, 4})
+
+	assert.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
 }

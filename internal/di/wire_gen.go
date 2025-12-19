@@ -78,7 +78,7 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, cache
 	messageUseCase := message2.NewMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger, tracingService)
 	playerTagRepository := repository.NewPlayerTagRepository(db)
-	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, distributedLockManager, tracingService)
+	playerTagUseCase := providePlayerTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, distributedLockManager, tracingService, cacheManager)
 	httpHandler := api.NewHTTPHandler(merchantUseCase, playerUseCase, managerUseCase, messageUseCase, playerLevelUseCase, playerTagUseCase, logger)
 	return httpHandler, nil
 }
@@ -136,7 +136,7 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 	messageUseCase := message2.NewMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger, tracingService)
 	playerTagRepository := repository.NewPlayerTagRepository(db)
-	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, distributedLockManager, tracingService)
+	playerTagUseCase := providePlayerTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, distributedLockManager, tracingService, cacheManager)
 	httpHandler := api.NewHTTPHandler(merchantUseCase, playerUseCase, managerUseCase, messageUseCase, playerLevelUseCase, playerTagUseCase, logger)
 	agentRepository := repository3.NewAgentRepository(db)
 	agentCampaignRepository := repository3.NewAgentCampaignRepository(db)
@@ -175,7 +175,7 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, ca
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger, tracingService)
 	tagRepository := repository.NewTagRepository(db)
 	playerTagRepository := repository.NewPlayerTagRepository(db)
-	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, distributedLockManager, tracingService)
+	playerTagUseCase := providePlayerTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, distributedLockManager, tracingService, cacheManager)
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
 	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
 	playerMessageRepository := providePlayerMessageRepository(db, distributedLockManager)
@@ -215,7 +215,7 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger, tracingService)
 	tagRepository := repository.NewTagRepository(db)
 	playerTagRepository := repository.NewPlayerTagRepository(db)
-	playerTagUseCase := player.NewTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, distributedLockManager, tracingService)
+	playerTagUseCase := providePlayerTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, distributedLockManager, tracingService, cacheManager)
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
 	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
 	playerMessageRepository := providePlayerMessageRepository(db, distributedLockManager)
@@ -346,7 +346,7 @@ var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient,
 	provideTracingService,
 	provideDistributedLockManager,
 
-	provideMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, message.NewMessageCampaignRepository, message.NewCampaignTargetRepository, providePlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant2.NewPushKeyRepository, repository3.NewAgentRepository, repository3.NewAgentCampaignRepository, repository3.NewAgentMessageRepository, provideAgentRelationshipRepository, repository4.NewFailedTaskEventRepository, service.NewEventService, service.NewAgentService, providePushNotificationService, merchant.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message2.NewMessageUseCase, level.NewLevelUseCase, player.NewTagUseCase, agent.NewAgentUseCase, usecase.NewFailedTaskEventUseCase,
+	provideMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, message.NewMessageCampaignRepository, message.NewCampaignTargetRepository, providePlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant2.NewPushKeyRepository, repository3.NewAgentRepository, repository3.NewAgentCampaignRepository, repository3.NewAgentMessageRepository, provideAgentRelationshipRepository, repository4.NewFailedTaskEventRepository, service.NewEventService, service.NewAgentService, providePushNotificationService, merchant.NewMerchantUseCase, player.NewPlayerUseCase, manager.NewManagerUseCase, message2.NewMessageUseCase, level.NewLevelUseCase, providePlayerTagUseCase, agent.NewAgentUseCase, usecase.NewFailedTaskEventUseCase,
 )
 
 // 事件生產者提供者 (保留作為別名)
@@ -412,6 +412,29 @@ func provideMigratePlayerMessageRepository(db *gorm.DB) repository5.PlayerMessag
 // 提供 MerchantRepository (migrate 專用，不需要快取)
 func provideMigrateMerchantRepository(db *gorm.DB) repository5.MerchantRepository {
 	return merchant2.NewMerchantRepository(db, nil)
+}
+
+// 提供 PlayerTagUseCase
+func providePlayerTagUseCase(
+	tagRepo repository5.TagRepository,
+	merchantRepo repository5.MerchantRepository,
+	playerRepo repository5.PlayerRepository,
+	playerTagRepo repository5.PlayerTagRepository,
+	logger infrastructure.Logger,
+	lockManager infrastructure.DistributedLockManager,
+	tracingService infrastructure.TracingService,
+	cacheManager infrastructure.CacheManager,
+) inbound.PlayerTagUseCase {
+	return player.NewTagUseCase(
+		tagRepo,
+		merchantRepo,
+		playerRepo,
+		playerTagRepo,
+		logger,
+		lockManager,
+		tracingService,
+		cacheManager,
+	)
 }
 
 func provideRedisClient(cacheManager infrastructure.CacheManager) (*redis2.Client, error) {
