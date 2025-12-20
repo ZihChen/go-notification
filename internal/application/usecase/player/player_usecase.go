@@ -86,7 +86,7 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, data *event.PlayerEvent)
 			return u.merchantRepo.FindByGlobalID(ctx, data.GlobalMerchantID)
 		},
 	)
-	if err != nil && !errors.Is(err, errmsg.ErrRepoMerchantNotFound) {
+	if err != nil {
 		u.tracingService.RecordSpanError(span, err)
 		return fmt.Errorf("find merchant: %w", err)
 	}
