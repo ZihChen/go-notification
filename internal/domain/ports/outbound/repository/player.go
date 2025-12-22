@@ -40,6 +40,7 @@ type LevelRepository interface {
 type TagRepository interface {
 	Upsert(ctx context.Context, tag *entity.Tag) error
 	BatchUpsert(ctx context.Context, tags []*entity.Tag) error
+	FindByGlobalID(ctx context.Context, globalID string) (*entity.Tag, error)
 	FindByGlobalIDs(ctx context.Context, globalIDs []string) ([]*entity.Tag, error)
 	FindByMerchantID(ctx context.Context, merchantID uint64) ([]*entity.Tag, error)
 	FindByIDs(ctx context.Context, ids []uint64) ([]*entity.Tag, error)

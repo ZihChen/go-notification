@@ -97,6 +97,7 @@ type Tag struct {
 	DeletedAt   *time.Time `json:"deleted_at,omitempty"`
 }
 
+
 type Level struct {
 	ID                  uint64     `json:"id"`
 	MerchantID          uint64     `json:"merchant_id"`
