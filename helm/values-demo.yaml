@@ -26,8 +26,8 @@ env:
   # ATLAS_DEV_PASSWORD: <secret>
 
   # 資料庫連線池設置
-  DB_MAX_IDLE: "25"
-  DB_MAX_OPEN: "50"
+  DB_MAX_IDLE: "15"
+  DB_MAX_OPEN: "30"
   DB_MAX_LIFETIME: "45m"
   DB_MAX_IDLE_TIME: "20m"
 
