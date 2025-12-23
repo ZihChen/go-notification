@@ -82,7 +82,7 @@ func (r *TagRepository) FindByGlobalID(
 		Where("global_tag_id = ?", globalID).
 		Where("deleted_at IS NULL").
 		First(&dbTag)
-	
+
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, errmsg.ErrRepoTagNotFound

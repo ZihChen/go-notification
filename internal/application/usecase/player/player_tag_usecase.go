@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
+	"time"
+
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
@@ -16,8 +19,6 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/constants"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/utils"
 	"github.com/redis/go-redis/v9"
-	"sort"
-	"time"
 )
 
 type PlayerTagUseCase struct {
@@ -488,19 +489,24 @@ func (u *PlayerTagUseCase) filterTagsNeedingUpdate(
 		}
 	}
 
-	u.logger.InfoWithContext(ctx, "Filtered tags for update",
+	u.logger.InfoWithContext(
+		ctx,
+		"Filtered tags for update",
 		u.logger.Int("original_count", len(tags)),
 		u.logger.Int("filtered_count", len(tagsNeedingUpdate)),
-		u.logger.Float64("reduction_ratio", float64(len(tags)-len(tagsNeedingUpdate))/float64(len(tags))*100),
+		u.logger.Float64(
+			"reduction_ratio",
+			float64(len(tags)-len(tagsNeedingUpdate))/float64(len(tags))*100,
+		),
 	)
 
 	return tagsNeedingUpdate, nil
 }
 
 // tagNeedsUpdate 比較標籤欄位變動邏輯
-func (u *PlayerTagUseCase) tagNeedsUpdate(existing, incoming *entity.Tag) bool {
+func (u *PlayerTagUseCase) tagNeedsUpdate(newTag, cachedTag *entity.Tag) bool {
 	// 比較名稱是否有變動
-	if existing.Name != incoming.Name {
+	if newTag.Name != cachedTag.Name {
 		return true
 	}
 
@@ -509,7 +515,7 @@ func (u *PlayerTagUseCase) tagNeedsUpdate(existing, incoming *entity.Tag) bool {
 
 // updateTagCache 使用 Pipeline 批次更新快取
 func (u *PlayerTagUseCase) updateTagCache(ctx context.Context, tags []*entity.Tag) {
-	if len(tags) == 0 || len(tags) == 0 {
+	if u.cacheManager == nil || len(tags) == 0 {
 		return
 	}
 
@@ -538,7 +544,7 @@ func (u *PlayerTagUseCase) updateTagCache(ctx context.Context, tags []*entity.Ta
 			continue
 		}
 
-		// 添加 SET 命令到 Pipeline（快取 10 分鐘）
+		// 添加 SET 命令到 Pipeline（快取 5 分鐘）
 		pipeline.Set(ctx, cacheKey, string(tagData), 5*time.Minute)
 		cacheCommands++
 	}
