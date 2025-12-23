@@ -1,8 +1,6 @@
 package router
 
 import (
-	"fmt"
-
 	"github.com/gin-gonic/gin"
 	"github.com/jvdiamondtech/ms-notification-cat/docs"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
@@ -23,7 +21,7 @@ func (r *SwaggerRouter) RegisterRoutes(router *gin.Engine, cfg *config.Config) {
 	// 動態設定 Swagger Host
 	// 支援多種環境變數設定方式
 	var swaggerHost string
-	defaultHost := fmt.Sprintf(cfg.Server.HttpDomain + ":8081")
+	defaultHost := cfg.Server.HttpDomain + ":8081"
 	switch cfg.App.Env {
 	case "local":
 		swaggerHost = defaultHost
