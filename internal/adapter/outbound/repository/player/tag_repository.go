@@ -2,10 +2,12 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/errmsg"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"gorm.io/gorm"
@@ -69,6 +71,26 @@ func (r *TagRepository) BatchUpsert(ctx context.Context, tags []*entity.Tag) err
 		return fmt.Errorf("batch upsert tags failed: %w", result.Error)
 	}
 	return nil
+}
+
+func (r *TagRepository) FindByGlobalID(
+	ctx context.Context,
+	globalID string,
+) (*entity.Tag, error) {
+	var dbTag models.Tag
+	result := r.db.WithContext(ctx).
+		Where("global_tag_id = ?", globalID).
+		Where("deleted_at IS NULL").
+		First(&dbTag)
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, errmsg.ErrRepoTagNotFound
+		}
+		return nil, fmt.Errorf("find tag by global id failed: %w", result.Error)
+	}
+
+	return mapToDomainTag(&dbTag), nil
 }
 
 func (r *TagRepository) FindByGlobalIDs(

@@ -50,4 +50,5 @@ const (
 	RedisPlayerGlobalIDKey          = "player:global_id:%s"
 	RedisPlayerLevelGlobalIDKey     = "player_level:global_id:%s"
 	RedisPlayerTagsKey              = "player_tags:%d"
+	RedisTagGlobalIDKey             = "tag:global_id:%s"
 )

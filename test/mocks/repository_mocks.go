@@ -756,6 +756,17 @@ func (m *TagRepositoryMock) BatchUpsert(ctx context.Context, tags []*entity.Tag)
 	return args.Error(0)
 }
 
+func (m *TagRepositoryMock) FindByGlobalID(
+	ctx context.Context,
+	globalID string,
+) (*entity.Tag, error) {
+	args := m.Called(ctx, globalID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.Tag), args.Error(1)
+}
+
 func (m *TagRepositoryMock) FindByGlobalIDs(
 	ctx context.Context,
 	globalIDs []string,
