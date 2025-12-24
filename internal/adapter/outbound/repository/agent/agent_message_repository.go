@@ -88,13 +88,13 @@ func (r *AgentMessageRepository) Delete(ctx context.Context, id uint64) error {
 	return nil
 }
 
-// DeleteByCampaignID 根據活動ID刪除所有關聯的代理站內信 (軟刪除)
+// DeleteByCampaignID 根據活動ID刪除所有關聯的代理站內信 (硬刪除)
 func (r *AgentMessageRepository) DeleteByCampaignID(ctx context.Context, campaignID uint64) error {
-	result := r.db.WithContext(ctx).
-		Where("agent_campaign_id = ?", campaignID).
-		Delete(&models.AgentMessage{})
-	if result.Error != nil {
-		return fmt.Errorf("delete agent messages by campaign ID failed: %w", result.Error)
+	// 使用原生SQL DELETE語句進行硬刪除
+	deleteSQL := "DELETE FROM agent_messages WHERE agent_campaign_id = ?"
+	
+	if err := r.db.WithContext(ctx).Exec(deleteSQL, campaignID).Error; err != nil {
+		return fmt.Errorf("delete agent messages by campaign ID failed: %w", err)
 	}
 	return nil
 }

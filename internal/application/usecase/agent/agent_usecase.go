@@ -602,17 +602,31 @@ func (u *AgentUseCase) DeleteAgentCampaign(ctx context.Context, id uint64, updat
 		return fmt.Errorf("update campaign status to cancelled: %w", err)
 	}
 
-	// 使用事務確保刪除操作的原子性
-	u.tracingService.TraceEvent(span, "Starting transaction for cascade delete")
+	// 異步刪除相關的代理站內信 (避免API超時)
+	u.tracingService.TraceEvent(span, "Starting async agent messages deletion")
+	go func() {
+		// 使用新的context避免被原始請求取消
+		deleteCtx := context.Background()
 
-	// 先刪除相關的代理站內信
-	u.tracingService.TraceEvent(span, "Deleting associated agent messages")
-	if err = u.agentMessageRepo.DeleteByCampaignID(ctx, id); err != nil {
-		u.tracingService.RecordSpanError(span, err)
-		return fmt.Errorf("delete associated agent messages: %w", err)
-	}
+		u.logger.InfoLog("Starting async agent messages deletion",
+			u.logger.UInt64("campaign_id", id),
+			u.logger.String("title", campaign.Title))
 
-	// 再刪除代理活動
+		if err = u.agentMessageRepo.DeleteByCampaignID(deleteCtx, id); err != nil {
+			u.logger.ErrorLog("Async agent messages deletion failed",
+				u.logger.UInt64("campaign_id", id),
+				u.logger.Error("error", err))
+		} else {
+			u.logger.InfoLog("Async agent messages deletion completed successfully",
+				u.logger.UInt64("campaign_id", id),
+				u.logger.String("title", campaign.Title))
+		}
+	}()
+
+	u.logger.InfoLog("Async agent messages deletion task started",
+		u.logger.UInt64("campaign_id", id))
+
+	// 執行刪除活動
 	u.tracingService.TraceEvent(span, "Deleting agent campaign")
 	if err = u.agentCampaignRepo.Delete(ctx, id, updatedBy); err != nil {
 		u.tracingService.RecordSpanError(span, err)
