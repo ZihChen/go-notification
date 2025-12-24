@@ -6,7 +6,6 @@ metadata:
     {{- include "fatnotificationcat.labels" . | nindent 4 }}
     app.kubernetes.io/component: web
 spec:
-  replicas: 1
   selector:
     matchLabels:
       {{- include "fatnotificationcat.labels" . | nindent 6 }}

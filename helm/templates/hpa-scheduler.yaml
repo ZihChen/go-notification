@@ -1,0 +1,44 @@
+# 最小擴容：min=1, max=2
+# 高閾值：CPU 80%, Memory 85%
+# 極度保守：5分鐘擴容期，10分鐘縮容期
+# 避免重複排程：通常只需1個實例
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "fatnotificationcat.fullname" . }}-scheduler
+  labels:
+    {{- include "fatnotificationcat.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "fatnotificationcat.fullname" . }}-scheduler
+  minReplicas: 1
+  maxReplicas: 2
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 85
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 300
+    scaleDown:
+      stabilizationWindowSeconds: 600
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 300
