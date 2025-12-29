@@ -111,10 +111,6 @@ func (h *WorkerHandler) RegisterHandlers(mux *asynq.ServeMux) {
 		queue.WrapHandlerWithTracing(h.tracingService, asynq.HandlerFunc(h.HandlePlayerLevelSync)),
 	)
 	mux.Handle(
-		queue.TypePlayerTagsSync,
-		queue.WrapHandlerWithTracing(h.tracingService, asynq.HandlerFunc(h.HandlePlayerTagsSync)),
-	)
-	mux.Handle(
 		queue.TypeTagSync,
 		queue.WrapHandlerWithTracing(h.tracingService, asynq.HandlerFunc(h.HandleTagSync)),
 	)
@@ -128,7 +124,6 @@ func (h *WorkerHandler) RegisterHandlers(mux *asynq.ServeMux) {
 		h.logger.String("handler.player_sync", queue.TypePlayerSync),
 		h.logger.String("handler.manager_sync", queue.TypeManagerSync),
 		h.logger.String("handler.player_level_sync", queue.TypePlayerLevelSync),
-		h.logger.String("handler.player_tags_sync", queue.TypePlayerTagsSync),
 		h.logger.String("handler.tag_sync", queue.TypeTagSync),
 		h.logger.String("handler.agent_sync", queue.TypeAgentSync))
 }
@@ -201,39 +196,49 @@ func (h *WorkerHandler) HandlePlayerSync(ctx context.Context, task *asynq.Task) 
 		h.logger.String("task_id", taskID),
 		h.logger.Int("payload_size", len(task.Payload())))
 
-	cloudEvent, err := parseCloudEvent(task.Payload(), span, h.tracingService)
-	if err != nil {
-		h.tracingService.RecordSpanError(span, err)
-		h.logger.ErrorWithContext(ctx, "Failed to parse cloud event",
-			h.logger.Error("err", err),
-			h.logger.String("task_id", taskID),
-			h.logger.String("data", string(task.Payload())))
-		return err
+	// 使用最簡單和可靠的方法：直接從原始 JSON 解析完整事件
+	var fullCloudEvent struct {
+		SpecVersion     string                        `json:"specversion"`
+		Type            string                        `json:"type"`
+		Source          string                        `json:"source"`
+		Subject         string                        `json:"subject"`
+		ID              string                        `json:"id"`
+		Time            string                        `json:"time"`
+		DataContentType string                        `json:"datacontenttype"`
+		TraceParent     string                        `json:"traceparent"`
+		Data            event.IdentityPlayerSyncEvent `json:"data"`
 	}
 
-	dataBytes, err := jsoniter.Marshal(cloudEvent.Data)
-	if err != nil {
+	if err := jsoniter.Unmarshal(task.Payload(), &fullCloudEvent); err != nil {
 		h.tracingService.RecordSpanError(span, err)
-		h.logger.ErrorWithContext(ctx, "Failed to marshal event data",
+		h.logger.ErrorWithContext(ctx, "Failed to parse complete cloud event",
 			h.logger.Error("err", err),
 			h.logger.String("task_id", taskID),
-			h.logger.Any("data", cloudEvent.Data))
-		return fmt.Errorf("marshal event data: %w", err)
+			h.logger.String("payload", string(task.Payload())))
+		return fmt.Errorf("unmarshal complete cloud event: %w", err)
 	}
 
-	var playerEvent event.PlayerEvent
-	if err = jsoniter.Unmarshal(dataBytes, &playerEvent); err != nil {
-		h.tracingService.RecordSpanError(span, err)
-		return fmt.Errorf("unmarshal player event: %w", err)
-	}
+	// 記錄事件資訊
+	h.tracingService.RecordSpanAttributes(span,
+		attribute.String("event.id", fullCloudEvent.ID),
+		attribute.String("event.type", fullCloudEvent.Type),
+		attribute.String("event.source", fullCloudEvent.Source))
+
+	playerSyncEvent := fullCloudEvent.Data
+
+	h.logger.InfoWithContext(ctx, "Parsed player sync event",
+		h.logger.String("global_player_id", playerSyncEvent.GlobalPlayerID),
+		h.logger.Int("tags_count", len(playerSyncEvent.Tags)),
+		h.logger.Bool("has_level", playerSyncEvent.PlayerLevel != nil))
 
 	// 記錄開始處理
-	h.tracingService.TraceEvent(span, "Starting player sync processing")
+	h.tracingService.TraceEvent(span, "Starting unified player sync processing")
 
-	// 執行實際的同步邏輯
-	if err = h.playerUseCase.SyncPlayer(ctx, &playerEvent); err != nil {
+	// 步驟1: 同步玩家基本資料
+	if err := h.playerUseCase.SyncPlayerFromIdentity(ctx, &playerSyncEvent); err != nil {
 		h.logger.ErrorLog("Failed to sync player",
 			h.logger.String("task_id", taskID),
+			h.logger.String("global_player_id", playerSyncEvent.GlobalPlayerID),
 			h.logger.Error("err", err))
 
 		// 記錄錯誤
@@ -242,22 +247,13 @@ func (h *WorkerHandler) HandlePlayerSync(ctx context.Context, task *asynq.Task) 
 		return fmt.Errorf("failed to sync player: %w", err)
 	}
 
-	// TODO: 待新版玩家站內信上線再啟用同步玩家的player_message（如果玩家重新上線）
-	//if playerEvent.GlobalPlayerID != "" {
-	//	if err = h.messageUseCase.ProcessPlayer(ctx, playerEvent.GlobalPlayerID); err != nil {
-	//		h.logger.WarnLog("Failed to process player for message sync after player sync",
-	//			h.logger.String("global_player_id", playerEvent.GlobalPlayerID),
-	//			h.logger.String("task_id", taskID),
-	//			h.logger.Error("err", err))
-	//		// 即使訊息同步失敗，也不影響玩家資料同步的成功
-	//	}
-	//}
-
 	// 記錄成功完成任務
-	h.tracingService.TraceEvent(span, "Player sync completed successfully")
+	h.tracingService.TraceEvent(span, "Unified player sync completed successfully")
 
-	h.logger.InfoLog("Player sync task completed successfully",
-		h.logger.String("task_id", taskID))
+	h.logger.InfoLog("Unified player sync task completed successfully",
+		h.logger.String("task_id", taskID),
+		h.logger.String("global_player_id", playerSyncEvent.GlobalPlayerID),
+		h.logger.Int("tags_processed", len(playerSyncEvent.Tags)))
 
 	return nil
 }
@@ -378,63 +374,8 @@ func (h *WorkerHandler) HandlePlayerLevelSync(ctx context.Context, task *asynq.T
 	return nil
 }
 
-// HandlePlayerTagsSync 處理玩家標籤同步任務
-func (h *WorkerHandler) HandlePlayerTagsSync(ctx context.Context, task *asynq.Task) error {
-	taskID := getTaskID(task)
-
-	ctx, span := h.tracingService.TraceWorkerProcessing(ctx, queue.TypePlayerTagsSync, taskID)
-	defer h.tracingService.SpanEnd(span)
-
-	h.logger.InfoWithContext(ctx, "Processing player tags sync task",
-		h.logger.String("task_id", taskID),
-		h.logger.Int("payload_size", len(task.Payload())))
-
-	h.tracingService.TraceEvent(span, "Starting player tags sync processing")
-
-	cloudEvent, err := parseCloudEvent(task.Payload(), span, h.tracingService)
-	if err != nil {
-		h.tracingService.RecordSpanError(span, err)
-		h.logger.ErrorWithContext(ctx, "Failed to parse cloud event",
-			h.logger.Error("err", err),
-			h.logger.String("task_id", taskID),
-			h.logger.String("data", string(task.Payload())))
-		return err
-	}
-
-	dataBytes, err := jsoniter.Marshal(cloudEvent.Data)
-	if err != nil {
-		h.tracingService.RecordSpanError(span, err)
-		h.logger.ErrorWithContext(ctx, "Failed to marshal event data",
-			h.logger.Error("err", err),
-			h.logger.String("task_id", taskID),
-			h.logger.Any("data", cloudEvent.Data))
-		return fmt.Errorf("marshal event data: %w", err)
-	}
-
-	var playerTag event.IdentityPlayerTagSyncEvent
-	if err = jsoniter.Unmarshal(dataBytes, &playerTag); err != nil {
-		h.tracingService.RecordSpanError(span, err)
-		h.logger.ErrorWithContext(ctx, "Failed to unmarshal player tags event",
-			h.logger.Error("err", err),
-			h.logger.String("task_id", taskID),
-			h.logger.String("data", string(dataBytes)))
-		return fmt.Errorf("unmarshal  player tags event: %w", err)
-	}
-
-	if err = h.playerTagUseCase.SyncPlayerTags(ctx, &playerTag); err != nil {
-		h.tracingService.RecordSpanError(span, err)
-		h.logger.ErrorWithContext(ctx, "Failed to sync player tags",
-			h.logger.Error("err", err),
-		)
-		return fmt.Errorf("failed to sync player tags: %w", err)
-	}
-
-	h.tracingService.TraceEvent(span, "Player tags sync completed successfully")
-
-	h.logger.InfoWithContext(ctx, "Player tags sync task completed successfully",
-		h.logger.String("task_id", taskID))
-	return nil
-}
+// 註釋：HandlePlayerTagsSync 方法已移除
+// 玩家標籤同步已整合到 HandlePlayerSync 中，統一處理
 
 // HandleTagSync 處理標籤同步任務
 func (h *WorkerHandler) HandleTagSync(ctx context.Context, task *asynq.Task) error {

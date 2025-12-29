@@ -122,19 +122,32 @@ func createMerchantEventPayload() []byte {
 }
 
 func createPlayerEventPayload() []byte {
-	playerData := event.PlayerEvent{
-		Account:             "test-player",
-		Email:               "test@example.com",
-		ApiKey:              "test-api-key",
-		GlobalMerchantID:    "FATCAT-MERCHANT-001",
-		GlobalPlayerID:      "FATCAT-PLAYER-001",
-		GlobalPlayerLevelID: "FATCAT-LEVEL-001",
-		ID:                  1,
-		MerchantID:          1,
-		LastActiveAt:        time.Now(),
-		CreatedAt:           time.Now().Add(-24 * time.Hour),
-		UpdatedAt:           time.Now().Add(-1 * time.Hour),
-		PlayerLevel: event.PlayerLevel{
+	// 創建帶有標籤的統一玩家同步事件
+	playerData := event.IdentityPlayerSyncEvent{
+		GlobalMerchantID: "FATCAT-MERCHANT-001",
+		GlobalPlayerID:   "FATCAT-PLAYER-001",
+		ID:               1,
+		MerchantID:       1,
+		APIKey:           "test-api-key",
+		Account:          "test-player",
+		Email:            nil, // 測試中不需要 email
+		LastActiveAt:     time.Now().Format(time.RFC3339),
+		CreatedAt:        time.Now().Add(-24 * time.Hour).Format(time.RFC3339),
+		UpdatedAt:        time.Now().Add(-1 * time.Hour).Format(time.RFC3339),
+		DeletedAt:        "",
+		// 添加測試標籤資料
+		Tags: []*event.IdentityTagDataSyncEvent{
+			{
+				GlobalTagID: "FATCAT-TAG-001",
+				Name:        "VIP",
+			},
+			{
+				GlobalTagID: "FATCAT-TAG-002",
+				Name:        "High Roller",
+			},
+		},
+		// 添加測試等級資料
+		PlayerLevel: &event.PlayerLevel{
 			GlobalPlayerLevelID: "FATCAT-LEVEL-001",
 			Name:                "Bronze",
 		},
@@ -142,9 +155,9 @@ func createPlayerEventPayload() []byte {
 
 	cloudEvent := event.CloudEvent{
 		SpecVersion:     "1.0",
-		Type:            "player.sync",
-		Source:          "identity-service",
-		Subject:         "player/1",
+		Type:            "tw.jvd.fatidentitycat.player.sync.v1",
+		Source:          "/fatidentitycat/FATCAT",
+		Subject:         "player_sync",
 		ID:              uuid.NewString(),
 		Time:            time.Now(),
 		DataContentType: "application/json",
@@ -214,8 +227,8 @@ func createPlayerTagEventPayload() []byte {
 			{
 				GlobalTagID: "FATCAT-TAG-001",
 				Name:        "VIP",
-				CreatedAt:   time.Now().Add(-24 * time.Hour),
-				UpdatedAt:   time.Now().Add(-1 * time.Hour),
+				CreatedAt:   time.Now().Add(-24 * time.Hour).Format(time.RFC3339),
+				UpdatedAt:   time.Now().Add(-1 * time.Hour).Format(time.RFC3339),
 			},
 		},
 	}
@@ -241,8 +254,8 @@ func createTagEventPayload() []byte {
 		Tag: &event.IdentityTagDataSyncEvent{
 			GlobalTagID: "FATCAT-TAG-001",
 			Name:        "VIP",
-			CreatedAt:   time.Now().Add(-24 * time.Hour),
-			UpdatedAt:   time.Now().Add(-1 * time.Hour),
+			CreatedAt:   time.Now().Add(-24 * time.Hour).Format(time.RFC3339),
+			UpdatedAt:   time.Now().Add(-1 * time.Hour).Format(time.RFC3339),
 		},
 	}
 
@@ -483,10 +496,12 @@ func TestWorkerHandler_HandlePlayerSync_Success(t *testing.T) {
 	payload := createPlayerEventPayload()
 	task := createMockTaskForHandler(queue.TypePlayerSync, payload)
 
-	// Mock expectations
-	playerUseCase.On("SyncPlayer", mock.Anything, mock.AnythingOfType("*event.PlayerEvent")).
-		Return(nil)
-	messageUseCase.On("ProcessPlayer", mock.Anything, mock.AnythingOfType("string")).
+	// Mock expectations - 捕獲實際調用的事件數據以驗證 tags 解析
+	var capturedEvent *event.IdentityPlayerSyncEvent
+	playerUseCase.On("SyncPlayerFromIdentity", mock.Anything, mock.AnythingOfType("*event.IdentityPlayerSyncEvent")).
+		Run(func(args mock.Arguments) {
+			capturedEvent = args.Get(1).(*event.IdentityPlayerSyncEvent)
+		}).
 		Return(nil)
 
 	// Execute
@@ -495,7 +510,76 @@ func TestWorkerHandler_HandlePlayerSync_Success(t *testing.T) {
 	// Verify
 	assert.NoError(t, err)
 	playerUseCase.AssertExpectations()
-	messageUseCase.AssertExpectations()
+
+	// 驗證 tags 和 level 是否正確解析
+	assert.NotNil(t, capturedEvent, "Event should be captured")
+	if capturedEvent != nil {
+		assert.Equal(t, "FATCAT-PLAYER-001", capturedEvent.GlobalPlayerID)
+		assert.Len(t, capturedEvent.Tags, 2, "Should have 2 tags")
+		if len(capturedEvent.Tags) >= 2 {
+			assert.Equal(t, "FATCAT-TAG-001", capturedEvent.Tags[0].GlobalTagID)
+			assert.Equal(t, "VIP", capturedEvent.Tags[0].Name)
+			assert.Equal(t, "FATCAT-TAG-002", capturedEvent.Tags[1].GlobalTagID)
+			assert.Equal(t, "High Roller", capturedEvent.Tags[1].Name)
+		}
+		assert.NotNil(t, capturedEvent.PlayerLevel, "Should have player level")
+		if capturedEvent.PlayerLevel != nil {
+			assert.Equal(t, "FATCAT-LEVEL-001", capturedEvent.PlayerLevel.GlobalPlayerLevelID)
+			assert.Equal(t, "Bronze", capturedEvent.PlayerLevel.Name)
+		}
+	}
+}
+
+func TestWorkerHandler_HandlePlayerSync_TagsDetailValidation(t *testing.T) {
+	// Setup
+	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, agentUseCase, logger := createMockDependencies(
+		t,
+	)
+	handler := createTestHandler(
+		merchantUseCase,
+		playerUseCase,
+		managerUseCase,
+		levelUseCase,
+		tagUseCase,
+		messageUseCase,
+		agentUseCase,
+		logger,
+	)
+
+	payload := createPlayerEventPayload()
+	task := createMockTaskForHandler(queue.TypePlayerSync, payload)
+
+	// Mock expectations - 詳細驗證 tags 解析
+	var capturedEvent *event.IdentityPlayerSyncEvent
+	playerUseCase.On("SyncPlayerFromIdentity", mock.Anything, mock.AnythingOfType("*event.IdentityPlayerSyncEvent")).
+		Run(func(args mock.Arguments) {
+			capturedEvent = args.Get(1).(*event.IdentityPlayerSyncEvent)
+			// 詳細記錄解析結果
+			t.Logf("Captured event - GlobalPlayerID: %s", capturedEvent.GlobalPlayerID)
+			t.Logf("Captured event - Tags count: %d", len(capturedEvent.Tags))
+			for i, tag := range capturedEvent.Tags {
+				t.Logf("Tag[%d] - GlobalTagID: %s, Name: %s", i, tag.GlobalTagID, tag.Name)
+			}
+			if capturedEvent.PlayerLevel != nil {
+				t.Logf("PlayerLevel - GlobalPlayerLevelID: %s, Name: %s",
+					capturedEvent.PlayerLevel.GlobalPlayerLevelID, capturedEvent.PlayerLevel.Name)
+			} else {
+				t.Log("PlayerLevel is nil")
+			}
+		}).
+		Return(nil)
+
+	// Execute
+	err := handler.HandlePlayerSync(context.Background(), task)
+
+	// Verify
+	assert.NoError(t, err)
+	playerUseCase.AssertExpectations()
+
+	// 詳細驗證
+	assert.NotNil(t, capturedEvent, "Event should be captured")
+	assert.Len(t, capturedEvent.Tags, 2, "Should parse exactly 2 tags")
+	assert.NotNil(t, capturedEvent.PlayerLevel, "Should parse player level")
 }
 
 func TestWorkerHandler_HandlePlayerSync_UnmarshalEventError(t *testing.T) {
@@ -524,9 +608,9 @@ func TestWorkerHandler_HandlePlayerSync_UnmarshalEventError(t *testing.T) {
 	// Execute
 	err := handler.HandlePlayerSync(context.Background(), task)
 
-	// Verify - The error will be in the unmarshal player event step
+	// Verify - The error will be in the unmarshal complete cloud event step
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "unmarshal player event")
+	assert.Contains(t, err.Error(), "unmarshal complete cloud event")
 }
 
 func TestWorkerHandler_HandlePlayerSync_SyncError(t *testing.T) {
@@ -550,8 +634,8 @@ func TestWorkerHandler_HandlePlayerSync_SyncError(t *testing.T) {
 
 	syncError := errors.New("player not found")
 
-	// Mock expectations
-	playerUseCase.On("SyncPlayer", mock.Anything, mock.AnythingOfType("*event.PlayerEvent")).
+	// Mock expectations - 使用新的統一處理方法
+	playerUseCase.On("SyncPlayerFromIdentity", mock.Anything, mock.AnythingOfType("*event.IdentityPlayerSyncEvent")).
 		Return(syncError)
 
 	// Execute
@@ -705,74 +789,9 @@ func TestWorkerHandler_HandlePlayerLevelSync_SyncError(t *testing.T) {
 }
 
 // ============================================================================
-// HandlePlayerTagsSync Tests
+// 註釋：HandlePlayerTagsSync Tests 已移除
+// 玩家標籤同步測試已整合到 HandlePlayerSync 測試中
 // ============================================================================
-
-func TestWorkerHandler_HandlePlayerTagsSync_Success(t *testing.T) {
-	// Setup
-	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, agentUseCase, logger := createMockDependencies(
-		t,
-	)
-	handler := createTestHandler(
-		merchantUseCase,
-		playerUseCase,
-		managerUseCase,
-		levelUseCase,
-		tagUseCase,
-		messageUseCase,
-		agentUseCase,
-		logger,
-	)
-
-	payload := createPlayerTagEventPayload()
-	task := createMockTaskForHandler(queue.TypePlayerTagsSync, payload)
-
-	// Mock expectations
-	tagUseCase.On("SyncPlayerTags", mock.Anything, mock.AnythingOfType("*event.IdentityPlayerTagSyncEvent")).
-		Return(nil)
-
-	// Execute
-	err := handler.HandlePlayerTagsSync(context.Background(), task)
-
-	// Verify
-	assert.NoError(t, err)
-	tagUseCase.AssertExpectations()
-}
-
-func TestWorkerHandler_HandlePlayerTagsSync_SyncError(t *testing.T) {
-	// Setup
-	merchantUseCase, playerUseCase, managerUseCase, levelUseCase, tagUseCase, messageUseCase, agentUseCase, logger := createMockDependencies(
-		t,
-	)
-	handler := createTestHandler(
-		merchantUseCase,
-		playerUseCase,
-		managerUseCase,
-		levelUseCase,
-		tagUseCase,
-		messageUseCase,
-		agentUseCase,
-		logger,
-	)
-
-	payload := createPlayerTagEventPayload()
-	task := createMockTaskForHandler(queue.TypePlayerTagsSync, payload)
-
-	syncError := errors.New("tag validation failed")
-
-	// Mock expectations
-	tagUseCase.On("SyncPlayerTags", mock.Anything, mock.AnythingOfType("*event.IdentityPlayerTagSyncEvent")).
-		Return(syncError)
-
-	// Execute
-	err := handler.HandlePlayerTagsSync(context.Background(), task)
-
-	// Verify
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to sync player tags")
-	assert.Contains(t, err.Error(), "tag validation failed")
-	tagUseCase.AssertExpectations()
-}
 
 // ============================================================================
 // HandleTagSync Tests

@@ -222,19 +222,25 @@ func providePlayerUseCase(
 	playerRepo repository.PlayerRepository,
 	merchantRepo repository.MerchantRepository,
 	levelRepo repository.LevelRepository,
+	tagRepo repository.TagRepository,
+	playerTagRepo repository.PlayerTagRepository,
 	eventProducer servicePort.EventProducer,
 	logger infrastructure.Logger,
 	tracingService infrastructure.TracingService,
 	cacheManager infrastructure.CacheManager,
+	lockManager infrastructure.DistributedLockManager,
 ) inbound.PlayerUseCase {
 	return playerUseCase.NewPlayerUseCase(
 		playerRepo,
 		merchantRepo,
 		levelRepo,
+		tagRepo,
+		playerTagRepo,
 		eventProducer,
 		logger,
 		tracingService,
 		cacheManager,
+		lockManager,
 	)
 }
 

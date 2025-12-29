@@ -119,35 +119,14 @@ func createTestTags() []*entity.Tag {
 	}
 }
 
-func createIdentityPlayerTagSyncEvent() *event.IdentityPlayerTagSyncEvent {
-	return &event.IdentityPlayerTagSyncEvent{
-		GlobalMerchantID: "FATCAT-MERCHANT-1",
-		GlobalPlayerID:   "FATCAT-PLAYER-1",
-		Tags: []*event.IdentityTagDataSyncEvent{
-			{
-				GlobalTagID: "FATCAT-TAG-1",
-				Name:        "VIP",
-				CreatedAt:   time.Now().Add(-2 * time.Hour),
-				UpdatedAt:   time.Now().Add(-1 * time.Hour),
-			},
-			{
-				GlobalTagID: "FATCAT-TAG-2",
-				Name:        "Premium",
-				CreatedAt:   time.Now().Add(-2 * time.Hour),
-				UpdatedAt:   time.Now().Add(-1 * time.Hour),
-			},
-		},
-	}
-}
-
 func createIdentityTagSyncEvent() *event.IdentityTagSyncEvent {
 	return &event.IdentityTagSyncEvent{
 		GlobalMerchantID: "FATCAT-MERCHANT-1",
 		Tag: &event.IdentityTagDataSyncEvent{
 			GlobalTagID: "FATCAT-TAG-1",
 			Name:        "VIP",
-			CreatedAt:   time.Now().Add(-2 * time.Hour),
-			UpdatedAt:   time.Now().Add(-1 * time.Hour),
+			CreatedAt:   time.Now().Add(-2 * time.Hour).Format(time.RFC3339),
+			UpdatedAt:   time.Now().Add(-1 * time.Hour).Format(time.RFC3339),
 		},
 	}
 }
@@ -237,11 +216,13 @@ func TestPlayerTagUseCase_SyncTag(t *testing.T) {
 
 	// Verify the tag was created with correct data
 	tagRepo.AssertCalled(t, "Upsert", mock.Anything, mock.MatchedBy(func(tag *entity.Tag) bool {
+		// Parse the string time for comparison
+		expectedTime, _ := time.Parse(time.RFC3339, event.Tag.UpdatedAt)
 		return tag.GlobalTagID == event.Tag.GlobalTagID &&
 			tag.Name == event.Tag.Name &&
 			tag.MerchantID == merchant.ID &&
-			tag.CreatedAt.Equal(event.Tag.UpdatedAt) &&
-			tag.UpdatedAt.Equal(event.Tag.UpdatedAt) &&
+			tag.CreatedAt.Equal(expectedTime) &&
+			tag.UpdatedAt.Equal(expectedTime) &&
 			tag.DeletedAt == nil
 	}))
 }

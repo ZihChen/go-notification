@@ -96,6 +96,10 @@ func (u *PlayerTagUseCase) SyncPlayerTags(
 	}
 
 	tagItems := data.Tags
+	if len(tagItems) == 0 {
+		u.logger.InfoWithContext(ctx, "No tags to process")
+		return nil
+	}
 
 	tagsToInsert, tagsGlobalIDs := make([]*entity.Tag, len(tagItems)), make([]string, len(tagItems))
 	for k, item := range tagItems {
@@ -183,17 +187,43 @@ func (u *PlayerTagUseCase) SyncTag(ctx context.Context, data *event.IdentityTagS
 		return fmt.Errorf("find merchant: %w", err)
 	}
 
+	// Parse time fields from strings
+	var createdAt, updatedAt time.Time
+	var parseErr error
+
+	if data.Tag.CreatedAt != "" {
+		createdAt, parseErr = time.Parse(time.RFC3339, data.Tag.CreatedAt)
+		if parseErr != nil {
+			createdAt = time.Now() // fallback to current time
+		}
+	} else {
+		createdAt = time.Now()
+	}
+
+	if data.Tag.UpdatedAt != "" {
+		updatedAt, parseErr = time.Parse(time.RFC3339, data.Tag.UpdatedAt)
+		if parseErr != nil {
+			updatedAt = time.Now() // fallback to current time
+		}
+	} else {
+		updatedAt = time.Now()
+	}
+
 	tagToInsert := &entity.Tag{
 		GlobalTagID: data.Tag.GlobalTagID,
 		Name:        data.Tag.Name,
 		MerchantID:  merchant.ID,
-		CreatedAt:   data.Tag.UpdatedAt,
-		UpdatedAt:   data.Tag.UpdatedAt,
+		CreatedAt:   createdAt,
+		UpdatedAt:   updatedAt,
 		DeletedAt: func() *time.Time {
 			if data.Tag.DeletedAt == "" {
 				return nil
 			}
-			return &data.Tag.UpdatedAt
+			deletedAt, parseErr := time.Parse(time.RFC3339, data.Tag.UpdatedAt)
+			if parseErr != nil {
+				deletedAt = updatedAt // fallback to updatedAt
+			}
+			return &deletedAt
 		}(),
 	}
 
