@@ -8,7 +8,7 @@ kind: HorizontalPodAutoscaler
 metadata:
   name: {{ include "fatnotificationcat.fullname" . }}-web
   labels:
-    {{- include "fatnotificationcat.labels" . | nindent 4 }}
+    {{- include "fatnotificationcat-web.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

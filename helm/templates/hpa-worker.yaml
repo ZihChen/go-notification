@@ -8,14 +8,14 @@ kind: HorizontalPodAutoscaler
 metadata:
   name: {{ include "fatnotificationcat.fullname" . }}-worker
   labels:
-    {{- include "fatnotificationcat.labels" . | nindent 4 }}
+    {{- include "fatnotificationcat-worker.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
     name: {{ include "fatnotificationcat.fullname" . }}-worker
-  minReplicas: 3
-  maxReplicas: 5
+  minReplicas: 5
+  maxReplicas: 10
   metrics:
     - type: Resource
       resource:

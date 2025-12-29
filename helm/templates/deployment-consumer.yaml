@@ -3,11 +3,11 @@ kind: Deployment
 metadata:
   name: {{ include "fatnotificationcat.fullname" . }}-consumer
   labels:
-    {{- include "fatnotificationcat.labels" . | nindent 4 }}
+    {{- include "fatnotificationcat-consumer.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      {{- include "fatnotificationcat.labels" . | nindent 6 }}
+      {{- include "fatnotificationcat-consumer.labels" . | nindent 6 }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -16,7 +16,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "fatnotificationcat.labels" . | nindent 8 }}
+        {{- include "fatnotificationcat-consumer.labels" . | nindent 8 }}
       annotations:
         checksum/config: {{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}
         checksum/secret: {{ include (print .Template.BasePath "/sealedsecret.yaml") . | sha256sum }}
