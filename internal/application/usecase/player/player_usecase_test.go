@@ -26,16 +26,19 @@ func createPlayerEvent() *event.PlayerEvent {
 
 func createMockDependencies(
 	t *testing.T,
-) (*mocks.PlayerRepositoryMock, *mocks.MerchantRepositoryMock, *mocks.LevelRepositoryMock, *mocks.EventProducerMock, *helper.MockLogger, *redis.Client, *mocks.MockCacheManager) {
+) (*mocks.PlayerRepositoryMock, *mocks.MerchantRepositoryMock, *mocks.LevelRepositoryMock, *mocks.TagRepositoryMock, *mocks.PlayerTagRepositoryMock, *mocks.EventProducerMock, *helper.MockLogger, *redis.Client, *mocks.MockCacheManager, *mocks.DistributedLockManagerMock) {
 	playerRepo := mocks.NewPlayerRepositoryMock(t)
 	merchantRepo := mocks.NewMerchantRepositoryMock(t)
 	levelRepo := mocks.NewLevelRepositoryMock(t)
+	tagRepo := mocks.NewTagRepositoryMock(t)
+	playerTagRepo := mocks.NewPlayerTagRepositoryMock(t)
 	eventProducer := mocks.NewEventProducerMock(t)
 	logger := helper.NewMockLogger()
 	redisClient, _ := redismock.NewClientMock()
 	cacheManager := mocks.NewMockCacheManager(t)
 	cacheManager.SetupSuccess()
-	return playerRepo, merchantRepo, levelRepo, eventProducer, logger, redisClient, cacheManager
+	lockManager := mocks.NewDistributedLockManagerMock(t)
+	return playerRepo, merchantRepo, levelRepo, tagRepo, playerTagRepo, eventProducer, logger, redisClient, cacheManager, lockManager
 }
 
 // 測試 SyncPlayer 方法 - 創建新玩家
@@ -43,7 +46,7 @@ func TestPlayerUseCase_SyncPlayer(t *testing.T) {
 	// 準備測試數據
 	globalMerchantID := "FATCAT-MERCHANT-1"
 
-	playerRepo, merchantRepo, levelRepo, eventProducer, logger, _, cacheManager := createMockDependencies(
+	playerRepo, merchantRepo, levelRepo, tagRepo, playerTagRepo, eventProducer, logger, _, cacheManager, lockManager := createMockDependencies(
 		t,
 	)
 
@@ -72,10 +75,13 @@ func TestPlayerUseCase_SyncPlayer(t *testing.T) {
 		playerRepo,
 		merchantRepo,
 		levelRepo,
+		tagRepo,
+		playerTagRepo,
 		eventProducer,
 		logger,
 		tracingService,
 		cacheManager,
+		lockManager,
 	)
 
 	// 啟動批次處理器
@@ -117,7 +123,7 @@ func TestPlayerUseCase_GetPlayerByID(t *testing.T) {
 		UpdatedAt:      time.Now().Add(-24 * time.Hour),
 	}
 
-	playerRepo, merchantRepo, levelRepo, eventProducer, logger, _, cacheManager := createMockDependencies(
+	playerRepo, merchantRepo, levelRepo, tagRepo, playerTagRepo, eventProducer, logger, _, cacheManager, lockManager := createMockDependencies(
 		t,
 	)
 
@@ -130,10 +136,13 @@ func TestPlayerUseCase_GetPlayerByID(t *testing.T) {
 		playerRepo,
 		merchantRepo,
 		levelRepo,
+		tagRepo,
+		playerTagRepo,
 		eventProducer,
 		logger,
 		tracingService,
 		cacheManager,
+		lockManager,
 	)
 
 	// 執行測試
@@ -172,7 +181,7 @@ func TestPlayerUseCase_GetPlayerByGlobalID(t *testing.T) {
 		UpdatedAt:      time.Now().Add(-24 * time.Hour),
 	}
 
-	playerRepo, merchantRepo, levelRepo, eventProducer, logger, _, cacheManager := createMockDependencies(
+	playerRepo, merchantRepo, levelRepo, tagRepo, playerTagRepo, eventProducer, logger, _, cacheManager, lockManager := createMockDependencies(
 		t,
 	)
 
@@ -185,10 +194,13 @@ func TestPlayerUseCase_GetPlayerByGlobalID(t *testing.T) {
 		playerRepo,
 		merchantRepo,
 		levelRepo,
+		tagRepo,
+		playerTagRepo,
 		eventProducer,
 		logger,
 		tracingService,
 		cacheManager,
+		lockManager,
 	)
 
 	// 執行測試
@@ -228,7 +240,7 @@ func TestPlayerUseCase_UpdatePlayerLastActive(t *testing.T) {
 		UpdatedAt:      time.Now().Add(-24 * time.Hour),
 	}
 
-	playerRepo, merchantRepo, levelRepo, eventProducer, logger, _, cacheManager := createMockDependencies(
+	playerRepo, merchantRepo, levelRepo, tagRepo, playerTagRepo, eventProducer, logger, _, cacheManager, lockManager := createMockDependencies(
 		t,
 	)
 
@@ -242,10 +254,13 @@ func TestPlayerUseCase_UpdatePlayerLastActive(t *testing.T) {
 		playerRepo,
 		merchantRepo,
 		levelRepo,
+		tagRepo,
+		playerTagRepo,
 		eventProducer,
 		logger,
 		tracingService,
 		cacheManager,
+		lockManager,
 	)
 
 	// 執行測試

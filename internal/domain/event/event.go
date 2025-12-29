@@ -144,6 +144,9 @@ type IdentityPlayerSyncEvent struct {
 	CreatedAt        string  `json:"created_at"`
 	UpdatedAt        string  `json:"updated_at"`
 	DeletedAt        string  `json:"deleted_at,omitempty"`
+	// 新增：玩家標籤資料，統一在玩家同步事件中處理
+	Tags        []*IdentityTagDataSyncEvent `json:"tags,omitempty"`
+	PlayerLevel *PlayerLevel                `json:"player_level,omitempty"`
 }
 
 // IdentityManagerSyncEvent 發送到 KDS 的管理員同步事件
@@ -181,11 +184,11 @@ type IdentityTagSyncEvent struct {
 }
 
 type IdentityTagDataSyncEvent struct {
-	GlobalTagID string    `json:"global_tag_id"`
-	Name        string    `json:"name"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	DeletedAt   string    `json:"deleted_at,omitempty"`
+	GlobalTagID string `json:"global_tag_id"`
+	Name        string `json:"name"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+	DeletedAt   string `json:"deleted_at,omitempty"`
 }
 
 // AgentSyncEvent 代理同步事件數據 (根據新的KDS事件結構)

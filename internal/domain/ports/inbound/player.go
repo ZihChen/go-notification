@@ -8,7 +8,10 @@ import (
 )
 
 type PlayerUseCase interface {
+	// 舊版玩家同步方法（向後兼容）
 	SyncPlayer(ctx context.Context, data *event.PlayerEvent) error
+	// 新版統一玩家同步方法（從Identity事件）
+	SyncPlayerFromIdentity(ctx context.Context, data *event.IdentityPlayerSyncEvent) error
 	GetPlayerByID(ctx context.Context, id uint64) (*dto.PlayerResponse, error)
 	GetPlayerByGlobalID(ctx context.Context, globalID string) (*dto.PlayerResponse, error)
 	UpdatePlayerLastActive(ctx context.Context, id uint64) error

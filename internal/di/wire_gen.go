@@ -66,18 +66,18 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, cache
 	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger, tracingService)
 	playerRepository := repository.NewPlayerRepository(db)
 	levelRepository := repository.NewLevelRepository(db)
-	playerUseCase := providePlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger, tracingService, cacheManager)
+	tagRepository := repository.NewTagRepository(db)
+	playerTagRepository := repository.NewPlayerTagRepository(db)
+	playerUseCase := providePlayerUseCase(playerRepository, merchantRepository, levelRepository, tagRepository, playerTagRepository, eventProducer, logger, tracingService, cacheManager, distributedLockManager)
 	managerRepository := repository2.NewManagerRepository(db)
 	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger, tracingService)
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
 	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
 	playerMessageRepository := providePlayerMessageRepository(db, distributedLockManager)
-	tagRepository := repository.NewTagRepository(db)
 	pushKeyRepository := merchant2.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
 	messageUseCase := message2.NewMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger, tracingService)
-	playerTagRepository := repository.NewPlayerTagRepository(db)
 	playerTagUseCase := providePlayerTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, distributedLockManager, tracingService, cacheManager)
 	httpHandler := api.NewHTTPHandler(merchantUseCase, playerUseCase, managerUseCase, messageUseCase, playerLevelUseCase, playerTagUseCase, logger)
 	return httpHandler, nil
@@ -124,18 +124,18 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger, tracingService)
 	playerRepository := repository.NewPlayerRepository(db)
 	levelRepository := repository.NewLevelRepository(db)
-	playerUseCase := providePlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger, tracingService, cacheManager)
+	tagRepository := repository.NewTagRepository(db)
+	playerTagRepository := repository.NewPlayerTagRepository(db)
+	playerUseCase := providePlayerUseCase(playerRepository, merchantRepository, levelRepository, tagRepository, playerTagRepository, eventProducer, logger, tracingService, cacheManager, distributedLockManager)
 	managerRepository := repository2.NewManagerRepository(db)
 	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger, tracingService)
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
 	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
 	playerMessageRepository := providePlayerMessageRepository(db, distributedLockManager)
-	tagRepository := repository.NewTagRepository(db)
 	pushKeyRepository := merchant2.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
 	messageUseCase := message2.NewMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger, tracingService)
-	playerTagRepository := repository.NewPlayerTagRepository(db)
 	playerTagUseCase := providePlayerTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, distributedLockManager, tracingService, cacheManager)
 	httpHandler := api.NewHTTPHandler(merchantUseCase, playerUseCase, managerUseCase, messageUseCase, playerLevelUseCase, playerTagUseCase, logger)
 	agentRepository := repository3.NewAgentRepository(db)
@@ -169,12 +169,12 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, ca
 	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger, tracingService)
 	playerRepository := repository.NewPlayerRepository(db)
 	levelRepository := repository.NewLevelRepository(db)
-	playerUseCase := providePlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger, tracingService, cacheManager)
+	tagRepository := repository.NewTagRepository(db)
+	playerTagRepository := repository.NewPlayerTagRepository(db)
+	playerUseCase := providePlayerUseCase(playerRepository, merchantRepository, levelRepository, tagRepository, playerTagRepository, eventProducer, logger, tracingService, cacheManager, distributedLockManager)
 	managerRepository := repository2.NewManagerRepository(db)
 	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger, tracingService)
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger, tracingService)
-	tagRepository := repository.NewTagRepository(db)
-	playerTagRepository := repository.NewPlayerTagRepository(db)
 	playerTagUseCase := providePlayerTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, distributedLockManager, tracingService, cacheManager)
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
 	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
@@ -209,12 +209,12 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 	merchantUseCase := merchant.NewMerchantUseCase(merchantRepository, eventProducer, logger, tracingService)
 	playerRepository := repository.NewPlayerRepository(db)
 	levelRepository := repository.NewLevelRepository(db)
-	playerUseCase := providePlayerUseCase(playerRepository, merchantRepository, levelRepository, eventProducer, logger, tracingService, cacheManager)
+	tagRepository := repository.NewTagRepository(db)
+	playerTagRepository := repository.NewPlayerTagRepository(db)
+	playerUseCase := providePlayerUseCase(playerRepository, merchantRepository, levelRepository, tagRepository, playerTagRepository, eventProducer, logger, tracingService, cacheManager, distributedLockManager)
 	managerRepository := repository2.NewManagerRepository(db)
 	managerUseCase := manager.NewManagerUseCase(managerRepository, merchantRepository, eventProducer, logger, tracingService)
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger, tracingService)
-	tagRepository := repository.NewTagRepository(db)
-	playerTagRepository := repository.NewPlayerTagRepository(db)
 	playerTagUseCase := providePlayerTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, distributedLockManager, tracingService, cacheManager)
 	messageCampaignRepository := message.NewMessageCampaignRepository(db)
 	campaignTargetRepository := message.NewCampaignTargetRepository(db, logger, tracingService)
@@ -419,19 +419,25 @@ func providePlayerUseCase(
 	playerRepo repository5.PlayerRepository,
 	merchantRepo repository5.MerchantRepository,
 	levelRepo repository5.LevelRepository,
+	tagRepo repository5.TagRepository,
+	playerTagRepo repository5.PlayerTagRepository,
 	eventProducer service2.EventProducer,
 	logger infrastructure.Logger,
 	tracingService infrastructure.TracingService,
 	cacheManager infrastructure.CacheManager,
+	lockManager infrastructure.DistributedLockManager,
 ) inbound.PlayerUseCase {
 	return player.NewPlayerUseCase(
 		playerRepo,
 		merchantRepo,
 		levelRepo,
+		tagRepo,
+		playerTagRepo,
 		eventProducer,
 		logger,
 		tracingService,
 		cacheManager,
+		lockManager,
 	)
 }
 

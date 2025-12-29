@@ -25,9 +25,9 @@ const (
 	TypePlayerSync      = "player:sync"
 	TypeManagerSync     = "manager:sync"
 	TypePlayerLevelSync = "player:level:sync"
-	TypePlayerTagsSync  = "player:tags:sync"
-	TypeTagSync         = "tag:sync"
-	TypeAgentSync       = "agent:sync"
+	// TypePlayerTagsSync  = "player:tags:sync" // 已整合到 TypePlayerSync 中
+	TypeTagSync   = "tag:sync"
+	TypeAgentSync = "agent:sync"
 )
 
 // QueueService 佇列服務實現
@@ -103,9 +103,11 @@ func (q *QueueService) EnqueuePlayerLevelSync(ctx context.Context, data []byte) 
 	return q.enqueueTask(ctx, TypePlayerLevelSync, data)
 }
 
-// EnqueuePlayerTagsSync 將玩家標籤同步任務加入佇列
+// EnqueuePlayerTagsSync 已整合到 EnqueuePlayerSync 中，此方法保留以向後兼容
 func (q *QueueService) EnqueuePlayerTagsSync(ctx context.Context, data []byte) error {
-	return q.enqueueTask(ctx, TypePlayerTagsSync, data)
+	// 標籤同步現在已整合到玩家同步事件中
+	q.logger.WarnLog("EnqueuePlayerTagsSync is deprecated, use EnqueuePlayerSync instead")
+	return nil
 }
 
 // EnqueueTagSync 將標籤同步任務加入佇列

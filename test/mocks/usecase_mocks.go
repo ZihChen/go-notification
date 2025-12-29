@@ -187,6 +187,20 @@ func (m *MessageUseCaseMock) Reset() {
 	m.Mock = mock.Mock{}
 }
 
+// PlayerUseCaseMock 統一的 PlayerUseCase Mock
+type PlayerUseCaseMock struct {
+	*BaseMock
+}
+
+var _ inbound.PlayerUseCase = (*PlayerUseCaseMock)(nil)
+
+// NewPlayerUseCaseMock 創建新的 PlayerUseCase Mock
+func NewPlayerUseCaseMock(t *testing.T) *PlayerUseCaseMock {
+	return &PlayerUseCaseMock{
+		BaseMock: NewBaseMock(t),
+	}
+}
+
 // MerchantUseCaseMock 統一的 MerchantUseCase Mock
 type MerchantUseCaseMock struct {
 	*BaseMock
@@ -235,21 +249,17 @@ func (m *MerchantUseCaseMock) Reset() {
 	m.Mock = mock.Mock{}
 }
 
-// PlayerUseCaseMock 統一的 PlayerUseCase Mock
-type PlayerUseCaseMock struct {
-	*BaseMock
-}
-
-var _ inbound.PlayerUseCase = (*PlayerUseCaseMock)(nil)
-
-// NewPlayerUseCaseMock 創建新的 PlayerUseCase Mock
-func NewPlayerUseCaseMock(t *testing.T) *PlayerUseCaseMock {
-	return &PlayerUseCaseMock{
-		BaseMock: NewBaseMock(t),
-	}
-}
+// PlayerUseCaseMock 的方法實現
 
 func (m *PlayerUseCaseMock) SyncPlayer(ctx context.Context, data *event.PlayerEvent) error {
+	args := m.Called(ctx, data)
+	return args.Error(0)
+}
+
+func (m *PlayerUseCaseMock) SyncPlayerFromIdentity(
+	ctx context.Context,
+	data *event.IdentityPlayerSyncEvent,
+) error {
 	args := m.Called(ctx, data)
 	return args.Error(0)
 }

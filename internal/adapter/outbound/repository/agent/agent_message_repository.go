@@ -92,7 +92,7 @@ func (r *AgentMessageRepository) Delete(ctx context.Context, id uint64) error {
 func (r *AgentMessageRepository) DeleteByCampaignID(ctx context.Context, campaignID uint64) error {
 	// 使用原生SQL DELETE語句進行硬刪除
 	deleteSQL := "DELETE FROM agent_messages WHERE agent_campaign_id = ?"
-	
+
 	if err := r.db.WithContext(ctx).Exec(deleteSQL, campaignID).Error; err != nil {
 		return fmt.Errorf("delete agent messages by campaign ID failed: %w", err)
 	}
