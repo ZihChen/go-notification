@@ -3,12 +3,14 @@ kind: Deployment
 metadata:
   name: {{ include "fatnotificationcat.fullname" . }}-web
   labels:
-    {{- include "fatnotificationcat-web.labels" . | nindent 4 }}
+    app: web
+    {{- include "fatnotificationcat.labels" . | nindent 4 }}
     app.kubernetes.io/component: web
 spec:
   selector:
     matchLabels:
-      {{- include "fatnotificationcat-web.labels" . | nindent 6 }}
+      app: web
+      {{- include "fatnotificationcat.labels" . | nindent 6 }}
       app.kubernetes.io/component: web
   strategy:
     type: RollingUpdate
@@ -18,7 +20,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "fatnotificationcat-web.labels" . | nindent 8 }}
+        {{- include "fatnotificationcat.labels" . | nindent 8 }}
         app.kubernetes.io/component: web
       annotations:
         checksum/config: {{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}

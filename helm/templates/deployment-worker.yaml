@@ -3,11 +3,13 @@ kind: Deployment
 metadata:
   name: {{ include "fatnotificationcat.fullname" . }}-worker
   labels:
-    {{- include "fatnotificationcat-worker.labels" . | nindent 4 }}
+    {{- include "fatnotificationcat.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
 spec:
   selector:
     matchLabels:
-      {{- include "fatnotificationcat-worker.labels" . | nindent 6 }}
+      {{- include "fatnotificationcat.labels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -16,7 +18,8 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "fatnotificationcat-worker.labels" . | nindent 8 }}
+        {{- include "fatnotificationcat.labels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
       annotations:
         checksum/config: {{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}
         checksum/secret: {{ include (print .Template.BasePath "/sealedsecret.yaml") . | sha256sum }}
