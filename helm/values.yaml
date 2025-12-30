@@ -38,3 +38,6 @@ redis:
     limits:
       cpu: 100m
       memory: 256Mi
+  persistence:
+    requests:
+      storage: 1Gi
