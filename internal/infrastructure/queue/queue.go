@@ -25,9 +25,8 @@ const (
 	TypePlayerSync      = "player:sync"
 	TypeManagerSync     = "manager:sync"
 	TypePlayerLevelSync = "player:level:sync"
-	// TypePlayerTagsSync  = "player:tags:sync" // 已整合到 TypePlayerSync 中
-	TypeTagSync   = "tag:sync"
-	TypeAgentSync = "agent:sync"
+	TypeTagSync         = "tag:sync"
+	TypeAgentSync       = "agent:sync"
 )
 
 // QueueService 佇列服務實現
@@ -161,6 +160,10 @@ func (q *QueueService) enqueueTask(ctx context.Context, taskType string, data []
 		asynq.Timeout(30 * time.Second), // 任務超時設置
 	}
 
+	// 根據任務類型設定隊列優先級
+	queueName := q.getQueueByTaskType(taskType)
+	opts = append(opts, asynq.Queue(queueName))
+
 	// 將任務加入佇列
 	info, err := q.client.EnqueueContext(ctx, task, opts...)
 	if err != nil {
@@ -191,6 +194,19 @@ func (q *QueueService) enqueueTask(ctx context.Context, taskType string, data []
 		q.logger.String("enqueued_at", time.Now().String()))
 
 	return nil
+}
+
+// getQueueByTaskType 根據任務類型返回隊列名稱
+func (q *QueueService) getQueueByTaskType(taskType string) string {
+	// 高優先級任務映射
+	highPriorityTasks := map[string]bool{
+		TypePlayerSync: true,
+	}
+
+	if highPriorityTasks[taskType] {
+		return "critical"
+	}
+	return "default"
 }
 
 // WrapHandlerWithTracing 包裝處理器以添加追蹤功能 (方法版本)

@@ -24,8 +24,8 @@ func getDevConfig() QueueConfig {
 	return QueueConfig{
 		Concurrency: 5, // 減少併發以避免記憶體超限
 		QueuePriorities: map[string]int{
-			"default":  2, // 降低優先級數量
-			"critical": 3,
+			"critical": 3, // 玩家同步高優先級
+			"default":  2, // 一般任務
 		},
 		TaskTimeout: 15 * time.Second, // 縮短超時避免資源卡住
 		MaxRetries:  3,                // 減少重試次數
@@ -47,9 +47,8 @@ func getProdConfig() QueueConfig {
 	return QueueConfig{
 		Concurrency: 8,
 		QueuePriorities: map[string]int{
-			"critical": 5, // 41.7%資源 (高優先級)
-			"agent":    4, // 33.3%資源 (代理同步優化)
-			"default":  3, // 25%資源   (一般任務)
+			"critical": 3, // 60%資源 (玩家同步高優先級)
+			"default":  2, // 40%資源 (一般任務)
 		},
 		TaskTimeout: 60 * time.Second, // 增加超時容忍度
 		MaxRetries:  5,                // 更多的重試機會
@@ -75,8 +74,8 @@ func getDefaultConfig() QueueConfig {
 	return QueueConfig{
 		Concurrency: 5,
 		QueuePriorities: map[string]int{
-			"default":  5,
-			"critical": 10,
+			"critical": 3,
+			"default":  2,
 		},
 		TaskTimeout: 30 * time.Second, // 中等超時時間
 		MaxRetries:  3,                // 中等重試次數
