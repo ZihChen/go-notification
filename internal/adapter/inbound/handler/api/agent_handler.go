@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/base64"
 	"fmt"
+	"net/url"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -82,23 +83,34 @@ func (h *AgentHandler) CreateAgentCampaign(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(req); err != nil {
 		response.BadRequest(c, "invalid request format", err.Error()).Return()
-		return
 	}
 
-	// 對Content欄位進行base64解密
 	if req.Content != "" {
-		decodedContent, err := base64.StdEncoding.DecodeString(req.Content)
-		if err != nil {
+		// 對Content欄位進行base64解密
+		decodedContent, decodeErr := base64.StdEncoding.DecodeString(req.Content)
+		if decodeErr != nil {
 			h.logger.ErrorWithContext(
 				c.Request.Context(),
 				"failed to decode base64 content",
-				h.logger.Error("err", err),
+				h.logger.Error("err", decodeErr),
 				h.logger.String("content", req.Content),
 			)
 			response.BadRequest(c, "invalid content encoding", "content must be valid base64 encoded string").Return()
-			return
 		}
-		req.Content = string(decodedContent)
+
+		// 第二步：URL解码
+		urlDecodedContent, err := url.QueryUnescape(string(decodedContent))
+		if err != nil {
+			h.logger.ErrorWithContext(
+				c.Request.Context(),
+				"failed to decode URL content",
+				h.logger.Error("err", err),
+				h.logger.String("content", string(decodedContent)),
+			)
+			response.BadRequest(c, "invalid URL encoding", "content must be valid URL encoded string").Return()
+		}
+
+		req.Content = urlDecodedContent
 	}
 
 	h.logger.DebugWithContext(c, "CreateAgentCampaign", h.logger.Any("request", req))
@@ -111,7 +123,6 @@ func (h *AgentHandler) CreateAgentCampaign(c *gin.Context) {
 			h.logger.Error("err", err),
 		)
 		response.InternalServerError(c, "failed to create agent campaign", err.Error()).Return()
-		return
 	}
 
 	response.CreatedSuccess(c).Data(campaign).Return()
@@ -168,7 +179,6 @@ func (h *AgentHandler) UpdateAgentCampaign(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		response.BadRequest(c, "invalid campaign ID", err.Error()).Return()
-		return
 	}
 
 	req := &dto.UpdateAgentCampaignRequest{
@@ -177,24 +187,35 @@ func (h *AgentHandler) UpdateAgentCampaign(c *gin.Context) {
 	}
 	if err = c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "invalid request format", err.Error()).Return()
-		return
 	}
 
-	// 對Content欄位進行base64解密
 	if req.Content != nil && *req.Content != "" {
-		decodedContent, err := base64.StdEncoding.DecodeString(*req.Content)
-		if err != nil {
+		// 對Content欄位進行base64解密
+		decodedContent, decodeErr := base64.StdEncoding.DecodeString(*req.Content)
+		if decodeErr != nil {
 			h.logger.ErrorWithContext(
 				c.Request.Context(),
 				"failed to decode base64 content",
-				h.logger.Error("err", err),
+				h.logger.Error("err", decodeErr),
 				h.logger.String("content", *req.Content),
 			)
 			response.BadRequest(c, "invalid content encoding", "content must be valid base64 encoded string").Return()
-			return
 		}
-		decodedStr := string(decodedContent)
-		req.Content = &decodedStr
+
+		// 第二步：URL解碼
+		var unescapeErr error
+		urlDecodedContent, unescapeErr := url.QueryUnescape(string(decodedContent))
+		if unescapeErr != nil {
+			h.logger.ErrorWithContext(
+				c.Request.Context(),
+				"failed to decode URL content",
+				h.logger.Error("err", unescapeErr),
+				h.logger.String("content", string(decodedContent)),
+			)
+			response.BadRequest(c, "invalid URL encoding", "content must be valid URL encoded string").Return()
+		}
+
+		req.Content = &urlDecodedContent
 	}
 
 	h.logger.DebugWithContext(c, "UpdateAgentCampaign", h.logger.Any("request", req))
@@ -203,7 +224,6 @@ func (h *AgentHandler) UpdateAgentCampaign(c *gin.Context) {
 	if err != nil {
 		if err.Error() == "record not found" {
 			response.NotFound(c, "agent campaign not found", err.Error()).Return()
-			return
 		}
 		h.logger.ErrorWithContext(
 			c.Request.Context(),
