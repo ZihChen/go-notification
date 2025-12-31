@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/base64"
 	"fmt"
 	"strconv"
 
@@ -83,6 +84,23 @@ func (h *AgentHandler) CreateAgentCampaign(c *gin.Context) {
 		response.BadRequest(c, "invalid request format", err.Error()).Return()
 		return
 	}
+
+	// 對Content欄位進行base64解密
+	if req.Content != "" {
+		decodedContent, err := base64.StdEncoding.DecodeString(req.Content)
+		if err != nil {
+			h.logger.ErrorWithContext(
+				c.Request.Context(),
+				"failed to decode base64 content",
+				h.logger.Error("err", err),
+				h.logger.String("content", req.Content),
+			)
+			response.BadRequest(c, "invalid content encoding", "content must be valid base64 encoded string").Return()
+			return
+		}
+		req.Content = string(decodedContent)
+	}
+
 	h.logger.DebugWithContext(c, "CreateAgentCampaign", h.logger.Any("request", req))
 
 	campaign, err := h.agentUseCase.CreateAgentCampaign(c.Request.Context(), req)
@@ -161,6 +179,24 @@ func (h *AgentHandler) UpdateAgentCampaign(c *gin.Context) {
 		response.BadRequest(c, "invalid request format", err.Error()).Return()
 		return
 	}
+
+	// 對Content欄位進行base64解密
+	if req.Content != nil && *req.Content != "" {
+		decodedContent, err := base64.StdEncoding.DecodeString(*req.Content)
+		if err != nil {
+			h.logger.ErrorWithContext(
+				c.Request.Context(),
+				"failed to decode base64 content",
+				h.logger.Error("err", err),
+				h.logger.String("content", *req.Content),
+			)
+			response.BadRequest(c, "invalid content encoding", "content must be valid base64 encoded string").Return()
+			return
+		}
+		decodedStr := string(decodedContent)
+		req.Content = &decodedStr
+	}
+
 	h.logger.DebugWithContext(c, "UpdateAgentCampaign", h.logger.Any("request", req))
 
 	campaign, err := h.agentUseCase.UpdateAgentCampaign(c.Request.Context(), req)
