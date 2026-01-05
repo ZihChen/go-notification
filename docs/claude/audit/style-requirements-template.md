@@ -1,7 +1,7 @@
 ## Claude 稽核代理規格（Go / Clean Architecture × Hexagonal）
 
-**版本**: v1.8 (更新日期: 2025-09-23)  
-**更新說明**: 基於 Fat Notification Cat v1.8 App推播功能與v1.6+性能優化實際開發經驗，新增針對 **多渠道通知安全**、**API金鑰管理**、**位元遮罩驗證**、**效能查詢優化**、**資料遷移系統** 等關鍵問題的檢查規則和優先級判斷。
+**版本**: v1.6 (更新日期: 2025-12-31)  
+**更新說明**: 基於 Fat Notification Cat v1.6 共用工具函式重構完成狀態，新增針對 **Agent訊息系統v1.4生產穩定版**、**分佈式鎖共用工具**、**QueryWithCache泛型快取查詢**、**ExecuteWithLock智能重試機制**、**Shared Utility Pattern** 等關鍵架構模式的檢查規則和最佳實踐驗證。
  
 **目標（Objectives)**
 - 找出 coding style / idiomatic Go 問題（含 err/變數遮蔽、命名、包設計、context 傳遞、defer 資源釋放、錯誤包裝）。
@@ -33,7 +33,7 @@
 - JSON（機器可讀）：
 ```json
 {
-  "version": 1.8,
+  "version": 1.6,
   "summary": {"critical": 1, "high": 8, "medium": 19, "low": 33},
   "issues": [
     {
@@ -48,26 +48,37 @@
       "autofix": {"type": "rename", "suggestion": "saveErr"}
     },
     {
-      "id": "PUSH-BITMASK-001",
-      "severity": "medium",
-      "category": "audit/notification-security",
-      "file": "internal/usecase/message_campaign.go",
+      "id": "AGENT-NIL-001",
+      "severity": "critical",
+      "category": "audit/agent-stability",
+      "file": "internal/usecase/agent.go",
       "line": 145,
-      "message": "位元遮罩 notification_types 缺少邊界檢查，可能接受無效值。",
-      "snippet": "if req.NotificationTypes&1 != 0 { ... }",
-      "recommendation": "新增常數定義與邊界驗證：const (InApp=1, Push=2, Other=4); 檢查 types <= (InApp|Push|Other)。",
-      "autofix": {"type": "validation", "suggestion": "add bitmask constants and validation"}
+      "message": "Agent關係同步中缺少nil檢查，可能導致runtime panic。",
+      "snippet": "agent.ParentAgent.ID // potential nil dereference",
+      "recommendation": "新增nil檢查：if agent.ParentAgent != nil { ... }，確保生產級穩定性。",
+      "autofix": {"type": "safety-check", "suggestion": "add nil pointer guards"}
     },
     {
-      "id": "PERF-QUERY-001", 
+      "id": "LOCK-UTIL-001",
+      "severity": "medium", 
+      "category": "audit/shared-utilities",
+      "file": "internal/usecase/player_tag.go",
+      "line": 89,
+      "message": "重複的分佈式鎖實現代碼，應使用共用工具函式。",
+      "snippet": "mutexKey := fmt.Sprintf(...); mutex := lockManager.GetLock(...)",
+      "recommendation": "使用utils.ExecuteWithLock()取代重複代碼，提升維護性與DRY原則。",
+      "autofix": {"type": "refactor", "suggestion": "replace with utils.ExecuteWithLock()"}
+    },
+    {
+      "id": "CACHE-QUERY-001",
       "severity": "high",
-      "category": "audit/performance-optimization",
+      "category": "audit/performance-optimization", 
       "file": "internal/adapter/outbound/repository/player.go",
       "line": 89,
-      "message": "使用 merchant_id 全量查詢+映射，效能不佳且資料可能不完整。",
-      "snippet": "players := r.FindByMerchantID(merchantID); // then map by levels",
-      "recommendation": "改用直接ID查詢：FindByIDs(levelIDs) 取代 FindByMerchantID+映射模式。",
-      "autofix": {"type": "refactor", "suggestion": "implement direct ID query pattern"}
+      "message": "昂貴查詢未使用快取機制，影響效能。",
+      "snippet": "return r.FindTagsByMerchantID(ctx, merchantID)",
+      "recommendation": "使用utils.QueryWithCache[T]()實現5分鐘TTL快取，減少資料庫負載。",
+      "autofix": {"type": "caching", "suggestion": "implement QueryWithCache pattern"}
     }
   ]
 }
@@ -119,6 +130,8 @@ Clean Architecture / Hexagonal
 - 配置與逃逸：大型物件在熱路徑頻繁分配；逃逸到 heap；建議重用 buffer（sync.Pool）或避免暫態 slice 擴容。
 
 - IO 熱點：無界工作佇列；資料庫批量不足；cache 機會。
+
+- 共用工具模式：重複的分佈式鎖、快取查詢代碼；缺少 utils.ExecuteWithLock() 和 utils.QueryWithCache[T]() 使用。
 
 安全
 
@@ -189,19 +202,32 @@ Clean Architecture / Hexagonal
 - **Mock 一致性**: 避免使用多種 Mock 策略
 - **併發測試**: 使用 race detector 檢查 goroutine 安全
 
-### 8. 多渠道通知安全性（v1.8 新增）
-- **位元遮罩驗證**: notification_types 位元操作的邊界檢查
-- **API金鑰管理**: merchant_push_api_keys 的加密存儲與輪替機制
-- **第三方服務整合**: HTTP客戶端逾時、重試、錯誤處理
-- **向後兼容性**: 新欄位 app_content 的 NULL 值處理
+### 8. Agent系統v1.4生產穩定性（v1.4 新增）
+- **Nil Pointer安全**: 檢查所有Agent相關操作的nil dereference防護
+- **代理關係同步**: SyncAgentDataWithRelationships的併發安全機制
+- **補派發系統**: BackfillMissedMessages的批次分頁處理邏輯
+- **Target類型支援**: all/specific/line三種target_type的完整實現
+- **Ancestry解析**: 多層代理關係字串解析的效能與正確性
+- **錯誤容錯**: 不存在代理、商戶、父代理的優雅處理機制
+- **生產級穩定**: 高併發環境下的runtime panic預防
 
-### 9. 查詢性能優化（v1.6+ 新增）
+### 9. 共用工具函式架構（v1.6 新增）
+- **ExecuteWithLock模式**: 檢查分佈式鎖操作的正確使用
+- **智能重試機制**: 指數退避策略(500ms → 2s → 4.5s)的實現
+- **泛型實體支援**: utils.ExecuteWithLock的entity type參數使用
+- **代碼重複性**: DRY原則檢查，避免重複包裝方法
+- **QueryWithCache使用**: 泛型快取查詢函式的TTL和錯誤處理
+- **直接調用模式**: 避免不必要的executeLocked包裝層
+
+### 10. 查詢性能優化（v1.6+ 升級）
 - **直接ID查詢**: 避免merchant_id全量查詢+映射的反模式
 - **批次驗證**: validateLevelIDs/validateTagIDs的效能邊界
+- **QueryWithCache整合**: 5分鐘TTL快取策略的正確實現
+- **BatchUpdateWithDiff**: 精確差異更新的UseCase層實現
 - **Repository簽名**: FindByTargetType方法參數設計合理性
 - **索引使用**: 確保查詢能正確使用資料庫索引
 
-### 10. 資料遷移系統穩定性
+### 11. 資料遷移系統穩定性
 - **DSN驗證**: 資料庫連接參數的安全驗證機制
 - **批次處理**: 大量資料遷移的記憶體控制與效能
 - **LegacyID支援**: 歷史資料對應關係的完整性
@@ -220,21 +246,29 @@ Clean Architecture / Hexagonal
 4. **Repository 業務分類**: merchant/, player/, message/ 組織
 5. **併發批次處理**: WaitGroup + Context 取消機制
 
-### v1.8 多渠道通知最佳實踐
-6. **位元遮罩設計**: notification_types (1=站內信, 2=App推播, 4=其他)
-7. **API金鑰隔離**: 每商戶獨立 push API key 管理
-8. **向後兼容DTO**: 新欄位 app_content 支援漸進式升級
-9. **第三方服務抽象**: PushNotificationService 介面設計
-10. **多渠道錯誤處理**: 各通道獨立失敗不影響其他
+### v1.6 共用工具函式最佳實踐 ✨ **NEW**
+6. **ExecuteWithLock統一**: 直接使用 utils.ExecuteWithLock() 取代包裝方法
+7. **智能重試機制**: 指數退避策略 (500ms → 2s → 4.5s) 標準化
+8. **泛型實體支援**: entity type 參數提升日誌清晰度
+9. **DRY原則實踐**: 消除95%重複分佈式鎖代碼
+10. **QueryWithCache模式**: 5分鐘TTL快取策略減少資料庫負載
+
+### v1.4 Agent系統生產穩定最佳實踐
+11. **Nil Pointer防護**: 所有Agent操作的完整null check機制
+12. **補派發批次優化**: FindSentCampaignsForBackfillPaginated分頁處理
+13. **Target類型完整**: all/specific/line三種類型智能匹配
+14. **Ancestry解析**: strings.Contains高效字串比對
+15. **錯誤容錯機制**: 優雅處理不存在實體的場景
 
 ### v1.6+ 性能優化最佳實踐
-11. **直接ID查詢**: 取代 merchant_id 全量+映射的低效模式
-12. **批次ID驗證**: validateLevelIDs/validateTagIDs 減少資料庫負載
-13. **Repository方法簽名**: targetDetail 參數支援彈性查詢
-14. **索引友善查詢**: 確保 WHERE id IN (...) 能使用主鍵索引
+16. **直接ID查詢**: 取代 merchant_id 全量+映射的低效模式
+17. **BatchUpdateWithDiff**: UseCase層精確差異計算
+18. **快取命中優化**: 無變化情況下0次資料庫操作
+19. **Repository方法簽名**: targetDetail 參數支援彈性查詢
+20. **索引友善查詢**: 確保 WHERE id IN (...) 能使用主鍵索引
 
 ### 資料遷移系統最佳實踐
-15. **DSN安全驗證**: 連接參數檢查與確認機制
-16. **批次記憶體控制**: 大量資料處理的效能優化
-17. **LegacyID雙向對應**: 支援歷史資料完整遷移
-18. **錯誤恢復設計**: 中斷續傳與回滾的健壯機制
+21. **DSN安全驗證**: 連接參數檢查與確認機制
+22. **批次記憶體控制**: 大量資料處理的效能優化
+23. **LegacyID雙向對應**: 支援歷史資料完整遷移
+24. **錯誤恢復設計**: 中斷續傳與回滾的健壯機制

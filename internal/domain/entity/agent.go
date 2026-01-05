@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/valueobject"
 )
 
 // Agent 代理實體
@@ -61,54 +61,54 @@ func (ac *AgentCampaign) CanDelete() error {
 	return nil
 }
 
-// UpdateFromRequest 從DTO更新實體 (只更新非nil的欄位)
-func (ac *AgentCampaign) UpdateFromRequest(req *dto.UpdateAgentCampaignRequest) error {
+// UpdateFromData 從Domain Value Object更新實體 (只更新非nil的欄位)
+func (ac *AgentCampaign) UpdateFromData(data *valueobject.AgentCampaignUpdateData) error {
 	now := time.Now()
 
-	if req.Title != nil {
-		ac.Title = *req.Title
+	if data.Title != nil {
+		ac.Title = *data.Title
 	}
-	if req.Content != nil {
-		ac.Content = *req.Content
+	if data.Content != nil {
+		ac.Content = *data.Content
 	}
 
 	// 處理狀態更新
-	if req.Status != "" {
-		ac.Status = consts.AgentCampaignStatus(req.Status)
+	if data.Status != "" {
+		ac.Status = consts.AgentCampaignStatus(data.Status)
 	}
 
 	// 處理 ScheduledAt 更新
-	if req.ScheduledAt != nil {
-		ac.ScheduledAt = req.ScheduledAt
+	if data.ScheduledAt != nil {
+		ac.ScheduledAt = data.ScheduledAt
 		ac.ScheduleType = consts.AgentScheduleTypeScheduled
 	}
 
 	// 處理立即發送邏輯：當 status=scheduled、draft 且 scheduled_at=nil 時，設定 scheduled_at 為當下時間
-	if (consts.AgentCampaignStatus(req.Status) == consts.AgentCampaignStatusScheduled ||
-		consts.AgentCampaignStatus(req.Status) == consts.AgentCampaignStatusDraft) &&
-		req.ScheduledAt == nil {
+	if (consts.AgentCampaignStatus(data.Status) == consts.AgentCampaignStatusScheduled ||
+		consts.AgentCampaignStatus(data.Status) == consts.AgentCampaignStatusDraft) &&
+		data.ScheduledAt == nil {
 		ac.ScheduledAt = &now
 		ac.ScheduleType = consts.AgentScheduleTypeImmediate
 	}
 
-	if req.TargetType != nil {
-		ac.TargetType = *req.TargetType
+	if data.TargetType != nil {
+		ac.TargetType = *data.TargetType
 	}
-	if req.TargetDetails != nil {
-		ac.TargetDetails = req.TargetDetails
+	if data.TargetDetails != nil {
+		ac.TargetDetails = data.TargetDetails
 	}
 
-	ac.UpdatedBy = req.UpdatedBy
+	ac.UpdatedBy = data.UpdatedBy
 	ac.UpdatedAt = now
 
 	// 驗證更新後的資料
-	return ac.ValidateForUpdate(req)
+	return ac.ValidateForUpdate(data)
 }
 
 // ValidateForUpdate 更新代理活動時的驗證
-func (ac *AgentCampaign) ValidateForUpdate(req *dto.UpdateAgentCampaignRequest) error {
+func (ac *AgentCampaign) ValidateForUpdate(data *valueobject.AgentCampaignUpdateData) error {
 	// 如果有更新target相關欄位，需要驗證target詳情
-	if req.TargetType != nil || req.TargetDetails != nil {
+	if data.TargetType != nil || data.TargetDetails != nil {
 		if err := ac.ValidateTargetDetails(); err != nil {
 			return err
 		}
@@ -181,39 +181,34 @@ func (ac *AgentCampaign) ValidateStatusAndSchedule() error {
 
 // NewAgentCampaign 創建新的代理活動實體並進行驗證
 func NewAgentCampaign(
-	req *dto.CreateAgentCampaignRequest,
+	data *valueobject.AgentCampaignCreationData,
 	merchantID uint64,
 ) (*AgentCampaign, error) {
 	now := time.Now()
 
 	// 處理立即發送邏輯：當 status=scheduled、draft 且 scheduled_at=nil 時，設定 scheduled_at 為當下時間
 	// ScheduleType預設為預約發送(scheduled)，請求沒有scheduledAt則為立即發送(immediate)
-	scheduledAt, scheduleType := req.ScheduledAt, consts.AgentScheduleTypeScheduled
-	if (consts.AgentCampaignStatus(req.Status) == consts.AgentCampaignStatusScheduled ||
-		consts.AgentCampaignStatus(req.Status) == consts.AgentCampaignStatusDraft) &&
-		req.ScheduledAt == nil {
+	scheduledAt, scheduleType := data.ScheduledAt, consts.AgentScheduleTypeScheduled
+	if (consts.AgentCampaignStatus(data.Status) == consts.AgentCampaignStatusScheduled ||
+		consts.AgentCampaignStatus(data.Status) == consts.AgentCampaignStatusDraft) &&
+		data.ScheduledAt == nil {
 		scheduledAt = &now
 		scheduleType = consts.AgentScheduleTypeImmediate
 	}
 
 	campaign := &AgentCampaign{
-		Title:         req.Title,
-		Content:       req.Content,
-		Status:        consts.AgentCampaignStatus(req.Status),
+		Title:         data.Title,
+		Content:       data.Content,
+		Status:        consts.AgentCampaignStatus(data.Status),
 		ScheduledAt:   scheduledAt,
 		ScheduleType:  scheduleType,
 		MerchantID:    merchantID,
-		TargetType:    req.TargetType,
-		TargetDetails: req.TargetDetails,
-		TargetCount:   0, // 將在排程時計算
-		RealSentCount: 0,
-		CreatedBy:     req.CreatedBy,
+		TargetType:    data.TargetType,
+		TargetDetails: data.TargetDetails,
+		CreatedBy:     data.CreatedBy,
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
-
-	// 立即發送邏輯：status=scheduled 且 scheduled_at=nil 保持為 nil
-	// 不需要特殊處理，scheduled_at 保持原樣
 
 	// 執行完整驗證
 	if err := campaign.ValidateForCreate(); err != nil {

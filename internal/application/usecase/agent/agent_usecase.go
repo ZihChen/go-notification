@@ -209,8 +209,11 @@ func (u *AgentUseCase) CreateAgentCampaign(
 	}
 	u.tracingService.TraceEvent(span, "Creating message campaign")
 
+	// 將DTO轉換為Domain Value Object
+	createData := req.ToAgentCampaignCreationData()
+
 	// 使用 Entity 工廠方法創建並驗證代理活動
-	campaign, err := entity.NewAgentCampaign(req, merchant.ID)
+	campaign, err := entity.NewAgentCampaign(createData, merchant.ID)
 	if err != nil {
 		u.tracingService.RecordSpanError(span, err)
 		return nil, err
@@ -363,8 +366,11 @@ func (u *AgentUseCase) UpdateAgentCampaign(
 		return nil, err
 	}
 
+	// 將DTO轉換為Domain Value Object
+	updateData := req.ToAgentCampaignUpdateData()
+
 	// 使用 Entity 方法更新欄位並驗證
-	if err = campaignEntity.UpdateFromRequest(req); err != nil {
+	if err = campaignEntity.UpdateFromData(updateData); err != nil {
 		u.tracingService.RecordSpanError(span, err)
 		return nil, err
 	}
