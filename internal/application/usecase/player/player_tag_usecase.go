@@ -16,7 +16,6 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/constants"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/utils"
 	"github.com/redis/go-redis/v9"
 )
@@ -155,7 +154,7 @@ func (u *PlayerTagUseCase) SyncPlayerTags(
 
 	// 建立Player Tags關聯
 	u.tracingService.TraceEvent(span, "Start sync player tags relation")
-	mutexKey := fmt.Sprintf(constants.SyncPlayerTagsRedisKey, player.ID)
+	mutexKey := fmt.Sprintf(consts.SyncPlayerTagsRedisKey, player.ID)
 	if err = utils.ExecuteWithLock(
 		ctx,
 		u.lockManager,

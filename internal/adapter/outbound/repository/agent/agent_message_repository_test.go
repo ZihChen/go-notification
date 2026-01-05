@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/valueobject"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/mysql"
@@ -405,7 +405,7 @@ func TestAgentMessageRepository_ListByAgent(t *testing.T) {
 	now := time.Now()
 	testCases := []struct {
 		name          string
-		query         *dto.AgentMessagesQuery
+		query         *valueobject.AgentMessagesQuery
 		setupMock     func(sqlmock.Sqlmock)
 		expectedCount int
 		expectedTotal int
@@ -413,12 +413,12 @@ func TestAgentMessageRepository_ListByAgent(t *testing.T) {
 	}{
 		{
 			name: "list messages by agent successfully",
-			query: &dto.AgentMessagesQuery{
-				AgentID:  1,
-				Page:     1,
-				PageSize: 10,
-				Limit:    10,
-				Offset:   0,
+			query: &valueobject.AgentMessagesQuery{
+				AgentID:      1,
+				MerchantID:   1,
+				Page:         1,
+				PageSize:     10,
+				IncludeTotal: true,
 			},
 			setupMock: func(mock sqlmock.Sqlmock) {
 				// Count query
@@ -440,6 +440,65 @@ func TestAgentMessageRepository_ListByAgent(t *testing.T) {
 			},
 			expectedCount: 2,
 			expectedTotal: 2,
+			expectedError: nil,
+		},
+		{
+			name: "list messages without total count",
+			query: &valueobject.AgentMessagesQuery{
+				AgentID:      1,
+				MerchantID:   1,
+				Page:         1,
+				PageSize:     10,
+				IncludeTotal: false,
+			},
+			setupMock: func(mock sqlmock.Sqlmock) {
+				// No Count query expected when IncludeTotal is false
+
+				// List query only
+				rows := sqlmock.NewRows([]string{
+					"id", "agent_campaign_id", "agent_id", "is_read", "read_at", "created_at", "updated_at",
+					"campaign_title", "campaign_content", "global_agent_id",
+				}).
+					AddRow(1, 1, 1, false, nil, now, now, "Test Campaign", "Test Content", "global-agent-1")
+
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT")).
+					WithArgs(1, 10).
+					WillReturnRows(rows)
+			},
+			expectedCount: 1,
+			expectedTotal: 0, // Total should be 0 when IncludeTotal is false
+			expectedError: nil,
+		},
+		{
+			name: "list messages with custom order",
+			query: &valueobject.AgentMessagesQuery{
+				AgentID:      1,
+				MerchantID:   1,
+				Page:         1,
+				PageSize:     10,
+				OrderBy:      "created_at",
+				OrderDir:     "asc",
+				IncludeTotal: true,
+			},
+			setupMock: func(mock sqlmock.Sqlmock) {
+				// Count query
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT count(*)")).
+					WithArgs(1).
+					WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(1))
+
+				// List query with custom order
+				rows := sqlmock.NewRows([]string{
+					"id", "agent_campaign_id", "agent_id", "is_read", "read_at", "created_at", "updated_at",
+					"campaign_title", "campaign_content", "global_agent_id",
+				}).
+					AddRow(1, 1, 1, false, nil, now, now, "Test Campaign", "Test Content", "global-agent-1")
+
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT")).
+					WithArgs(1, 10).
+					WillReturnRows(rows)
+			},
+			expectedCount: 1,
+			expectedTotal: 1,
 			expectedError: nil,
 		},
 	}
@@ -540,7 +599,7 @@ func TestAgentMessageRepository_GetMessageStats(t *testing.T) {
 		name          string
 		agentID       uint64
 		setupMock     func(sqlmock.Sqlmock)
-		expectedStats *dto.AgentMessageStats
+		expectedStats *valueobject.AgentMessageStats
 		expectedError error
 	}{
 		{
@@ -554,7 +613,7 @@ func TestAgentMessageRepository_GetMessageStats(t *testing.T) {
 					WithArgs(1).
 					WillReturnRows(rows)
 			},
-			expectedStats: &dto.AgentMessageStats{
+			expectedStats: &valueobject.AgentMessageStats{
 				TotalCount:  10,
 				ReadCount:   6,
 				UnreadCount: 4,

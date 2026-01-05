@@ -95,7 +95,8 @@ func (h *AgentHandler) CreateAgentCampaign(c *gin.Context) {
 				h.logger.Error("err", decodeErr),
 				h.logger.String("content", req.Content),
 			)
-			response.BadRequest(c, "invalid content encoding", "content must be valid base64 encoded string").Return()
+			response.BadRequest(c, "invalid content encoding", "content must be valid base64 encoded string").
+				Return()
 		}
 
 		// 第二步：URL解码
@@ -107,7 +108,8 @@ func (h *AgentHandler) CreateAgentCampaign(c *gin.Context) {
 				h.logger.Error("err", err),
 				h.logger.String("content", string(decodedContent)),
 			)
-			response.BadRequest(c, "invalid URL encoding", "content must be valid URL encoded string").Return()
+			response.BadRequest(c, "invalid URL encoding", "content must be valid URL encoded string").
+				Return()
 		}
 
 		req.Content = urlDecodedContent
@@ -199,7 +201,8 @@ func (h *AgentHandler) UpdateAgentCampaign(c *gin.Context) {
 				h.logger.Error("err", decodeErr),
 				h.logger.String("content", *req.Content),
 			)
-			response.BadRequest(c, "invalid content encoding", "content must be valid base64 encoded string").Return()
+			response.BadRequest(c, "invalid content encoding", "content must be valid base64 encoded string").
+				Return()
 		}
 
 		// 第二步：URL解碼
@@ -212,7 +215,8 @@ func (h *AgentHandler) UpdateAgentCampaign(c *gin.Context) {
 				h.logger.Error("err", unescapeErr),
 				h.logger.String("content", string(decodedContent)),
 			)
-			response.BadRequest(c, "invalid URL encoding", "content must be valid URL encoded string").Return()
+			response.BadRequest(c, "invalid URL encoding", "content must be valid URL encoded string").
+				Return()
 		}
 
 		req.Content = &urlDecodedContent

@@ -218,7 +218,7 @@ func TestPlayerTagUseCase_SyncTag(t *testing.T) {
 
 	// Verify the tag was created with correct data
 	tagRepo.AssertCalled(t, "Upsert", mock.Anything, mock.AnythingOfType("*entity.Tag"))
-	
+
 	// Additional verification can be done by checking the calls
 	calls := tagRepo.Calls
 	if len(calls) > 0 {
@@ -228,7 +228,7 @@ func TestPlayerTagUseCase_SyncTag(t *testing.T) {
 			assert.Equal(t, event.Tag.GlobalTagID, tag.GlobalTagID)
 			assert.Equal(t, event.Tag.Name, tag.Name)
 			assert.Equal(t, merchant.ID, tag.MerchantID)
-			
+
 			// Use correct time comparison for each field
 			assert.WithinDuration(t, expectedCreatedTime, tag.CreatedAt, time.Second)
 			assert.WithinDuration(t, expectedUpdatedTime, tag.UpdatedAt, time.Second)
@@ -275,7 +275,7 @@ func TestPlayerTagUseCase_SyncTag_WithDeletedTag(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, capturedTag)
 	assert.NotNil(t, capturedTag.DeletedAt)
-	
+
 	// Parse the expected deleted time and compare with tolerance
 	expectedDeletedTime, _ := time.Parse(time.RFC3339, event.Tag.DeletedAt)
 	assert.WithinDuration(t, expectedDeletedTime, *capturedTag.DeletedAt, time.Second)
@@ -387,7 +387,13 @@ func TestPlayerTagUseCase_SyncTag_TracingAndLogging(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify logger was called for success case
-	logger.AssertCalled(t, "InfoWithContext", mock.Anything, "Upsert tag completed with cache invalidation", mock.Anything)
+	logger.AssertCalled(
+		t,
+		"InfoWithContext",
+		mock.Anything,
+		"Upsert tag completed with cache invalidation",
+		mock.Anything,
+	)
 
 	merchantRepo.AssertExpectations()
 	tagRepo.AssertExpectations()

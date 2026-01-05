@@ -515,15 +515,15 @@ func (m *MockCacheManager) SetupSuccess() {
 	// Cache miss scenario - Get returns empty string, error
 	// This will trigger the database query in QueryWithCache
 	m.On("Get", mock.Anything, mock.Anything).Return("", fmt.Errorf("cache miss"))
-	
+
 	// Async Set call for cache update
 	m.On("Set", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("OK", nil)
-	
+
 	// Cache deletion for invalidation
 	m.On("Del", mock.Anything, mock.Anything).Return(int64(1), nil)
 }
-func (m *MockCacheManager) SetupError()   {}
-func (m *MockCacheManager) SetupEmpty()   {}
+func (m *MockCacheManager) SetupError() {}
+func (m *MockCacheManager) SetupEmpty() {}
 func (m *MockCacheManager) Reset() {
 	m.Mock = mock.Mock{}
 }

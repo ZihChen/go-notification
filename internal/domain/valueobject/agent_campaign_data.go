@@ -15,7 +15,7 @@ type AgentCampaignCreationData struct {
 
 // AgentCampaignUpdateData 代理活動更新所需的資料 (Domain Value Object)
 type AgentCampaignUpdateData struct {
-	Title         *string    // 使用指標表示可選更新
+	Title         *string // 使用指標表示可選更新
 	Content       *string
 	Status        string
 	ScheduledAt   *time.Time

@@ -10,8 +10,8 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/valueobject"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/valueobject"
 	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
 	"github.com/jvdiamondtech/ms-notification-cat/test/mocks"
 	"github.com/stretchr/testify/assert"
@@ -291,10 +291,10 @@ func TestAgentUseCase_DeleteAgentCampaign(t *testing.T) {
 
 		// 驗證結果
 		assert.NoError(t, err)
-		
+
 		// 等待異步 goroutine 完成
 		time.Sleep(100 * time.Millisecond)
-		
+
 		agentCampaignRepo.AssertExpectations()
 		agentMessageRepo.AssertExpectations()
 	})
@@ -325,10 +325,10 @@ func TestAgentUseCase_DeleteAgentCampaign(t *testing.T) {
 
 		// 驗證結果
 		assert.NoError(t, err)
-		
+
 		// 等待異步 goroutine 完成
 		time.Sleep(100 * time.Millisecond)
-		
+
 		agentCampaignRepo.AssertExpectations()
 		agentMessageRepo.AssertExpectations()
 	})
@@ -388,7 +388,7 @@ func TestAgentUseCase_GetAgentCampaigns(t *testing.T) {
 	// 設置mock期望
 	merchantRepo.On("FindByGlobalID", mock.Anything, query.GlobalMerchantID).
 		Return(merchant, nil)
-	agentCampaignRepo.On("List", mock.Anything, mock.AnythingOfType("*dto.AgentCampaignsQueryForRepo")).
+	agentCampaignRepo.On("List", mock.Anything, mock.AnythingOfType("*valueobject.AgentCampaignsQuery")).
 		Return(campaigns, total, nil)
 
 	// 執行測試
@@ -458,7 +458,7 @@ func TestAgentUseCase_GetAgentMessages(t *testing.T) {
 	}
 	total := 1
 
-	stats := &dto.AgentMessageStats{
+	stats := &valueobject.AgentMessageStats{
 		TotalCount:  1,
 		ReadCount:   0,
 		UnreadCount: 1,
@@ -467,7 +467,7 @@ func TestAgentUseCase_GetAgentMessages(t *testing.T) {
 	// 設置mock期望
 	agentRepo.On("GetByGlobalID", mock.Anything, query.GlobalAgentID).
 		Return(agent, nil)
-	agentMessageRepo.On("ListByAgent", mock.Anything, mock.AnythingOfType("*dto.AgentMessagesQuery")).
+	agentMessageRepo.On("ListByAgent", mock.Anything, mock.AnythingOfType("*valueobject.AgentMessagesQuery")).
 		Return(messages, total, nil)
 	agentMessageRepo.On("GetMessageStats", mock.Anything, agent.ID).
 		Return(stats, nil)

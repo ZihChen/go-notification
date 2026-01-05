@@ -3,9 +3,9 @@ package repository
 import (
 	"context"
 
-	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/aggregate"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/valueobject"
 )
 
 // MessageCampaignRepository 會員訊息活動資料庫接口
@@ -21,7 +21,7 @@ type MessageCampaignRepository interface {
 	CountWithLegacyID(ctx context.Context) (int64, error)
 	FindAllWithOptions(
 		ctx context.Context,
-		query *dto.MessageCampaignsQuery,
+		query *valueobject.MessageCampaignsQuery,
 	) ([]*entity.MessageCampaign, int, error)
 	FindActiveByFocus(ctx context.Context, focus string) ([]*entity.MessageCampaign, error)
 	FindScheduledCampaigns(ctx context.Context) ([]*entity.MessageCampaign, error)
@@ -73,7 +73,7 @@ type PlayerMessageRepository interface {
 	GetPlayerMessageStats(
 		ctx context.Context,
 		globalPlayerID string,
-	) (*dto.PlayerMessageStats, error)
+	) (*valueobject.PlayerMessageStats, error)
 	Create(ctx context.Context, message *entity.PlayerMessage) error
 	CreateBatch(ctx context.Context, messages []*entity.PlayerMessage) error
 	CreateBatchOptimized(ctx context.Context, messages []*entity.PlayerMessage, batchSize int) error

@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/valueobject"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"gorm.io/gorm"
 )
@@ -196,7 +196,7 @@ func (r *AgentCampaignRepository) UpdateFieldsWithCondition(
 // List 分頁查詢代理訊息活動列表
 func (r *AgentCampaignRepository) List(
 	ctx context.Context,
-	query *dto.AgentCampaignsQueryForRepo,
+	query *valueobject.AgentCampaignsQuery,
 ) ([]*entity.AgentCampaign, int, error) {
 	var campaignModels []models.AgentCampaign
 	var total int64
@@ -226,20 +226,29 @@ func (r *AgentCampaignRepository) List(
 			Where("scheduled_at <= ?", query.ScheduledEndAt)
 	}
 
-	// 獲取總數
-	if err := db.Count(&total).Error; err != nil {
-		return nil, 0, fmt.Errorf("count agent campaigns failed: %w", err)
+	// 根據 IncludeTotal 決定是否需要查詢總數
+	if query.IncludeTotal {
+		if err := db.Count(&total).Error; err != nil {
+			return nil, 0, fmt.Errorf("count agent campaigns failed: %w", err)
+		}
 	}
 
-	// 添加排序和分頁
-	db = db.Order("created_at DESC")
-
-	if query.Limit > 0 {
-		db = db.Limit(query.Limit)
+	// 使用 OrderBy 和 OrderDir 動態構建排序語句
+	if query.OrderBy != "" {
+		orderClause := query.OrderBy
+		if query.OrderDir != "" {
+			orderClause = fmt.Sprintf("%s %s", query.OrderBy, query.OrderDir)
+		}
+		db = db.Order(orderClause)
 	}
 
-	if query.Offset > 0 {
-		db = db.Offset(query.Offset)
+	// 添加分頁
+	if query.Limit() > 0 {
+		db = db.Limit(query.Limit())
+	}
+
+	if query.Offset() > 0 {
+		db = db.Offset(query.Offset())
 	}
 
 	// 執行查詢
