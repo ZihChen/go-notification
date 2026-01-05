@@ -228,7 +228,7 @@ func (u *PlayerTagUseCase) SyncTag(ctx context.Context, data *event.IdentityTagS
 			if data.Tag.DeletedAt == "" {
 				return nil
 			}
-			deletedAt, parseErr := time.Parse(time.RFC3339, data.Tag.UpdatedAt)
+			deletedAt, parseErr := time.Parse(time.RFC3339, data.Tag.DeletedAt)
 			if parseErr != nil {
 				deletedAt = updatedAt // fallback to updatedAt
 			}
