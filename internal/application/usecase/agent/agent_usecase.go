@@ -17,6 +17,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/valueobject"
 	"go.opentelemetry.io/otel/attribute"
 	"gorm.io/gorm"
 )
@@ -209,8 +210,11 @@ func (u *AgentUseCase) CreateAgentCampaign(
 	}
 	u.tracingService.TraceEvent(span, "Creating message campaign")
 
+	// 將DTO轉換為Domain Value Object
+	createData := req.ToAgentCampaignCreationData()
+
 	// 使用 Entity 工廠方法創建並驗證代理活動
-	campaign, err := entity.NewAgentCampaign(req, merchant.ID)
+	campaign, err := entity.NewAgentCampaign(createData, merchant.ID)
 	if err != nil {
 		u.tracingService.RecordSpanError(span, err)
 		return nil, err
@@ -363,8 +367,11 @@ func (u *AgentUseCase) UpdateAgentCampaign(
 		return nil, err
 	}
 
+	// 將DTO轉換為Domain Value Object
+	updateData := req.ToAgentCampaignUpdateData()
+
 	// 使用 Entity 方法更新欄位並驗證
-	if err = campaignEntity.UpdateFromRequest(req); err != nil {
+	if err = campaignEntity.UpdateFromData(updateData); err != nil {
 		u.tracingService.RecordSpanError(span, err)
 		return nil, err
 	}
@@ -512,13 +519,8 @@ func (u *AgentUseCase) GetAgentCampaigns(
 		return nil, fmt.Errorf("find merchant: %w", err)
 	}
 
-	// 創建用於Repository層的查詢對象，將status字符串轉換為數組
-	repoQuery := &dto.AgentCampaignsQueryForRepo{
-		GlobalMerchantID: query.GlobalMerchantID,
-		Page:             query.Page,
-		PageSize:         query.PageSize,
-		Limit:            query.Limit,
-		Offset:           query.Offset,
+	// 創建用於Repository層的查詢對象，轉換為value object
+	repoQuery := &valueobject.AgentCampaignsQuery{
 		MerchantID:       merchant.ID,
 		Status:           statusList,
 		CreatedBy:        query.CreatedBy,
@@ -526,14 +528,17 @@ func (u *AgentUseCase) GetAgentCampaigns(
 		CreatedEndAt:     query.CreatedEndAt,
 		ScheduledStartAt: query.ScheduledStartAt,
 		ScheduledEndAt:   query.ScheduledEndAt,
+		Page:             query.Page,
+		PageSize:         query.PageSize,
+		OrderBy:          "created_at",
+		OrderDir:         "desc",
+		IncludeTotal:     true,
 	}
 
-	// 設定預設值
-	if repoQuery.Limit == 0 {
-		repoQuery.Limit = repoQuery.PageSize
-	}
-	if repoQuery.Offset == 0 {
-		repoQuery.Offset = (repoQuery.Page - 1) * repoQuery.PageSize
+	// 驗證查詢參數
+	if err = repoQuery.Validate(); err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return nil, fmt.Errorf("invalid query parameters: %w", err)
 	}
 
 	campaigns, total, err := u.agentCampaignRepo.List(ctx, repoQuery)
@@ -764,18 +769,27 @@ func (u *AgentUseCase) GetAgentMessages(
 		return nil, fmt.Errorf("get agent by global ID: %w", err)
 	}
 
-	// 設定查詢參數
-	query.AgentID = agent.ID
-	if query.Limit == 0 {
-		query.Limit = query.PageSize
+	// 轉換為value object查詢參數
+	repoQuery := &valueobject.AgentMessagesQuery{
+		AgentID:      agent.ID,
+		MerchantID:   agent.MerchantID,
+		IsRead:       query.IsRead,
+		Page:         query.Page,
+		PageSize:     query.PageSize,
+		OrderBy:      "created_at",
+		OrderDir:     "desc",
+		IncludeTotal: true,
 	}
-	if query.Offset == 0 {
-		query.Offset = (query.Page - 1) * query.PageSize
+
+	// 驗證查詢參數
+	if err := repoQuery.Validate(); err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return nil, fmt.Errorf("invalid query parameters: %w", err)
 	}
 
 	// 獲取訊息列表
 	u.tracingService.TraceEvent(span, "Getting agent messages")
-	messages, total, err := u.agentMessageRepo.ListByAgent(ctx, query)
+	messages, total, err := u.agentMessageRepo.ListByAgent(ctx, repoQuery)
 	if err != nil {
 		u.tracingService.RecordSpanError(span, err)
 		return nil, fmt.Errorf("find agent messages: %w", err)

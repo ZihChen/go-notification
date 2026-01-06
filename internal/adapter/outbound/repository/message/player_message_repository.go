@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/aggregate"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/valueobject"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/constants"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"gorm.io/gorm"
@@ -144,7 +144,7 @@ func (r *PlayerMessageRepository) FindByPlayerIDWithCampaign(
 func (r *PlayerMessageRepository) GetPlayerMessageStats(
 	ctx context.Context,
 	globalPlayerID string,
-) (*dto.PlayerMessageStats, error) {
+) (*valueobject.PlayerMessageStats, error) {
 	var totalCount int64
 	var readCount int64
 
@@ -165,10 +165,10 @@ func (r *PlayerMessageRepository) GetPlayerMessageStats(
 	// 計算未讀數量
 	unreadCount := totalCount - readCount
 
-	stats := &dto.PlayerMessageStats{
-		TotalCount:  int(totalCount),  // 轉換為 int
-		ReadCount:   int(readCount),   // 轉換為 int
-		UnreadCount: int(unreadCount), // 轉換為 int
+	stats := &valueobject.PlayerMessageStats{
+		TotalCount:  totalCount,
+		ReadCount:   readCount,
+		UnreadCount: unreadCount,
 	}
 
 	return stats, nil

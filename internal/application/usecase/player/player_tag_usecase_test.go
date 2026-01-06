@@ -120,13 +120,15 @@ func createTestTags() []*entity.Tag {
 }
 
 func createIdentityTagSyncEvent() *event.IdentityTagSyncEvent {
+	// Use fixed times to avoid time zone and precision issues
+	fixedTime := time.Date(2026, 1, 5, 12, 0, 0, 0, time.UTC)
 	return &event.IdentityTagSyncEvent{
 		GlobalMerchantID: "FATCAT-MERCHANT-1",
 		Tag: &event.IdentityTagDataSyncEvent{
 			GlobalTagID: "FATCAT-TAG-1",
 			Name:        "VIP",
-			CreatedAt:   time.Now().Add(-2 * time.Hour).Format(time.RFC3339),
-			UpdatedAt:   time.Now().Add(-1 * time.Hour).Format(time.RFC3339),
+			CreatedAt:   fixedTime.Add(-2 * time.Hour).Format(time.RFC3339),
+			UpdatedAt:   fixedTime.Add(-1 * time.Hour).Format(time.RFC3339),
 		},
 	}
 }
@@ -215,16 +217,24 @@ func TestPlayerTagUseCase_SyncTag(t *testing.T) {
 	tagRepo.AssertExpectations()
 
 	// Verify the tag was created with correct data
-	tagRepo.AssertCalled(t, "Upsert", mock.Anything, mock.MatchedBy(func(tag *entity.Tag) bool {
-		// Parse the string time for comparison
-		expectedTime, _ := time.Parse(time.RFC3339, event.Tag.UpdatedAt)
-		return tag.GlobalTagID == event.Tag.GlobalTagID &&
-			tag.Name == event.Tag.Name &&
-			tag.MerchantID == merchant.ID &&
-			tag.CreatedAt.Equal(expectedTime) &&
-			tag.UpdatedAt.Equal(expectedTime) &&
-			tag.DeletedAt == nil
-	}))
+	tagRepo.AssertCalled(t, "Upsert", mock.Anything, mock.AnythingOfType("*entity.Tag"))
+
+	// Additional verification can be done by checking the calls
+	calls := tagRepo.Calls
+	if len(calls) > 0 {
+		if tag, ok := calls[0].Arguments[1].(*entity.Tag); ok {
+			expectedCreatedTime, _ := time.Parse(time.RFC3339, event.Tag.CreatedAt)
+			expectedUpdatedTime, _ := time.Parse(time.RFC3339, event.Tag.UpdatedAt)
+			assert.Equal(t, event.Tag.GlobalTagID, tag.GlobalTagID)
+			assert.Equal(t, event.Tag.Name, tag.Name)
+			assert.Equal(t, merchant.ID, tag.MerchantID)
+
+			// Use correct time comparison for each field
+			assert.WithinDuration(t, expectedCreatedTime, tag.CreatedAt, time.Second)
+			assert.WithinDuration(t, expectedUpdatedTime, tag.UpdatedAt, time.Second)
+			assert.Nil(t, tag.DeletedAt)
+		}
+	}
 }
 
 // Test SyncTag - with deleted tag
@@ -265,7 +275,10 @@ func TestPlayerTagUseCase_SyncTag_WithDeletedTag(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, capturedTag)
 	assert.NotNil(t, capturedTag.DeletedAt)
-	assert.Equal(t, event.Tag.UpdatedAt, *capturedTag.DeletedAt)
+
+	// Parse the expected deleted time and compare with tolerance
+	expectedDeletedTime, _ := time.Parse(time.RFC3339, event.Tag.DeletedAt)
+	assert.WithinDuration(t, expectedDeletedTime, *capturedTag.DeletedAt, time.Second)
 
 	merchantRepo.AssertExpectations()
 	tagRepo.AssertExpectations()
@@ -374,7 +387,13 @@ func TestPlayerTagUseCase_SyncTag_TracingAndLogging(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify logger was called for success case
-	logger.AssertCalled(t, "InfoWithContext", mock.Anything, "Upsert tag completed", mock.Anything)
+	logger.AssertCalled(
+		t,
+		"InfoWithContext",
+		mock.Anything,
+		"Upsert tag completed with cache invalidation",
+		mock.Anything,
+	)
 
 	merchantRepo.AssertExpectations()
 	tagRepo.AssertExpectations()

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/valueobject"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/mysql"
@@ -378,7 +378,7 @@ func TestAgentCampaignRepository_List(t *testing.T) {
 	now := time.Now()
 	testCases := []struct {
 		name          string
-		query         *dto.AgentCampaignsQueryForRepo
+		query         *valueobject.AgentCampaignsQuery
 		setupMock     func(sqlmock.Sqlmock)
 		expectedCount int
 		expectedTotal int
@@ -386,12 +386,11 @@ func TestAgentCampaignRepository_List(t *testing.T) {
 	}{
 		{
 			name: "list campaigns with pagination",
-			query: &dto.AgentCampaignsQueryForRepo{
-				MerchantID: 1,
-				Page:       1,
-				PageSize:   10,
-				Limit:      10,
-				Offset:     0,
+			query: &valueobject.AgentCampaignsQuery{
+				MerchantID:   1,
+				Page:         1,
+				PageSize:     10,
+				IncludeTotal: true,
 			},
 			setupMock: func(mock sqlmock.Sqlmock) {
 				// Count query
@@ -418,14 +417,13 @@ func TestAgentCampaignRepository_List(t *testing.T) {
 		},
 		{
 			name: "list campaigns with filters",
-			query: &dto.AgentCampaignsQueryForRepo{
-				MerchantID: 1,
-				Status:     []string{"draft"},
-				CreatedBy:  "user1",
-				Page:       1,
-				PageSize:   10,
-				Limit:      10,
-				Offset:     0,
+			query: &valueobject.AgentCampaignsQuery{
+				MerchantID:   1,
+				Status:       []string{"draft"},
+				CreatedBy:    "user1",
+				Page:         1,
+				PageSize:     10,
+				IncludeTotal: true,
 			},
 			setupMock: func(mock sqlmock.Sqlmock) {
 				// Count query with filters
@@ -443,6 +441,65 @@ func TestAgentCampaignRepository_List(t *testing.T) {
 
 				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `agent_campaigns`")).
 					WithArgs(1, "draft", "user1", 10).
+					WillReturnRows(rows)
+			},
+			expectedCount: 1,
+			expectedTotal: 1,
+			expectedError: nil,
+		},
+		{
+			name: "list campaigns without total count",
+			query: &valueobject.AgentCampaignsQuery{
+				MerchantID:   1,
+				Page:         1,
+				PageSize:     10,
+				IncludeTotal: false,
+			},
+			setupMock: func(mock sqlmock.Sqlmock) {
+				// No Count query expected when IncludeTotal is false
+
+				// List query only
+				rows := sqlmock.NewRows([]string{
+					"id", "merchant_id", "title", "content", "scheduled_at",
+					"status", "target_type", "target_details", "target_count",
+					"real_sent_count", "created_by", "updated_by", "created_at", "updated_at", "deleted_at",
+				}).
+					AddRow(1, 1, "Campaign 1", "Content 1", &now, "draft", "all", "[]", 0, 0, "user1", "user1", now, now, nil)
+
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `agent_campaigns`")).
+					WithArgs(1, 10).
+					WillReturnRows(rows)
+			},
+			expectedCount: 1,
+			expectedTotal: 0, // Total should be 0 when IncludeTotal is false
+			expectedError: nil,
+		},
+		{
+			name: "list campaigns with custom order",
+			query: &valueobject.AgentCampaignsQuery{
+				MerchantID:   1,
+				Page:         1,
+				PageSize:     10,
+				OrderBy:      "scheduled_at",
+				OrderDir:     "asc",
+				IncludeTotal: true,
+			},
+			setupMock: func(mock sqlmock.Sqlmock) {
+				// Count query
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT count(*)")).
+					WithArgs(1).
+					WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(1))
+
+				// List query with custom order
+				rows := sqlmock.NewRows([]string{
+					"id", "merchant_id", "title", "content", "scheduled_at",
+					"status", "target_type", "target_details", "target_count",
+					"real_sent_count", "created_by", "updated_by", "created_at", "updated_at", "deleted_at",
+				}).
+					AddRow(1, 1, "Campaign 1", "Content 1", &now, "scheduled", "all", "[]", 0, 0, "user1", "user1", now, now, nil)
+
+				mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `agent_campaigns`")).
+					WithArgs(1, 10).
 					WillReturnRows(rows)
 			},
 			expectedCount: 1,

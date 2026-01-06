@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/aggregate"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/valueobject"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/models"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -327,7 +327,7 @@ func (r *AgentMessageRepository) CheckCampaignMessageExistsBatch(
 // ListByAgent 根據代理查詢訊息列表（包含活動資訊）
 func (r *AgentMessageRepository) ListByAgent(
 	ctx context.Context,
-	query *dto.AgentMessagesQuery,
+	query *valueobject.AgentMessagesQuery,
 ) ([]*entity.AgentMessage, int, error) {
 	var aggregates []aggregate.AgentMessageAggregate
 	var total int64
@@ -356,20 +356,30 @@ func (r *AgentMessageRepository) ListByAgent(
 		db = db.Where("agent_messages.agent_id = ?", query.AgentID)
 	}
 
-	// 獲取總數
-	if err := db.Count(&total).Error; err != nil {
-		return nil, 0, fmt.Errorf("count agent messages failed: %w", err)
+	// 根據 IncludeTotal 決定是否需要查詢總數
+	if query.IncludeTotal {
+		if err := db.Count(&total).Error; err != nil {
+			return nil, 0, fmt.Errorf("count agent messages failed: %w", err)
+		}
 	}
 
-	// 固定排序：按創建日期由近到遠
-	db = db.Order("agent_messages.created_at DESC")
-
-	if query.Limit > 0 {
-		db = db.Limit(query.Limit)
+	// 使用 OrderBy 和 OrderDir 動態構建排序語句
+	if query.OrderBy != "" {
+		// 為排序欄位添加表名前綴以避免 JOIN 查詢時的歧義
+		orderColumn := fmt.Sprintf("agent_messages.%s", query.OrderBy)
+		orderClause := orderColumn
+		if query.OrderDir != "" {
+			orderClause = fmt.Sprintf("%s %s", orderColumn, query.OrderDir)
+		}
+		db = db.Order(orderClause)
 	}
 
-	if query.Offset > 0 {
-		db = db.Offset(query.Offset)
+	if query.Limit() > 0 {
+		db = db.Limit(query.Limit())
+	}
+
+	if query.Offset() > 0 {
+		db = db.Offset(query.Offset())
 	}
 
 	// 執行查詢
@@ -433,7 +443,7 @@ func (r *AgentMessageRepository) ExistsMessage(
 func (r *AgentMessageRepository) GetMessageStats(
 	ctx context.Context,
 	agentID uint64,
-) (*dto.AgentMessageStats, error) {
+) (*valueobject.AgentMessageStats, error) {
 	type statsResult struct {
 		TotalCount  int64 `json:"total_count"`
 		ReadCount   int64 `json:"read_count"`
@@ -455,7 +465,7 @@ func (r *AgentMessageRepository) GetMessageStats(
 		return nil, fmt.Errorf("get message stats failed: %w", err)
 	}
 
-	return &dto.AgentMessageStats{
+	return &valueobject.AgentMessageStats{
 		TotalCount:  result.TotalCount,
 		ReadCount:   result.ReadCount,
 		UnreadCount: result.UnreadCount,

@@ -19,6 +19,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/valueobject"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -514,14 +515,35 @@ func (u *MessageUseCase) ListMessageCampaigns(
 		attribute.Int("page_size", req.PageSize),
 	)
 
-	// 轉換 DTO 到 Query 物件
-	query := &dto.MessageCampaignsQuery{
-		IncludeDeleted: true,
-	}
-	err := copier.Copy(query, req)
+	// 獲取商戶資訊
+	merchant, err := u.merchantRepo.FindByGlobalID(ctx, req.GlobalMerchantID)
 	if err != nil {
 		u.tracingService.RecordSpanError(span, err)
-		return nil, fmt.Errorf("copy query failed: %w", err)
+		return nil, fmt.Errorf("find merchant: %w", err)
+	}
+
+	// 直接轉換 DTO 為 value object，不需要中間層
+	query := &valueobject.MessageCampaignsQuery{
+		MerchantID:     merchant.ID,
+		Category:       req.Category,
+		Item:           req.Item,
+		Status:         req.Status,
+		IncludeDeleted: true,
+		ShowAutoSend:   req.ShowAutoSend,
+		CreatedBy:      req.CreatedBy,
+		StartAt:        req.StartAt,
+		EndAt:          req.EndAt,
+		Page:           req.Page,
+		PageSize:       req.PageSize,
+		OrderBy:        "created_at",
+		OrderDir:       "desc",
+		IncludeTotal:   true,
+	}
+
+	// 驗證查詢參數
+	if err = query.Validate(); err != nil {
+		u.tracingService.RecordSpanError(span, err)
+		return nil, fmt.Errorf("invalid query parameters: %w", err)
 	}
 
 	campaigns, total, err := u.campaignRepo.FindAllWithOptions(ctx, query)
@@ -620,13 +642,18 @@ func (u *MessageUseCase) GetPlayerMessages(
 	}
 
 	u.tracingService.RecordSpanAttributes(span,
-		attribute.Int("stats.total_count", stats.TotalCount),
-		attribute.Int("stats.read_count", stats.ReadCount),
-		attribute.Int("stats.unread_count", stats.UnreadCount),
+		attribute.Int("stats.total_count", int(stats.TotalCount)),
+		attribute.Int("stats.read_count", int(stats.ReadCount)),
+		attribute.Int("stats.unread_count", int(stats.UnreadCount)),
 		attribute.Int("returned_messages", len(summaries)),
 	)
 
-	dtoStats := *stats
+	// 轉換為 DTO 統計資料
+	dtoStats := dto.PlayerMessageStats{
+		TotalCount:  int(stats.TotalCount),
+		ReadCount:   int(stats.ReadCount),
+		UnreadCount: int(stats.UnreadCount),
+	}
 
 	return &dto.MessageListResponse{
 		Stats:    dtoStats,

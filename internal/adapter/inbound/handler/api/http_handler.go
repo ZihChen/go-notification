@@ -489,8 +489,10 @@ func (h *HTTPHandler) GetMessageCampaign(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Router /api/v1/message-campaigns [get]
 func (h *HTTPHandler) ListMessageCampaigns(c *gin.Context) {
-	var req dto.ListMessageCampaignsRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
+	req := &dto.ListMessageCampaignsRequest{
+		GlobalMerchantID: c.GetString("global_merchant_id"),
+	}
+	if err := c.ShouldBindQuery(req); err != nil {
 		response.BadRequest(c, "invalid query parameters", err.Error()).Return()
 		return
 	}
@@ -505,7 +507,7 @@ func (h *HTTPHandler) ListMessageCampaigns(c *gin.Context) {
 
 	campaignsResponse, err := h.messageUseCase.ListMessageCampaigns(
 		c.Request.Context(),
-		&req,
+		req,
 	)
 	if err != nil {
 		response.InternalServerError(c, "failed to list message campaigns", err.Error()).Return()

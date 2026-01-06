@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/valueobject"
 )
 
 // AgentRepository 代理資料倉儲接口
@@ -77,7 +77,7 @@ type AgentCampaignRepository interface {
 	// 查詢操作
 	List(
 		ctx context.Context,
-		query *dto.AgentCampaignsQueryForRepo,
+		query *valueobject.AgentCampaignsQuery,
 	) ([]*entity.AgentCampaign, int, error)
 	GetScheduledCampaigns(
 		ctx context.Context,
@@ -122,7 +122,7 @@ type AgentMessageRepository interface {
 	// 查詢操作
 	ListByAgent(
 		ctx context.Context,
-		query *dto.AgentMessagesQuery,
+		query *valueobject.AgentMessagesQuery,
 	) ([]*entity.AgentMessage, int, error)
 	MarkAsRead(ctx context.Context, messageID uint64, agentID uint64) error
 
@@ -130,7 +130,7 @@ type AgentMessageRepository interface {
 	ExistsMessage(ctx context.Context, campaignID uint64, agentID uint64) (bool, error)
 
 	// 統計操作
-	GetMessageStats(ctx context.Context, agentID uint64) (*dto.AgentMessageStats, error)
+	GetMessageStats(ctx context.Context, agentID uint64) (*valueobject.AgentMessageStats, error)
 }
 
 // AgentRelationshipRepository 代理關係倉儲接口

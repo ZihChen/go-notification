@@ -22,15 +22,16 @@ type CreateMessageCampaignRequest struct {
 }
 
 type ListMessageCampaignsRequest struct {
-	Page         int      `form:"page"           json:"page"`
-	PageSize     int      `form:"page_size"      json:"page_size"`
-	Category     string   `form:"category"       json:"category"`       // 類型：member, bonus, others
-	Item         string   `form:"item"           json:"item"`           // 項目：registration, identity_verification, bank_card, others, event, all, mission
-	Status       []string `form:"status"         json:"status"`         // 狀態：draft, scheduled, sent, cancelled, failed
-	ShowAutoSend bool     `form:"show_auto_send" json:"show_auto_send"` // 是否顯示站內系統建立
-	CreatedBy    string   `form:"created_by"     json:"created_by"`     // 建立者
-	StartAt      string   `form:"start_at"       json:"start_at"`       // 建立起始時間
-	EndAt        string   `form:"end_at"         json:"end_at"`         // 建立結束時間
+	GlobalMerchantID string   `json:"global_merchant_id" swaggerignore:"true"` // 商戶全局ID，由中間件自動設置
+	Page             int      `json:"page"                                    form:"page"`
+	PageSize         int      `json:"page_size"                               form:"page_size"`
+	Category         string   `json:"category"                                form:"category"`       // 類型：member, bonus, others
+	Item             string   `json:"item"                                    form:"item"`           // 項目：registration, identity_verification, bank_card, others, event, all, mission
+	Status           []string `json:"status"                                  form:"status"`         // 狀態：draft, scheduled, sent, cancelled, failed
+	ShowAutoSend     bool     `json:"show_auto_send"                          form:"show_auto_send"` // 是否顯示站內系統建立
+	CreatedBy        string   `json:"created_by"                              form:"created_by"`     // 建立者
+	StartAt          string   `json:"start_at"                                form:"start_at"`       // 建立起始時間
+	EndAt            string   `json:"end_at"                                  form:"end_at"`         // 建立結束時間
 }
 
 // UpdateMessageCampaignRequest 更新訊息活動請求

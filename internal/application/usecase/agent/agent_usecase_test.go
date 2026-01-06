@@ -11,6 +11,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/valueobject"
 	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
 	"github.com/jvdiamondtech/ms-notification-cat/test/mocks"
 	"github.com/stretchr/testify/assert"
@@ -273,6 +274,7 @@ func TestAgentUseCase_DeleteAgentCampaign(t *testing.T) {
 		// 重置mock
 		agentCampaignRepo.Mock = mock.Mock{}
 		agentMessageRepo.Mock = mock.Mock{}
+		// Logger mock 已經在 NewMockLogger() 中設置為 .Maybe()，無需重置
 
 		// 設置mock期望
 		agentCampaignRepo.On("GetByID", mock.Anything, campaignID).
@@ -289,6 +291,10 @@ func TestAgentUseCase_DeleteAgentCampaign(t *testing.T) {
 
 		// 驗證結果
 		assert.NoError(t, err)
+
+		// 等待異步 goroutine 完成
+		time.Sleep(100 * time.Millisecond)
+
 		agentCampaignRepo.AssertExpectations()
 		agentMessageRepo.AssertExpectations()
 	})
@@ -302,6 +308,7 @@ func TestAgentUseCase_DeleteAgentCampaign(t *testing.T) {
 		// 重置mock
 		agentCampaignRepo.Mock = mock.Mock{}
 		agentMessageRepo.Mock = mock.Mock{}
+		// Logger mock 已經在 NewMockLogger() 中設置為 .Maybe()，無需重置
 
 		// 設置mock期望
 		agentCampaignRepo.On("GetByID", mock.Anything, campaignID).
@@ -318,6 +325,10 @@ func TestAgentUseCase_DeleteAgentCampaign(t *testing.T) {
 
 		// 驗證結果
 		assert.NoError(t, err)
+
+		// 等待異步 goroutine 完成
+		time.Sleep(100 * time.Millisecond)
+
 		agentCampaignRepo.AssertExpectations()
 		agentMessageRepo.AssertExpectations()
 	})
@@ -377,7 +388,7 @@ func TestAgentUseCase_GetAgentCampaigns(t *testing.T) {
 	// 設置mock期望
 	merchantRepo.On("FindByGlobalID", mock.Anything, query.GlobalMerchantID).
 		Return(merchant, nil)
-	agentCampaignRepo.On("List", mock.Anything, mock.AnythingOfType("*dto.AgentCampaignsQueryForRepo")).
+	agentCampaignRepo.On("List", mock.Anything, mock.AnythingOfType("*valueobject.AgentCampaignsQuery")).
 		Return(campaigns, total, nil)
 
 	// 執行測試
@@ -447,7 +458,7 @@ func TestAgentUseCase_GetAgentMessages(t *testing.T) {
 	}
 	total := 1
 
-	stats := &dto.AgentMessageStats{
+	stats := &valueobject.AgentMessageStats{
 		TotalCount:  1,
 		ReadCount:   0,
 		UnreadCount: 1,
@@ -456,7 +467,7 @@ func TestAgentUseCase_GetAgentMessages(t *testing.T) {
 	// 設置mock期望
 	agentRepo.On("GetByGlobalID", mock.Anything, query.GlobalAgentID).
 		Return(agent, nil)
-	agentMessageRepo.On("ListByAgent", mock.Anything, mock.AnythingOfType("*dto.AgentMessagesQuery")).
+	agentMessageRepo.On("ListByAgent", mock.Anything, mock.AnythingOfType("*valueobject.AgentMessagesQuery")).
 		Return(messages, total, nil)
 	agentMessageRepo.On("GetMessageStats", mock.Anything, agent.ID).
 		Return(stats, nil)
@@ -1435,7 +1446,8 @@ func TestAgentUseCase_CreateAgentCampaign_DraftStatus(t *testing.T) {
 
 // TestAgentCampaign_NewAgentCampaign_ImmediateSending 測試創建時的立即發送邏輯
 func TestAgentCampaign_NewAgentCampaign_ImmediateSending(t *testing.T) {
-	req := &dto.CreateAgentCampaignRequest{
+	// 使用Value Object創建數據
+	data := &valueobject.AgentCampaignCreationData{
 		Title:       "Test Campaign",
 		Content:     "Test content",
 		Status:      "scheduled", // scheduled 狀態
@@ -1444,7 +1456,7 @@ func TestAgentCampaign_NewAgentCampaign_ImmediateSending(t *testing.T) {
 		CreatedBy:   "test-user",
 	}
 
-	campaign, err := entity.NewAgentCampaign(req, 1)
+	campaign, err := entity.NewAgentCampaign(data, 1)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, campaign)
@@ -1460,8 +1472,8 @@ func TestAgentCampaign_NewAgentCampaign_ImmediateSending(t *testing.T) {
 	assert.Less(t, timeDiff, time.Second, "ScheduledAt should be set to current time")
 }
 
-// TestAgentCampaign_UpdateFromRequest_ImmediateSending 測試更新時的立即發送邏輯
-func TestAgentCampaign_UpdateFromRequest_ImmediateSending(t *testing.T) {
+// TestAgentCampaign_UpdateFromData_ImmediateSending 測試更新時的立即發送邏輯
+func TestAgentCampaign_UpdateFromData_ImmediateSending(t *testing.T) {
 	// 創建一個現有的 draft 活動
 	campaign := &entity.AgentCampaign{
 		ID:          1,
@@ -1475,13 +1487,13 @@ func TestAgentCampaign_UpdateFromRequest_ImmediateSending(t *testing.T) {
 		UpdatedAt:   time.Now().Add(-time.Hour),
 	}
 
-	// 更新請求：改為 scheduled 且不提供 ScheduledAt（立即發送）
-	req := &dto.UpdateAgentCampaignRequest{
+	// 使用Value Object進行更新：改為 scheduled 且不提供 ScheduledAt（立即發送）
+	updateData := &valueobject.AgentCampaignUpdateData{
 		Status:    "scheduled",
 		UpdatedBy: "test-user",
 	}
 
-	err := campaign.UpdateFromRequest(req)
+	err := campaign.UpdateFromData(updateData)
 
 	assert.NoError(t, err)
 	assert.Equal(t, consts.AgentCampaignStatusScheduled, campaign.Status)
@@ -1496,8 +1508,8 @@ func TestAgentCampaign_UpdateFromRequest_ImmediateSending(t *testing.T) {
 	assert.Less(t, timeDiff, time.Second, "ScheduledAt should be set to current time")
 }
 
-// TestAgentCampaign_UpdateFromRequest_ScheduledWithTime 測試更新時提供具體排程時間
-func TestAgentCampaign_UpdateFromRequest_ScheduledWithTime(t *testing.T) {
+// TestAgentCampaign_UpdateFromData_ScheduledWithTime 測試更新時提供具體排程時間
+func TestAgentCampaign_UpdateFromData_ScheduledWithTime(t *testing.T) {
 	// 創建一個現有的 draft 活動
 	campaign := &entity.AgentCampaign{
 		ID:          1,
@@ -1514,14 +1526,14 @@ func TestAgentCampaign_UpdateFromRequest_ScheduledWithTime(t *testing.T) {
 	// 指定的排程時間（未來時間）
 	futureTime := time.Now().Add(time.Hour)
 
-	// 更新請求：改為 scheduled 並提供具體的 ScheduledAt
-	req := &dto.UpdateAgentCampaignRequest{
+	// 使用Value Object進行更新：改為 scheduled 並提供具體的 ScheduledAt
+	updateData := &valueobject.AgentCampaignUpdateData{
 		Status:      "scheduled",
 		ScheduledAt: &futureTime,
 		UpdatedBy:   "test-user",
 	}
 
-	err := campaign.UpdateFromRequest(req)
+	err := campaign.UpdateFromData(updateData)
 
 	assert.NoError(t, err)
 	assert.Equal(t, consts.AgentCampaignStatusScheduled, campaign.Status)

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/aggregate"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/valueobject"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -111,7 +111,7 @@ func (m *MessageCampaignRepositoryMock) Delete(ctx context.Context, id uint64) e
 
 func (m *MessageCampaignRepositoryMock) FindAllWithOptions(
 	ctx context.Context,
-	query *dto.MessageCampaignsQuery,
+	query *valueobject.MessageCampaignsQuery,
 ) ([]*entity.MessageCampaign, int, error) {
 	args := m.Called(ctx, query)
 	if args.Get(0) == nil {
@@ -544,12 +544,12 @@ func (m *PlayerMessageRepositoryMock) FindByPlayerIDWithCampaign(
 func (m *PlayerMessageRepositoryMock) GetPlayerMessageStats(
 	ctx context.Context,
 	globalPlayerID string,
-) (*dto.PlayerMessageStats, error) {
+) (*valueobject.PlayerMessageStats, error) {
 	args := m.Called(ctx, globalPlayerID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*dto.PlayerMessageStats), args.Error(1)
+	return args.Get(0).(*valueobject.PlayerMessageStats), args.Error(1)
 }
 
 func (m *PlayerMessageRepositoryMock) MarkAsRead(
@@ -1176,7 +1176,7 @@ func (m *AgentCampaignRepositoryMock) UpdateFieldsWithCondition(
 
 func (m *AgentCampaignRepositoryMock) List(
 	ctx context.Context,
-	query *dto.AgentCampaignsQueryForRepo,
+	query *valueobject.AgentCampaignsQuery,
 ) ([]*entity.AgentCampaign, int, error) {
 	args := m.Called(ctx, query)
 	if args.Get(0) == nil {
@@ -1319,7 +1319,7 @@ func (m *AgentMessageRepositoryMock) CheckMessageExistsBatch(
 
 func (m *AgentMessageRepositoryMock) ListByAgent(
 	ctx context.Context,
-	query *dto.AgentMessagesQuery,
+	query *valueobject.AgentMessagesQuery,
 ) ([]*entity.AgentMessage, int, error) {
 	args := m.Called(ctx, query)
 	if args.Get(0) == nil {
@@ -1361,12 +1361,12 @@ func (m *AgentMessageRepositoryMock) CheckCampaignMessageExistsBatch(
 func (m *AgentMessageRepositoryMock) GetMessageStats(
 	ctx context.Context,
 	agentID uint64,
-) (*dto.AgentMessageStats, error) {
+) (*valueobject.AgentMessageStats, error) {
 	args := m.Called(ctx, agentID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*dto.AgentMessageStats), args.Error(1)
+	return args.Get(0).(*valueobject.AgentMessageStats), args.Error(1)
 }
 
 func (m *AgentMessageRepositoryMock) SetupSuccess() {}
