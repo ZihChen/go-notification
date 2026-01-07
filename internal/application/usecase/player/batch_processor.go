@@ -61,8 +61,8 @@ func NewPlayerBatchProcessor(
 		tracing:    tracing,
 
 		// 批次配置：500筆或3秒超時
-		batchSize:    500,
-		batchTimeout: 3 * time.Second,
+		batchSize:    300,
+		batchTimeout: 2 * time.Second,
 		bufferSize:   bufferSize,
 
 		requestChannel: make(chan *PlayerBatchRequest, bufferSize),

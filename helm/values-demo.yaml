@@ -26,10 +26,10 @@ env:
   # ATLAS_DEV_PASSWORD: <secret>
 
   # 資料庫連線池設置
-  DB_MAX_IDLE: "10"
-  DB_MAX_OPEN: "20"
-  DB_MAX_LIFETIME: "45m"
-  DB_MAX_IDLE_TIME: "20m"
+  DB_MAX_IDLE: "15"
+  DB_MAX_OPEN: "30"
+  DB_MAX_LIFETIME: "30m"
+  DB_MAX_IDLE_TIME: "15m"
 
   # Redis設置
   REDIS_DOMAIN: "fatnotificationcat-redis"
