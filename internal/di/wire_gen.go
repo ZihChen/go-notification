@@ -39,6 +39,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/kds"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/metrics"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	redis2 "github.com/redis/go-redis/v9"
@@ -145,9 +146,14 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 	agentService := service.NewAgentService(agentRepository, agentRelationshipRepository, merchantRepository, logger, tracingService)
 	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService, distributedLockManager)
 	agentHandler := api.NewAgentHandler(agentUseCase, logger)
+	metrics, err := provideMetrics(cfg, logger)
+	if err != nil {
+		return nil, err
+	}
 	webComponents := &WebComponents{
 		HTTPHandler:  httpHandler,
 		AgentHandler: agentHandler,
+		Metrics:      metrics,
 	}
 	return webComponents, nil
 }
@@ -340,6 +346,7 @@ type WorkerComponents struct {
 type WebComponents struct {
 	HTTPHandler  *api.HTTPHandler
 	AgentHandler *api.AgentHandler
+	Metrics      *metrics.Metrics
 }
 
 var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient,
@@ -362,6 +369,11 @@ func providePushNotificationService(cfg *config.Config, logger infrastructure.Lo
 // TracingService提供者
 func provideTracingService() infrastructure.TracingService {
 	return tracing.NewTracingService()
+}
+
+// provideMetrics 提供 Metrics 服務
+func provideMetrics(cfg *config.Config, log infrastructure.Logger) (*metrics.Metrics, error) {
+	return metrics.NewMetrics(cfg, log)
 }
 
 // ProvideAgentCampaignTriggerJob 提供代理活動觸發器Job

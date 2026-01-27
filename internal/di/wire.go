@@ -4,6 +4,8 @@ package di
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/google/wire"
 	"github.com/hibiken/asynq"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/api"
@@ -35,12 +37,12 @@ import (
 	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/kds"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/metrics"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"time"
 )
 
 // WorkerComponents 包含 worker 所需的所有組件
@@ -54,6 +56,7 @@ type WorkerComponents struct {
 type WebComponents struct {
 	HTTPHandler  *api.HTTPHandler
 	AgentHandler *api.AgentHandler
+	Metrics      *metrics.Metrics
 }
 
 var baseSet = wire.NewSet(
@@ -113,6 +116,11 @@ func provideTracingService() infrastructure.TracingService {
 	return tracing.NewTracingService()
 }
 
+// provideMetrics 提供 Metrics 服務
+func provideMetrics(cfg *config.Config, log infrastructure.Logger) (*metrics.Metrics, error) {
+	return metrics.NewMetrics(cfg, log)
+}
+
 // ProvideAgentCampaignTriggerJob 提供代理活動觸發器Job
 func ProvideAgentCampaignTriggerJob(
 	agentUseCase inbound.AgentUseCase,
@@ -156,6 +164,7 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 		kds.NewKDSService,
 		api.NewHTTPHandler,
 		api.NewAgentHandler,
+		provideMetrics,
 	)
 	return nil, nil
 }
