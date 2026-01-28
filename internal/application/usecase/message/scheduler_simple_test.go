@@ -29,6 +29,8 @@ func TestProcessScheduledCampaigns_Simple(t *testing.T) {
 	logger := helper.NewMockLogger()
 	tracingService := mocks.NewTracingServiceMock(t)
 	tracingService.SetupSuccess()
+	metricsService := mocks.NewMetricsServiceMock(t)
+	metricsService.SetupSuccess()
 
 	campaignTargetRepo := mocks.NewCampaignTargetRepositoryMock(t)
 
@@ -44,6 +46,7 @@ func TestProcessScheduledCampaigns_Simple(t *testing.T) {
 		pushService,
 		logger,
 		tracingService,
+		metricsService,
 	).(*MessageUseCase)
 
 	// 使用工廠創建測試數據
@@ -103,6 +106,8 @@ func TestProcessScheduledCampaigns_ErrorCase(t *testing.T) {
 	logger := helper.NewMockLogger()
 	tracingService := mocks.NewTracingServiceMock(t)
 	tracingService.SetupSuccess()
+	metricsService := mocks.NewMetricsServiceMock(t)
+	metricsService.SetupSuccess()
 
 	campaignTargetRepo := mocks.NewCampaignTargetRepositoryMock(t)
 
@@ -118,6 +123,7 @@ func TestProcessScheduledCampaigns_ErrorCase(t *testing.T) {
 		pushService,
 		logger,
 		tracingService,
+		metricsService,
 	).(*MessageUseCase)
 
 	// 設定Mock返回錯誤
@@ -159,6 +165,8 @@ func TestSendCampaignToPlayersAsync_Simple(t *testing.T) {
 	logger := helper.NewMockLogger()
 	tracingService := mocks.NewTracingServiceMock(t)
 	tracingService.SetupSuccess()
+	metricsService := mocks.NewMetricsServiceMock(t)
+	metricsService.SetupSuccess()
 
 	campaignTargetRepo := mocks.NewCampaignTargetRepositoryMock(t)
 
@@ -174,6 +182,7 @@ func TestSendCampaignToPlayersAsync_Simple(t *testing.T) {
 		pushService,
 		logger,
 		tracingService,
+		metricsService,
 	).(*MessageUseCase)
 
 	// 使用工廠創建測試數據
@@ -227,6 +236,8 @@ func TestSendCampaignToPlayersAsync_WithPlayers(t *testing.T) {
 	logger := helper.NewMockLogger()
 	tracingService := mocks.NewTracingServiceMock(t)
 	tracingService.SetupSuccess()
+	metricsService := mocks.NewMetricsServiceMock(t)
+	metricsService.SetupSuccess()
 
 	campaignTargetRepo := mocks.NewCampaignTargetRepositoryMock(t)
 
@@ -242,6 +253,7 @@ func TestSendCampaignToPlayersAsync_WithPlayers(t *testing.T) {
 		pushService,
 		logger,
 		tracingService,
+		metricsService,
 	).(*MessageUseCase)
 
 	// 使用工廠創建測試數據

@@ -36,6 +36,7 @@ type MessageUseCase struct {
 	pushService        service.PushNotificationService
 	logger             infrastructure.Logger
 	tracingService     infrastructure.TracingService
+	metricsService     infrastructure.MetricsService
 }
 
 // NewMessageUseCase 創建訊息用例
@@ -51,6 +52,7 @@ func NewMessageUseCase(
 	pushService service.PushNotificationService,
 	logger infrastructure.Logger,
 	tracingService infrastructure.TracingService,
+	metricsService infrastructure.MetricsService,
 ) inbound.MessageUseCase {
 	return &MessageUseCase{
 		campaignRepo:       campaignRepo,
@@ -64,6 +66,7 @@ func NewMessageUseCase(
 		pushService:        pushService,
 		logger:             logger,
 		tracingService:     tracingService,
+		metricsService:     metricsService,
 	}
 }
 
@@ -1349,6 +1352,14 @@ func (u *MessageUseCase) SendAutoNotification(
 				u.logger.Error("error", err),
 				u.logger.UInt64("campaign_id", campaign.ID),
 			)
+		}
+
+		// 記錄 metrics - 訊息發送成功
+		merchantIDStr := strconv.FormatUint(player.MerchantID, 10)
+		for _, channel := range sentChannels {
+			if u.metricsService != nil && u.metricsService.IsEnabled() {
+				u.metricsService.RecordMessageSent(merchantIDStr, channel)
+			}
 		}
 	}
 

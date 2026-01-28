@@ -45,6 +45,8 @@ func setupMessageTestSuite(t *testing.T) *MessageTestSuite {
 	logger := helper.NewMockLogger()
 	tracingService := mocks.NewTracingServiceMock(t)
 	tracingService.SetupSuccess()
+	metricsService := mocks.NewMetricsServiceMock(t)
+	metricsService.SetupSuccess()
 
 	// 創建UseCase實例
 	useCase := NewMessageUseCase(
@@ -59,6 +61,7 @@ func setupMessageTestSuite(t *testing.T) *MessageTestSuite {
 		pushService,
 		logger,
 		tracingService,
+		metricsService,
 	).(*MessageUseCase)
 
 	// 創建測試數據工廠

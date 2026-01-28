@@ -65,6 +65,7 @@ var baseSet = wire.NewSet(
 	provideRedisClient,
 	provideTracingService,
 	provideDistributedLockManager,
+	provideMetricsService,
 
 	// 資料庫
 	provideMerchantRepository,
@@ -94,7 +95,7 @@ var baseSet = wire.NewSet(
 	merchantUseCase.NewMerchantUseCase,
 	providePlayerUseCase,
 	managerUseCase.NewManagerUseCase,
-	messageUseCase.NewMessageUseCase,
+	provideMessageUseCase,
 	levelUseCase.NewLevelUseCase,
 	providePlayerTagUseCase,
 	agentUseCase.NewAgentUseCase,
@@ -116,9 +117,45 @@ func provideTracingService() infrastructure.TracingService {
 	return tracing.NewTracingService()
 }
 
-// provideMetrics 提供 Metrics 服務
+// provideMetrics 提供 Metrics 服務 (用於 WebComponents)
 func provideMetrics(cfg *config.Config, log infrastructure.Logger) (*metrics.Metrics, error) {
 	return metrics.NewMetrics(cfg, log)
+}
+
+// provideMetricsService 提供 MetricsService 介面 (用於 UseCase 注入)
+func provideMetricsService(cfg *config.Config, log infrastructure.Logger) (infrastructure.MetricsService, error) {
+	return metrics.NewMetrics(cfg, log)
+}
+
+// provideMessageUseCase 提供 MessageUseCase
+func provideMessageUseCase(
+	campaignRepo repository.MessageCampaignRepository,
+	campaignTargetRepo repository.CampaignTargetRepository,
+	merchantRepo repository.MerchantRepository,
+	playerMessageRepo repository.PlayerMessageRepository,
+	playerRepo repository.PlayerRepository,
+	levelRepo repository.LevelRepository,
+	tagRepo repository.TagRepository,
+	pushApiKeyRepo repository.PushKeyRepository,
+	pushService servicePort.PushNotificationService,
+	logger infrastructure.Logger,
+	tracingService infrastructure.TracingService,
+	metricsService infrastructure.MetricsService,
+) inbound.MessageUseCase {
+	return messageUseCase.NewMessageUseCase(
+		campaignRepo,
+		campaignTargetRepo,
+		merchantRepo,
+		playerMessageRepo,
+		playerRepo,
+		levelRepo,
+		tagRepo,
+		pushApiKeyRepo,
+		pushService,
+		logger,
+		tracingService,
+		metricsService,
+	)
 }
 
 // ProvideAgentCampaignTriggerJob 提供代理活動觸發器Job
@@ -281,6 +318,7 @@ func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, cacheM
 	wire.Build(
 		provideTracingService,
 		provideDistributedLockManager,
+		provideMetricsService,
 		queue.NewQueueService,
 		kds.NewKDSService,
 	)
@@ -292,6 +330,7 @@ func InitializeConsumerHandler(cfg *config.Config, logger infrastructure.Logger,
 	wire.Build(
 		provideTracingService,
 		provideDistributedLockManager,
+		provideMetricsService,
 		queue.NewQueueService,
 		kds.NewKDSService,
 		consumer.NewConsumerHandler,

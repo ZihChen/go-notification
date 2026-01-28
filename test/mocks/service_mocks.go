@@ -527,3 +527,108 @@ func (m *MockCacheManager) SetupEmpty() {}
 func (m *MockCacheManager) Reset() {
 	m.Mock = mock.Mock{}
 }
+
+// MetricsServiceMock 統一的 MetricsService Mock
+type MetricsServiceMock struct {
+	*BaseMock
+}
+
+var _ infrastructure.MetricsService = (*MetricsServiceMock)(nil)
+
+// NewMetricsServiceMock 創建新的 MetricsService Mock
+func NewMetricsServiceMock(t *testing.T) *MetricsServiceMock {
+	return &MetricsServiceMock{
+		BaseMock: NewBaseMock(t),
+	}
+}
+
+func (m *MetricsServiceMock) IsEnabled() bool {
+	args := m.Called()
+	return args.Bool(0)
+}
+
+func (m *MetricsServiceMock) Shutdown(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+func (m *MetricsServiceMock) RecordAPIRequest(method, path, status string) {
+	m.Called(method, path, status)
+}
+
+func (m *MetricsServiceMock) RecordAPIDuration(method, path string, duration float64) {
+	m.Called(method, path, duration)
+}
+
+func (m *MetricsServiceMock) RecordAPIError(method, path, errorType string) {
+	m.Called(method, path, errorType)
+}
+
+func (m *MetricsServiceMock) RecordCampaignProcessed(merchantID string, campaignType string) {
+	m.Called(merchantID, campaignType)
+}
+
+func (m *MetricsServiceMock) RecordCampaignDuration(merchantID string, duration float64) {
+	m.Called(merchantID, duration)
+}
+
+func (m *MetricsServiceMock) RecordCampaignError(merchantID string, errorType string) {
+	m.Called(merchantID, errorType)
+}
+
+func (m *MetricsServiceMock) RecordMessageSent(merchantID string, notificationType string) {
+	m.Called(merchantID, notificationType)
+}
+
+func (m *MetricsServiceMock) RecordMessageDelivered(merchantID string) {
+	m.Called(merchantID)
+}
+
+func (m *MetricsServiceMock) RecordMessageFailed(merchantID string, reason string) {
+	m.Called(merchantID, reason)
+}
+
+func (m *MetricsServiceMock) RecordEventReceived(eventType string) {
+	m.Called(eventType)
+}
+
+func (m *MetricsServiceMock) RecordEventProcessed(eventType string, success bool) {
+	m.Called(eventType, success)
+}
+
+func (m *MetricsServiceMock) RecordEventDuration(eventType string, duration float64) {
+	m.Called(eventType, duration)
+}
+
+func (m *MetricsServiceMock) RecordTaskProcessed(taskType string, success bool) {
+	m.Called(taskType, success)
+}
+
+func (m *MetricsServiceMock) RecordTaskDuration(taskType string, duration float64) {
+	m.Called(taskType, duration)
+}
+
+func (m *MetricsServiceMock) SetupSuccess() {
+	m.On("IsEnabled", mock.Anything).Return(true)
+	m.On("Shutdown", mock.Anything).Return(nil)
+	m.On("RecordAPIRequest", mock.Anything, mock.Anything, mock.Anything).Return()
+	m.On("RecordAPIDuration", mock.Anything, mock.Anything, mock.Anything).Return()
+	m.On("RecordAPIError", mock.Anything, mock.Anything, mock.Anything).Return()
+	m.On("RecordCampaignProcessed", mock.Anything, mock.Anything).Return()
+	m.On("RecordCampaignDuration", mock.Anything, mock.Anything).Return()
+	m.On("RecordCampaignError", mock.Anything, mock.Anything).Return()
+	m.On("RecordMessageSent", mock.Anything, mock.Anything).Return()
+	m.On("RecordMessageDelivered", mock.Anything).Return()
+	m.On("RecordMessageFailed", mock.Anything, mock.Anything).Return()
+	m.On("RecordEventReceived", mock.Anything).Return()
+	m.On("RecordEventProcessed", mock.Anything, mock.Anything).Return()
+	m.On("RecordEventDuration", mock.Anything, mock.Anything).Return()
+	m.On("RecordTaskProcessed", mock.Anything, mock.Anything).Return()
+	m.On("RecordTaskDuration", mock.Anything, mock.Anything).Return()
+}
+
+func (m *MetricsServiceMock) SetupError() {}
+func (m *MetricsServiceMock) SetupEmpty() {}
+func (m *MetricsServiceMock) Reset() {
+	m.Mock = mock.Mock{}
+}
