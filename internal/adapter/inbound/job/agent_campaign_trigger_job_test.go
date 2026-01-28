@@ -141,6 +141,7 @@ func TestAgentCampaignTriggerJob_Execute(t *testing.T) {
 				mocks.logger,
 				mocks.tracingService,
 				mocks.distributedLockMgr,
+				nil, // metricsService
 			)
 
 			ctx := context.Background()
@@ -170,6 +171,7 @@ func TestAgentCampaignTriggerJob_GetName(t *testing.T) {
 		mocks.logger,
 		mocks.tracingService,
 		mocks.distributedLockMgr,
+		nil, // metricsService
 	)
 
 	assert.Equal(t, "agent-campaign-trigger", job.GetName())
@@ -182,6 +184,7 @@ func TestAgentCampaignTriggerJob_GetCron(t *testing.T) {
 		mocks.logger,
 		mocks.tracingService,
 		mocks.distributedLockMgr,
+		nil, // metricsService
 	)
 
 	assert.Equal(t, "*/10 * * * * *", job.GetCron())

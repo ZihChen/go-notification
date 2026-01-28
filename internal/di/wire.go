@@ -158,18 +158,33 @@ func provideMessageUseCase(
 	)
 }
 
+// ProvideMessageCampaignTriggerJob 提供訊息活動觸發器Job
+func ProvideMessageCampaignTriggerJob(
+	messageUseCase inbound.MessageUseCase,
+	logger infrastructure.Logger,
+	metricsService infrastructure.MetricsService,
+) *job.MessageCampaignTriggerJob {
+	return job.NewMessageCampaignTriggerJob(
+		messageUseCase,
+		logger,
+		metricsService,
+	)
+}
+
 // ProvideAgentCampaignTriggerJob 提供代理活動觸發器Job
 func ProvideAgentCampaignTriggerJob(
 	agentUseCase inbound.AgentUseCase,
 	logger infrastructure.Logger,
 	tracingService infrastructure.TracingService,
 	distributedLockMgr infrastructure.DistributedLockManager,
+	metricsService infrastructure.MetricsService,
 ) *job.AgentCampaignTriggerJob {
 	return job.NewAgentCampaignTriggerJob(
 		agentUseCase,
 		logger,
 		tracingService,
 		distributedLockMgr,
+		metricsService,
 	)
 }
 
@@ -351,7 +366,7 @@ func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Log
 	wire.Build(
 		baseSet,
 		kds.NewKDSService,
-		job.NewMessageCampaignTriggerJob,
+		ProvideMessageCampaignTriggerJob,
 		ProvideAgentCampaignTriggerJob,
 		job.NewRegistry,
 		scheduler.NewSchedulerHandler,

@@ -210,7 +210,7 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, ca
 	agentRelationshipRepository := provideAgentRelationshipRepository(db, distributedLockManager)
 	agentService := service.NewAgentService(agentRepository, agentRelationshipRepository, merchantRepository, logger, tracingService)
 	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService, distributedLockManager)
-	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, messageUseCase, agentUseCase, logger, tracingService)
+	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, messageUseCase, agentUseCase, logger, tracingService, metricsService)
 	return workerHandler, nil
 }
 
@@ -254,7 +254,7 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 	agentRelationshipRepository := provideAgentRelationshipRepository(db, distributedLockManager)
 	agentService := service.NewAgentService(agentRepository, agentRelationshipRepository, merchantRepository, logger, tracingService)
 	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService, distributedLockManager)
-	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, messageUseCase, agentUseCase, logger, tracingService)
+	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, messageUseCase, agentUseCase, logger, tracingService, metricsService)
 	failedTaskEventRepository := repository4.NewFailedTaskEventRepository(db)
 	failedTaskEventUseCase := usecase.NewFailedTaskEventUseCase(failedTaskEventRepository, logger)
 	server, err := provideWorkerServer(cfg, logger, failedTaskEventUseCase)
@@ -326,7 +326,7 @@ func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Log
 		return nil, err
 	}
 	messageUseCase := provideMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService, metricsService)
-	messageCampaignTriggerJob := job.NewMessageCampaignTriggerJob(messageUseCase, logger)
+	messageCampaignTriggerJob := ProvideMessageCampaignTriggerJob(messageUseCase, logger, metricsService)
 	agentRepository := repository3.NewAgentRepository(db)
 	agentCampaignRepository := repository3.NewAgentCampaignRepository(db)
 	agentMessageRepository := repository3.NewAgentMessageRepository(db)
@@ -342,7 +342,7 @@ func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Log
 	}
 	eventProducer := service.NewEventService(kdsService, logger)
 	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService, distributedLockManager)
-	agentCampaignTriggerJob := ProvideAgentCampaignTriggerJob(agentUseCase, logger, tracingService, distributedLockManager)
+	agentCampaignTriggerJob := ProvideAgentCampaignTriggerJob(agentUseCase, logger, tracingService, distributedLockManager, metricsService)
 	registry := job.NewRegistry(messageCampaignTriggerJob, agentCampaignTriggerJob)
 	handler := scheduler.NewSchedulerHandler(logger, distributedLockManager, tracingService, registry)
 	return handler, nil
@@ -445,18 +445,33 @@ func provideMessageUseCase(
 	)
 }
 
+// ProvideMessageCampaignTriggerJob 提供訊息活動觸發器Job
+func ProvideMessageCampaignTriggerJob(
+	messageUseCase inbound.MessageUseCase,
+	logger infrastructure.Logger,
+	metricsService infrastructure.MetricsService,
+) *job.MessageCampaignTriggerJob {
+	return job.NewMessageCampaignTriggerJob(
+		messageUseCase,
+		logger,
+		metricsService,
+	)
+}
+
 // ProvideAgentCampaignTriggerJob 提供代理活動觸發器Job
 func ProvideAgentCampaignTriggerJob(
 	agentUseCase inbound.AgentUseCase,
 	logger infrastructure.Logger,
 	tracingService infrastructure.TracingService,
 	distributedLockMgr infrastructure.DistributedLockManager,
+	metricsService infrastructure.MetricsService,
 ) *job.AgentCampaignTriggerJob {
 	return job.NewAgentCampaignTriggerJob(
 		agentUseCase,
 		logger,
 		tracingService,
 		distributedLockMgr,
+		metricsService,
 	)
 }
 
