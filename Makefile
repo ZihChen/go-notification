@@ -19,7 +19,7 @@ endif
 PLATFORM=linux/amd64
 FULL_IMAGE=${ECR_REPO}/${IMAGE_NAME}:latest
 
-.PHONY: all build push rollout deploy login ssh-add info
+.PHONY: all build push rollout deploy login ssh-add info rebuild
 
 all: build
 
@@ -63,3 +63,5 @@ rollout:
 	kubectl rollout status deployment/fatnotificationcat-worker -n $(NAMESPACE) --timeout=300s
 	kubectl rollout status deployment/fatnotificationcat-scheduler -n $(NAMESPACE) --timeout=300s
 
+rebuild:
+	docker-compose up -d --build fat-notification-worker fat-notification-consumer
