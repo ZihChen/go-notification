@@ -15,8 +15,8 @@ env:
   SERVER_IDLE_TIMEOUT: "120s"
 
   # Metrics 設置
-  METRICS_ENABLED: "true"
-  METRICS_OTLP_ENABLED: "true"
+  METRICS_ENABLED: "false"
+  METRICS_OTLP_ENABLED: "false"
   METRICS_OTLP_ENDPOINT: "https://o2.jvdev.cc"
   METRICS_OTLP_PATH: "/api/default/v1/metrics"
   METRICS_OTLP_HEADERS: '{"Authorization":"Basic REDACTED_OO_AUTH_B64","stream-name":"fat-notification-cat"}'
