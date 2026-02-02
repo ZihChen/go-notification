@@ -73,12 +73,13 @@ func createTestJobRegistry(t *testing.T, jobs []jobport.ScheduledJob) *job.Regis
 	mockTracingService := mocks.NewTracingServiceMock(nil)
 	mockDistributedLockMgr := mocks.NewDistributedLockManagerMock(t)
 
-	campaignTriggerJob := job.NewMessageCampaignTriggerJob(mockMessageUseCase, mockLogger)
+	campaignTriggerJob := job.NewMessageCampaignTriggerJob(mockMessageUseCase, mockLogger, nil)
 	agentCampaignTriggerJob := job.NewAgentCampaignTriggerJob(
 		mockAgentUseCase,
 		mockLogger,
 		mockTracingService,
 		mockDistributedLockMgr,
+		nil, // metricsService
 	)
 
 	registry := job.NewRegistry(campaignTriggerJob, agentCampaignTriggerJob)

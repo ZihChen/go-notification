@@ -22,6 +22,7 @@ type AgentCampaignTriggerJob struct {
 	logger             infrastructure.Logger
 	tracingService     infrastructure.TracingService
 	distributedLockMgr infrastructure.DistributedLockManager
+	metricsService     infrastructure.MetricsService
 
 	// 併發控制
 	semaphore *semaphore.Weighted
@@ -32,12 +33,14 @@ func NewAgentCampaignTriggerJob(
 	logger infrastructure.Logger,
 	tracingService infrastructure.TracingService,
 	distributedLockMgr infrastructure.DistributedLockManager,
+	metricsService infrastructure.MetricsService,
 ) *AgentCampaignTriggerJob {
 	return &AgentCampaignTriggerJob{
 		agentUseCase:       agentUseCase,
 		logger:             logger,
 		tracingService:     tracingService,
 		distributedLockMgr: distributedLockMgr,
+		metricsService:     metricsService,
 		semaphore:          semaphore.NewWeighted(10), // 最大併發數 10
 	}
 }
@@ -49,10 +52,18 @@ func (j *AgentCampaignTriggerJob) Execute(ctx context.Context) error {
 	j.logger.InfoLog("Starting agent campaign trigger job execution")
 
 	start := time.Now()
+	success := false
 	defer func() {
 		duration := time.Since(start)
 		j.logger.InfoLog("Agent campaign trigger job completed",
-			j.logger.String("duration", duration.String()))
+			j.logger.String("duration", duration.String()),
+			j.logger.Bool("success", success))
+
+		// 記錄 Job metrics
+		if j.metricsService != nil && j.metricsService.IsEnabled() {
+			j.metricsService.RecordTaskProcessed("agent_campaign_trigger", success)
+			j.metricsService.RecordTaskDuration("agent_campaign_trigger", duration.Seconds())
+		}
 	}()
 
 	// 1. 查詢到期的排程活動
@@ -72,7 +83,11 @@ func (j *AgentCampaignTriggerJob) Execute(ctx context.Context) error {
 		j.logger.Int("campaign_count", len(campaigns)))
 
 	// 2. 併發處理活動（每個活動使用獨立鎖）
-	return j.processCampaignsConcurrently(ctx, campaigns)
+	err = j.processCampaignsConcurrently(ctx, campaigns)
+	if err == nil {
+		success = true
+	}
+	return err
 }
 
 func (j *AgentCampaignTriggerJob) processCampaignsConcurrently(

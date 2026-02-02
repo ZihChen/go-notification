@@ -14,6 +14,16 @@ env:
   SERVER_WRITE_TIMEOUT: "30s"
   SERVER_IDLE_TIMEOUT: "120s"
 
+  # Metrics 設置
+  METRICS_ENABLED: "true"
+  METRICS_OTLP_ENABLED: "true"
+  METRICS_OTLP_ENDPOINT: "https://o2.jvdev.cc"
+  METRICS_OTLP_PATH: "/api/default/v1/metrics"
+  METRICS_OTLP_HEADERS: '{"Authorization":"Basic REDACTED_OO_AUTH_B64","stream-name":"fat-notification-cat"}'
+  METRICS_OTLP_INSECURE: "false"
+  METRICS_OTLP_INTERVAL: "60s"
+  METRICS_OTLP_TIMEOUT: "30s"
+
   # 資料庫設置
   DB_HOST: "REDACTED_DB_HOST"
   DB_PORT: "3306"

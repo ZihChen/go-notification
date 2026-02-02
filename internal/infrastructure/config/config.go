@@ -26,6 +26,7 @@ type Config struct {
 	Push     PushConfig
 	Consumer ConsumerConfig
 	CORS     CORSConfig
+	Metrics  MetricsConfig
 }
 
 // AppConfig 應用程序基本配置
@@ -149,6 +150,23 @@ type CORSConfig struct {
 	ExposedHeaders   []string // 暴露的回應頭
 	AllowCredentials bool     // 是否允許憑證
 	MaxAge           int      // 預檢請求快取時間(小時)
+}
+
+// MetricsConfig Metrics 配置
+type MetricsConfig struct {
+	Enabled bool              `mapstructure:"enabled"`
+	OTLP    OTLPMetricsConfig `mapstructure:"otlp"`
+}
+
+// OTLPMetricsConfig OTLP Metrics 配置
+type OTLPMetricsConfig struct {
+	Enabled  bool              `mapstructure:"enabled"`
+	Endpoint string            `mapstructure:"endpoint"` // e.g., "https://openobserve.example.com"
+	Path     string            `mapstructure:"path"`     // e.g., "/api/default/v1/metrics"
+	Insecure bool              `mapstructure:"insecure"` // 是否使用 HTTP（非 HTTPS）
+	Headers  map[string]string `mapstructure:"headers"`  // 自定義 Headers（如認證）
+	Interval time.Duration     `mapstructure:"interval"` // 導出間隔，預設 60s
+	Timeout  time.Duration     `mapstructure:"timeout"`  // 請求超時，預設 10s
 }
 
 // LoadConfig 加載配置
@@ -284,6 +302,18 @@ func LoadConfig() (*Config, error) {
 			AllowCredentials: getBoolWithDefault("CORS_ALLOW_CREDENTIALS", true),
 			MaxAge:           getIntWithDefault("CORS_MAX_AGE", 6),
 		},
+		Metrics: MetricsConfig{
+			Enabled: getBoolWithDefault("METRICS_ENABLED", false),
+			OTLP: OTLPMetricsConfig{
+				Enabled:  getBoolWithDefault("METRICS_OTLP_ENABLED", false),
+				Endpoint: viper.GetString("METRICS_OTLP_ENDPOINT"),
+				Path:     viper.GetString("METRICS_OTLP_PATH"),
+				Insecure: getBoolWithDefault("METRICS_OTLP_INSECURE", false),
+				Headers:  parseHeadersMap(viper.GetString("METRICS_OTLP_HEADERS")),
+				Interval: getDurationWithDefault("METRICS_OTLP_INTERVAL", 60*time.Second),
+				Timeout:  getDurationWithDefault("METRICS_OTLP_TIMEOUT", 10*time.Second),
+			},
+		},
 	}
 
 	return config, nil
@@ -332,6 +362,22 @@ func parseAPIKeyMap(apiKeysString string) map[string]string {
 	}
 
 	return keyMap
+}
+
+// parseHeadersMap 解析JSON格式的Headers映射字符串
+func parseHeadersMap(headersString string) map[string]string {
+	if headersString == "" {
+		return map[string]string{}
+	}
+
+	headersMap := make(map[string]string)
+	err := json.Unmarshal([]byte(headersString), &headersMap)
+	if err != nil {
+		// 如果JSON解析失败，返回空map
+		return map[string]string{}
+	}
+
+	return headersMap
 }
 
 // Helper functions for default values
@@ -480,6 +526,16 @@ func (c *Config) PrintConfig() {
 	fmt.Printf("  ExposedHeaders: %v\n", c.CORS.ExposedHeaders)
 	fmt.Printf("  AllowCredentials: %t\n", c.CORS.AllowCredentials)
 	fmt.Printf("  MaxAge: %d hours\n", c.CORS.MaxAge)
+
+	fmt.Printf("\n[Metrics]\n")
+	fmt.Printf("  Enabled: %t\n", c.Metrics.Enabled)
+	fmt.Printf("  OTLP.Enabled: %t\n", c.Metrics.OTLP.Enabled)
+	fmt.Printf("  OTLP.Endpoint: %s\n", c.Metrics.OTLP.Endpoint)
+	fmt.Printf("  OTLP.Path: %s\n", c.Metrics.OTLP.Path)
+	fmt.Printf("  OTLP.Insecure: %t\n", c.Metrics.OTLP.Insecure)
+	fmt.Printf("  OTLP.Headers Count: %d\n", len(c.Metrics.OTLP.Headers))
+	fmt.Printf("  OTLP.Interval: %v\n", c.Metrics.OTLP.Interval)
+	fmt.Printf("  OTLP.Timeout: %v\n", c.Metrics.OTLP.Timeout)
 
 	fmt.Println("\n==============================")
 }

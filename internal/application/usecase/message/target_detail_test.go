@@ -41,6 +41,7 @@ func TestGetMessageCampaign_TargetDetail_Player(t *testing.T) {
 		pushService,
 		logger,
 		tracingService,
+		nil, // metricsService - not needed for this test
 	)
 
 	// Test data
@@ -99,6 +100,7 @@ func TestGetMessageCampaign_TargetDetail_Level(t *testing.T) {
 		pushService,
 		logger,
 		tracingService,
+		nil, // metricsService - not needed for this test
 	)
 
 	// Test data
@@ -166,6 +168,7 @@ func TestGetMessageCampaign_TargetDetail_Tag(t *testing.T) {
 		pushService,
 		logger,
 		tracingService,
+		nil, // metricsService - not needed for this test
 	)
 
 	// Test data
@@ -233,6 +236,7 @@ func TestGetMessageCampaign_TargetDetail_NoTargetDetail(t *testing.T) {
 		pushService,
 		logger,
 		tracingService,
+		nil, // metricsService - not needed for this test
 	)
 
 	// Test data

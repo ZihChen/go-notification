@@ -91,6 +91,7 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	routerManager := routermgr.NewRouterManager(
 		svc.webComponents.HTTPHandler,
 		svc.webComponents.AgentHandler,
+		svc.webComponents.Metrics,
 	)
 	routerManager.SetupRoutersWithMiddleware(router, cfg)
 
@@ -208,6 +209,19 @@ func initializeServices(
 
 // cleanup 清理所有服務資源
 func (s *services) cleanup(ctx context.Context, logger infrastructure.Logger) {
+	// 關閉 Metrics 服務
+	if s.webComponents.Metrics != nil {
+		if err := s.webComponents.Metrics.Shutdown(ctx); err != nil {
+			logger.ErrorWithContext(
+				ctx,
+				"Failed to shutdown metrics",
+				logger.Error("err", err),
+			)
+		} else {
+			logger.InfoWithContext(ctx, "Metrics service shutdown successfully")
+		}
+	}
+
 	// 關閉追蹤器
 	if err := s.tracer.Shutdown(ctx); err != nil {
 		logger.ErrorWithContext(

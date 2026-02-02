@@ -15,14 +15,17 @@ var _ jobport.ScheduledJob = (*MessageCampaignTriggerJob)(nil)
 type MessageCampaignTriggerJob struct {
 	messageUseCase inbound.MessageUseCase
 	logger         infrastructure.Logger
+	metricsService infrastructure.MetricsService
 }
 
 func NewMessageCampaignTriggerJob(
 	messageUseCase inbound.MessageUseCase,
-	logger infrastructure.Logger) *MessageCampaignTriggerJob {
+	logger infrastructure.Logger,
+	metricsService infrastructure.MetricsService) *MessageCampaignTriggerJob {
 	return &MessageCampaignTriggerJob{
 		messageUseCase: messageUseCase,
 		logger:         logger,
+		metricsService: metricsService,
 	}
 }
 
@@ -30,10 +33,18 @@ func (j *MessageCampaignTriggerJob) Execute(ctx context.Context) error {
 	j.logger.InfoLog("Starting message campaign trigger job execution")
 
 	start := time.Now()
+	success := false
 	defer func() {
 		duration := time.Since(start)
 		j.logger.InfoLog("Message campaign trigger job completed",
-			j.logger.String("duration", duration.String()))
+			j.logger.String("duration", duration.String()),
+			j.logger.Bool("success", success))
+
+		// 記錄 Job metrics
+		if j.metricsService != nil && j.metricsService.IsEnabled() {
+			j.metricsService.RecordTaskProcessed("message_campaign_trigger", success)
+			j.metricsService.RecordTaskDuration("message_campaign_trigger", duration.Seconds())
+		}
 	}()
 
 	if err := j.messageUseCase.ProcessScheduledCampaigns(ctx); err != nil {
@@ -41,6 +52,7 @@ func (j *MessageCampaignTriggerJob) Execute(ctx context.Context) error {
 		return err
 	}
 
+	success = true
 	return nil
 }
 

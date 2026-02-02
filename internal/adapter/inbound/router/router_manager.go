@@ -5,6 +5,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/api"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/middleware"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/metrics"
 )
 
 // Manager 路由管理器，協調所有路由器
@@ -16,15 +17,17 @@ type Manager struct {
 	swaggerRouter *SwaggerRouter
 	healthRouter  *HealthRouter
 	pprofRouter   *PprofRouter
+	metrics       *metrics.Metrics
 }
 
 // NewRouterManager 創建路由管理器
-func NewRouterManager(handler *api.HTTPHandler, agentHandler *api.AgentHandler) *Manager {
+func NewRouterManager(handler *api.HTTPHandler, agentHandler *api.AgentHandler, m *metrics.Metrics) *Manager {
 	return &Manager{
 		apiRouter:     NewAPIRouter(handler, agentHandler),
 		swaggerRouter: NewSwaggerRouter(),
 		healthRouter:  NewHealthRouter(handler),
 		pprofRouter:   NewPprofRouter(),
+		metrics:       m,
 	}
 }
 
@@ -32,7 +35,8 @@ func NewRouterManager(handler *api.HTTPHandler, agentHandler *api.AgentHandler) 
 func (rm *Manager) SetupRoutersWithMiddleware(router *gin.Engine, cfg *config.Config) {
 	// 加入全局Middleware
 	router.Use(
-		middleware.CorsMiddleware(cfg), // 使用環境感知的 CORS 配置
+		middleware.CorsMiddleware(cfg),        // 使用環境感知的 CORS 配置
+		middleware.MetricsMiddleware(rm.metrics), // Metrics 收集中間件
 		middleware.ErrorHandler(),
 	)
 

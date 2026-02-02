@@ -4,6 +4,8 @@ package di
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/google/wire"
 	"github.com/hibiken/asynq"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/api"
@@ -35,12 +37,12 @@ import (
 	redisCache "github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/kds"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/metrics"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"time"
 )
 
 // WorkerComponents 包含 worker 所需的所有組件
@@ -54,6 +56,7 @@ type WorkerComponents struct {
 type WebComponents struct {
 	HTTPHandler  *api.HTTPHandler
 	AgentHandler *api.AgentHandler
+	Metrics      *metrics.Metrics
 }
 
 var baseSet = wire.NewSet(
@@ -62,6 +65,7 @@ var baseSet = wire.NewSet(
 	provideRedisClient,
 	provideTracingService,
 	provideDistributedLockManager,
+	provideMetricsService,
 
 	// 資料庫
 	provideMerchantRepository,
@@ -91,7 +95,7 @@ var baseSet = wire.NewSet(
 	merchantUseCase.NewMerchantUseCase,
 	providePlayerUseCase,
 	managerUseCase.NewManagerUseCase,
-	messageUseCase.NewMessageUseCase,
+	provideMessageUseCase,
 	levelUseCase.NewLevelUseCase,
 	providePlayerTagUseCase,
 	agentUseCase.NewAgentUseCase,
@@ -113,18 +117,74 @@ func provideTracingService() infrastructure.TracingService {
 	return tracing.NewTracingService()
 }
 
+// provideMetrics 提供 Metrics 服務 (用於 WebComponents)
+func provideMetrics(cfg *config.Config, log infrastructure.Logger) (*metrics.Metrics, error) {
+	return metrics.NewMetrics(cfg, log)
+}
+
+// provideMetricsService 提供 MetricsService 介面 (用於 UseCase 注入)
+func provideMetricsService(cfg *config.Config, log infrastructure.Logger) (infrastructure.MetricsService, error) {
+	return metrics.NewMetrics(cfg, log)
+}
+
+// provideMessageUseCase 提供 MessageUseCase
+func provideMessageUseCase(
+	campaignRepo repository.MessageCampaignRepository,
+	campaignTargetRepo repository.CampaignTargetRepository,
+	merchantRepo repository.MerchantRepository,
+	playerMessageRepo repository.PlayerMessageRepository,
+	playerRepo repository.PlayerRepository,
+	levelRepo repository.LevelRepository,
+	tagRepo repository.TagRepository,
+	pushApiKeyRepo repository.PushKeyRepository,
+	pushService servicePort.PushNotificationService,
+	logger infrastructure.Logger,
+	tracingService infrastructure.TracingService,
+	metricsService infrastructure.MetricsService,
+) inbound.MessageUseCase {
+	return messageUseCase.NewMessageUseCase(
+		campaignRepo,
+		campaignTargetRepo,
+		merchantRepo,
+		playerMessageRepo,
+		playerRepo,
+		levelRepo,
+		tagRepo,
+		pushApiKeyRepo,
+		pushService,
+		logger,
+		tracingService,
+		metricsService,
+	)
+}
+
+// ProvideMessageCampaignTriggerJob 提供訊息活動觸發器Job
+func ProvideMessageCampaignTriggerJob(
+	messageUseCase inbound.MessageUseCase,
+	logger infrastructure.Logger,
+	metricsService infrastructure.MetricsService,
+) *job.MessageCampaignTriggerJob {
+	return job.NewMessageCampaignTriggerJob(
+		messageUseCase,
+		logger,
+		metricsService,
+	)
+}
+
 // ProvideAgentCampaignTriggerJob 提供代理活動觸發器Job
 func ProvideAgentCampaignTriggerJob(
 	agentUseCase inbound.AgentUseCase,
 	logger infrastructure.Logger,
 	tracingService infrastructure.TracingService,
 	distributedLockMgr infrastructure.DistributedLockManager,
+	metricsService infrastructure.MetricsService,
 ) *job.AgentCampaignTriggerJob {
 	return job.NewAgentCampaignTriggerJob(
 		agentUseCase,
 		logger,
 		tracingService,
 		distributedLockMgr,
+		metricsService,
 	)
 }
 
@@ -156,6 +216,7 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 		kds.NewKDSService,
 		api.NewHTTPHandler,
 		api.NewAgentHandler,
+		provideMetrics,
 	)
 	return nil, nil
 }
@@ -272,6 +333,7 @@ func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, cacheM
 	wire.Build(
 		provideTracingService,
 		provideDistributedLockManager,
+		provideMetricsService,
 		queue.NewQueueService,
 		kds.NewKDSService,
 	)
@@ -283,6 +345,7 @@ func InitializeConsumerHandler(cfg *config.Config, logger infrastructure.Logger,
 	wire.Build(
 		provideTracingService,
 		provideDistributedLockManager,
+		provideMetricsService,
 		queue.NewQueueService,
 		kds.NewKDSService,
 		consumer.NewConsumerHandler,
@@ -303,7 +366,7 @@ func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Log
 	wire.Build(
 		baseSet,
 		kds.NewKDSService,
-		job.NewMessageCampaignTriggerJob,
+		ProvideMessageCampaignTriggerJob,
 		ProvideAgentCampaignTriggerJob,
 		job.NewRegistry,
 		scheduler.NewSchedulerHandler,

@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
@@ -26,6 +27,17 @@ func getTaskID(task *asynq.Task) string {
 	return fmt.Sprintf("no-writer-%s", uuid.NewString()) // 保證唯一性
 }
 
+// recordTaskMetrics 記錄任務處理 metrics
+func (h *WorkerHandler) recordTaskMetrics(taskType string, start time.Time, success bool) {
+	if h.metricsService == nil || !h.metricsService.IsEnabled() {
+		return
+	}
+
+	duration := time.Since(start).Seconds()
+	h.metricsService.RecordTaskProcessed(taskType, success)
+	h.metricsService.RecordTaskDuration(taskType, duration)
+}
+
 // WorkerHandler Worker Handler
 type WorkerHandler struct {
 	merchantUseCase  inbound.MerchantUseCase
@@ -37,6 +49,7 @@ type WorkerHandler struct {
 	agentUseCase     inbound.AgentUseCase
 	logger           infrastructure.Logger
 	tracingService   infrastructure.TracingService
+	metricsService   infrastructure.MetricsService
 }
 
 // NewWorkerHandler 創建Worker Handler
@@ -50,6 +63,7 @@ func NewWorkerHandler(
 	agentUseCase inbound.AgentUseCase,
 	logger infrastructure.Logger,
 	tracingService infrastructure.TracingService,
+	metricsService infrastructure.MetricsService,
 ) *WorkerHandler {
 	return &WorkerHandler{
 		merchantUseCase:  merchantUseCase,
@@ -61,6 +75,7 @@ func NewWorkerHandler(
 		agentUseCase:     agentUseCase,
 		logger:           logger,
 		tracingService:   tracingService,
+		metricsService:   metricsService,
 	}
 }
 
@@ -130,6 +145,7 @@ func (h *WorkerHandler) RegisterHandlers(mux *asynq.ServeMux) {
 
 // HandleMerchantSync 處理商戶同步任務
 func (h *WorkerHandler) HandleMerchantSync(ctx context.Context, task *asynq.Task) error {
+	start := time.Now()
 	taskID := getTaskID(task)
 
 	ctx, span := h.tracingService.TraceWorkerProcessing(ctx, queue.TypeMerchantSync, taskID)
@@ -173,11 +189,13 @@ func (h *WorkerHandler) HandleMerchantSync(ctx context.Context, task *asynq.Task
 			h.logger.String("task_id", taskID),
 			h.logger.Error("err", syncErr))
 		h.tracingService.RecordSpanError(span, syncErr)
+		h.recordTaskMetrics(queue.TypeMerchantSync, start, false)
 		return fmt.Errorf("failed to sync merchant: %w", syncErr)
 	}
 
 	// 記錄成功完成任務
 	h.tracingService.TraceEvent(span, "Merchant sync completed successfully")
+	h.recordTaskMetrics(queue.TypeMerchantSync, start, true)
 
 	h.logger.InfoLog("Merchant sync task completed successfully",
 		h.logger.String("task_id", taskID))
@@ -187,6 +205,7 @@ func (h *WorkerHandler) HandleMerchantSync(ctx context.Context, task *asynq.Task
 
 // HandlePlayerSync 處理玩家同步任務
 func (h *WorkerHandler) HandlePlayerSync(ctx context.Context, task *asynq.Task) error {
+	start := time.Now()
 	taskID := getTaskID(task)
 
 	ctx, span := h.tracingService.TraceWorkerProcessing(ctx, queue.TypePlayerSync, taskID)
@@ -243,12 +262,14 @@ func (h *WorkerHandler) HandlePlayerSync(ctx context.Context, task *asynq.Task) 
 
 		// 記錄錯誤
 		h.tracingService.RecordSpanError(span, err)
+		h.recordTaskMetrics(queue.TypePlayerSync, start, false)
 
 		return fmt.Errorf("failed to sync player: %w", err)
 	}
 
 	// 記錄成功完成任務
 	h.tracingService.TraceEvent(span, "Unified player sync completed successfully")
+	h.recordTaskMetrics(queue.TypePlayerSync, start, true)
 
 	h.logger.InfoLog("Unified player sync task completed successfully",
 		h.logger.String("task_id", taskID),
@@ -437,6 +458,7 @@ func (h *WorkerHandler) HandleTagSync(ctx context.Context, task *asynq.Task) err
 
 // HandleAgentSync 處理代理同步任務
 func (h *WorkerHandler) HandleAgentSync(ctx context.Context, task *asynq.Task) error {
+	start := time.Now()
 	taskID := getTaskID(task)
 
 	ctx, span := h.tracingService.TraceWorkerProcessing(ctx, queue.TypeAgentSync, taskID)
@@ -481,6 +503,7 @@ func (h *WorkerHandler) HandleAgentSync(ctx context.Context, task *asynq.Task) e
 	// 執行完整的代理同步邏輯 (資料同步 + 關係建立)
 	if err = h.agentUseCase.SyncAgentDataWithRelationships(ctx, &agentEvent); err != nil {
 		h.tracingService.RecordSpanError(span, err)
+		h.recordTaskMetrics(queue.TypeAgentSync, start, false)
 		h.logger.ErrorWithContext(ctx, "Failed to sync agent data and relationships",
 			h.logger.Error("err", err),
 			h.logger.String("task_id", taskID),
@@ -489,6 +512,7 @@ func (h *WorkerHandler) HandleAgentSync(ctx context.Context, task *asynq.Task) e
 	}
 
 	h.tracingService.TraceEvent(span, "Agent sync completed successfully")
+	h.recordTaskMetrics(queue.TypeAgentSync, start, true)
 	h.logger.InfoWithContext(ctx, "Agent sync task completed successfully",
 		h.logger.String("task_id", taskID),
 		h.logger.String("global_agent_id", agentEvent.GlobalAgentID))

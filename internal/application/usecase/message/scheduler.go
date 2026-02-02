@@ -34,26 +34,44 @@ func (u *MessageUseCase) ProcessScheduledCampaigns(ctx context.Context) error {
 		attribute.Int("scheduled_campaigns", len(campaigns)),
 	)
 
+	successCount := 0
+	errorCount := 0
+
 	for _, campaign := range campaigns {
 		if err = u.SendCampaignToPlayersAsync(ctx, campaign.ID); err != nil {
+			errorCount++
 			u.logger.ErrorLog("Failed to send campaign",
 				u.logger.Int64("campaign_id", int64(campaign.ID)),
 				u.logger.String("title", campaign.Title),
 				u.logger.Error("err", err))
+
+			// 記錄 campaign 錯誤
+			if u.metricsService != nil && u.metricsService.IsEnabled() {
+				merchantIDStr := fmt.Sprintf("%d", campaign.MerchantID)
+				u.metricsService.RecordCampaignError(merchantIDStr, "processing_failed")
+			}
 			continue
 		}
 
+		successCount++
 		u.logger.InfoLog("Successfully processed scheduled campaign",
 			u.logger.Int64("campaign_id", int64(campaign.ID)),
 			u.logger.String("title", campaign.Title))
 	}
 
 	u.tracingService.TraceEvent(span, "Scheduled campaigns processed")
+
+	u.logger.InfoLog("Scheduled campaigns processing completed",
+		u.logger.Int("total_campaigns", len(campaigns)),
+		u.logger.Int("success_count", successCount),
+		u.logger.Int("error_count", errorCount))
+
 	return nil
 }
 
 // SendCampaignToPlayersAsync 高性能異步發送活動給符合條件的玩家
 func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaignID uint64) error {
+	start := time.Now()
 	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.SendCampaignToPlayersAsync")
 	defer u.tracingService.SpanEnd(span)
 
@@ -181,6 +199,15 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 			attribute.Bool("partial_success", finalTotalSent > 0),
 		)
 
+		// 記錄 metrics - Campaign 處理失敗
+		if u.metricsService != nil && u.metricsService.IsEnabled() {
+			duration := time.Since(start).Seconds()
+			merchantIDStr := fmt.Sprintf("%d", campaign.MerchantID)
+
+			u.metricsService.RecordCampaignDuration(merchantIDStr, duration)
+			u.metricsService.RecordCampaignError(merchantIDStr, "timeout_or_error")
+		}
+
 		return fmt.Errorf(
 			"campaign processing failed after sending %d messages: %w",
 			finalTotalSent,
@@ -226,6 +253,24 @@ func (u *MessageUseCase) SendCampaignToPlayersAsync(ctx context.Context, campaig
 	)
 
 	u.tracingService.TraceEvent(span, "Campaign sent to players asynchronously and status updated")
+
+	// 記錄 metrics - Campaign 處理成功
+	if u.metricsService != nil && u.metricsService.IsEnabled() {
+		duration := time.Since(start).Seconds()
+		merchantIDStr := fmt.Sprintf("%d", campaign.MerchantID)
+
+		u.metricsService.RecordCampaignProcessed(merchantIDStr, "scheduled")
+		u.metricsService.RecordCampaignDuration(merchantIDStr, duration)
+
+		// 記錄發送的訊息數量（根據 notification type）
+		notificationType := consts.NotificationType(campaign.NotificationTypes)
+		if notificationType.HasInApp() {
+			u.metricsService.RecordMessageSent(merchantIDStr, "in_app")
+		}
+		if notificationType.HasAppPush() {
+			u.metricsService.RecordMessageSent(merchantIDStr, "push")
+		}
+	}
 
 	u.logger.InfoLog("Campaign sent to players asynchronously",
 		u.logger.Int64("campaign_id", int64(campaignID)),

@@ -46,7 +46,7 @@ func createTestJob(
 	messageUseCase inbound.MessageUseCase,
 	logger infrastructure.Logger,
 ) *MessageCampaignTriggerJob {
-	return NewMessageCampaignTriggerJob(messageUseCase, logger)
+	return NewMessageCampaignTriggerJob(messageUseCase, logger, nil)
 }
 
 // ============================================================================
@@ -58,7 +58,7 @@ func TestNewMessageCampaignTriggerJob_Success(t *testing.T) {
 	messageUseCase, logger := createMockDependencies(t)
 
 	// Execute
-	job := NewMessageCampaignTriggerJob(messageUseCase, logger)
+	job := NewMessageCampaignTriggerJob(messageUseCase, logger, nil)
 
 	// Verify
 	assert.NotNil(t, job)
@@ -71,7 +71,7 @@ func TestNewMessageCampaignTriggerJob_ImplementsInterface(t *testing.T) {
 	messageUseCase, logger := createMockDependencies(t)
 
 	// Execute
-	job := NewMessageCampaignTriggerJob(messageUseCase, logger)
+	job := NewMessageCampaignTriggerJob(messageUseCase, logger, nil)
 
 	// Verify - 檢查是否實現了 ScheduledJob 介面
 	assert.Implements(t, (*jobport.ScheduledJob)(nil), job)

@@ -39,6 +39,7 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/cache/redis"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/config"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/kds"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/metrics"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/queue"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/infrastructure/tracing"
 	redis2 "github.com/redis/go-redis/v9"
@@ -58,7 +59,11 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, cache
 		return nil, err
 	}
 	distributedLockManager := provideDistributedLockManager(cacheManager)
-	kdsService, err := kds.NewKDSService(cfg, queueService, cacheManager, distributedLockManager, logger, tracingService)
+	metricsService, err := provideMetricsService(cfg, logger)
+	if err != nil {
+		return nil, err
+	}
+	kdsService, err := kds.NewKDSService(cfg, queueService, cacheManager, distributedLockManager, logger, tracingService, metricsService)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +81,7 @@ func InitializeWebServer(cfg *config.Config, logger infrastructure.Logger, cache
 	playerMessageRepository := providePlayerMessageRepository(db, distributedLockManager)
 	pushKeyRepository := merchant2.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
-	messageUseCase := message2.NewMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
+	messageUseCase := provideMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService, metricsService)
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger, tracingService)
 	playerTagUseCase := providePlayerTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, distributedLockManager, tracingService, cacheManager)
 	httpHandler := api.NewHTTPHandler(merchantUseCase, playerUseCase, managerUseCase, messageUseCase, playerLevelUseCase, playerTagUseCase, logger)
@@ -97,7 +102,11 @@ func InitializeAgentHandler(cfg *config.Config, logger infrastructure.Logger, ca
 	if err != nil {
 		return nil, err
 	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, cacheManager, distributedLockManager, logger, tracingService)
+	metricsService, err := provideMetricsService(cfg, logger)
+	if err != nil {
+		return nil, err
+	}
+	kdsService, err := kds.NewKDSService(cfg, queueService, cacheManager, distributedLockManager, logger, tracingService, metricsService)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +125,11 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 		return nil, err
 	}
 	distributedLockManager := provideDistributedLockManager(cacheManager)
-	kdsService, err := kds.NewKDSService(cfg, queueService, cacheManager, distributedLockManager, logger, tracingService)
+	metricsService, err := provideMetricsService(cfg, logger)
+	if err != nil {
+		return nil, err
+	}
+	kdsService, err := kds.NewKDSService(cfg, queueService, cacheManager, distributedLockManager, logger, tracingService, metricsService)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +147,7 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 	playerMessageRepository := providePlayerMessageRepository(db, distributedLockManager)
 	pushKeyRepository := merchant2.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
-	messageUseCase := message2.NewMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
+	messageUseCase := provideMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService, metricsService)
 	playerLevelUseCase := level.NewLevelUseCase(levelRepository, merchantRepository, logger, tracingService)
 	playerTagUseCase := providePlayerTagUseCase(tagRepository, merchantRepository, playerRepository, playerTagRepository, logger, distributedLockManager, tracingService, cacheManager)
 	httpHandler := api.NewHTTPHandler(merchantUseCase, playerUseCase, managerUseCase, messageUseCase, playerLevelUseCase, playerTagUseCase, logger)
@@ -145,9 +158,14 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 	agentService := service.NewAgentService(agentRepository, agentRelationshipRepository, merchantRepository, logger, tracingService)
 	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService, distributedLockManager)
 	agentHandler := api.NewAgentHandler(agentUseCase, logger)
+	metrics, err := provideMetrics(cfg, logger)
+	if err != nil {
+		return nil, err
+	}
 	webComponents := &WebComponents{
 		HTTPHandler:  httpHandler,
 		AgentHandler: agentHandler,
+		Metrics:      metrics,
 	}
 	return webComponents, nil
 }
@@ -161,7 +179,11 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, ca
 		return nil, err
 	}
 	distributedLockManager := provideDistributedLockManager(cacheManager)
-	kdsService, err := kds.NewKDSService(cfg, queueService, cacheManager, distributedLockManager, logger, tracingService)
+	metricsService, err := provideMetricsService(cfg, logger)
+	if err != nil {
+		return nil, err
+	}
+	kdsService, err := kds.NewKDSService(cfg, queueService, cacheManager, distributedLockManager, logger, tracingService, metricsService)
 	if err != nil {
 		return nil, err
 	}
@@ -181,14 +203,14 @@ func InitializeWorkerServer(cfg *config.Config, logger infrastructure.Logger, ca
 	playerMessageRepository := providePlayerMessageRepository(db, distributedLockManager)
 	pushKeyRepository := merchant2.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
-	messageUseCase := message2.NewMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
+	messageUseCase := provideMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService, metricsService)
 	agentRepository := repository3.NewAgentRepository(db)
 	agentCampaignRepository := repository3.NewAgentCampaignRepository(db)
 	agentMessageRepository := repository3.NewAgentMessageRepository(db)
 	agentRelationshipRepository := provideAgentRelationshipRepository(db, distributedLockManager)
 	agentService := service.NewAgentService(agentRepository, agentRelationshipRepository, merchantRepository, logger, tracingService)
 	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService, distributedLockManager)
-	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, messageUseCase, agentUseCase, logger, tracingService)
+	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, messageUseCase, agentUseCase, logger, tracingService, metricsService)
 	return workerHandler, nil
 }
 
@@ -201,7 +223,11 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 		return nil, err
 	}
 	distributedLockManager := provideDistributedLockManager(cacheManager)
-	kdsService, err := kds.NewKDSService(cfg, queueService, cacheManager, distributedLockManager, logger, tracingService)
+	metricsService, err := provideMetricsService(cfg, logger)
+	if err != nil {
+		return nil, err
+	}
+	kdsService, err := kds.NewKDSService(cfg, queueService, cacheManager, distributedLockManager, logger, tracingService, metricsService)
 	if err != nil {
 		return nil, err
 	}
@@ -221,14 +247,14 @@ func InitializeWorkerComponents(cfg *config.Config, logger infrastructure.Logger
 	playerMessageRepository := providePlayerMessageRepository(db, distributedLockManager)
 	pushKeyRepository := merchant2.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
-	messageUseCase := message2.NewMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
+	messageUseCase := provideMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService, metricsService)
 	agentRepository := repository3.NewAgentRepository(db)
 	agentCampaignRepository := repository3.NewAgentCampaignRepository(db)
 	agentMessageRepository := repository3.NewAgentMessageRepository(db)
 	agentRelationshipRepository := provideAgentRelationshipRepository(db, distributedLockManager)
 	agentService := service.NewAgentService(agentRepository, agentRelationshipRepository, merchantRepository, logger, tracingService)
 	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService, distributedLockManager)
-	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, messageUseCase, agentUseCase, logger, tracingService)
+	workerHandler := worker.NewWorkerHandler(merchantUseCase, playerUseCase, managerUseCase, playerLevelUseCase, playerTagUseCase, messageUseCase, agentUseCase, logger, tracingService, metricsService)
 	failedTaskEventRepository := repository4.NewFailedTaskEventRepository(db)
 	failedTaskEventUseCase := usecase.NewFailedTaskEventUseCase(failedTaskEventRepository, logger)
 	server, err := provideWorkerServer(cfg, logger, failedTaskEventUseCase)
@@ -251,7 +277,11 @@ func InitializeConsumer(cfg *config.Config, logger infrastructure.Logger, cacheM
 		return nil, err
 	}
 	distributedLockManager := provideDistributedLockManager(cacheManager)
-	kdsService, err := kds.NewKDSService(cfg, queueService, cacheManager, distributedLockManager, logger, tracingService)
+	metricsService, err := provideMetricsService(cfg, logger)
+	if err != nil {
+		return nil, err
+	}
+	kdsService, err := kds.NewKDSService(cfg, queueService, cacheManager, distributedLockManager, logger, tracingService, metricsService)
 	if err != nil {
 		return nil, err
 	}
@@ -266,7 +296,11 @@ func InitializeConsumerHandler(cfg *config.Config, logger infrastructure.Logger,
 		return nil, err
 	}
 	distributedLockManager := provideDistributedLockManager(cacheManager)
-	kdsService, err := kds.NewKDSService(cfg, queueService, cacheManager, distributedLockManager, logger, tracingService)
+	metricsService, err := provideMetricsService(cfg, logger)
+	if err != nil {
+		return nil, err
+	}
+	kdsService, err := kds.NewKDSService(cfg, queueService, cacheManager, distributedLockManager, logger, tracingService, metricsService)
 	if err != nil {
 		return nil, err
 	}
@@ -287,8 +321,12 @@ func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Log
 	tagRepository := repository.NewTagRepository(db)
 	pushKeyRepository := merchant2.NewPushKeyRepository(db)
 	pushNotificationService := providePushNotificationService(cfg, logger)
-	messageUseCase := message2.NewMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService)
-	messageCampaignTriggerJob := job.NewMessageCampaignTriggerJob(messageUseCase, logger)
+	metricsService, err := provideMetricsService(cfg, logger)
+	if err != nil {
+		return nil, err
+	}
+	messageUseCase := provideMessageUseCase(messageCampaignRepository, campaignTargetRepository, merchantRepository, playerMessageRepository, playerRepository, levelRepository, tagRepository, pushKeyRepository, pushNotificationService, logger, tracingService, metricsService)
+	messageCampaignTriggerJob := ProvideMessageCampaignTriggerJob(messageUseCase, logger, metricsService)
 	agentRepository := repository3.NewAgentRepository(db)
 	agentCampaignRepository := repository3.NewAgentCampaignRepository(db)
 	agentMessageRepository := repository3.NewAgentMessageRepository(db)
@@ -298,13 +336,13 @@ func InitializeSchedulerComponents(cfg *config.Config, logger infrastructure.Log
 	if err != nil {
 		return nil, err
 	}
-	kdsService, err := kds.NewKDSService(cfg, queueService, cacheManager, distributedLockManager, logger, tracingService)
+	kdsService, err := kds.NewKDSService(cfg, queueService, cacheManager, distributedLockManager, logger, tracingService, metricsService)
 	if err != nil {
 		return nil, err
 	}
 	eventProducer := service.NewEventService(kdsService, logger)
 	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService, distributedLockManager)
-	agentCampaignTriggerJob := ProvideAgentCampaignTriggerJob(agentUseCase, logger, tracingService, distributedLockManager)
+	agentCampaignTriggerJob := ProvideAgentCampaignTriggerJob(agentUseCase, logger, tracingService, distributedLockManager, metricsService)
 	registry := job.NewRegistry(messageCampaignTriggerJob, agentCampaignTriggerJob)
 	handler := scheduler.NewSchedulerHandler(logger, distributedLockManager, tracingService, registry)
 	return handler, nil
@@ -340,13 +378,15 @@ type WorkerComponents struct {
 type WebComponents struct {
 	HTTPHandler  *api.HTTPHandler
 	AgentHandler *api.AgentHandler
+	Metrics      *metrics.Metrics
 }
 
 var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient,
 	provideTracingService,
 	provideDistributedLockManager,
+	provideMetricsService,
 
-	provideMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, message.NewMessageCampaignRepository, message.NewCampaignTargetRepository, providePlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant2.NewPushKeyRepository, repository3.NewAgentRepository, repository3.NewAgentCampaignRepository, repository3.NewAgentMessageRepository, provideAgentRelationshipRepository, repository4.NewFailedTaskEventRepository, service.NewEventService, service.NewAgentService, providePushNotificationService, merchant.NewMerchantUseCase, providePlayerUseCase, manager.NewManagerUseCase, message2.NewMessageUseCase, level.NewLevelUseCase, providePlayerTagUseCase, agent.NewAgentUseCase, usecase.NewFailedTaskEventUseCase,
+	provideMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, message.NewMessageCampaignRepository, message.NewCampaignTargetRepository, providePlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant2.NewPushKeyRepository, repository3.NewAgentRepository, repository3.NewAgentCampaignRepository, repository3.NewAgentMessageRepository, provideAgentRelationshipRepository, repository4.NewFailedTaskEventRepository, service.NewEventService, service.NewAgentService, providePushNotificationService, merchant.NewMerchantUseCase, providePlayerUseCase, manager.NewManagerUseCase, provideMessageUseCase, level.NewLevelUseCase, providePlayerTagUseCase, agent.NewAgentUseCase, usecase.NewFailedTaskEventUseCase,
 )
 
 // 事件生產者提供者 (保留作為別名)
@@ -364,18 +404,74 @@ func provideTracingService() infrastructure.TracingService {
 	return tracing.NewTracingService()
 }
 
+// provideMetrics 提供 Metrics 服務 (用於 WebComponents)
+func provideMetrics(cfg *config.Config, log infrastructure.Logger) (*metrics.Metrics, error) {
+	return metrics.NewMetrics(cfg, log)
+}
+
+// provideMetricsService 提供 MetricsService 介面 (用於 UseCase 注入)
+func provideMetricsService(cfg *config.Config, log infrastructure.Logger) (infrastructure.MetricsService, error) {
+	return metrics.NewMetrics(cfg, log)
+}
+
+// provideMessageUseCase 提供 MessageUseCase
+func provideMessageUseCase(
+	campaignRepo repository5.MessageCampaignRepository,
+	campaignTargetRepo repository5.CampaignTargetRepository,
+	merchantRepo repository5.MerchantRepository,
+	playerMessageRepo repository5.PlayerMessageRepository,
+	playerRepo repository5.PlayerRepository,
+	levelRepo repository5.LevelRepository,
+	tagRepo repository5.TagRepository,
+	pushApiKeyRepo repository5.PushKeyRepository,
+	pushService service2.PushNotificationService,
+	logger infrastructure.Logger,
+	tracingService infrastructure.TracingService,
+	metricsService infrastructure.MetricsService,
+) inbound.MessageUseCase {
+	return message2.NewMessageUseCase(
+		campaignRepo,
+		campaignTargetRepo,
+		merchantRepo,
+		playerMessageRepo,
+		playerRepo,
+		levelRepo,
+		tagRepo,
+		pushApiKeyRepo,
+		pushService,
+		logger,
+		tracingService,
+		metricsService,
+	)
+}
+
+// ProvideMessageCampaignTriggerJob 提供訊息活動觸發器Job
+func ProvideMessageCampaignTriggerJob(
+	messageUseCase inbound.MessageUseCase,
+	logger infrastructure.Logger,
+	metricsService infrastructure.MetricsService,
+) *job.MessageCampaignTriggerJob {
+	return job.NewMessageCampaignTriggerJob(
+		messageUseCase,
+		logger,
+		metricsService,
+	)
+}
+
 // ProvideAgentCampaignTriggerJob 提供代理活動觸發器Job
 func ProvideAgentCampaignTriggerJob(
 	agentUseCase inbound.AgentUseCase,
 	logger infrastructure.Logger,
 	tracingService infrastructure.TracingService,
 	distributedLockMgr infrastructure.DistributedLockManager,
+	metricsService infrastructure.MetricsService,
 ) *job.AgentCampaignTriggerJob {
 	return job.NewAgentCampaignTriggerJob(
 		agentUseCase,
 		logger,
 		tracingService,
 		distributedLockMgr,
+		metricsService,
 	)
 }
 

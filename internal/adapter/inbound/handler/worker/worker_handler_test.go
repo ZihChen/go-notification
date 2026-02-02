@@ -91,6 +91,7 @@ func createTestHandler(
 		agentUseCase,
 		logger,
 		tracingService,
+		nil, // metricsService
 	)
 }
 
@@ -309,6 +310,7 @@ func TestNewWorkerHandler_Success(t *testing.T) {
 		agentUseCase,
 		logger,
 		tracingService,
+		nil, // metricsService
 	)
 
 	// Verify
