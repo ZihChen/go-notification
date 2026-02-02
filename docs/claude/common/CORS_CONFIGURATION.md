@@ -175,7 +175,7 @@ CORS_ENABLED=true
 
 - [環境配置指南](./ENVIRONMENT_SETUP.md)
 - [API 認證設定](./API_AUTHENTICATION.md)
-- [安全加固報告](../audit/audit-report-v1.8/SECURITY_FIXES_SUMMARY.md)
+- [安全加固報告](../archive/2025-09/audit-report-v1.8/SECURITY_FIXES_SUMMARY.md)
 
 ## 🔄 更新歷史
 
