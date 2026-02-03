@@ -37,16 +37,25 @@ const (
 
 // Redis Keys 常數
 const (
-	RedisKeySSEPlayerRoutes  = "sse:player_routes"  // Hash: 玩家路由表 (playerID → podID)
-	RedisKeySSEOnlineCount   = "sse:online_count"   // String: 線上玩家計數器
-	RedisKeySSEPodStatsPrefix = "sse:pod_stats:"     // Hash: Pod 統計資訊前綴
-	RedisKeySSEOfflinePrefix = "sse:offline:"       // Stream: 離線訊息前綴 (sse:offline:{playerID})
+	RedisKeySSEPlayerRoutes   = "sse:player_routes" // Hash: 玩家路由表 (playerID → podID)
+	RedisKeySSEOnlineCount    = "sse:online_count"  // String: 線上玩家計數器
+	RedisKeySSEPodStatsPrefix = "sse:pod_stats:"    // Hash: Pod 統計資訊前綴
+	RedisKeySSEOfflinePrefix  = "sse:offline:"      // Stream: 離線訊息前綴 (sse:offline:{playerID})
+
+	// 簡化別名（向後兼容）
+	SSEPlayerRoutesKey   = RedisKeySSEPlayerRoutes   // 玩家路由表 Key
+	SSEOnlineCountKey    = RedisKeySSEOnlineCount    // 線上計數 Key
+	SSEOfflineMessagesKey = "sse:offline:%s"         // 離線訊息 Key 格式化字串
 )
 
 // Redis Pub/Sub Channel 常數
 const (
-	RedisChannelSSEBroadcast = "sse:broadcast"  // Pub/Sub: 廣播頻道 (所有 Pod 訂閱)
-	RedisChannelSSEPodPrefix = "sse:pod:"       // Pub/Sub: Pod 專屬頻道前綴 (sse:pod:{podID})
+	RedisChannelSSEBroadcast = "sse:broadcast" // Pub/Sub: 廣播頻道 (所有 Pod 訂閱)
+	RedisChannelSSEPodPrefix = "sse:pod:"      // Pub/Sub: Pod 專屬頻道前綴 (sse:pod:{podID})
+
+	// 簡化別名（向後兼容）
+	SSEBroadcastChannel = RedisChannelSSEBroadcast // 廣播頻道
+	SSEPodChannel       = "sse:pod:%s"              // Pod 頻道格式化字串
 )
 
 // SSE 事件類型常數
