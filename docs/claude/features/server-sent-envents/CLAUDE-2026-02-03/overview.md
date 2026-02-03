@@ -1,8 +1,9 @@
 # SSE 通知協定實作任務規劃 v1.0 - 總覽
 
 **建立日期**: 2026-02-02
+**最後更新**: 2026-02-03
 **規格文件**: [CLAUDE-2026-02-02-v1.0.md](../CLAUDE-2026-02-02-v1.0.md)
-**狀態**: 📋 規劃階段
+**狀態**: 🚧 開發中（Phase 1 完成 ✅）
 
 ---
 
@@ -320,7 +321,8 @@ func (m *sseManager) RegisterConnection(ctx context.Context, playerID string, wr
 
 **專案名稱**: SSE 實時推播通知系統
 **架構設計**: 獨立 SSE Service Pod + Redis Pub/Sub
-**總時程**: 15 天
+**總時程**: 12 天（簡化版）
+**當前進度**: Phase 1 已完成 ✅
 **目標**: 生產級可水平擴展的 SSE 推播服務
 
 ---
@@ -329,11 +331,11 @@ func (m *sseManager) RegisterConnection(ctx context.Context, playerID string, wr
 
 | Phase | 任務 | 時程 | 狀態 | 實際完成 | 備註 |
 |-------|------|------|------|----------|------|
-| **Phase 1** | **Domain Layer** | Day 1-2 | 📋 待開始 | - | Domain Entities & Ports |
-| Phase 1.1 | Domain Entities 建立 | Day 1 | 📋 待開始 | - | SSENotification, Stats |
-| Phase 1.2 | Domain Constants 定義 | Day 1 | 📋 待開始 | - | 常數與限制 |
-| Phase 1.3 | Inbound Ports 定義 | Day 2 | 📋 待開始 | - | UseCase 介面 |
-| Phase 1.4 | Outbound Ports 定義 | Day 2 | 📋 待開始 | - | Repository & Service 介面 |
+| **Phase 1** | **Domain Layer** | Day 1-2 | ✅ **已完成** | 2026-02-03 | Domain Entities & Ports |
+| Phase 1.1 | Domain Entities 建立 | Day 1 | ✅ 已完成 | 2026-02-03 | SSENotification (簡化版) |
+| Phase 1.2 | Domain Constants 定義 | Day 1 | ✅ 已完成 | 2026-02-03 | 含 Redis Pub/Sub 常數 |
+| Phase 1.3 | Inbound Ports 定義 | Day 2 | ✅ 已完成 | 2026-02-03 | 3 個 UseCase 方法 |
+| Phase 1.4 | Outbound Ports 定義 | Day 2 | ✅ 已完成 | 2026-02-03 | SSEManager 12 個方法 |
 | **Phase 2** | **Application Layer** | Day 3 | 📋 待開始 | - | UseCase 實作 |
 | Phase 2.1 | DTO 建立 | Day 3 | 📋 待開始 | - | Request/Response DTOs |
 | Phase 2.2 | UseCase 實作 | Day 3 | 📋 待開始 | - | 7 個核心 UseCase |
@@ -416,6 +418,7 @@ func (m *sseManager) RegisterConnection(ctx context.Context, playerID string, wr
 
 | 日期 | Phase | 完成任務 | 遇到問題 | 明日計劃 |
 |------|-------|---------|---------|---------|
+| 2026-02-03 | Phase 1 | ✅ Domain Layer 完成<br>- Entity: SSENotification<br>- Constants: 類型、優先級、Redis Keys<br>- Inbound Ports: UseCase 介面<br>- Outbound Ports: SSEManager 介面<br>- 基礎 DTO 定義 | 無 | Phase 2: Application Layer 實作 |
 | Day 1 | - | - | - | 開始 Phase 1 Domain Layer |
 | Day 2 | - | - | - | - |
 | ... | - | - | - | - |
