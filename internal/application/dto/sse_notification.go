@@ -2,7 +2,7 @@ package dto
 
 // ==================== 後端推播 API DTO ====================
 
-// BroadcastRequest 廣播推送請求 (Phase 2 將完整實作)
+// BroadcastRequest 廣播推送請求
 type BroadcastRequest struct {
 	Title     string  `json:"title" binding:"required,max=100"`
 	Message   string  `json:"message" binding:"required,max=500"`
