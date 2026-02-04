@@ -1,6 +1,8 @@
 # Phase 4: Infrastructure Layer 實作
 
-**時程**: 第7天  
+**時程**: 第7天
+**狀態**: 🚧 **進行中** (2026-02-04) - KDS 整合與 Wire 配置已完成
+**Commit**: `f72cbe8` - feat(sse): integrate KDS event audit logging for SSE notifications
 **返回**: [總覽文檔](overview.md) | [Phase 3](phase-3.md) | [Phase 5](phase-5.md)
 
 ---
@@ -38,17 +40,54 @@ sse:broadcast         (Channel) - 廣播頻道
 sse:pod:{podID}       (Channel) - Pod 專屬頻道
 ```
 
-### 任務 4.3: KDS 審計日誌整合
-- [ ] 確認現有 EventService 可用
-- [ ] 定義 SSE 相關事件類型:
-  - `notification.broadcast` - 廣播推送事件
-  - `notification.send` - 個別推送事件
-  - `notification.player_connect` - 玩家連接事件
-  - `notification.player_disconnect` - 玩家斷線事件
-- [ ] 測試事件發送與接收
+### 任務 4.3: KDS 審計日誌整合 ✅
+- [x] 確認現有 EventService 可用
+- [x] 定義 SSE 相關事件類型（新增至 `internal/domain/event/event.go`）:
+  - `EventTypeSSENotificationBroadcast` - 廣播推送事件
+  - `EventTypeSSENotificationSend` - 個別推送事件
+  - `EventTypeSSEPlayerConnect` - 玩家連接事件
+  - `EventTypeSSEPlayerDisconnect` - 玩家斷線事件
+- [x] UseCase 整合事件發送邏輯
+- [x] 新增 EventService Port 方法
+- [x] 單元測試更新（含 EventService Mock）
 
-### 任務 4.4: Wire 依賴注入 ⭐ **含 Pod ID 注入**
-- [ ] 更新 `internal/di/wire.go`
+**完成日期**: 2026-02-04
+**變更文件**:
+- `internal/domain/event/event.go` (新增 57 行)
+- `internal/domain/ports/outbound/service/event.go` (新增 3 個方法)
+- `internal/application/service/event_service.go` (新增 10 行)
+- `internal/application/usecase/sse_notification/sse_notification_usecase.go` (整合事件發送)
+- `internal/application/usecase/sse_notification/sse_notification_usecase_test.go` (測試更新)
+- `internal/di/wire.go` (依賴注入更新)
+- `internal/di/wire_gen.go` (自動生成)
+- `internal/infrastructure/config/config.go` (配置支援)
+- `test/mocks/service_mocks.go` (Mock 更新)
+
+### 任務 4.4: Wire 依賴注入 ⭐ **含 EventService 注入** ✅
+- [x] 更新 `internal/di/wire.go`
+- [x] 新增 SSE Notification UseCase Provider（含 EventService 注入）
+- [x] 執行 `wire ./internal/di` 生成 wire_gen.go
+- [x] 驗證依賴注入編譯通過
+
+**完成日期**: 2026-02-04
+
+**已實作 Provider**:
+```go
+// SSE Notification UseCase Provider (含 EventService)
+func provideSSENotificationUseCase(
+    sseManager service.SSEManager,
+    eventService service.EventService,  // ⭐ EventService 注入
+    logger infrastructure.Logger,
+) inbound.SSENotificationUseCase {
+    return sse_notification.NewSSENotificationUseCase(sseManager, eventService, logger)
+}
+```
+
+**待實作 Provider** (Phase 5):
+- [ ] Pod ID Provider（從環境變數讀取）
+- [ ] SSE Manager Provider（注入 Pod ID）
+- [ ] PubSub Listener Provider
+- [ ] SSE Notification Handler Provider
 
 **新增 Provider 函數**:
 ```go
@@ -124,19 +163,33 @@ REDIS_DB=0
 
 ## ✅ 驗收標準
 
-- [ ] Redis 連接正常，支援 Streams 和 Pub/Sub
-- [ ] KDS 審計日誌整合完成
-- [ ] Wire 依賴注入配置正確，Pod ID 注入成功
-- [ ] 環境變數配置完整
-- [ ] `wire_gen.go` 編譯通過
+- [ ] Redis 連接正常，支援 Streams 和 Pub/Sub（待測試）
+- [x] KDS 審計日誌整合完成 ✅
+- [x] Wire 依賴注入配置正確（EventService 注入完成）✅
+- [ ] Pod ID 注入實作（待 Phase 5 整合）
+- [ ] 環境變數配置完整（待 Phase 5 整合）
+- [x] `wire_gen.go` 編譯通過 ✅
+
+**Phase 4 完成度**: 50% (2/4 核心任務完成)
 
 ---
 
 ## 🔗 下一步
 
-完成 Phase 4 後，前往 [Phase 5: Router 註冊與整合](phase-5.md)
+**當前狀態**: Phase 4 部分完成 (KDS 整合 + Wire EventService 注入)
+
+**待完成任務**:
+1. ✅ 任務 4.3: KDS 審計日誌整合（已完成）
+2. 📋 任務 4.2: Redis 配置與測試（待開始）
+3. ✅ 任務 4.4: Wire 依賴注入（EventService 部分已完成，Pod ID 注入待 Phase 5）
+
+**推薦路徑**:
+- **選項 A**: 完成 Phase 4.2 Redis 配置與測試，驗證 Pub/Sub 和 Streams 功能
+- **選項 B**: 進入 Phase 5 Router 註冊與整合，完成 Pod ID 注入與路由掛載
+
+**建議**: 優先進入 Phase 5，在整合時一併驗證 Redis 功能
 
 ---
 
-**維護者**: Development Team  
-**最後更新**: 2026-02-02
+**維護者**: Development Team
+**最後更新**: 2026-02-04

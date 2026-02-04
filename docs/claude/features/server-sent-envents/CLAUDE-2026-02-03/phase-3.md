@@ -2,7 +2,9 @@
 
 **時程**: 第4-6天
 **狀態**: ✅ **完成** (2026-02-03) - 完整實作包含 Redis Pub/Sub 整合
-**Commit**: 待提交 - feat(sse): complete Phase 3 Adapter Layer with Redis Pub/Sub integration
+**Commits**:
+- `1ac1d35` - feat(sse): complete Phase 3 Adapter Layer with Redis Pub/Sub integration
+- `f72cbe8` - feat(sse): integrate KDS event audit logging for SSE notifications (Phase 4.3)
 **返回**: [總覽文檔](overview.md) | [Phase 2](phase-2.md) | [Phase 4](phase-4.md)
 
 ---
