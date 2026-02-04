@@ -7,21 +7,18 @@ import (
 
 // APIRouter 處理API路由註冊
 type APIRouter struct {
-	handler           *api.HTTPHandler
-	agentHandler      *api.AgentHandler
-	sseHandler        *api.SSENotificationHandler
+	handler      *api.HTTPHandler
+	agentHandler *api.AgentHandler
 }
 
 // NewAPIRouter 創建API路由器
 func NewAPIRouter(
 	handler *api.HTTPHandler,
 	agentHandler *api.AgentHandler,
-	sseHandler *api.SSENotificationHandler,
 ) *APIRouter {
 	return &APIRouter{
 		handler:      handler,
 		agentHandler: agentHandler,
-		sseHandler:   sseHandler,
 	}
 }
 
@@ -29,8 +26,6 @@ func NewAPIRouter(
 func (r *APIRouter) RegisterRoutes(
 	router *gin.Engine,
 	authMiddleware gin.HandlerFunc,
-	apiKeyMiddleware gin.HandlerFunc,
-	jwtMiddleware gin.HandlerFunc,
 ) {
 	// API 路由群組 (需要認證)
 	api := router.Group("/api/v1")
@@ -111,26 +106,5 @@ func (r *APIRouter) RegisterRoutes(
 		agentCampaigns.GET("/:id", r.agentHandler.GetAgentCampaign)
 		agentCampaigns.PUT("/:id", r.agentHandler.UpdateAgentCampaign)
 		agentCampaigns.DELETE("/:id", r.agentHandler.DeleteAgentCampaign) // 單個刪除（使用路徑參數）
-	}
-
-	// ========== SSE 實時推播路由 ==========
-
-	// 管理端 - SSE 推播 API (使用 API Key 認證)
-	if r.sseHandler != nil && apiKeyMiddleware != nil {
-		adminSSE := router.Group("/api/v1/admin/notifications")
-		adminSSE.Use(apiKeyMiddleware)
-		{
-			adminSSE.POST("/broadcast", r.sseHandler.BroadcastNotification)
-			adminSSE.POST("/send", r.sseHandler.SendNotification)
-		}
-	}
-
-	// 玩家端 - SSE 串流 API (使用 JWT 認證)
-	if r.sseHandler != nil && jwtMiddleware != nil {
-		playerSSE := router.Group("/api/v1/notifications")
-		playerSSE.Use(jwtMiddleware)
-		{
-			playerSSE.GET("/stream", r.sseHandler.StreamNotifications)
-		}
 	}
 }

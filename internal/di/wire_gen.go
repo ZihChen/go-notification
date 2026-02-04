@@ -159,10 +159,6 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 	agentService := service.NewAgentService(agentRepository, agentRelationshipRepository, merchantRepository, logger, tracingService)
 	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService, distributedLockManager)
 	agentHandler := api.NewAgentHandler(agentUseCase, logger)
-	string2 := providePodID(cfg)
-	sseManager := provideSSEManager(string2, cacheManager, logger)
-	sseNotificationUseCase := provideSSENotificationUseCase(sseManager, eventProducer, logger)
-	sseNotificationHandler := provideSSENotificationHandler(sseNotificationUseCase, logger)
 	metrics, err := provideMetrics(cfg, logger)
 	if err != nil {
 		return nil, err
@@ -170,10 +166,41 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 	webComponents := &WebComponents{
 		HTTPHandler:  httpHandler,
 		AgentHandler: agentHandler,
-		SSEHandler:   sseNotificationHandler,
 		Metrics:      metrics,
 	}
 	return webComponents, nil
+}
+
+// InitializeSSEComponents 初始化 SSE 服務的所有組件
+func InitializeSSEComponents(cfg *config.Config, logger infrastructure.Logger, cacheManager infrastructure.CacheManager, db *gorm.DB) (*SSEComponents, error) {
+	string2 := providePodID(cfg)
+	sseManager := provideSSEManager(string2, cacheManager, logger)
+	tracingService := provideTracingService()
+	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
+	if err != nil {
+		return nil, err
+	}
+	distributedLockManager := provideDistributedLockManager(cacheManager)
+	metricsService, err := provideMetricsService(cfg, logger)
+	if err != nil {
+		return nil, err
+	}
+	kdsService, err := kds.NewKDSService(cfg, queueService, cacheManager, distributedLockManager, logger, tracingService, metricsService)
+	if err != nil {
+		return nil, err
+	}
+	eventProducer := service.NewEventService(kdsService, logger)
+	sseNotificationUseCase := provideSSENotificationUseCase(sseManager, eventProducer, logger)
+	sseNotificationHandler := provideSSENotificationHandler(sseNotificationUseCase, logger)
+	metrics, err := provideMetrics(cfg, logger)
+	if err != nil {
+		return nil, err
+	}
+	sseComponents := &SSEComponents{
+		SSEHandler: sseNotificationHandler,
+		Metrics:    metrics,
+	}
+	return sseComponents, nil
 }
 
 // InitializeWorkerServer 初始化 Worker 服務的處理器
@@ -384,8 +411,13 @@ type WorkerComponents struct {
 type WebComponents struct {
 	HTTPHandler  *api.HTTPHandler
 	AgentHandler *api.AgentHandler
-	SSEHandler   *api.SSENotificationHandler
 	Metrics      *metrics.Metrics
+}
+
+// SSEComponents 包含 SSE 服務所需的所有組件
+type SSEComponents struct {
+	SSEHandler *api.SSENotificationHandler
+	Metrics    *metrics.Metrics
 }
 
 var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient,

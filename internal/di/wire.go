@@ -57,8 +57,13 @@ type WorkerComponents struct {
 type WebComponents struct {
 	HTTPHandler  *api.HTTPHandler
 	AgentHandler *api.AgentHandler
-	SSEHandler   *api.SSENotificationHandler
 	Metrics      *metrics.Metrics
+}
+
+// SSEComponents 包含 SSE 服務所需的所有組件
+type SSEComponents struct {
+	SSEHandler *api.SSENotificationHandler
+	Metrics    *metrics.Metrics
 }
 
 var baseSet = wire.NewSet(
@@ -223,6 +228,26 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 		kds.NewKDSService,
 		api.NewHTTPHandler,
 		api.NewAgentHandler,
+		provideMetrics,
+	)
+	return nil, nil
+}
+
+// InitializeSSEComponents 初始化 SSE 服務的所有組件
+func InitializeSSEComponents(cfg *config.Config, logger infrastructure.Logger, cacheManager infrastructure.CacheManager, db *gorm.DB) (*SSEComponents, error) {
+	wire.Build(
+		wire.Struct(new(SSEComponents), "*"),
+		// SSE 基礎依賴
+		provideTracingService,
+		provideDistributedLockManager,
+		provideMetricsService,
+		kds.NewKDSService,
+		queue.NewQueueService,
+		service.NewEventService,
+		// SSE 核心組件
+		providePodID,
+		provideSSEManager,
+		provideSSENotificationUseCase,
 		provideSSENotificationHandler,
 		provideMetrics,
 	)

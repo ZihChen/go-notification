@@ -6,6 +6,7 @@ import (
 	_ "github.com/jvdiamondtech/ms-notification-cat/cmd/consumer"
 	_ "github.com/jvdiamondtech/ms-notification-cat/cmd/migrate"
 	_ "github.com/jvdiamondtech/ms-notification-cat/cmd/scheduler"
+	_ "github.com/jvdiamondtech/ms-notification-cat/cmd/sse"
 	_ "github.com/jvdiamondtech/ms-notification-cat/cmd/web"
 	_ "github.com/jvdiamondtech/ms-notification-cat/cmd/worker"
 	_ "github.com/jvdiamondtech/ms-notification-cat/internal/adapter/inbound/handler/api"

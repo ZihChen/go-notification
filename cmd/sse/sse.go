@@ -1,4 +1,4 @@
-package web
+package sse
 
 import (
 	"context"
@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	defaultPort     = 8080
+	defaultPort     = 8081 // SSE Service 預設使用不同端口
 	shutdownTimeout = 5 * time.Second
 )
 
@@ -36,29 +36,29 @@ type services struct {
 	tracer        *tracing.Tracer
 	db            *mysql.Database
 	redisManager  *redis.Manager
-	webComponents *di.WebComponents
+	sseComponents *di.SSEComponents
 }
 
-// Command 創建並返回web子命令
+// Command 創建並返回 sse 子命令
 func Command() *cobra.Command {
-	webCmd := &cobra.Command{
-		Use:   "web",
-		Short: "Start the web server",
-		Long:  `Start the web server to handle HTTP API requests`,
-		Run:   runWebServer,
+	sseCmd := &cobra.Command{
+		Use:   "sse",
+		Short: "Start the SSE notification server",
+		Long:  `Start the SSE (Server-Sent Events) notification server for real-time push notifications`,
+		Run:   runSSEServer,
 	}
 
-	webCmd.Flags().IntVarP(&port, "port", "p", 0, "server port (default is from config)")
+	sseCmd.Flags().IntVarP(&port, "port", "p", 0, "server port (default is from config or 8081)")
 
-	return webCmd
+	return sseCmd
 }
 
 func init() {
 	cmd.AddCommand(Command())
 }
 
-// runWebServer 啟動Web服務
-func runWebServer(cobraCmd *cobra.Command, args []string) {
+// runSSEServer 啟動 SSE 服務
+func runSSEServer(cobraCmd *cobra.Command, args []string) {
 	cfg := cmd.GetConfig()
 	logger := cmd.GetLogger()
 
@@ -70,7 +70,7 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	if err != nil {
 		logger.FatalWithContext(
 			rootCtx,
-			"Failed to initialize services",
+			"Failed to initialize SSE services",
 			logger.Error("err", err),
 		)
 	}
@@ -87,21 +87,20 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	// 創建 Gin 路由
 	router := gin.Default()
 
-	// 使用路由管理器配置所有中間件並註冊路由
-	routerManager := routermgr.NewRouterManager(
-		svc.webComponents.HTTPHandler,
-		svc.webComponents.AgentHandler,
-		svc.webComponents.Metrics,
+	// 使用 SSE Router 管理器配置路由
+	sseRouterManager := routermgr.NewSSERouterManager(
+		svc.sseComponents.SSEHandler,
+		svc.sseComponents.Metrics,
 	)
-	routerManager.SetupRoutersWithMiddleware(router, cfg)
+	sseRouterManager.SetupRoutersWithMiddleware(router, cfg)
 
-	// 創建HTTP服務器
+	// 創建 HTTP 服務器（針對長連接優化）
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", serverPort),
 		Handler:      router,
-		ReadTimeout:  cfg.Server.ReadTimeout,  // 讀取請求的超時時間
-		WriteTimeout: cfg.Server.WriteTimeout, // 寫入響應的超時時間
-		IdleTimeout:  cfg.Server.IdleTimeout,  // 空閒連接的超時時間
+		ReadTimeout:  5 * time.Minute,  // SSE 長連接需要較長的讀取超時
+		WriteTimeout: 5 * time.Minute,  // SSE 長連接需要較長的寫入超時
+		IdleTimeout:  10 * time.Minute, // 空閒連接超時
 	}
 	server.SetKeepAlivesEnabled(true)
 
@@ -109,14 +108,15 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	go func() {
 		logger.InfoWithContext(
 			rootCtx,
-			"Starting web server",
+			"Starting SSE notification server",
 			logger.Int("port", serverPort),
+			logger.String("pod_id", cfg.SSE.PodID),
 		)
 		if serverErr := server.ListenAndServe(); serverErr != nil &&
 			!errors.Is(serverErr, http.ErrServerClosed) {
 			logger.FatalWithContext(
 				rootCtx,
-				"Failed to start server",
+				"Failed to start SSE server",
 				logger.Error("err", serverErr),
 			)
 		}
@@ -127,33 +127,33 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	logger.InfoWithContext(rootCtx, "Shutting down server...")
+	logger.InfoWithContext(rootCtx, "Shutting down SSE server...")
 
 	// 創建帶超時的上下文用於優雅關閉
 	shutdownCtx, cancel := context.WithTimeout(rootCtx, shutdownTimeout)
 	defer cancel()
 
-	// 關閉HTTP服務器，停止接受新請求，並等待現有請求完成
+	// 關閉 HTTP 服務器
 	if err = server.Shutdown(shutdownCtx); err != nil {
 		logger.ErrorWithContext(
 			rootCtx,
-			"Failed to gracefully shutdown server",
+			"Failed to gracefully shutdown SSE server",
 			logger.Error("err", err),
 		)
 	} else {
-		logger.InfoWithContext(rootCtx, "HTTP server shutdown gracefully")
+		logger.InfoWithContext(rootCtx, "SSE server shutdown gracefully")
 	}
 
 	// 額外檢查是否還有活動連接
 	select {
 	case <-shutdownCtx.Done():
 		if errors.Is(shutdownCtx.Err(), context.DeadlineExceeded) {
-			logger.WarnWithContext(rootCtx, "Server shutdown timeout exceeded, forcing exit")
+			logger.WarnWithContext(rootCtx, "SSE server shutdown timeout exceeded, forcing exit")
 		}
 	default:
-		logger.InfoWithContext(rootCtx, "All connections closed gracefully")
+		logger.InfoWithContext(rootCtx, "All SSE connections closed gracefully")
 	}
-	logger.InfoWithContext(rootCtx, "Server exited")
+	logger.InfoWithContext(rootCtx, "SSE server exited")
 }
 
 // initializeServices 初始化所有必要的服務
@@ -167,9 +167,9 @@ func initializeServices(
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize tracer: %w", err)
 	}
-	logger.InfoWithContext(ctx, "Successfully initialized web tracer!")
+	logger.InfoWithContext(ctx, "Successfully initialized SSE tracer!")
 
-	// 初始化DB連線
+	// 初始化 DB 連線（SSE 可能需要查詢玩家資料）
 	db, err := mysql.NewDatabase(cfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize database: %w", err)
@@ -180,38 +180,38 @@ func initializeServices(
 	}
 	logger.InfoWithContext(ctx, "Successfully initialized database connection!")
 
-	// 初始化Redis連線
+	// 初始化 Redis 連線（SSE 核心依賴）
 	redisManager := redis.NewRedisManager(cfg)
 	if err = redisManager.Connect(ctx); err != nil {
 		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
 	}
 	logger.InfoWithContext(ctx, "Successfully initialized Redis connection!")
 
-	// 使用Wire初始化Web組件
-	webComponents, err := di.InitializeWebComponents(
+	// 使用 Wire 初始化 SSE 組件
+	sseComponents, err := di.InitializeSSEComponents(
 		cfg,
 		logger,
 		redisManager,
 		db.GetDBConnection(),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize web components: %w", err)
+		return nil, fmt.Errorf("failed to initialize SSE components: %w", err)
 	}
-	logger.InfoWithContext(ctx, "Successfully initialized web components!")
+	logger.InfoWithContext(ctx, "Successfully initialized SSE components!")
 
 	return &services{
 		tracer:        tracer,
 		db:            db,
 		redisManager:  redisManager,
-		webComponents: webComponents,
+		sseComponents: sseComponents,
 	}, nil
 }
 
 // cleanup 清理所有服務資源
 func (s *services) cleanup(ctx context.Context, logger infrastructure.Logger) {
 	// 關閉 Metrics 服務
-	if s.webComponents.Metrics != nil {
-		if err := s.webComponents.Metrics.Shutdown(ctx); err != nil {
+	if s.sseComponents.Metrics != nil {
+		if err := s.sseComponents.Metrics.Shutdown(ctx); err != nil {
 			logger.ErrorWithContext(
 				ctx,
 				"Failed to shutdown metrics",
@@ -242,7 +242,7 @@ func (s *services) cleanup(ctx context.Context, logger infrastructure.Logger) {
 		logger.InfoWithContext(ctx, "Database connection closed successfully")
 	}
 
-	// 關閉Redis連線
+	// 關閉 Redis 連線
 	if err := s.redisManager.Close(); err != nil {
 		logger.ErrorWithContext(
 			ctx,
@@ -260,10 +260,8 @@ func determinePort(cmdPort int, cfg *config.Config) int {
 	if cmdPort != 0 {
 		return cmdPort
 	}
-	// 其次使用配置文件
-	if cfg.App.Port != 0 {
-		return cfg.App.Port
-	}
+	// 其次使用配置文件中的 SSE 端口（如果有的話）
+	// 注意：這裡可以在 Config 中新增 SSE.Port 配置
 	// 最後使用默認值
 	return defaultPort
 }
