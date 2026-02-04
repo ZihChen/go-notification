@@ -1,22 +1,22 @@
 # CLAUDE-CURRENT.md
 
-## 當前任務階段：SSE Notification System Phase 6 Integration Testing (2026-02-04)
-SSE 通知系統 Phase 6 整合測試大部分完成。單 Pod 整合測試（6/6）、多 Pod 整合測試（4/5，1 跳過）、Redis 功能驗證（7/7）全數通過。系統核心功能已驗證，多 Pod 架構的 Redis Pub/Sub 訊息路由機制運作正常。完成度 ~85%，待執行效能測試與優化。
+## 當前任務階段：SSE Notification System Phase 7 Documentation (2026-02-04)
+SSE 通知系統 Phase 6 整合測試完整通過（18/18，100%）。跨 Pod 個別推送功能已修復，所有核心功能已驗證完成。多 Pod 架構的 Redis Pub/Sub 訊息路由機制運作正常。完成度 ~90%，進入 Phase 7 文檔撰寫階段。
 
 ### 最新完成任務 - SSE Notification System
-- [x] ✅ **Phase 6 整合測試大部分完成** (2026-02-04)
+- [x] ✅ **Phase 6 整合測試完整通過** (2026-02-04)
   - [x] **Phase 6.1 單 Pod 整合測試**：6/6 通過 ✅
     - 玩家連接註冊/取消註冊測試
     - 廣播推送整合測試
     - 個別推送整合測試
     - 線上玩家統計測試
     - 離線訊息處理測試
-  - [x] **Phase 6.2 多 Pod 整合測試**：4/5 通過，1 跳過 ⚠️
+  - [x] **Phase 6.2 多 Pod 整合測試**：5/5 通過 ✅ (100%)
     - 跨 Pod 廣播測試（3 Pods × 6 玩家）✅
+    - 跨 Pod 個別推送測試 ✅ **已修復**
     - 玩家路由表一致性測試 ✅
     - Pod 間訊息轉發延遲測試（平均 101ms）✅
     - 高併發跨 Pod 推送測試（20 併發 × 15 玩家）✅
-    - 跨 Pod 個別推送測試 ⚠️（已知問題：handleTargetedMessage 未實現）
   - [x] **Phase 6.4 Redis 功能驗證**：7/7 通過 ✅
     - 基本連接與 Pub/Sub 功能測試
     - Redis Streams 操作測試（XADD/XRANGE/XLEN/XDEL/MAXLEN）
@@ -24,15 +24,19 @@ SSE 通知系統 Phase 6 整合測試大部分完成。單 Pod 整合測試（6/
     - Counter 操作測試（線上統計）
     - 連接池配置測試
     - 版本兼容性測試
+  - [x] **handleTargetedMessage 修復**：✅ **完成**
+    - 新增 SSENotification.TargetPlayerID 欄位
+    - 實現完整的跨 Pod 個別推送邏輯
+    - 所有測試通過，無跳過項目
   - [x] **測試基礎設施建立**：
     - MockSSEWriter 完整介面實現
     - TestCacheManager 完整實現（~30 個方法）
     - 多 Pod 測試工具（PodInstance, test helpers）
     - 完整的邊界案例與錯誤處理覆蓋
-  - [x] **測試結果**：18 個測試，17 通過（94.4%），1 跳過
+  - [x] **測試結果**：18 個測試，18 通過（100%）🎉
   - [x] **文檔更新**：overview.md, phase-6.md 已同步更新進度
-  - ⏳ **待執行**：Phase 6.3 效能測試與基準測試
-  - ⚠️ **已知問題**：跨 Pod 個別推送需要實現 handleTargetedMessage 邏輯
+  - ⏳ **延後執行**：Phase 6.3 效能測試與基準測試（需要時再執行）
+  - ✅ **已知問題已修復**：跨 Pod 個別推送功能完整實現
 
 ### 歷史完成任務
 - [x] ✅ **Clean Architecture完全合規v1.7** (2026-01-05)

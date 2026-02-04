@@ -24,18 +24,18 @@
 - [x] 離線訊息測試 (`TestSSE_OfflineMessages`)
 - [x] 線上玩家統計測試 (`TestSSE_GetOnlinePlayerCount`)
 
-**多 Pod 測試** ⭐ **關鍵驗證** (4/5 通過, 1 跳過):
+**多 Pod 測試** ⭐ **關鍵驗證** (5/5 通過 ✅):
 - [x] 啟動 3 個 SSE Pod 實例 (不同 Pod ID)
 - [x] 跨 Pod 廣播測試 (驗證所有 Pod 都收到) - `TestMultiPod_BroadcastToAll`
-- [~] 跨 Pod 個別推送測試 (玩家路由正確) - `TestMultiPod_SendToPlayer_CrossPod` ⚠️ **已知問題：handleTargetedMessage 未實現**
+- [x] 跨 Pod 個別推送測試 (玩家路由正確) - `TestMultiPod_SendToPlayer_CrossPod` ✅ **已修復**
 - [x] 玩家路由表一致性測試 - `TestMultiPod_PlayerRoutingConsistency`
 - [x] Pod 間訊息轉發延遲測試 - `TestMultiPod_MessageLatency` (平均 101ms)
 - [x] 高併發跨 Pod 推送測試 - `TestMultiPod_ConcurrentBroadcast` (20 併發 × 15 玩家)
 
 **測試結果**:
 - 總計：18 個測試
-- 通過：17 個 (94.4%)
-- 跳過：1 個 (已知問題)
+- 通過：18 個 (100%) ✅
+- 跳過：0 個
 - 測試檔案：`test/sse_integration_test.go`, `test/sse_multi_pod_test.go`
 
 ### 任務 6.2: Redis 功能驗證 ✅ **已完成** (2026-02-04)
@@ -108,24 +108,29 @@
 
 ## ✅ 驗收標準
 
-- [x] 所有整合測試通過 ✅ (17/18 通過, 1 跳過)
-- [x] 多 Pod 測試通過，訊息路由正確 ✅ (4/5 通過，廣播和路由一致性已驗證)
-- [ ] 效能指標達標 ⏳ (待執行)
+- [x] 所有整合測試通過 ✅ (18/18 通過，100% 通過率)
+- [x] 多 Pod 測試通過，訊息路由正確 ✅ (5/5 通過，包含跨 Pod 個別推送)
+- [ ] 效能指標達標 ⏳ (Phase 6.3 延後執行)
 - [ ] 故障恢復機制運作正常 ⏳ (待執行)
 - [ ] 無 Goroutine 洩漏或記憶體洩漏 ⏳ (待執行)
 
 ---
 
-## ⚠️  已知問題
+## ✅ 已修復問題
 
-### 1. 跨 Pod 個別推送未完全實現
+### 1. 跨 Pod 個別推送功能 ✅ **已完成** (2026-02-04)
 
-**問題描述**:
-- 位置：`internal/adapter/outbound/service/sse_manager.go:493-505`
-- `handleTargetedMessage()` 函數只記錄日誌，未實現實際訊息發送邏輯
-- 影響：無法完成跨 Pod 個別玩家推送功能
+**修復內容**:
+- 位置：`internal/adapter/outbound/service/sse_manager.go`, `internal/domain/entity/sse_notification.go`
+- 在 `entity.SSENotification` 中新增 `TargetPlayerID` 欄位
+- 在 `SendToPlayer()` 發布訊息時設置目標玩家 ID
+- 在 `handleTargetedMessage()` 中實現完整發送邏輯：
+  - 驗證 TargetPlayerID 存在
+  - 查找本地連接
+  - 發送訊息到對應 Writer
+  - 完整的錯誤處理和日誌記錄
 
-**當前行為**:
+**修復後行為**:
 ```go
 func (m *sseManager) handleTargetedMessage(payload string) {
     var notification entity.SSENotification
@@ -134,24 +139,30 @@ func (m *sseManager) handleTargetedMessage(payload string) {
         return
     }
 
-    // 訊息格式應該包含 target playerID，這裡簡化處理
-    // 實際應該在 notification 中加入 targetPlayerID 欄位
-    m.logger.InfoLog("Targeted message received", ...)
-    // ❌ 缺少實際發送邏輯
+    // 檢查是否有目標玩家 ID
+    if notification.TargetPlayerID == "" {
+        m.logger.WarnLog("Targeted message missing target player ID", ...)
+        return
+    }
+
+    // 查找本地連接並發送訊息
+    m.mu.RLock()
+    writer, exists := m.connections[notification.TargetPlayerID]
+    m.mu.RUnlock()
+
+    if exists {
+        m.sendNotificationToWriter(writer, &notification)
+        m.logger.InfoLog("Targeted message delivered successfully", ...)
+    }
 }
 ```
 
-**建議修復方案**:
-1. 在 `entity.SSENotification` 中新增 `TargetPlayerID` 欄位
-2. 在 `SendToPlayer()` 發布訊息時包含目標玩家 ID
-3. 在 `handleTargetedMessage()` 中實現：
-   - 解析目標玩家 ID
-   - 查找本地連接
-   - 發送訊息到對應 Writer
-
 **測試狀態**:
-- `TestMultiPod_SendToPlayer_CrossPod` 已標記為跳過（Skip）
-- 待修復後重新啟用測試
+- `TestMultiPod_SendToPlayer_CrossPod` 測試通過 ✅
+- 所有多 Pod 測試 5/5 通過 ✅
+
+**提交記錄**:
+- `e98ea41` feat(sse): implement cross-pod individual push with handleTargetedMessage
 
 ---
 
@@ -169,12 +180,19 @@ func (m *sseManager) handleTargetedMessage(payload string) {
 
 ## 🔗 下一步
 
-完成 Phase 6 剩餘任務後，前往 [Phase 7: 文檔撰寫](phase-7.md)
+**當前狀態**: Phase 6 整合測試完成 ✅，前往 [Phase 7: 文檔撰寫](phase-7.md)
 
-**優先順序**:
-1. 修復 `handleTargetedMessage` 已知問題
-2. 執行 Phase 6.3 效能測試
-3. 執行 Phase 6.4-6.6 壓力測試與優化
+**已完成**:
+1. ✅ 修復 `handleTargetedMessage` 已知問題 (2026-02-04)
+2. ✅ Phase 6.1-6.2 整合測試 (18/18 通過)
+3. ✅ Phase 6.4 Redis 功能驗證 (7/7 通過)
+
+**延後執行**:
+- ⏳ Phase 6.3 效能測試與基準測試（延後至需要時執行）
+- ⏳ Phase 6.4-6.6 壓力測試與優化（選用）
+
+**下一步行動**:
+→ 進入 **Phase 7: 文檔撰寫**（API 文檔、部署指南、使用說明）
 
 ---
 
