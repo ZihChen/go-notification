@@ -15,20 +15,23 @@ import (
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 )
 
-// sseNotificationUseCase SSE 通知使用案例實作（簡化版，移除 KDS 審計）
+// sseNotificationUseCase SSE 通知使用案例實作（完整版，包含 KDS 審計）
 type sseNotificationUseCase struct {
-	sseManager service.SSEManager        // SSE 連接管理與訊息推送
-	logger     infrastructure.Logger     // 日誌記錄器
+	sseManager   service.SSEManager        // SSE 連接管理與訊息推送
+	eventService service.EventProducer     // KDS 事件發布服務（用於審計日誌）
+	logger       infrastructure.Logger     // 日誌記錄器
 }
 
 // NewSSENotificationUseCase 創建 SSE 通知使用案例實例
 func NewSSENotificationUseCase(
 	sseManager service.SSEManager,
+	eventService service.EventProducer,
 	logger infrastructure.Logger,
 ) inbound.SSENotificationUseCase {
 	return &sseNotificationUseCase{
-		sseManager: sseManager,
-		logger:     logger,
+		sseManager:   sseManager,
+		eventService: eventService,
+		logger:       logger,
 	}
 }
 

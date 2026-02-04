@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
@@ -111,14 +112,43 @@ func (m *MockLogger) Close()                                                {}
 // Verify interface implementation
 var _ infrastructure.Logger = (*MockLogger)(nil)
 
+// MockEventProducer EventProducer Mock
+type MockEventProducer struct {
+	mock.Mock
+}
+
+func (m *MockEventProducer) PublishMerchantSync(ctx context.Context, evt *event.CloudEvent) error {
+	args := m.Called(ctx, evt)
+	return args.Error(0)
+}
+
+func (m *MockEventProducer) PublishPlayerSync(ctx context.Context, evt *event.CloudEvent) error {
+	args := m.Called(ctx, evt)
+	return args.Error(0)
+}
+
+func (m *MockEventProducer) PublishManagerSync(ctx context.Context, evt *event.CloudEvent) error {
+	args := m.Called(ctx, evt)
+	return args.Error(0)
+}
+
+func (m *MockEventProducer) PublishSSENotification(ctx context.Context, evt *event.CloudEvent) error {
+	args := m.Called(ctx, evt)
+	return args.Error(0)
+}
+
+// Verify interface implementation
+var _ service.EventProducer = (*MockEventProducer)(nil)
+
 // TestBroadcastNotification 測試廣播推送
 func TestBroadcastNotification(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	mockSSEManager := new(MockSSEManager)
+	mockEventProducer := new(MockEventProducer)
 	mockLogger := new(MockLogger)
 
-	useCase := NewSSENotificationUseCase(mockSSEManager, mockLogger)
+	useCase := NewSSENotificationUseCase(mockSSEManager, mockEventProducer, mockLogger)
 
 	req := &dto.BroadcastRequest{
 		Title:    "測試通知",
@@ -150,9 +180,10 @@ func TestSendNotification(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	mockSSEManager := new(MockSSEManager)
+	mockEventProducer := new(MockEventProducer)
 	mockLogger := new(MockLogger)
 
-	useCase := NewSSENotificationUseCase(mockSSEManager, mockLogger)
+	useCase := NewSSENotificationUseCase(mockSSEManager, mockEventProducer, mockLogger)
 
 	playerIDs := []string{"player1", "player2", "player3"}
 	req := &dto.SendNotificationRequest{
@@ -185,9 +216,10 @@ func TestSendNotification_ExceedBatchSize(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	mockSSEManager := new(MockSSEManager)
+	mockEventProducer := new(MockEventProducer)
 	mockLogger := new(MockLogger)
 
-	useCase := NewSSENotificationUseCase(mockSSEManager, mockLogger)
+	useCase := NewSSENotificationUseCase(mockSSEManager, mockEventProducer, mockLogger)
 
 	// 創建超過 1000 個玩家 ID
 	playerIDs := make([]string, 1001)

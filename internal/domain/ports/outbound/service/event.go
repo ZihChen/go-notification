@@ -16,6 +16,9 @@ type EventProducer interface {
 
 	// PublishManagerSync 發布管理員同步事件
 	PublishManagerSync(ctx context.Context, event *event.CloudEvent) error
+
+	// PublishSSENotification 發布 SSE 通知事件（廣播/個別推送/連接/斷線）
+	PublishSSENotification(ctx context.Context, event *event.CloudEvent) error
 }
 
 // EventConsumer 事件Consumer接口

@@ -55,6 +55,16 @@ func (s *EventService) PublishManagerSync(ctx context.Context, event *event.Clou
 	return s.publishEvent(ctx, event)
 }
 
+// PublishSSENotification 發布 SSE 通知事件（廣播/個別推送/連接/斷線）
+func (s *EventService) PublishSSENotification(ctx context.Context, event *event.CloudEvent) error {
+	s.logger.InfoLog("Publishing SSE notification event",
+		s.logger.String("event_id", event.ID),
+		s.logger.String("event_type", event.Type),
+		s.logger.String("global_merchant_id", extractGlobalMerchantID(event)))
+
+	return s.publishEvent(ctx, event)
+}
+
 // publishEvent 通用發布事件方法
 func (s *EventService) publishEvent(ctx context.Context, event *event.CloudEvent) error {
 	if event == nil {

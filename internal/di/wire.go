@@ -30,6 +30,7 @@ import (
 	messageUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/message"
 	migrateUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/migrate"
 	playerUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/player"
+	sseNotificationUseCase "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/sse_notification"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
@@ -90,6 +91,9 @@ var baseSet = wire.NewSet(
 	service.NewEventService,
 	service.NewAgentService,
 	providePushNotificationService,
+	// SSE 服務
+	providePodID,
+	provideSSEManager,
 
 	// 用例層
 	merchantUseCase.NewMerchantUseCase,
@@ -100,6 +104,8 @@ var baseSet = wire.NewSet(
 	providePlayerTagUseCase,
 	agentUseCase.NewAgentUseCase,
 	failedTaskEventUseCase.NewFailedTaskEventUseCase,
+	// SSE 用例層
+	provideSSENotificationUseCase,
 )
 
 // 事件生產者提供者 (保留作為別名)
@@ -459,4 +465,40 @@ func connectToLegacyDatabase(dsn string) (*gorm.DB, error) {
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
 	return db, nil
+}
+
+// providePodID 提供 Pod ID (從環境變數或配置讀取)
+func providePodID(cfg *config.Config) string {
+	podID := cfg.SSE.PodID
+	if podID == "" {
+		// 如果未設置，生成一個唯一的 Pod ID
+		podID = fmt.Sprintf("pod-%d", time.Now().UnixNano())
+	}
+	return podID
+}
+
+// provideSSEManager 提供 SSE Manager (注入 Pod ID)
+func provideSSEManager(
+	podID string,
+	cacheManager infrastructure.CacheManager,
+	logger infrastructure.Logger,
+) servicePort.SSEManager {
+	return outboundService.NewSSEManager(podID, cacheManager, logger)
+}
+
+// provideSSENotificationUseCase 提供 SSE Notification UseCase
+func provideSSENotificationUseCase(
+	sseManager servicePort.SSEManager,
+	eventService servicePort.EventProducer,
+	logger infrastructure.Logger,
+) inbound.SSENotificationUseCase {
+	return sseNotificationUseCase.NewSSENotificationUseCase(sseManager, eventService, logger)
+}
+
+// provideSSENotificationHandler 提供 SSE Notification Handler
+func provideSSENotificationHandler(
+	useCase inbound.SSENotificationUseCase,
+	logger infrastructure.Logger,
+) *api.SSENotificationHandler {
+	return api.NewSSENotificationHandler(useCase, logger)
 }

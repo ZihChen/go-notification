@@ -27,6 +27,7 @@ type Config struct {
 	Consumer ConsumerConfig
 	CORS     CORSConfig
 	Metrics  MetricsConfig
+	SSE      SSEConfig
 }
 
 // AppConfig 應用程序基本配置
@@ -167,6 +168,13 @@ type OTLPMetricsConfig struct {
 	Headers  map[string]string `mapstructure:"headers"`  // 自定義 Headers（如認證）
 	Interval time.Duration     `mapstructure:"interval"` // 導出間隔，預設 60s
 	Timeout  time.Duration     `mapstructure:"timeout"`  // 請求超時，預設 10s
+}
+
+// SSEConfig SSE 推送配置
+type SSEConfig struct {
+	PodID         string // Pod ID (Kubernetes 注入或自動生成)
+	JWTSecretKey  string // JWT Token 密鑰
+	JWTExpiration time.Duration // JWT Token 過期時間
 }
 
 // LoadConfig 加載配置
@@ -313,6 +321,11 @@ func LoadConfig() (*Config, error) {
 				Interval: getDurationWithDefault("METRICS_OTLP_INTERVAL", 60*time.Second),
 				Timeout:  getDurationWithDefault("METRICS_OTLP_TIMEOUT", 10*time.Second),
 			},
+		},
+		SSE: SSEConfig{
+			PodID:         viper.GetString("SSE_POD_ID"),
+			JWTSecretKey:  viper.GetString("SSE_JWT_SECRET_KEY"),
+			JWTExpiration: getDurationWithDefault("SSE_JWT_EXPIRATION", 24*time.Hour),
 		},
 	}
 

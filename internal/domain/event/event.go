@@ -203,3 +203,60 @@ type AgentSyncEvent struct {
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        time.Time  `json:"updated_at"`
 }
+
+// SSE 通知事件 (發送到 KDS 作為審計日誌)
+
+// SSEBroadcastEvent 廣播推送事件
+type SSEBroadcastEvent struct {
+	EventID           string                 `json:"event_id"`
+	MerchantID        uint64                 `json:"merchant_id"`
+	GlobalMerchantID  string                 `json:"global_merchant_id"`
+	NotificationType  string                 `json:"notification_type"`
+	Title             string                 `json:"title"`
+	Message           string                 `json:"message"`
+	Priority          string                 `json:"priority"`
+	TargetPlayerCount int                    `json:"target_player_count"`
+	OnlinePlayerCount int                    `json:"online_player_count"`
+	Metadata          map[string]interface{} `json:"metadata,omitempty"`
+	Timestamp         time.Time              `json:"timestamp"`
+}
+
+// SSESendEvent 個別推送事件
+type SSESendEvent struct {
+	EventID          string                 `json:"event_id"`
+	MerchantID       uint64                 `json:"merchant_id"`
+	GlobalMerchantID string                 `json:"global_merchant_id"`
+	PlayerID         uint64                 `json:"player_id"`
+	GlobalPlayerID   string                 `json:"global_player_id"`
+	NotificationType string                 `json:"notification_type"`
+	Title            string                 `json:"title"`
+	Message          string                 `json:"message"`
+	Priority         string                 `json:"priority"`
+	IsOnline         bool                   `json:"is_online"`
+	TargetPodID      string                 `json:"target_pod_id,omitempty"`
+	Metadata         map[string]interface{} `json:"metadata,omitempty"`
+	Timestamp        time.Time              `json:"timestamp"`
+}
+
+// SSEPlayerConnectEvent 玩家連接事件
+type SSEPlayerConnectEvent struct {
+	PlayerID         uint64    `json:"player_id"`
+	GlobalPlayerID   string    `json:"global_player_id"`
+	MerchantID       uint64    `json:"merchant_id"`
+	GlobalMerchantID string    `json:"global_merchant_id"`
+	PodID            string    `json:"pod_id"`
+	ClientIP         string    `json:"client_ip,omitempty"`
+	UserAgent        string    `json:"user_agent,omitempty"`
+	Timestamp        time.Time `json:"timestamp"`
+}
+
+// SSEPlayerDisconnectEvent 玩家斷線事件
+type SSEPlayerDisconnectEvent struct {
+	PlayerID         uint64        `json:"player_id"`
+	GlobalPlayerID   string        `json:"global_player_id"`
+	MerchantID       uint64        `json:"merchant_id"`
+	GlobalMerchantID string        `json:"global_merchant_id"`
+	PodID            string        `json:"pod_id"`
+	ConnectionTime   time.Duration `json:"connection_time_seconds"`
+	Timestamp        time.Time     `json:"timestamp"`
+}

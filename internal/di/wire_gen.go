@@ -32,6 +32,7 @@ import (
 	message2 "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/message"
 	migrate2 "github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/migrate"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/player"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/application/usecase/sse_notification"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	repository5 "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/repository"
@@ -386,7 +387,10 @@ var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient,
 	provideDistributedLockManager,
 	provideMetricsService,
 
-	provideMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, message.NewMessageCampaignRepository, message.NewCampaignTargetRepository, providePlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant2.NewPushKeyRepository, repository3.NewAgentRepository, repository3.NewAgentCampaignRepository, repository3.NewAgentMessageRepository, provideAgentRelationshipRepository, repository4.NewFailedTaskEventRepository, service.NewEventService, service.NewAgentService, providePushNotificationService, merchant.NewMerchantUseCase, providePlayerUseCase, manager.NewManagerUseCase, provideMessageUseCase, level.NewLevelUseCase, providePlayerTagUseCase, agent.NewAgentUseCase, usecase.NewFailedTaskEventUseCase,
+	provideMerchantRepository, repository.NewPlayerRepository, repository2.NewManagerRepository, message.NewMessageCampaignRepository, message.NewCampaignTargetRepository, providePlayerMessageRepository, repository.NewLevelRepository, repository.NewTagRepository, repository.NewPlayerTagRepository, merchant2.NewPushKeyRepository, repository3.NewAgentRepository, repository3.NewAgentCampaignRepository, repository3.NewAgentMessageRepository, provideAgentRelationshipRepository, repository4.NewFailedTaskEventRepository, service.NewEventService, service.NewAgentService, providePushNotificationService,
+
+	providePodID,
+	provideSSEManager, merchant.NewMerchantUseCase, providePlayerUseCase, manager.NewManagerUseCase, provideMessageUseCase, level.NewLevelUseCase, providePlayerTagUseCase, agent.NewAgentUseCase, usecase.NewFailedTaskEventUseCase, provideSSENotificationUseCase,
 )
 
 // 事件生產者提供者 (保留作為別名)
@@ -629,4 +633,40 @@ func connectToLegacyDatabase(dsn string) (*gorm.DB, error) {
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
 	return db, nil
+}
+
+// providePodID 提供 Pod ID (從環境變數或配置讀取)
+func providePodID(cfg *config.Config) string {
+	podID := cfg.SSE.PodID
+	if podID == "" {
+
+		podID = fmt.Sprintf("pod-%d", time.Now().UnixNano())
+	}
+	return podID
+}
+
+// provideSSEManager 提供 SSE Manager (注入 Pod ID)
+func provideSSEManager(
+	podID string,
+	cacheManager infrastructure.CacheManager,
+	logger infrastructure.Logger,
+) service2.SSEManager {
+	return service3.NewSSEManager(podID, cacheManager, logger)
+}
+
+// provideSSENotificationUseCase 提供 SSE Notification UseCase
+func provideSSENotificationUseCase(
+	sseManager service2.SSEManager,
+	eventService service2.EventProducer,
+	logger infrastructure.Logger,
+) inbound.SSENotificationUseCase {
+	return sse_notification.NewSSENotificationUseCase(sseManager, eventService, logger)
+}
+
+// provideSSENotificationHandler 提供 SSE Notification Handler
+func provideSSENotificationHandler(
+	useCase inbound.SSENotificationUseCase,
+	logger infrastructure.Logger,
+) *api.SSENotificationHandler {
+	return api.NewSSENotificationHandler(useCase, logger)
 }
