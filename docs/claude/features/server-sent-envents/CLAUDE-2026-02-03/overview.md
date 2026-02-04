@@ -19,14 +19,20 @@
   - ✅ KDS 審計日誌整合
   - ✅ Wire 依賴注入更新（EventService）
   - 📋 Redis 配置與測試（待完成）
+- **Phase 5**: Router 註冊與整合完成 ⭐
+  - ✅ SSE 路由註冊（3 個端點）
+  - ✅ 認證中間件整合（API Key + JWT）
+  - ✅ Wire 依賴注入完整整合
+  - ✅ Swagger 文檔生成
 
-**🚧 進行中**:
-- Phase 5: Router 註冊與整合（準備開始）
-- Phase 4.2: Redis 配置與測試（待完成）
+**🚧 待完成**:
+- Phase 4.2: Redis 配置與測試
+- Phase 6: 測試與優化
+- Phase 7-9: 文檔、部署、驗收
 
-**📊 完成度**: ~60% (核心功能實作完成，待整合與測試)
+**📊 完成度**: ~75% (核心功能與路由整合完成，待測試與部署)
 
-**🎯 下一步**: Router 註冊整合 + Redis 功能驗證
+**🎯 下一步**: Phase 6 測試與優化（整合測試、效能測試、Redis 功能驗證）
 
 ---
 
@@ -343,7 +349,7 @@ func (m *sseManager) RegisterConnection(ctx context.Context, playerID string, wr
 **專案名稱**: SSE 實時推播通知系統
 **架構設計**: 獨立 SSE Service Pod + Redis Pub/Sub
 **總時程**: 12 天（簡化版）
-**當前進度**: Phase 1-3 完成 ✅ | Phase 4 部分完成 🚧 (KDS 整合與 Wire 配置已完成)
+**當前進度**: Phase 1-5 完成 ✅ | Phase 4.2 Redis 測試待完成 📋
 **目標**: 生產級可水平擴展的 SSE 推播服務
 
 ---
@@ -375,11 +381,11 @@ func (m *sseManager) RegisterConnection(ctx context.Context, playerID string, wr
 | Phase 4.2 | Redis 配置與測試 | Day 7 | 📋 待開始 | - | Pub/Sub + Streams |
 | Phase 4.3 | KDS 審計日誌整合 | Day 7 | ✅ 已完成 | 2026-02-04 | ⭐ 事件追蹤完成 |
 | Phase 4.4 | Wire 依賴注入 | Day 7 | ✅ 已完成 | 2026-02-04 | ⭐ EventService 注入完成 |
-| **Phase 5** | **Router 註冊與整合** | Day 8 | 📋 待開始 | - | 路由配置 |
-| Phase 5.1 | 註冊 SSE 路由 | Day 8 | 📋 待開始 | - | 7 個 API 端點 |
-| Phase 5.2 | 配置認證 | Day 8 | 📋 待開始 | - | API Key + JWT |
-| Phase 5.3 | Swagger 文件 | Day 8 | 📋 待開始 | - | API 文檔 |
-| Phase 5.4 | 啟動參數配置 | Day 8 | 📋 待開始 | - | 環境變數驗證 |
+| **Phase 5** | **Router 註冊與整合** | Day 8 | ✅ **已完成** | 2026-02-04 | ⭐ 路由、認證、Wire 整合完成 |
+| Phase 5.1 | 註冊 SSE 路由 | Day 8 | ✅ 已完成 | 2026-02-04 | 3 個 API 端點 |
+| Phase 5.2 | 配置認證 | Day 8 | ✅ 已完成 | 2026-02-04 | API Key + JWT 整合 |
+| Phase 5.3 | Swagger 文件 | Day 8 | ✅ 已完成 | 2026-02-04 | API 文檔生成 |
+| Phase 5.4 | Wire 依賴注入 | Day 8 | ✅ 已完成 | 2026-02-04 | 完整組件整合 |
 | **Phase 6** | **測試與優化** | Day 9-10 | 📋 待開始 | - | ⭐ 含多 Pod 測試 |
 | Phase 6.1 | 整合測試 | Day 9 | 📋 待開始 | - | 單/多 Pod 測試 |
 | Phase 6.2 | 效能測試 | Day 9 | 📋 待開始 | - | 吞吐量/延遲/並發 |
@@ -442,7 +448,8 @@ func (m *sseManager) RegisterConnection(ctx context.Context, playerID string, wr
 | 2026-02-03 | Phase 1 | ✅ Domain Layer 完成<br>- Entity: SSENotification<br>- Constants: 類型、優先級、Redis Keys<br>- Inbound Ports: UseCase 介面<br>- Outbound Ports: SSEManager 介面<br>- 基礎 DTO 定義 | 無 | Phase 2: Application Layer 實作 |
 | 2026-02-03 | Phase 2 | ✅ Application Layer 完成<br>- DTO: 完整驗證規則<br>- UseCase: 3個核心方法實作<br>- 移除 KDS 審計日誌（簡化）<br>- 單元測試: 3個案例 100% 通過 | 移除 EventProducer 依賴以簡化架構 | Phase 3: Adapter Layer 實作 |
 | 2026-02-03 | Phase 3 | ✅ Adapter Layer 完成<br>- SSE Manager: 完整 Redis Pub/Sub 整合 (539行)<br>- HTTP Handler: 3個端點 + Swagger<br>- JWT Middleware: Bearer Token 認證<br>- 玩家路由表、線上統計、離線訊息<br>- 優雅關閉機制<br>- Pub/Sub 監聽器 Goroutine | 完整實現多 Pod 水平擴展架構 | Phase 4: Infrastructure Layer |
-| 2026-02-04 | Phase 4 | ✅ KDS 審計日誌整合完成<br>- 重新加入 EventService 依賴<br>- 定義 SSE 事件類型 (4種)<br>- UseCase 整合事件發送<br>- Wire 依賴注入更新<br>- Config 配置支援<br>- 單元測試更新 (含 Mock) | EventService 重新整合需調整 UseCase | Phase 4.2: Redis 配置與測試<br>Phase 5: Router 註冊整合 |
+| 2026-02-04 | Phase 4 | ✅ KDS 審計日誌整合完成<br>- 重新加入 EventService 依賴<br>- 定義 SSE 事件類型 (4種)<br>- UseCase 整合事件發送<br>- Wire 依賴注入更新<br>- Config 配置支援<br>- 單元測試更新 (含 Mock) | EventService 重新整合需調整 UseCase | Phase 5: Router 註冊整合 |
+| 2026-02-04 | Phase 5 | ✅ Router 註冊與整合完成<br>- SSE 路由註冊 (3個端點)<br>- API Key + JWT 認證整合<br>- Wire 依賴注入完整整合<br>- WebComponents 更新<br>- Swagger 文檔生成<br>- 編譯驗證通過<br>- 環境變數配置確認 | 無 | Phase 6: 測試與優化<br>Phase 4.2: Redis 配置測試 |
 
 ---
 
@@ -478,6 +485,7 @@ func (m *sseManager) RegisterConnection(ctx context.Context, playerID string, wr
 | 2026-02-02 | v1.0 | 初始版本建立，完成架構設計與任務規劃 | Claude |
 | 2026-02-03 | v1.1 | Phase 1-3 完成：Domain Layer, Application Layer, Adapter Layer (含 Redis Pub/Sub) | Claude |
 | 2026-02-04 | v1.2 | Phase 4 部分完成：KDS 審計日誌整合與 Wire 依賴注入更新 | Claude |
+| 2026-02-04 | v1.3 | Phase 5 完成：Router 註冊、認證整合、Wire 依賴注入、Swagger 文檔生成 | Claude |
 
 ---
 

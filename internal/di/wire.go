@@ -57,6 +57,7 @@ type WorkerComponents struct {
 type WebComponents struct {
 	HTTPHandler  *api.HTTPHandler
 	AgentHandler *api.AgentHandler
+	SSEHandler   *api.SSENotificationHandler
 	Metrics      *metrics.Metrics
 }
 
@@ -222,6 +223,7 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 		kds.NewKDSService,
 		api.NewHTTPHandler,
 		api.NewAgentHandler,
+		provideSSENotificationHandler,
 		provideMetrics,
 	)
 	return nil, nil

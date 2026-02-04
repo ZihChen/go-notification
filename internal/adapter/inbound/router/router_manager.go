@@ -21,9 +21,14 @@ type Manager struct {
 }
 
 // NewRouterManager 創建路由管理器
-func NewRouterManager(handler *api.HTTPHandler, agentHandler *api.AgentHandler, m *metrics.Metrics) *Manager {
+func NewRouterManager(
+	handler *api.HTTPHandler,
+	agentHandler *api.AgentHandler,
+	sseHandler *api.SSENotificationHandler,
+	m *metrics.Metrics,
+) *Manager {
 	return &Manager{
-		apiRouter:     NewAPIRouter(handler, agentHandler),
+		apiRouter:     NewAPIRouter(handler, agentHandler, sseHandler),
 		swaggerRouter: NewSwaggerRouter(),
 		healthRouter:  NewHealthRouter(handler),
 		pprofRouter:   NewPprofRouter(),
@@ -50,18 +55,39 @@ func (rm *Manager) SetupRoutersWithMiddleware(router *gin.Engine, cfg *config.Co
 		})
 	}
 
+	// 創建 API Key 認證中間件（用於 SSE Admin API）
+	var apiKeyMiddleware gin.HandlerFunc
+	if cfg.Auth.Enabled {
+		apiKeyMiddleware = middleware.AuthMiddleware(middleware.AuthConfig{
+			APIKeys:        cfg.Auth.APIKeys,
+			HeaderKey:      "API-Key",
+			EncryptionType: cfg.Auth.EncryptionType,
+		})
+	}
+
+	// 創建 JWT 認證中間件（用於 SSE Player API）
+	var jwtMiddleware gin.HandlerFunc
+	if cfg.SSE.JWTSecretKey != "" {
+		jwtMiddleware = middleware.JWTAuthMiddleware(middleware.JWTConfig{
+			SecretKey: []byte(cfg.SSE.JWTSecretKey),
+			HeaderKey: "Authorization",
+		})
+	}
+
 	// 註冊所有路由
-	rm.registerRoutes(router, cfg, authMiddleware)
+	rm.registerRoutes(router, cfg, authMiddleware, apiKeyMiddleware, jwtMiddleware)
 }
 
 // registerRoutes 註冊所有路由，每個路由器使用各自的中間件
 func (rm *Manager) registerRoutes(
 	router *gin.Engine,
 	cfg *config.Config,
-	middleware gin.HandlerFunc,
+	authMiddleware gin.HandlerFunc,
+	apiKeyMiddleware gin.HandlerFunc,
+	jwtMiddleware gin.HandlerFunc,
 ) {
 	// 註冊 API 路由 (使用認證中間件)
-	rm.apiRouter.RegisterRoutes(router, middleware)
+	rm.apiRouter.RegisterRoutes(router, authMiddleware, apiKeyMiddleware, jwtMiddleware)
 
 	// 註冊 Swagger 路由 (不使用認證中間件)
 	rm.swaggerRouter.RegisterRoutes(router, cfg)

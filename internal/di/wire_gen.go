@@ -159,6 +159,10 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 	agentService := service.NewAgentService(agentRepository, agentRelationshipRepository, merchantRepository, logger, tracingService)
 	agentUseCase := agent.NewAgentUseCase(agentRepository, agentCampaignRepository, agentMessageRepository, agentRelationshipRepository, merchantRepository, agentService, eventProducer, logger, tracingService, distributedLockManager)
 	agentHandler := api.NewAgentHandler(agentUseCase, logger)
+	string2 := providePodID(cfg)
+	sseManager := provideSSEManager(string2, cacheManager, logger)
+	sseNotificationUseCase := provideSSENotificationUseCase(sseManager, eventProducer, logger)
+	sseNotificationHandler := provideSSENotificationHandler(sseNotificationUseCase, logger)
 	metrics, err := provideMetrics(cfg, logger)
 	if err != nil {
 		return nil, err
@@ -166,6 +170,7 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 	webComponents := &WebComponents{
 		HTTPHandler:  httpHandler,
 		AgentHandler: agentHandler,
+		SSEHandler:   sseNotificationHandler,
 		Metrics:      metrics,
 	}
 	return webComponents, nil
@@ -379,6 +384,7 @@ type WorkerComponents struct {
 type WebComponents struct {
 	HTTPHandler  *api.HTTPHandler
 	AgentHandler *api.AgentHandler
+	SSEHandler   *api.SSENotificationHandler
 	Metrics      *metrics.Metrics
 }
 

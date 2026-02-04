@@ -9,21 +9,118 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "termsOfService": "http://swagger.io/terms/",
-        "contact": {
-            "name": "API Support",
-            "url": "http://www.jvdiamondtech.com/support",
-            "email": "support@jvdiamondtech.com"
-        },
-        "license": {
-            "name": "Apache 2.0",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
-        },
+        "contact": {},
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/admin/notifications/broadcast": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "透過 Redis Pub/Sub 廣播到所有 SSE Service Pods",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SSE Notifications (Admin)"
+                ],
+                "summary": "廣播推送通知給所有線上玩家",
+                "parameters": [
+                    {
+                        "description": "廣播請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.BroadcastRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.BroadcastResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/notifications/send": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "透過玩家路由表查詢目標 Pod，並通過 Pub/Sub 轉發",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SSE Notifications (Admin)"
+                ],
+                "summary": "個別推送通知給特定玩家清單",
+                "parameters": [
+                    {
+                        "description": "個別推送請求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SendNotificationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SendNotificationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/agent-campaigns": {
             "get": {
                 "security": [
@@ -1377,6 +1474,45 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/notifications/stream": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "玩家連線時註冊、推送離線訊息、保持連接",
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "SSE Notifications (Player)"
+                ],
+                "summary": "建立 SSE 長連接接收實時通知",
+                "responses": {
+                    "200": {
+                        "description": "SSE event stream",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/players/global/{global_id}": {
             "get": {
                 "security": [
@@ -1959,6 +2095,69 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.BroadcastRequest": {
+            "type": "object",
+            "required": [
+                "message",
+                "title",
+                "type"
+            ],
+            "properties": {
+                "action_url": {
+                    "type": "string"
+                },
+                "icon_url": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "priority": {
+                    "type": "string",
+                    "enum": [
+                        "low",
+                        "medium",
+                        "high",
+                        "critical"
+                    ]
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "activity",
+                        "promotion",
+                        "system",
+                        "announcement"
+                    ]
+                }
+            }
+        },
+        "dto.BroadcastResponse": {
+            "type": "object",
+            "properties": {
+                "failed_sends": {
+                    "description": "失敗推送數量",
+                    "type": "integer"
+                },
+                "notification_id": {
+                    "description": "通知 ID",
+                    "type": "string"
+                },
+                "successful_sends": {
+                    "description": "成功推送數量",
+                    "type": "integer"
+                },
+                "total_online": {
+                    "description": "線上玩家總數",
+                    "type": "integer"
+                }
+            }
+        },
         "dto.CreateAgentCampaignRequest": {
             "type": "object",
             "required": [
@@ -2407,6 +2606,78 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.SendNotificationRequest": {
+            "type": "object",
+            "required": [
+                "message",
+                "player_ids",
+                "title",
+                "type"
+            ],
+            "properties": {
+                "action_url": {
+                    "type": "string"
+                },
+                "icon_url": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "player_ids": {
+                    "type": "array",
+                    "maxItems": 1000,
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "priority": {
+                    "type": "string",
+                    "enum": [
+                        "low",
+                        "medium",
+                        "high",
+                        "critical"
+                    ]
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "activity",
+                        "promotion",
+                        "system",
+                        "announcement"
+                    ]
+                }
+            }
+        },
+        "dto.SendNotificationResponse": {
+            "type": "object",
+            "properties": {
+                "failed_sends": {
+                    "description": "失敗推送數量",
+                    "type": "integer"
+                },
+                "notification_id": {
+                    "description": "通知 ID",
+                    "type": "string"
+                },
+                "successful_sends": {
+                    "description": "成功推送數量",
+                    "type": "integer"
+                },
+                "total_targets": {
+                    "description": "目標玩家總數",
+                    "type": "integer"
+                }
+            }
+        },
         "dto.TagListResponse": {
             "type": "object",
             "properties": {
@@ -2847,24 +3118,17 @@ const docTemplate = `{
                 }
             }
         }
-    },
-    "securityDefinitions": {
-        "ApiKeyAuth": {
-            "type": "apiKey",
-            "name": "API-Key",
-            "in": "header"
-        }
     }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.0",
+	Version:          "",
 	Host:             "",
 	BasePath:         "",
 	Schemes:          []string{},
-	Title:            "Notification Service API",
-	Description:      "用於管理商戶、玩家和管理員的通知服務",
+	Title:            "",
+	Description:      "",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

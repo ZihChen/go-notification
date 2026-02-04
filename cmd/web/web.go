@@ -91,6 +91,7 @@ func runWebServer(cobraCmd *cobra.Command, args []string) {
 	routerManager := routermgr.NewRouterManager(
 		svc.webComponents.HTTPHandler,
 		svc.webComponents.AgentHandler,
+		svc.webComponents.SSEHandler,
 		svc.webComponents.Metrics,
 	)
 	routerManager.SetupRoutersWithMiddleware(router, cfg)

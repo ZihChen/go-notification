@@ -230,6 +230,52 @@ definitions:
     - ids
     - updated_by
     type: object
+  dto.BroadcastRequest:
+    properties:
+      action_url:
+        type: string
+      icon_url:
+        type: string
+      message:
+        maxLength: 500
+        type: string
+      priority:
+        enum:
+        - low
+        - medium
+        - high
+        - critical
+        type: string
+      title:
+        maxLength: 100
+        type: string
+      type:
+        enum:
+        - activity
+        - promotion
+        - system
+        - announcement
+        type: string
+    required:
+    - message
+    - title
+    - type
+    type: object
+  dto.BroadcastResponse:
+    properties:
+      failed_sends:
+        description: 失敗推送數量
+        type: integer
+      notification_id:
+        description: 通知 ID
+        type: string
+      successful_sends:
+        description: 成功推送數量
+        type: integer
+      total_online:
+        description: 線上玩家總數
+        type: integer
+    type: object
   dto.CreateAgentCampaignRequest:
     properties:
       content:
@@ -561,6 +607,59 @@ definitions:
         description: 觸發類型
         type: string
     type: object
+  dto.SendNotificationRequest:
+    properties:
+      action_url:
+        type: string
+      icon_url:
+        type: string
+      message:
+        maxLength: 500
+        type: string
+      player_ids:
+        items:
+          type: string
+        maxItems: 1000
+        minItems: 1
+        type: array
+      priority:
+        enum:
+        - low
+        - medium
+        - high
+        - critical
+        type: string
+      title:
+        maxLength: 100
+        type: string
+      type:
+        enum:
+        - activity
+        - promotion
+        - system
+        - announcement
+        type: string
+    required:
+    - message
+    - player_ids
+    - title
+    - type
+    type: object
+  dto.SendNotificationResponse:
+    properties:
+      failed_sends:
+        description: 失敗推送數量
+        type: integer
+      notification_id:
+        description: 通知 ID
+        type: string
+      successful_sends:
+        description: 成功推送數量
+        type: integer
+      total_targets:
+        description: 目標玩家總數
+        type: integer
+    type: object
   dto.TagListResponse:
     properties:
       tags:
@@ -883,18 +982,76 @@ definitions:
         type: string
     type: object
 info:
-  contact:
-    email: support@jvdiamondtech.com
-    name: API Support
-    url: http://www.jvdiamondtech.com/support
-  description: 用於管理商戶、玩家和管理員的通知服務
-  license:
-    name: Apache 2.0
-    url: http://www.apache.org/licenses/LICENSE-2.0.html
-  termsOfService: http://swagger.io/terms/
-  title: Notification Service API
-  version: "1.0"
+  contact: {}
 paths:
+  /api/v1/admin/notifications/broadcast:
+    post:
+      consumes:
+      - application/json
+      description: 透過 Redis Pub/Sub 廣播到所有 SSE Service Pods
+      parameters:
+      - description: 廣播請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.BroadcastRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.BroadcastResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: 廣播推送通知給所有線上玩家
+      tags:
+      - SSE Notifications (Admin)
+  /api/v1/admin/notifications/send:
+    post:
+      consumes:
+      - application/json
+      description: 透過玩家路由表查詢目標 Pod，並通過 Pub/Sub 轉發
+      parameters:
+      - description: 個別推送請求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SendNotificationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SendNotificationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: 個別推送通知給特定玩家清單
+      tags:
+      - SSE Notifications (Admin)
   /api/v1/agent-campaigns:
     delete:
       consumes:
@@ -1977,6 +2134,31 @@ paths:
       summary: 發送系統自動推播訊息
       tags:
       - 系統自動推播
+  /api/v1/notifications/stream:
+    get:
+      description: 玩家連線時註冊、推送離線訊息、保持連接
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: SSE event stream
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 建立 SSE 長連接接收實時通知
+      tags:
+      - SSE Notifications (Player)
   /api/v1/players/{id}:
     get:
       consumes:
@@ -2142,9 +2324,4 @@ paths:
       summary: 健康檢查
       tags:
       - 系統
-securityDefinitions:
-  ApiKeyAuth:
-    in: header
-    name: API-Key
-    type: apiKey
 swagger: "2.0"
