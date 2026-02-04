@@ -19,20 +19,27 @@
   - ✅ KDS 審計日誌整合
   - ✅ Wire 依賴注入更新（EventService）
   - 📋 Redis 配置與測試（待完成）
-- **Phase 5**: Router 註冊與整合完成 ⭐
+- **Phase 5**: Router 註冊與整合完成 ⭐ **含架構重構**
   - ✅ SSE 路由註冊（3 個端點）
   - ✅ 認證中間件整合（API Key + JWT）
   - ✅ Wire 依賴注入完整整合
   - ✅ Swagger 文檔生成
+  - ✅ **架構重構**: 完全獨立的 SSE Service Pod 架構實現
+    - 獨立服務入口 (`cmd/sse/sse.go`)
+    - 獨立路由管理器 (`sse_router.go`)
+    - Wire DI 分離 (WebComponents vs SSEComponents)
+    - 支援獨立部署與水平擴展
 
 **🚧 待完成**:
 - Phase 4.2: Redis 配置與測試
 - Phase 6: 測試與優化
 - Phase 7-9: 文檔、部署、驗收
 
-**📊 完成度**: ~75% (核心功能與路由整合完成，待測試與部署)
+**📊 完成度**: ~75% (核心功能與路由整合完成，獨立 Pod 架構已實現，待測試與部署)
 
-**🎯 下一步**: Phase 6 測試與優化（整合測試、效能測試、Redis 功能驗證）
+**🎯 下一步**: Phase 6 測試與優化（整合測試、多 Pod 測試、效能測試、Redis 功能驗證）
+
+**⚠️ 重要變更**: Phase 5 經歷架構重構，從混用架構改為完全獨立的 SSE Service Pod，詳見 [Phase 5 文檔](phase-5.md#重要架構調整2026-02-04)
 
 ---
 
@@ -60,18 +67,42 @@
 **設計理念**: 從一開始就採用可水平擴展的生產級架構，避免後期重構成本
 
 **核心架構**: 獨立 SSE Service Pod + Redis Pub/Sub
-- SSE Service 獨立部署與擴展
-- Redis Pub/Sub 作為訊息總線
-- 跨 Pod 路由與全局廣播
-- 支援無限水平擴展
+- ✅ **完全獨立的 SSE Service**: 專用服務進程 (`cmd/sse`)，獨立於 Web Service (`cmd/web`)
+- ✅ **獨立部署**: SSE Service (8081) 與 Web Service (8080) 可分別部署與擴展
+- ✅ **Redis Pub/Sub 訊息總線**: 跨 Pod 訊息路由與全局廣播
+- ✅ **無限水平擴展**: 支援任意數量的 SSE Pod 並行運行
+
+**服務架構**:
+```
+┌─────────────────────────┐        ┌─────────────────────────┐
+│  Web Service            │        │  SSE Service            │
+│  (cmd/web/web.go)       │        │  (cmd/sse/sse.go)       │
+│                         │        │                         │
+│  ├─ Business API        │        │  ├─ Admin Push API      │
+│  ├─ Agent API           │        │  ├─ Player Stream API   │
+│  └─ Health Check        │        │  └─ SSE Manager         │
+│                         │        │                         │
+│  Port: 8080             │        │  Port: 8081             │
+│  Components: Web        │        │  Components: SSE        │
+└─────────────────────────┘        └─────────────────────────┘
+          │                                  │
+          └──────────────┬───────────────────┘
+                         │
+                         ▼
+              ┌──────────────────────┐
+              │  Redis Pub/Sub       │
+              │  Message Bus         │
+              └──────────────────────┘
+```
 
 **技術優勢**:
 - 🚀 **無限擴展**: 支援無限 Pod 水平擴展，輕鬆應對百萬級連接
-- 🛡️ **資源隔離**: SSE 服務與業務 API 完全隔離，互不影響
+- 🛡️ **資源隔離**: SSE 服務與業務 API **完全獨立進程**，互不影響
 - 🌐 **全局廣播**: Redis Pub/Sub 實現跨 Pod 即時廣播
-- 📊 **獨立監控**: 針對 SSE 特性設計監控指標
+- 📊 **獨立監控**: 針對 SSE 特性設計監控指標，獨立 Metrics
 - 🔄 **優雅關閉**: 支援 Pod 優雅關閉與連接自動遷移
 - ⚡ **高性能**: 針對長連接優化，P99 延遲 < 100ms
+- 🔧 **獨立配置**: SSE Service 專用超時配置（ReadTimeout/WriteTimeout: 5分鐘）
 
 **架構特性**:
 - ✅ Clean Architecture 分層設計
@@ -449,7 +480,7 @@ func (m *sseManager) RegisterConnection(ctx context.Context, playerID string, wr
 | 2026-02-03 | Phase 2 | ✅ Application Layer 完成<br>- DTO: 完整驗證規則<br>- UseCase: 3個核心方法實作<br>- 移除 KDS 審計日誌（簡化）<br>- 單元測試: 3個案例 100% 通過 | 移除 EventProducer 依賴以簡化架構 | Phase 3: Adapter Layer 實作 |
 | 2026-02-03 | Phase 3 | ✅ Adapter Layer 完成<br>- SSE Manager: 完整 Redis Pub/Sub 整合 (539行)<br>- HTTP Handler: 3個端點 + Swagger<br>- JWT Middleware: Bearer Token 認證<br>- 玩家路由表、線上統計、離線訊息<br>- 優雅關閉機制<br>- Pub/Sub 監聽器 Goroutine | 完整實現多 Pod 水平擴展架構 | Phase 4: Infrastructure Layer |
 | 2026-02-04 | Phase 4 | ✅ KDS 審計日誌整合完成<br>- 重新加入 EventService 依賴<br>- 定義 SSE 事件類型 (4種)<br>- UseCase 整合事件發送<br>- Wire 依賴注入更新<br>- Config 配置支援<br>- 單元測試更新 (含 Mock) | EventService 重新整合需調整 UseCase | Phase 5: Router 註冊整合 |
-| 2026-02-04 | Phase 5 | ✅ Router 註冊與整合完成<br>- SSE 路由註冊 (3個端點)<br>- API Key + JWT 認證整合<br>- Wire 依賴注入完整整合<br>- WebComponents 更新<br>- Swagger 文檔生成<br>- 編譯驗證通過<br>- 環境變數配置確認 | 無 | Phase 6: 測試與優化<br>Phase 4.2: Redis 配置測試 |
+| 2026-02-04 | Phase 5 | ✅ Router 註冊與整合完成 + 架構重構 ⭐<br>**階段一 - 初始整合 (Commit 19eabc3)**:<br>- SSE 路由註冊 (3個端點)<br>- API Key + JWT 認證整合<br>- Wire 依賴注入整合<br>- Swagger 文檔生成<br>**階段二 - 架構重構 (Commit ee34e77)**:<br>- 創建獨立 SSE Service (cmd/sse/sse.go)<br>- 創建 SSE 專用路由管理器<br>- Wire DI 分離 (WebComponents vs SSEComponents)<br>- Web Service 移除 SSE 依賴<br>- 編譯驗證通過 (Web + SSE) | 發現初始設計違反獨立 Pod 原則，執行架構重構 | Phase 6: 測試與優化<br>（含多 Pod 測試）<br>Phase 4.2: Redis 配置測試 |
 
 ---
 
@@ -485,7 +516,8 @@ func (m *sseManager) RegisterConnection(ctx context.Context, playerID string, wr
 | 2026-02-02 | v1.0 | 初始版本建立，完成架構設計與任務規劃 | Claude |
 | 2026-02-03 | v1.1 | Phase 1-3 完成：Domain Layer, Application Layer, Adapter Layer (含 Redis Pub/Sub) | Claude |
 | 2026-02-04 | v1.2 | Phase 4 部分完成：KDS 審計日誌整合與 Wire 依賴注入更新 | Claude |
-| 2026-02-04 | v1.3 | Phase 5 完成：Router 註冊、認證整合、Wire 依賴注入、Swagger 文檔生成 | Claude |
+| 2026-02-04 | v1.3 | Phase 5 初始完成：Router 註冊、認證整合、Wire 依賴注入、Swagger 文檔生成 | Claude |
+| 2026-02-04 | v1.4 | Phase 5 架構重構：完全獨立的 SSE Service Pod 架構實現，服務分離、Wire DI 分離 | Claude |
 
 ---
 

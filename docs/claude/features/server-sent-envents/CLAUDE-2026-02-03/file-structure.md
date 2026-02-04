@@ -202,9 +202,82 @@ type GinSSEWriter struct {
 | 類型 | 檔案路徑 | 職責 | 狀態 |
 |------|---------|------|------|
 | **Migration** | `migrations/XXXXXX_create_redis_config.sql` | Redis 配置 (僅限配置) | 📋 待建立 |
-| **Router** | `internal/adapter/inbound/router/api_router.go` | 註冊 SSE 路由 (修改) | 📋 待修改 |
-| **Wire** | `internal/di/wire.go` | 依賴注入配置 (修改) | 📋 待修改 |
+| **Service Entry** | `cmd/sse/sse.go` | ✅ **SSE 獨立服務入口** (新增) | ✅ 已完成 |
+| **Router** | `internal/adapter/inbound/router/sse_router.go` | ✅ **SSE 專用路由管理器** (新增) | ✅ 已完成 |
+| **Router** | `internal/adapter/inbound/router/api_router.go` | 業務 API 路由 (移除 SSE) | ✅ 已修改 |
+| **Wire** | `internal/di/wire.go` | 依賴注入配置 (分離 Web/SSE Components) | ✅ 已修改 |
 | **Config** | `config/config.go` | 新增 SSE Pod ID 配置 | 📋 待修改 |
+| **Main** | `main.go` | 新增 SSE service 匯入 | ✅ 已修改 |
+
+### 獨立服務架構 ⭐ **重要變更**
+
+**完成日期**: 2026-02-04
+**Commit**: `ee34e77` - feat(sse): refactor to independent SSE Service Pod architecture
+
+#### cmd/sse/sse.go - SSE 獨立服務入口 (273 行)
+
+完全獨立的 SSE Service 進程，與 Web Service 分離部署。
+
+**核心特性**:
+```go
+// 獨立的服務配置
+const (
+    defaultPort     = 8081  // 與 Web Service (8080) 不同端口
+    shutdownTimeout = 5 * time.Second
+)
+
+// 長連接優化配置
+server := &http.Server{
+    Addr:         fmt.Sprintf(":%d", serverPort),
+    Handler:      router,
+    ReadTimeout:  5 * time.Minute,   // 延長讀取超時
+    WriteTimeout: 5 * time.Minute,   // 延長寫入超時
+    IdleTimeout:  10 * time.Minute,  // 延長空閒超時
+}
+```
+
+**依賴注入**:
+- 使用 `di.InitializeSSEComponents()` 而非 `InitializeWebComponents()`
+- 包含 SSEHandler 和 Metrics
+- 不包含業務 API 相關組件
+
+**啟動方式**:
+```bash
+go run main.go sse --port 8081
+```
+
+#### internal/adapter/inbound/router/sse_router.go - SSE 專用路由管理器 (104 行)
+
+專門管理 SSE 相關路由的獨立路由器。
+
+**結構定義**:
+```go
+type SSERouterManager struct {
+    sseHandler *api.SSENotificationHandler
+    metrics    *metrics.Metrics
+}
+```
+
+**註冊的路由**:
+```go
+// Admin API (API Key 認證)
+POST /api/v1/admin/notifications/broadcast
+POST /api/v1/admin/notifications/send
+
+// Player API (JWT 認證)
+GET /api/v1/notifications/stream
+
+// 健康檢查 (無認證)
+GET /health
+GET /readyz
+```
+
+**中間件配置**:
+- 獨立的 CORS 配置
+- 獨立的 Metrics 收集
+- 獨立的錯誤處理
+- 獨立的 API Key 認證
+- 獨立的 JWT 認證
 
 ### Database Migration (簡化版)
 
@@ -240,21 +313,57 @@ player.Use(jwtAuth)
 }
 ```
 
-### Wire 依賴注入
+### Wire 依賴注入 ⭐ **架構分離**
 
-新增 Provider 函數:
+#### 分離的組件結構
+
+**WebComponents** - Web Service 專用:
+```go
+type WebComponents struct {
+    HTTPHandler  *api.HTTPHandler   // 業務 API Handler
+    AgentHandler *api.AgentHandler  // 代理 API Handler
+    Metrics      *metrics.Metrics   // Metrics 服務
+}
+
+// 初始化函數
+func InitializeWebComponents(
+    cfg *config.Config,
+    logger infrastructure.Logger,
+    redisManager *redis.Manager,
+    db *gorm.DB,
+) (*WebComponents, error)
+```
+
+**SSEComponents** - SSE Service 專用:
+```go
+type SSEComponents struct {
+    SSEHandler *api.SSENotificationHandler  // SSE Handler
+    Metrics    *metrics.Metrics              // Metrics 服務
+}
+
+// 初始化函數
+func InitializeSSEComponents(
+    cfg *config.Config,
+    logger infrastructure.Logger,
+    redisManager *redis.Manager,
+    db *gorm.DB,
+) (*SSEComponents, error)
+```
+
+#### SSE 相關 Provider 函數
+
 ```go
 // SSE Manager (需注入 Pod ID)
 func provideSSEManager(
     podID string,                    // ⭐ 從環境變數注入
-    redisClient *redis.Client,
+    cacheManager cache.CacheManager,
     logger infrastructure.Logger,
 ) service.SSEManager
 
 // SSE PubSub Listener
 func providePubSubListener(
     sseManager service.SSEManager,
-    redisClient *redis.Client,
+    cacheManager cache.CacheManager,
     logger infrastructure.Logger,
 ) *service.PubSubListener
 
@@ -270,6 +379,38 @@ func provideSSENotificationHandler(
     useCase inbound.SSENotificationUseCase,
     logger infrastructure.Logger,
 ) *api.SSENotificationHandler
+```
+
+#### 依賴鏈對比
+
+**Web Service 依賴鏈**:
+```
+Config → Logger → RedisManager → DB
+  ↓
+TracingService, LockManager, MetricsService, ...
+  ↓
+Repositories, UseCases
+  ↓
+HTTPHandler, AgentHandler
+  ↓
+WebComponents
+```
+
+**SSE Service 依賴鏈**:
+```
+Config → Logger → RedisManager → DB
+  ↓
+TracingService, LockManager, MetricsService, KDSService, ...
+  ↓
+QueueService, EventService
+  ↓
+SSEManager, PubSubListener
+  ↓
+SSENotificationUseCase
+  ↓
+SSENotificationHandler
+  ↓
+SSEComponents
 ```
 
 ### 環境變數配置
@@ -344,5 +485,103 @@ REDIS_DB: 0
 
 ---
 
+## 5. 完整文件結構總覽
+
+### 服務入口
+
+```
+cmd/
+├── web/
+│   └── web.go              ✅ Web Service 入口 (8080)
+│       - 業務 API
+│       - 代理 API
+│       - 使用 WebComponents
+│
+└── sse/
+    └── sse.go              ✅ SSE Service 入口 (8081) ⭐ 新增
+        - SSE 推播 API
+        - SSE 串流 API
+        - 使用 SSEComponents
+```
+
+### Domain Layer
+
+```
+internal/domain/
+├── entity/
+│   └── sse_notification.go         ✅ SSE 通知實體
+├── consts/
+│   └── sse_notification.go         ✅ SSE 常數定義
+└── ports/
+    ├── inbound/
+    │   └── sse_notification.go     ✅ SSE UseCase 介面
+    └── outbound/
+        └── service/
+            └── sse_manager.go      ✅ SSE Manager 介面
+```
+
+### Application Layer
+
+```
+internal/application/
+├── dto/
+│   └── sse_notification.go         ✅ SSE DTO 定義
+└── usecase/
+    └── sse_notification/
+        ├── sse_notification_usecase.go       ✅ UseCase 實作
+        └── sse_notification_usecase_test.go  ✅ 單元測試
+```
+
+### Adapter Layer
+
+```
+internal/adapter/
+├── inbound/
+│   ├── handler/
+│   │   └── api/
+│   │       ├── sse_notification_handler.go   ✅ SSE HTTP Handler
+│   │       └── gin_sse_writer.go             ✅ Gin SSE Writer
+│   └── router/
+│       ├── router_manager.go        ✅ Web Service 路由管理器 (修改)
+│       ├── api_router.go            ✅ 業務 API 路由 (移除 SSE)
+│       └── sse_router.go            ✅ SSE Service 路由管理器 ⭐ 新增
+│
+└── outbound/
+    └── service/
+        ├── sse_manager.go                    ✅ SSE Manager 實作
+        └── sse_pubsub_listener.go            ✅ Pub/Sub 監聽器
+```
+
+### Infrastructure Layer
+
+```
+internal/
+├── di/
+│   ├── wire.go               ✅ Wire 配置 (分離 Web/SSE Components)
+│   └── wire_gen.go           ✅ 自動生成
+│
+└── infrastructure/
+    ├── config/
+    │   └── config.go         📋 新增 SSE Pod ID 配置
+    └── ...
+
+main.go                       ✅ 主入口 (新增 SSE service 匯入)
+```
+
+### 架構變更摘要
+
+| 變更類型 | 檔案 | 狀態 | 說明 |
+|---------|------|------|------|
+| **新增** | `cmd/sse/sse.go` | ✅ 完成 | SSE 獨立服務入口 |
+| **新增** | `internal/adapter/inbound/router/sse_router.go` | ✅ 完成 | SSE 專用路由管理器 |
+| **修改** | `internal/di/wire.go` | ✅ 完成 | 分離 Web/SSE Components |
+| **修改** | `internal/di/wire_gen.go` | ✅ 完成 | Wire 自動生成更新 |
+| **修改** | `internal/adapter/inbound/router/router_manager.go` | ✅ 完成 | 移除 SSE Handler |
+| **修改** | `internal/adapter/inbound/router/api_router.go` | ✅ 完成 | 移除 SSE 路由 |
+| **修改** | `cmd/web/web.go` | ✅ 完成 | 移除 SSE 相關初始化 |
+| **修改** | `main.go` | ✅ 完成 | 新增 SSE service 匯入 |
+
+---
+
 **維護者**: Development Team
-**最後更新**: 2026-02-02
+**最後更新**: 2026-02-04 (架構重構完成)

@@ -58,12 +58,114 @@
 
 ---
 
+## ⚠️ 重要架構調整（2026-02-04）
+
+### 問題發現
+
+初始 Phase 5 實作（Commit `19eabc3`）將 SSE Handler 混入 Web Service 的 RouterManager，違反了原始架構設計的**「獨立 SSE Service Pod」**原則。
+
+**具體問題**:
+1. SSE Handler 整合至 WebComponents 結構
+2. SSE 路由註冊在 api_router.go 中與業務 API 混合
+3. Web Service 的 RouterManager 負責管理 SSE 相關路由
+4. 無法實現獨立部署與水平擴展
+5. 資源隔離不完整，違反微服務設計原則
+
+### 解決方案
+
+採用**方案 A：完全分離架構**，重構為兩個完全獨立的服務：
+
+#### 架構變更摘要
+
+**服務分離**:
+- ✅ **Web Service** (`cmd/web/web.go`) - 業務 API 服務，端口 8080
+- ✅ **SSE Service** (`cmd/sse/sse.go`) - SSE 推播服務，端口 8081
+
+**Wire DI 分離**:
+- ✅ **WebComponents** - 包含 HTTPHandler, AgentHandler, Metrics
+- ✅ **SSEComponents** - 包含 SSEHandler, Metrics
+
+**Router 分離**:
+- ✅ **RouterManager** - 負責 Web Service 業務路由（移除 SSE）
+- ✅ **SSERouterManager** - 負責 SSE Service 專用路由
+
+#### 重構細節
+
+**新建文件**:
+1. `cmd/sse/sse.go` (273 行)
+   - 獨立 SSE 服務入口
+   - 優化長連接配置（ReadTimeout/WriteTimeout/IdleTimeout: 5-10 分鐘）
+   - 獨立啟動邏輯與優雅關閉
+   - 使用 SSEComponents 注入
+
+2. `internal/adapter/inbound/router/sse_router.go` (104 行)
+   - SSE 專用路由管理器
+   - 3 個端點：broadcast, send, stream
+   - 獨立認證中間件配置（API Key + JWT）
+   - 獨立健康檢查端點
+
+**修改文件**:
+1. `internal/di/wire.go`
+   - 拆分 WebComponents 和 SSEComponents
+   - 新增 `InitializeSSEComponents()` 函數
+   - WebComponents 移除 SSEHandler
+
+2. `internal/di/wire_gen.go`
+   - Wire 自動生成兩套依賴注入鏈
+
+3. `cmd/web/web.go`
+   - RouterManager 初始化移除 sseHandler 參數
+
+4. `internal/adapter/inbound/router/router_manager.go`
+   - 移除 sseHandler 欄位
+   - 移除 SSE 相關中間件（apiKeyMiddleware, jwtMiddleware）
+   - 簡化為純業務 API 路由管理
+
+5. `internal/adapter/inbound/router/api_router.go`
+   - 移除 sseHandler 欄位
+   - 移除 SSE 路由註冊代碼
+
+6. `main.go`
+   - 新增 SSE service 匯入
+
+### Commit History
+
+| Commit | 說明 | 變更範圍 |
+|--------|------|---------|
+| `19eabc3` | 初始 Router 整合（混用架構） | 4 個文件，951 行新增 |
+| `ee34e77` | 重構為獨立 Pod 架構 ⭐ | 8 個文件，452 行新增，61 行刪除 |
+
+### 架構對比
+
+**Before (混用架構)**:
+```
+┌─────────────────────────────┐
+│  Web Service (cmd/web)      │
+│  ├── Business API           │
+│  └── SSE API (❌ 混用)      │
+└─────────────────────────────┘
+```
+
+**After (獨立架構)** ✅:
+```
+┌─────────────────────────────┐     ┌─────────────────────────────┐
+│  Web Service (cmd/web)      │     │  SSE Service (cmd/sse)      │
+│  └── Business API           │     │  └── SSE API                │
+│      (port 8080)            │     │      (port 8081)            │
+└─────────────────────────────┘     └─────────────────────────────┘
+```
+
+---
+
 ## 📊 完成摘要
 
 **完成日期**: 2026-02-04
-**變更文件**: 4 個文件，247 行新增
-**編譯狀態**: ✅ 通過
+**階段一 - Router 整合**: 4 個文件，951 行新增
+**階段二 - 架構重構**: 8 個文件，452 行新增，61 行刪除
+**編譯狀態**: ✅ Web + SSE 全部通過
 **Swagger 狀態**: ✅ 已生成
+**架構符合度**: ✅ 100% 符合原始設計
+**部署模式**: ✅ 支援獨立 Pod 水平擴展
 
 ### 已建立/更新文件
 
