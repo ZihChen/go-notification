@@ -230,8 +230,6 @@ func TestMultiPod_BroadcastToAll(t *testing.T) {
 // =============================================================================
 
 func TestMultiPod_SendToPlayer_CrossPod(t *testing.T) {
-	t.Skip("⚠️  跳過：handleTargetedMessage() 尚未實現實際訊息發送邏輯（僅記錄日誌）")
-
 	setup := SetupMultiPodTest(t, 3)
 	defer setup.Cleanup()
 

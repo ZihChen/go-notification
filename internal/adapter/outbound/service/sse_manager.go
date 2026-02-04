@@ -259,6 +259,9 @@ func (m *sseManager) SendToPlayer(ctx context.Context, playerID string, notifica
 
 		// 玩家在其他 Pod，通過 Pub/Sub 轉發
 		if targetPodID != m.podID {
+			// 設置目標玩家 ID 用於跨 Pod 路由
+			notification.TargetPlayerID = playerID
+
 			data, err := json.Marshal(notification)
 			if err != nil {
 				return fmt.Errorf("failed to marshal notification: %w", err)
@@ -498,10 +501,37 @@ func (m *sseManager) handleTargetedMessage(payload string) {
 		return
 	}
 
-	// 訊息格式應該包含 target playerID，這裡簡化處理
-	// 實際應該在 notification 中加入 targetPlayerID 欄位
-	m.logger.InfoLog("Targeted message received",
-		m.logger.String("notification_id", notification.ID))
+	// 檢查是否有目標玩家 ID
+	if notification.TargetPlayerID == "" {
+		m.logger.WarnLog("Targeted message missing target player ID",
+			m.logger.String("notification_id", notification.ID))
+		return
+	}
+
+	// 查找本地連接
+	m.mu.RLock()
+	writer, exists := m.connections[notification.TargetPlayerID]
+	m.mu.RUnlock()
+
+	if !exists {
+		m.logger.WarnLog("Target player not found in local connections",
+			m.logger.String("notification_id", notification.ID),
+			m.logger.String("target_player_id", notification.TargetPlayerID))
+		return
+	}
+
+	// 發送訊息到對應 Writer
+	if err := m.sendNotificationToWriter(writer, &notification); err != nil {
+		m.logger.WarnLog("Failed to send targeted message to player",
+			m.logger.Error("error", err),
+			m.logger.String("notification_id", notification.ID),
+			m.logger.String("target_player_id", notification.TargetPlayerID))
+		return
+	}
+
+	m.logger.InfoLog("Targeted message delivered successfully",
+		m.logger.String("notification_id", notification.ID),
+		m.logger.String("target_player_id", notification.TargetPlayerID))
 }
 
 // broadcastToLocalConnections 推送訊息到本地所有連接
