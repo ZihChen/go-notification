@@ -172,8 +172,8 @@ type OTLPMetricsConfig struct {
 
 // SSEConfig SSE 推送配置
 type SSEConfig struct {
-	PodID         string // Pod ID (Kubernetes 注入或自動生成)
-	JWTSecretKey  string // JWT Token 密鑰
+	PodID         string        // Pod ID (Kubernetes 注入或自動生成)
+	JWTSecretKey  string        // JWT Token 密鑰
 	JWTExpiration time.Duration // JWT Token 過期時間
 }
 
@@ -549,6 +549,10 @@ func (c *Config) PrintConfig() {
 	fmt.Printf("  OTLP.Headers Count: %d\n", len(c.Metrics.OTLP.Headers))
 	fmt.Printf("  OTLP.Interval: %v\n", c.Metrics.OTLP.Interval)
 	fmt.Printf("  OTLP.Timeout: %v\n", c.Metrics.OTLP.Timeout)
+
+	fmt.Printf("\n[SSE]\n")
+	fmt.Printf("  JWT.SecretKey: %s\n", maskAPIKey(c.SSE.JWTSecretKey))
+	fmt.Printf("  JWT.Expiration: %v\n", c.SSE.JWTExpiration)
 
 	fmt.Println("\n==============================")
 }
