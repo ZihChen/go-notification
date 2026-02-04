@@ -3,7 +3,7 @@
 **建立日期**: 2026-02-02
 **最後更新**: 2026-02-04
 **規格文件**: [CLAUDE-2026-02-02-v1.0.md](../CLAUDE-2026-02-02-v1.0.md)
-**狀態**: 🚧 開發中（Phase 1-3 完成 ✅ | Phase 4 部分完成 🚧）
+**狀態**: 🚧 測試階段（Phase 1-5 完成 ✅ | Phase 6 大部分完成 ⭐ | Phase 7-9 待執行 ⏳）
 
 ---
 
@@ -15,10 +15,10 @@
 - **Phase 1**: Domain Layer 完整實作 (Entity, Ports, Constants)
 - **Phase 2**: Application Layer 完整實作 (UseCase, DTO, 單元測試)
 - **Phase 3**: Adapter Layer 完整實作 (HTTP Handler, SSE Manager with Redis Pub/Sub, JWT Middleware)
-- **Phase 4**: 部分完成
+- **Phase 4**: 完整實作
   - ✅ KDS 審計日誌整合
   - ✅ Wire 依賴注入更新（EventService）
-  - 📋 Redis 配置與測試（待完成）
+  - ✅ Redis 配置與測試（Phase 6.4 已驗證）
 - **Phase 5**: Router 註冊與整合完成 ⭐ **含架構重構**
   - ✅ SSE 路由註冊（3 個端點）
   - ✅ 認證中間件整合（API Key + JWT）
@@ -29,17 +29,35 @@
     - 獨立路由管理器 (`sse_router.go`)
     - Wire DI 分離 (WebComponents vs SSEComponents)
     - 支援獨立部署與水平擴展
+- **Phase 6**: 測試與優化 ⭐ **大部分完成**
+  - ✅ **Phase 6.1**: 單 Pod 整合測試（6/6 通過）
+  - ✅ **Phase 6.2**: 多 Pod 整合測試（4/5 通過，1 跳過）
+  - ⏳ **Phase 6.3**: 效能測試與基準測試（待執行）
+  - ✅ **Phase 6.4**: Redis 功能驗證（7/7 通過）
 
 **🚧 待完成**:
-- Phase 4.2: Redis 配置與測試
-- Phase 6: 測試與優化
+- Phase 6.3: 效能測試與基準測試
 - Phase 7-9: 文檔、部署、驗收
 
-**📊 完成度**: ~75% (核心功能與路由整合完成，獨立 Pod 架構已實現，待測試與部署)
+**📊 完成度**: ~85% (核心功能、路由整合、整合測試完成，待效能測試與部署)
 
-**🎯 下一步**: Phase 6 測試與優化（整合測試、多 Pod 測試、效能測試、Redis 功能驗證）
+**🎯 下一步**: Phase 6.3 效能測試與基準測試，Phase 7 文檔撰寫
+
+**📊 測試結果摘要** (2026-02-04):
+- **單 Pod 整合測試**: 6/6 通過 ✅
+  - 連接管理、廣播、個別推送、統計、離線訊息
+- **多 Pod 整合測試**: 4/5 通過 ✅ (1 跳過)
+  - 跨 Pod 廣播、路由一致性、延遲測試（平均 101ms）、高併發（20×15）
+  - ⚠️ 跨 Pod 個別推送跳過（已知問題：handleTargetedMessage 未實現）
+- **Redis 功能驗證**: 7/7 通過 ✅
+  - Pub/Sub、Streams、Hash、Counter、連接池、版本兼容性
+- **總計**: 18 測試，17 通過（94.4%），1 跳過
 
 **⚠️ 重要變更**: Phase 5 經歷架構重構，從混用架構改為完全獨立的 SSE Service Pod，詳見 [Phase 5 文檔](phase-5.md#重要架構調整2026-02-04)
+
+**⚠️ 已知問題**:
+1. **跨 Pod 個別推送未完全實現** - `handleTargetedMessage()` 僅記錄日誌，需實現實際發送邏輯
+   - 詳見 [Phase 6 已知問題](phase-6.md#已知問題)
 
 ---
 
