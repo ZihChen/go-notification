@@ -52,8 +52,8 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, data *event.ManagerEve
 
 	// 添加管理員信息到 span
 	u.tracingService.RecordSpanAttributes(span,
-		attribute.String("merchant.global_id", data.GlobalMerchantID),
-		attribute.String("manager.global_id", data.GlobalManagerID),
+		attribute.String("global_merchant_id", data.GlobalMerchantID),
+		attribute.String("global_manager_id", data.GlobalManagerID),
 		attribute.String("manager.account", data.Account))
 
 	// 查找對應的商戶
@@ -90,7 +90,7 @@ func (u *ManagerUseCase) SyncManager(ctx context.Context, data *event.ManagerEve
 		u.logger.String("account", manager.Account))
 	u.tracingService.TraceEvent(span, "Database operation completed")
 	u.tracingService.RecordSpanAttributes(span,
-		attribute.String("manager.global_id", manager.GlobalManagerID),
+		attribute.String("global_manager_id", manager.GlobalManagerID),
 		attribute.String("manager.account", manager.Account))
 	return nil
 }
@@ -180,7 +180,7 @@ func (u *ManagerUseCase) GetManagerByID(
 
 	// 添加管理員信息到 span
 	u.tracingService.RecordSpanAttributes(span,
-		attribute.String("manager.global_id", manager.GlobalManagerID),
+		attribute.String("global_manager_id", manager.GlobalManagerID),
 		attribute.String("manager.account", manager.Account),
 		attribute.Int64("merchant.id", int64(manager.MerchantID)),
 	)
@@ -209,7 +209,7 @@ func (u *ManagerUseCase) GetManagerByGlobalID(
 	ctx, span := u.tracingService.StartSpan(ctx, "ManagerUseCase.GetManagerByGlobalID")
 	defer u.tracingService.SpanEnd(span)
 
-	u.tracingService.RecordSpanAttributes(span, attribute.String("manager.global_id", globalID))
+	u.tracingService.RecordSpanAttributes(span, attribute.String("global_manager_id", globalID))
 
 	manager, err := u.managerRepo.FindByGlobalID(ctx, globalID)
 	if err != nil {

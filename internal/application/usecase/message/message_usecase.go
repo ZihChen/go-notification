@@ -206,7 +206,7 @@ func (u *MessageUseCase) UpdateMessageCampaign(
 	defer u.tracingService.SpanEnd(span)
 
 	u.tracingService.RecordSpanAttributes(span,
-		attribute.String("campaign.global_id", campaign.GlobalID),
+		attribute.String("global_campaign_id", campaign.GlobalID),
 		attribute.String("campaign.title", campaign.Title),
 	)
 
@@ -337,7 +337,7 @@ func (u *MessageUseCase) DeleteMessageCampaign(ctx context.Context, globalID str
 	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.DeleteMessageCampaign")
 	defer u.tracingService.SpanEnd(span)
 
-	u.tracingService.RecordSpanAttributes(span, attribute.String("campaign.global_id", globalID))
+	u.tracingService.RecordSpanAttributes(span, attribute.String("global_campaign_id", globalID))
 
 	u.tracingService.TraceEvent(span, "Deleting message campaign")
 
@@ -386,7 +386,7 @@ func (u *MessageUseCase) GetMessageCampaign(
 	ctx, span := u.tracingService.StartSpan(ctx, "MessageUseCase.GetMessageCampaign")
 	defer u.tracingService.SpanEnd(span)
 
-	u.tracingService.RecordSpanAttributes(span, attribute.String("campaign.global_id", globalID))
+	u.tracingService.RecordSpanAttributes(span, attribute.String("global_campaign_id", globalID))
 
 	campaign, err := u.campaignRepo.FindByGlobalID(ctx, globalID)
 	if err != nil {

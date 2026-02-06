@@ -73,9 +73,9 @@ func (u *AgentUseCase) SyncAgentDataWithRelationships(
 
 	// 添加代理信息到 span
 	u.tracingService.RecordSpanAttributes(span,
-		attribute.String("agent.global_id", agentEvent.GlobalAgentID),
+		attribute.String("global_agent_id", agentEvent.GlobalAgentID),
 		attribute.String("agent.account", agentEvent.Account),
-		attribute.String("merchant.global_id", agentEvent.GlobalMerchantID))
+		attribute.String("global_merchant_id", agentEvent.GlobalMerchantID))
 
 	// 1. 同步當前代理資料
 	u.tracingService.TraceEvent(span, "Syncing current agent data")
@@ -157,7 +157,7 @@ func (u *AgentUseCase) GetAgentByGlobalID(
 	ctx, span := u.tracingService.StartSpan(ctx, "AgentUseCase.GetAgentByGlobalID")
 	defer u.tracingService.SpanEnd(span)
 
-	u.tracingService.RecordSpanAttributes(span, attribute.String("agent.global_id", globalAgentID))
+	u.tracingService.RecordSpanAttributes(span, attribute.String("global_agent_id", globalAgentID))
 
 	agent, err := u.agentRepo.GetByGlobalID(ctx, globalAgentID)
 	if err != nil {
@@ -757,7 +757,7 @@ func (u *AgentUseCase) GetAgentMessages(
 	defer u.tracingService.SpanEnd(span)
 
 	u.tracingService.RecordSpanAttributes(span,
-		attribute.String("agent.global_id", query.GlobalAgentID),
+		attribute.String("global_agent_id", query.GlobalAgentID),
 		attribute.Int("page", query.Page),
 		attribute.Int("page_size", query.PageSize))
 
@@ -1439,8 +1439,8 @@ func (u *AgentUseCase) BackfillMissedMessages(
 	defer u.tracingService.SpanEnd(span)
 
 	u.tracingService.RecordSpanAttributes(span,
-		attribute.String("agent.global_id", agentEvent.GlobalAgentID),
-		attribute.String("merchant.global_id", agentEvent.GlobalMerchantID))
+		attribute.String("global_agent_id", agentEvent.GlobalAgentID),
+		attribute.String("global_merchant_id", agentEvent.GlobalMerchantID))
 
 	// 1. 檢查代理是否需要補派發 (超過一個月沒上線)
 	agent, err := u.agentRepo.GetByGlobalID(ctx, agentEvent.GlobalAgentID)
