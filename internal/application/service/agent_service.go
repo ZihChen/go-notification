@@ -55,7 +55,7 @@ func (s *AgentService) SyncAgentRelationshipsUpsert(
 	defer s.tracingService.SpanEnd(span)
 
 	s.tracingService.RecordSpanAttributes(span,
-		attribute.String("agent.global_id", agentEvent.GlobalAgentID),
+		attribute.String("global_agent_id", agentEvent.GlobalAgentID),
 		attribute.String("agent.ancestry", agentEvent.Ancestry),
 		attribute.String("global_merchant_id", agentEvent.GlobalMerchantID))
 
@@ -87,7 +87,7 @@ func (s *AgentService) SyncAgentRelationshipsUpsert(
 
 	s.tracingService.RecordSpanAttributes(span,
 		attribute.StringSlice("ancestry.path_parts", pathParts),
-		attribute.StringSlice("full.path_parts", fullPath))
+		attribute.StringSlice("ancestry.full_path", fullPath))
 
 	// 批量獲取或創建所有代理，避免N+1查詢
 	agentIDMap, err := s.agentRepo.BatchGetOrCreateAgentsByGlobalIDs(ctx, fullPath, merchant.ID)
@@ -124,9 +124,9 @@ func (s *AgentService) SyncAgentRelationshipsUpsert(
 		depthLevel := i + 1
 
 		s.tracingService.RecordSpanAttributes(span,
-			attribute.String("relationship.parent_global_id", parentGlobalID),
-			attribute.String("relationship.child_global_id", childGlobalID),
-			attribute.Int("relationship.depth_level", depthLevel))
+			attribute.String("parent_global_id", parentGlobalID),
+			attribute.String("child_global_id", childGlobalID),
+			attribute.Int("depth_level", depthLevel))
 
 		relationships = append(relationships, &entity.AgentRelationship{
 			ParentID:   parentID,
@@ -178,7 +178,7 @@ func (s *AgentService) GetAgentLineDescendants(
 	ctx, span := s.tracingService.StartSpan(ctx, "AgentService.GetAgentLineDescendants")
 	defer s.tracingService.SpanEnd(span)
 
-	s.tracingService.RecordSpanAttributes(span, attribute.String("agent.global_id", globalAgentID))
+	s.tracingService.RecordSpanAttributes(span, attribute.String("global_agent_id", globalAgentID))
 
 	// 1. 快取策略 (效能優化邏輯)
 	cacheKey := fmt.Sprintf("descendants:%s", globalAgentID)
@@ -213,7 +213,7 @@ func (s *AgentService) GetAgentLineAncestors(
 	ctx, span := s.tracingService.StartSpan(ctx, "AgentService.GetAgentLineAncestors")
 	defer s.tracingService.SpanEnd(span)
 
-	s.tracingService.RecordSpanAttributes(span, attribute.String("agent.global_id", globalAgentID))
+	s.tracingService.RecordSpanAttributes(span, attribute.String("global_agent_id", globalAgentID))
 
 	// 快取策略
 	cacheKey := fmt.Sprintf("ancestors:%s", globalAgentID)
@@ -258,7 +258,7 @@ func (s *AgentService) GetAgentHierarchy(
 	ctx, span := s.tracingService.StartSpan(ctx, "AgentService.GetAgentHierarchy")
 	defer s.tracingService.SpanEnd(span)
 
-	s.tracingService.RecordSpanAttributes(span, attribute.String("agent.global_id", globalAgentID))
+	s.tracingService.RecordSpanAttributes(span, attribute.String("global_agent_id", globalAgentID))
 
 	// Service職責：複雜的並發邏輯與效能優化
 	var ancestors, descendants []uint64

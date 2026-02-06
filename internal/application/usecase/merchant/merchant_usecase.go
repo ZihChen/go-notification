@@ -47,7 +47,7 @@ func (u *MerchantUseCase) SyncMerchant(ctx context.Context, data *event.Merchant
 
 	// 添加商戶信息到 span
 	u.tracingService.RecordSpanAttributes(span,
-		attribute.String("merchant.global_id", data.GlobalMerchantID),
+		attribute.String("global_merchant_id", data.GlobalMerchantID),
 		attribute.String("merchant.name", data.Name),
 	)
 
@@ -156,7 +156,7 @@ func (u *MerchantUseCase) GetMerchantByID(
 
 	// 添加商戶信息到 span
 	u.tracingService.RecordSpanAttributes(span,
-		attribute.String("merchant.global_id", merchant.GlobalMerchantID),
+		attribute.String("global_merchant_id", merchant.GlobalMerchantID),
 		attribute.String("merchant.name", merchant.Name),
 	)
 
@@ -180,7 +180,7 @@ func (u *MerchantUseCase) GetMerchantByGlobalID(
 	ctx, span := u.tracingService.StartSpan(ctx, "MerchantUseCase.GetMerchantByGlobalID")
 	defer u.tracingService.SpanEnd(span)
 
-	u.tracingService.RecordSpanAttributes(span, attribute.String("merchant.global_id", globalID))
+	u.tracingService.RecordSpanAttributes(span, attribute.String("global_merchant_id", globalID))
 
 	merchant, err := u.merchantRepo.FindByGlobalID(ctx, globalID)
 	if err != nil {

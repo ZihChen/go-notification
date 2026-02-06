@@ -81,8 +81,8 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, data *event.PlayerEvent)
 
 	// 添加玩家信息到 span
 	u.tracingService.RecordSpanAttributes(span,
-		attribute.String("merchant.global_id", data.GlobalMerchantID),
-		attribute.String("player.global_id", data.GlobalPlayerID),
+		attribute.String("global_merchant_id", data.GlobalMerchantID),
+		attribute.String("global_player_id", data.GlobalPlayerID),
 		attribute.String("player.account", data.Account))
 
 	// 查找對應的商戶 (使用快取優化)
@@ -167,8 +167,8 @@ func (u *PlayerUseCase) SyncPlayerFromIdentity(
 
 	// 添加玩家信息到 span
 	u.tracingService.RecordSpanAttributes(span,
-		attribute.String("merchant.global_id", data.GlobalMerchantID),
-		attribute.String("player.global_id", data.GlobalPlayerID),
+		attribute.String("global_merchant_id", data.GlobalMerchantID),
+		attribute.String("global_player_id", data.GlobalPlayerID),
 		attribute.String("player.account", data.Account))
 
 	// 查找對應的商戶 (使用快取優化)
@@ -281,7 +281,7 @@ func (u *PlayerUseCase) syncPlayerTagsInline(
 	defer u.tracingService.SpanEnd(span)
 
 	u.tracingService.RecordSpanAttributes(span,
-		attribute.String("player.global_id", data.GlobalPlayerID),
+		attribute.String("global_player_id", data.GlobalPlayerID),
 		attribute.Int("tags.count", len(data.Tags)))
 
 	// 查詢玩家（剛剛處理完，應該存在）
@@ -713,7 +713,7 @@ func (u *PlayerUseCase) GetPlayerByID(ctx context.Context, id uint64) (*dto.Play
 
 	// 添加玩家信息到 span
 	u.tracingService.RecordSpanAttributes(span,
-		attribute.String("player.global_id", player.GlobalPlayerID),
+		attribute.String("global_player_id", player.GlobalPlayerID),
 		attribute.String("player.account", player.Account),
 		attribute.Int64("merchant.id", int64(player.MerchantID)))
 
@@ -742,7 +742,7 @@ func (u *PlayerUseCase) GetPlayerByGlobalID(
 	ctx, span := u.tracingService.StartSpan(ctx, "PlayerUseCase.GetPlayerByGlobalID")
 	defer u.tracingService.SpanEnd(span)
 
-	u.tracingService.RecordSpanAttributes(span, attribute.String("player.global_id", globalID))
+	u.tracingService.RecordSpanAttributes(span, attribute.String("global_player_id", globalID))
 
 	player, err := u.playerRepo.FindByGlobalID(ctx, globalID)
 	if err != nil {
@@ -790,7 +790,7 @@ func (u *PlayerUseCase) UpdatePlayerLastActive(ctx context.Context, id uint64) e
 
 	// 添加玩家信息到 span
 	u.tracingService.RecordSpanAttributes(span,
-		attribute.String("player.global_id", player.GlobalPlayerID),
+		attribute.String("global_player_id", player.GlobalPlayerID),
 		attribute.String("player.account", player.Account))
 
 	// 使用領域方法更新最後活躍時間
