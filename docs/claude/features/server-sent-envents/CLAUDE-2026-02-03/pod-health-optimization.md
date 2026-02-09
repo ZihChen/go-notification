@@ -2,7 +2,7 @@
 
 **建立日期**: 2026-02-09
 **最後更新**: 2026-02-09
-**狀態**: 🚧 實施中 (Phase 1-2 完成 ✅ | Phase 3-4 待實施)
+**狀態**: 🚧 實施中 (Phase 1-2 完成 ✅ | Phase 3 進行中 🚧 | Phase 4 待實施)
 **優先級**: 🔴 HIGH
 **返回**: [總覽文檔](overview.md)
 
@@ -546,13 +546,18 @@ func TestSSEManager_CleanupDeadPodRoutes(t *testing.T) {
   - [x] 清理指向死 Pod 的路由
   - [x] 記錄清理統計日誌
 
-### Phase 3: 測試與驗證
+### Phase 3: 測試與驗證 🚧 **進行中 (2026-02-09)**
 
-- [ ] **單元測試**
-  - [ ] 心跳更新測試
-  - [ ] 死 Pod 檢測測試
-  - [ ] 路由清理測試
-  - [ ] 離線隊列兜底測試
+- [x] **單元測試** (8/8 測試用例已創建)
+  - [x] 心跳更新測試 (TestPodHealthHeartbeat_UpdatesRedisKey)
+  - [x] 心跳過期測試 (TestPodHealthHeartbeat_ExpiresAfterTTL)
+  - [x] 心跳停止測試 (TestPodHealthHeartbeat_StopsOnContextCancel)
+  - [x] 死 Pod 檢測測試 (TestSendToPlayer_DetectsDeadPod)
+  - [x] 健康 Pod 路由測試 (TestSendToPlayer_HealthyPodRoutesCorrectly)
+  - [x] 路由清理測試 (TestCleanupDeadPodRoutes_RemovesDeadPods)
+  - [x] 全健康 Pod 測試 (TestCleanupDeadPodRoutes_NoCleanupWhenAllHealthy)
+  - [x] 空路由表測試 (TestCleanupDeadPodRoutes_EmptyRoutes)
+  - ⚠️ 注意：測試文件已創建 (sse_manager_health_test.go)，介面 mock 需要進一步完善
 
 - [ ] **整合測試**
   - [ ] Pod Crash 檢測場景
