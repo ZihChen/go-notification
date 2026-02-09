@@ -1,7 +1,7 @@
 # SSE 通知系統運維指南
 
-**版本**: v1.0
-**最後更新**: 2026-02-04
+**版本**: v1.1
+**最後更新**: 2026-02-09
 **目標讀者**: DevOps 工程師、系統管理員
 
 ---
@@ -470,6 +470,65 @@ client.XAdd(ctx, &redis.XAddArgs{
 | `sse_routing_latency_ms` | 路由延遲（P99） | > 50ms |
 | `sse_message_delivery_rate` | 訊息遞送率 | < 99% |
 
+#### 4. Pod 健康與路由清理指標 ⭐ 新增
+
+| 指標 | 說明 | 告警閾值 |
+|------|------|----------|
+| `sse_pod_health_heartbeat_errors_total` | Pod 健康心跳更新失敗次數 | > 10 次/分鐘 |
+| `sse_route_cleanup_runs_total` | 路由清理任務執行次數 | - |
+| `sse_route_cleanup_dead_pods` | 每次清理檢測到的死 Pod 數量 | > 1（持續 5 分鐘） |
+| `sse_route_cleanup_routes_removed` | 每次清理移除的路由數量 | - |
+| `sse_route_cleanup_duration_seconds` | 路由清理任務執行時間 | > 1 秒 |
+| `sse_dead_pod_detected_total` | 發送訊息時檢測到死 Pod 次數 | > 100 次/分鐘 |
+
+**Prometheus 查詢範例**:
+```promql
+# 檢測 Pod 頻繁死亡
+rate(sse_route_cleanup_dead_pods[5m]) > 0.1
+
+# 路由清理效率
+histogram_quantile(0.99, sse_route_cleanup_duration_seconds)
+
+# 死 Pod 檢測頻率（可能表示 Pod 不穩定）
+rate(sse_dead_pod_detected_total[5m])
+```
+
+**告警規則範例**:
+```yaml
+# Pod 頻繁死亡告警
+- alert: SSEFrequentPodFailures
+  expr: |
+    rate(sse_route_cleanup_dead_pods[5m]) > 0.1
+  for: 10m
+  labels:
+    severity: warning
+  annotations:
+    summary: "SSE Pods 頻繁死亡"
+    description: "過去 5 分鐘內平均每分鐘檢測到 {{ $value }} 個死 Pod"
+
+# 健康心跳失敗告警
+- alert: SSEPodHealthHeartbeatFailing
+  expr: |
+    rate(sse_pod_health_heartbeat_errors_total[5m]) > 10
+  for: 5m
+  labels:
+    severity: critical
+  annotations:
+    summary: "Pod 健康心跳更新失敗"
+    description: "Pod {{ $labels.pod_id }} 過去 5 分鐘內健康心跳更新失敗率過高"
+
+# 路由清理任務耗時告警
+- alert: SSERouteCleanupSlow
+  expr: |
+    histogram_quantile(0.99, sse_route_cleanup_duration_seconds) > 1
+  for: 10m
+  labels:
+    severity: warning
+  annotations:
+    summary: "路由清理任務執行緩慢"
+    description: "路由清理任務 P99 執行時間超過 1 秒"
+```
+
 ### 日誌最佳實踐
 
 #### 結構化日誌格式
@@ -564,6 +623,135 @@ redis-cli CLIENT LIST | wc -l
 
 # 3. 重啟 Pod 重置連接池
 kubectl rollout restart deployment sse-notification-service
+```
+
+#### 4. Pod 健康心跳失敗 ⭐ 新增
+
+**症狀**: 日誌出現 "Failed to update pod health heartbeat"
+
+**檢查步驟**:
+```bash
+# 1. 檢查 Pod 到 Redis 的網路連接
+kubectl exec -it <pod-name> -- redis-cli -h redis-cluster ping
+
+# 2. 檢查 Redis 記憶體使用情況
+redis-cli INFO MEMORY | grep used_memory_human
+
+# 3. 檢查 Pod 健康心跳 Key
+redis-cli GET sse:pod_health:sse-pod-1
+
+# 4. 檢查 Pod 日誌中的錯誤
+kubectl logs -f <pod-name> | grep "heartbeat"
+```
+
+**常見原因**:
+- Redis 連接中斷或超時
+- Redis 記憶體不足導致寫入失敗
+- Pod 的 CPU 或記憶體資源不足，導致 Goroutine 阻塞
+- 網路分區導致 Pod 無法連接到 Redis
+
+**解決方案**:
+```bash
+# 1. 如果 Redis 連接問題，檢查網路或重啟 Redis
+kubectl get pods -l app=redis-cluster
+
+# 2. 如果記憶體不足，增加 Redis maxmemory 或清理舊數據
+redis-cli CONFIG SET maxmemory 8gb
+
+# 3. 如果 Pod 資源不足，調整 resources limits
+kubectl edit deployment sse-notification-service
+```
+
+#### 5. 訊息發送到死 Pod（路由殘留）⭐ 新增
+
+**症狀**:
+- 日誌出現 "Target pod is dead, cleaning up stale route"
+- 玩家明明在線但收不到訊息
+- `sse_dead_pod_detected_total` 指標持續增加
+
+**檢查步驟**:
+```bash
+# 1. 檢查路由表中是否有死 Pod 的路由
+redis-cli HGETALL sse:player_routes
+
+# 2. 檢查所有 Pod 的健康狀態
+for pod in pod-1 pod-2 pod-3; do
+  redis-cli EXISTS sse:pod_health:$pod
+done
+
+# 3. 檢查路由清理任務日誌
+kubectl logs -f <pod-name> | grep "Cleaned up dead pod routes"
+
+# 4. 手動觸發路由清理（等待最多 1 分鐘自動執行）
+# 路由清理任務每分鐘自動執行一次
+```
+
+**常見原因**:
+- Pod 崩潰後路由表未及時清理
+- 路由清理任務執行失敗或被阻塞
+- Pod 健康心跳 TTL 過長（30 秒）
+
+**解決方案**:
+```bash
+# 1. 手動清理特定玩家的死 Pod 路由
+redis-cli HDEL sse:player_routes player-001
+
+# 2. 如果路由清理任務停止，重啟 Pod
+kubectl rollout restart deployment sse-notification-service
+
+# 3. 檢查並修復 Redis 連接問題
+kubectl logs <pod-name> | grep "Redis"
+```
+
+**預防措施**:
+- 監控 `sse_route_cleanup_dead_pods` 指標
+- 設置告警規則檢測 Pod 頻繁死亡
+- 確保 Pod 有足夠的資源配置
+- 使用 Readiness Probe 確保 Pod 健康後才接收流量
+
+#### 6. 路由清理任務執行緩慢 ⭐ 新增
+
+**症狀**:
+- `sse_route_cleanup_duration_seconds` P99 > 1 秒
+- 日誌中路由清理任務執行時間過長
+
+**檢查步驟**:
+```bash
+# 1. 檢查路由表大小
+redis-cli HLEN sse:player_routes
+
+# 2. 檢查 Redis 延遲
+redis-cli --latency
+
+# 3. 檢查 Pod 數量（影響健康檢查次數）
+kubectl get pods -l app=sse-notification | wc -l
+
+# 4. 檢查 Redis CPU 使用率
+kubectl top pods -l app=redis-cluster
+```
+
+**效能分析**:
+```
+假設場景:
+- 100,000 線上玩家路由
+- 20 個 Pod
+- 5 個死 Pod
+
+預期執行時間:
+- HGETALL 100,000 entries: ~500ms
+- EXISTS × 20: ~10ms
+- HDEL × 25,000 (5 dead pods): ~1250ms
+總計: ~1.76 秒
+
+如果超過 3 秒，表示有效能問題
+```
+
+**解決方案**:
+```bash
+# 1. 優化 Redis 性能（增加記憶體、使用 Pipeline）
+# 2. 考慮分批清理（每次清理部分路由）
+# 3. 增加 Redis 節點（使用 Redis Cluster 分片）
+# 4. 監控並移除異常路由（單個玩家不應該有多個路由）
 ```
 
 ---

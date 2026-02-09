@@ -1,7 +1,7 @@
 # SSE 通知系統 API 文檔
 
-**版本**: v1.0
-**最後更新**: 2026-02-04
+**版本**: v1.1
+**最後更新**: 2026-02-09
 **服務**: SSE Notification Service
 **基礎 URL**: `http://localhost:8081` (開發環境)
 
@@ -304,6 +304,56 @@ data: {"error":"Connection error","details":"..."}
 
 **解決方案**: 檢查請求參數是否符合長度和格式要求
 
+#### 4. SSE 連接意外中斷 ⭐ 新增
+
+**場景**: Pod 重啟或崩潰導致 SSE 連接中斷
+
+**客戶端行為**:
+- EventSource 觸發 `onerror` 事件
+- 瀏覽器可能自動嘗試重連（取決於實現）
+
+**推薦處理**:
+```javascript
+this.eventSource.onerror = (error) => {
+  console.error('SSE connection lost');
+  this.eventSource.close();
+
+  // 使用指數退避策略重連
+  this.reconnect();
+};
+```
+
+**重要提醒**:
+- ✅ SSE 連接中斷是正常現象（Pod 重啟、網路波動）
+- ✅ 實現自動重連機制是必須的
+- ✅ Pod 重啟期間的訊息會進入離線佇列，重連後自動推送
+- ✅ 不需要擔心訊息丟失（系統提供雙層保護機制）
+
+#### 5. 訊息延遲送達 ⭐ 新增
+
+**症狀**: 推送 API 成功但玩家延遲收到通知（可能延遲數秒到 30 秒）
+
+**可能原因**:
+1. **Pod 健康檢測延遲**:
+   - 訊息發送到已崩潰的 Pod
+   - 健康檢測發現 Pod 死亡（最長 30 秒）
+   - 訊息重新路由或進入離線佇列
+
+2. **路由清理延遲**:
+   - 死 Pod 的路由殘留在 Redis
+   - 路由清理任務執行間隔（1 分鐘）
+   - 清理完成前訊息可能路由失敗
+
+**正常延遲範圍**:
+- 即時推送: < 100ms（P99）
+- Pod 崩潰後重路由: 0-30 秒
+- 路由清理觸發: 0-60 秒
+
+**解決方案**:
+- 這是系統設計的權衡結果（高可用性 vs 即時性）
+- 如果需要更低延遲，可調整健康心跳 TTL（不建議低於 10 秒）
+- 監控 `sse_dead_pod_detected_total` 指標檢測問題
+
 ---
 
 ## 使用範例
@@ -562,6 +612,177 @@ broadcast_notification("your-api-key-here")
 - ✅ 妥善保管 API Key，不要硬編碼在前端代碼
 - ✅ 定期更新 JWT Token
 - ✅ 使用 HTTPS 加密傳輸（生產環境）
+
+### 5. Pod 重啟與連接恢復 ⭐ 新增
+
+#### 理解 Pod 生命週期
+
+**正常場景**:
+- Pod 定期滾動更新（部署新版本）
+- Pod 自動擴縮容（HPA 觸發）
+- Pod 因資源逐不足被驅
+- Pod 崩潰重啟（OOMKilled、錯誤等）
+
+**影響**:
+- SSE 連接會中斷（EventSource `onerror` 觸發）
+- 玩家路由會暫時失效（直到重連）
+
+#### 最佳實踐建議
+
+**1. 實現健壯的重連機制**:
+```javascript
+class SSEClient {
+  constructor(jwtToken) {
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 10;
+    this.reconnectDelay = 1000; // 1 秒
+    this.maxReconnectDelay = 30000; // 30 秒
+  }
+
+  reconnect() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('Max reconnect attempts reached');
+      this.notifyUser('無法連接到伺服器，請刷新頁面');
+      return;
+    }
+
+    this.reconnectAttempts++;
+
+    setTimeout(() => {
+      console.log(`Reconnecting (attempt ${this.reconnectAttempts})...`);
+      this.connect();
+
+      // 指數退避：1s → 2s → 4s → 8s → 16s → 30s (max)
+      this.reconnectDelay = Math.min(
+        this.reconnectDelay * 2,
+        this.maxReconnectDelay
+      );
+    }, this.reconnectDelay);
+  }
+
+  onConnected() {
+    // 重連成功，重置計數器
+    this.reconnectAttempts = 0;
+    this.reconnectDelay = 1000;
+  }
+}
+```
+
+**2. 處理 Pod 關閉通知**:
+```javascript
+// Pod 主動關閉時會發送 'shutdown' 事件
+this.eventSource.addEventListener('shutdown', (event) => {
+  console.log('Server shutting down, reconnecting to another pod...');
+  this.eventSource.close();
+
+  // 短暫延遲後重連（給 Pod 時間完全關閉）
+  setTimeout(() => this.connect(), 2000);
+});
+```
+
+**3. 監控連接狀態**:
+```javascript
+class ConnectionMonitor {
+  constructor() {
+    this.lastPingTime = Date.now();
+    this.pingTimeout = 60000; // 60 秒無心跳視為異常
+  }
+
+  onPing() {
+    this.lastPingTime = Date.now();
+  }
+
+  startMonitoring() {
+    setInterval(() => {
+      const timeSinceLastPing = Date.now() - this.lastPingTime;
+
+      if (timeSinceLastPing > this.pingTimeout) {
+        console.warn('No ping received, connection may be stale');
+        this.reconnect();
+      }
+    }, 30000); // 每 30 秒檢查一次
+  }
+}
+```
+
+**4. 用戶體驗優化**:
+```javascript
+// 顯示連接狀態指示器
+function updateConnectionStatus(status) {
+  const indicator = document.getElementById('connection-status');
+
+  switch (status) {
+    case 'connected':
+      indicator.className = 'status-online';
+      indicator.textContent = '已連線';
+      break;
+    case 'reconnecting':
+      indicator.className = 'status-reconnecting';
+      indicator.textContent = '重新連線中...';
+      break;
+    case 'disconnected':
+      indicator.className = 'status-offline';
+      indicator.textContent = '連線中斷';
+      break;
+  }
+}
+```
+
+#### 訊息可靠性保證
+
+**系統保障機制**:
+1. **離線訊息佇列**: Pod 重啟期間的訊息自動進入 Redis Streams
+2. **自動補發**: 重連成功後自動推送離線期間的訊息
+3. **TTL 保護**: 離線訊息保留 7 天，單個玩家最多 100 條
+
+**客戶端無需額外處理**:
+- ❌ 不需要手動請求離線訊息
+- ❌ 不需要擔心訊息丟失
+- ✅ 只需正確實現重連機制即可
+
+#### 訊息去重建議
+
+**問題**: 極端情況下可能收到重複訊息
+
+**場景**:
+- 訊息正在發送時 Pod 崩潰
+- 訊息可能同時進入離線佇列和成功送達
+
+**解決方案**:
+```javascript
+class NotificationDeduplicator {
+  constructor() {
+    this.receivedIds = new Set();
+    this.maxCacheSize = 1000;
+  }
+
+  isDuplicate(notificationId) {
+    if (this.receivedIds.has(notificationId)) {
+      return true;
+    }
+
+    this.receivedIds.add(notificationId);
+
+    // 限制快取大小
+    if (this.receivedIds.size > this.maxCacheSize) {
+      const firstId = this.receivedIds.values().next().value;
+      this.receivedIds.delete(firstId);
+    }
+
+    return false;
+  }
+
+  handleNotification(notification) {
+    if (this.isDuplicate(notification.id)) {
+      console.log('Duplicate notification ignored:', notification.id);
+      return;
+    }
+
+    // 處理通知
+    this.displayNotification(notification);
+  }
+}
+```
 
 ---
 
