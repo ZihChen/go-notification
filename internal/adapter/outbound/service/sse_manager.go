@@ -71,6 +71,10 @@ func NewSSEManager(
 	manager.wg.Add(1)
 	go manager.startPubSubListener()
 
+	// 啟動 Pod 健康心跳
+	manager.wg.Add(1)
+	go manager.startPodHealthHeartbeat()
+
 	logger.InfoLog("SSE Manager initialized",
 		logger.String("pod_id", podID),
 		logger.String("broadcast_channel", consts.SSEBroadcastChannel),
@@ -273,8 +277,35 @@ func (m *sseManager) SendToPlayer(
 			return fmt.Errorf("failed to query player route: %w", err)
 		}
 
-		// 玩家在其他 Pod，通過 Pub/Sub 轉發
+		// 玩家在其他 Pod，先檢查目標 Pod 是否健康
 		if targetPodID != m.podID {
+			// 檢查目標 Pod 健康狀態
+			healthKey := fmt.Sprintf(consts.SSEPodHealthKey, targetPodID)
+			exists, err := m.redisClient.Exists(ctx, healthKey).Result()
+
+			if err != nil {
+				m.logger.WarnWithContext(ctx, "Failed to check target pod health",
+					m.logger.Error("error", err),
+					m.logger.String("player_id", playerID),
+					m.logger.String("target_pod", targetPodID))
+				// Redis 檢查失敗，為了安全起見加入離線隊列
+				return m.EnqueueOfflineMessage(ctx, playerID, notification)
+			}
+
+			if exists == 0 {
+				// 目標 Pod 已死，清理殘留路由並加入離線隊列
+				m.logger.WarnWithContext(ctx, "Target pod is dead, cleaning route and enqueuing offline",
+					m.logger.String("player_id", playerID),
+					m.logger.String("dead_pod", targetPodID))
+
+				// 清理殘留路由
+				m.redisClient.HDel(ctx, consts.SSEPlayerRoutesKey, playerID)
+
+				// 加入離線隊列
+				return m.EnqueueOfflineMessage(ctx, playerID, notification)
+			}
+
+			// 目標 Pod 健康，通過 Pub/Sub 轉發
 			// 設置目標玩家 ID 用於跨 Pod 路由
 			notification.TargetPlayerID = playerID
 
@@ -289,7 +320,8 @@ func (m *sseManager) SendToPlayer(
 					m.logger.Error("error", err),
 					m.logger.String("player_id", playerID),
 					m.logger.String("target_pod", targetPodID))
-				return fmt.Errorf("failed to publish to pod %s: %w", targetPodID, err)
+				// Pub/Sub 失敗也加入離線隊列
+				return m.EnqueueOfflineMessage(ctx, playerID, notification)
 			}
 
 			m.logger.InfoWithContext(ctx, "Message routed to target pod",
@@ -499,6 +531,38 @@ func (m *sseManager) startPubSubListener() {
 				m.handleBroadcastMessage(msg.Payload)
 			case fmt.Sprintf(consts.SSEPodChannel, m.podID):
 				m.handleTargetedMessage(msg.Payload)
+			}
+		}
+	}
+}
+
+// startPodHealthHeartbeat 啟動 Pod 健康心跳 Goroutine
+func (m *sseManager) startPodHealthHeartbeat() {
+	defer m.wg.Done()
+
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	healthKey := fmt.Sprintf(consts.SSEPodHealthKey, m.podID)
+
+	m.logger.InfoLog("Pod health heartbeat started",
+		m.logger.String("pod_id", m.podID),
+		m.logger.String("interval", "10s"),
+		m.logger.String("ttl", "30s"))
+
+	for {
+		select {
+		case <-m.ctx.Done():
+			m.logger.InfoLog("Pod health heartbeat stopped",
+				m.logger.String("pod_id", m.podID))
+			return
+		case <-ticker.C:
+			// 更新健康狀態，TTL 30 秒
+			ctx := context.Background()
+			if err := m.redisClient.Set(ctx, healthKey, "alive", 30*time.Second).Err(); err != nil {
+				m.logger.WarnLog("Failed to update pod health heartbeat",
+					m.logger.Error("error", err),
+					m.logger.String("pod_id", m.podID))
 			}
 		}
 	}

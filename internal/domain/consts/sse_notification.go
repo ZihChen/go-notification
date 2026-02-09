@@ -41,11 +41,13 @@ const (
 	RedisKeySSEOnlineCount    = "sse:online_count"  // String: 線上玩家計數器
 	RedisKeySSEPodStatsPrefix = "sse:pod_stats:"    // Hash: Pod 統計資訊前綴
 	RedisKeySSEOfflinePrefix  = "sse:offline:"      // Stream: 離線訊息前綴 (sse:offline:{playerID})
+	RedisKeySSEPodHealthPrefix = "sse:pod_health:"  // String: Pod 健康心跳前綴 (sse:pod_health:{podID})
 
 	// 簡化別名（向後兼容）
 	SSEPlayerRoutesKey    = RedisKeySSEPlayerRoutes // 玩家路由表 Key
 	SSEOnlineCountKey     = RedisKeySSEOnlineCount  // 線上計數 Key
 	SSEOfflineMessagesKey = "sse:offline:%s"        // 離線訊息 Key 格式化字串
+	SSEPodHealthKey       = "sse:pod_health:%s"     // Pod 健康心跳 Key 格式化字串 (TTL: 30秒)
 )
 
 // Redis Pub/Sub Channel 常數

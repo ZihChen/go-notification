@@ -1,7 +1,8 @@
 # Pod 健康心跳與路由清理優化
 
 **建立日期**: 2026-02-09
-**狀態**: 📝 規劃中
+**最後更新**: 2026-02-09
+**狀態**: 🚧 實施中 (Phase 1 完成 ✅ | Phase 2-4 待實施)
 **優先級**: 🔴 HIGH
 **返回**: [總覽文檔](overview.md)
 
@@ -513,23 +514,23 @@ func TestSSEManager_CleanupDeadPodRoutes(t *testing.T) {
 
 ## 📝 實施檢查清單
 
-### Phase 1: Pod 健康心跳機制
+### Phase 1: Pod 健康心跳機制 ✅ **已完成 (2026-02-09)**
 
-- [ ] **Step 1.1**: 實現 `startPodHealthHeartbeat()` 方法
-  - [ ] 每 10 秒更新 Redis `sse:pod_health:{podID}`
-  - [ ] TTL 設置為 30 秒
-  - [ ] 在 `NewSSEManager()` 中啟動 Goroutine
-  - [ ] 優雅關閉時停止心跳
+- [x] **Step 1.1**: 實現 `startPodHealthHeartbeat()` 方法
+  - [x] 每 10 秒更新 Redis `sse:pod_health:{podID}`
+  - [x] TTL 設置為 30 秒
+  - [x] 在 `NewSSEManager()` 中啟動 Goroutine
+  - [x] 優雅關閉時停止心跳
 
-- [ ] **Step 1.2**: 修改 `SendToPlayer()` 方法
-  - [ ] 新增目標 Pod 健康檢查邏輯
-  - [ ] 檢測到死 Pod 時清理路由
-  - [ ] 檢測到死 Pod 時加入離線隊列
-  - [ ] Pub/Sub 失敗時加入離線隊列
+- [x] **Step 1.2**: 修改 `SendToPlayer()` 方法
+  - [x] 新增目標 Pod 健康檢查邏輯
+  - [x] 檢測到死 Pod 時清理路由
+  - [x] 檢測到死 Pod 時加入離線隊列
+  - [x] Pub/Sub 失敗時加入離線隊列
 
-- [ ] **Step 1.3**: 新增 Redis Key 常量
-  - [ ] 在 `consts/redis_keys.go` 新增 `SSEPodHealthKey`
-  - [ ] 更新相關文檔
+- [x] **Step 1.3**: 新增 Redis Key 常量
+  - [x] 在 `consts/sse_notification.go` 新增 `SSEPodHealthKey`
+  - [x] 更新相關文檔
 
 ### Phase 2: 死 Pod 路由清理機制
 
