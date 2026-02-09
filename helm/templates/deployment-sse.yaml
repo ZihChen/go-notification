@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "fatnotificationcat.fullname" . }}-sse
+  labels:
+    {{- include "fatnotificationcat.labels" . | nindent 4 }}
+    app.kubernetes.io/component: sse
+spec:
+  selector:
+    matchLabels:
+      {{- include "fatnotificationcat.labels" . | nindent 6 }}
+      app.kubernetes.io/component: sse
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        {{- include "fatnotificationcat.labels" . | nindent 8 }}
+        app.kubernetes.io/component: sse
+      annotations:
+        checksum/config: {{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print .Template.BasePath "/sealedsecret.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ .Release.Namespace }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: {{ include "fatnotificationcat.app-image" . }}
+          imagePullPolicy: Always
+          args: ["./fat_notification_cat", "sse"]
+          ports:
+            - containerPort: 8081
+              protocol: TCP
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          env:
+            - name: TZ
+              value: Asia/Taipei
+            - name: SSE_POD_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          envFrom:
+            - configMapRef:
+                name: {{ include "fatnotificationcat.fullname" . }}
+            - secretRef:
+                name: {{ include "fatnotificationcat.fullname" . }}
+          resources:
+            {{- toYaml .Values.app.resources | nindent 12 }}
+      restartPolicy: Always
