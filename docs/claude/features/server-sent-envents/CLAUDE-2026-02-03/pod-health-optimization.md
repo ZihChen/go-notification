@@ -2,7 +2,7 @@
 
 **建立日期**: 2026-02-09
 **最後更新**: 2026-02-09
-**狀態**: 🚧 實施中 (Phase 1 完成 ✅ | Phase 2-4 待實施)
+**狀態**: 🚧 實施中 (Phase 1-2 完成 ✅ | Phase 3-4 待實施)
 **優先級**: 🔴 HIGH
 **返回**: [總覽文檔](overview.md)
 
@@ -532,19 +532,19 @@ func TestSSEManager_CleanupDeadPodRoutes(t *testing.T) {
   - [x] 在 `consts/sse_notification.go` 新增 `SSEPodHealthKey`
   - [x] 更新相關文檔
 
-### Phase 2: 死 Pod 路由清理機制
+### Phase 2: 死 Pod 路由清理機制 ✅ **已完成 (2026-02-09)**
 
-- [ ] **Step 2.1**: 實現 `startRouteCleanupTask()` 方法
-  - [ ] 每 1 分鐘執行一次清理
-  - [ ] 實現 `cleanupDeadPodRoutes()` 邏輯
-  - [ ] 在 `NewSSEManager()` 中啟動 Goroutine
-  - [ ] 優雅關閉時停止清理任務
+- [x] **Step 2.1**: 實現 `startRouteCleanupTask()` 方法
+  - [x] 每 1 分鐘執行一次清理
+  - [x] 實現 `cleanupDeadPodRoutes()` 邏輯
+  - [x] 在 `NewSSEManager()` 中啟動 Goroutine
+  - [x] 優雅關閉時停止清理任務
 
-- [ ] **Step 2.2**: 實現清理邏輯
-  - [ ] 獲取所有玩家路由
-  - [ ] 檢查每個 Pod 健康狀態
-  - [ ] 清理指向死 Pod 的路由
-  - [ ] 記錄清理統計日誌
+- [x] **Step 2.2**: 實現清理邏輯
+  - [x] 獲取所有玩家路由
+  - [x] 檢查每個 Pod 健康狀態
+  - [x] 清理指向死 Pod 的路由
+  - [x] 記錄清理統計日誌
 
 ### Phase 3: 測試與驗證
 

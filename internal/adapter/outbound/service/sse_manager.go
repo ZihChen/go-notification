@@ -75,6 +75,10 @@ func NewSSEManager(
 	manager.wg.Add(1)
 	go manager.startPodHealthHeartbeat()
 
+	// 啟動路由清理任務
+	manager.wg.Add(1)
+	go manager.startRouteCleanupTask()
+
 	logger.InfoLog("SSE Manager initialized",
 		logger.String("pod_id", podID),
 		logger.String("broadcast_channel", consts.SSEBroadcastChannel),
@@ -565,6 +569,109 @@ func (m *sseManager) startPodHealthHeartbeat() {
 					m.logger.String("pod_id", m.podID))
 			}
 		}
+	}
+}
+
+// startRouteCleanupTask 啟動路由清理任務 Goroutine
+func (m *sseManager) startRouteCleanupTask() {
+	defer m.wg.Done()
+
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	m.logger.InfoLog("Route cleanup task started",
+		m.logger.String("pod_id", m.podID),
+		m.logger.String("interval", "1m"))
+
+	for {
+		select {
+		case <-m.ctx.Done():
+			m.logger.InfoLog("Route cleanup task stopped",
+				m.logger.String("pod_id", m.podID))
+			return
+		case <-ticker.C:
+			m.cleanupDeadPodRoutes()
+		}
+	}
+}
+
+// cleanupDeadPodRoutes 清理死 Pod 的路由記錄
+func (m *sseManager) cleanupDeadPodRoutes() {
+	ctx := context.Background()
+
+	// 1. 獲取所有玩家路由
+	routes, err := m.redisClient.HGetAll(ctx, consts.SSEPlayerRoutesKey).Result()
+	if err != nil {
+		m.logger.WarnLog("Failed to get player routes for cleanup",
+			m.logger.Error("error", err))
+		return
+	}
+
+	if len(routes) == 0 {
+		return
+	}
+
+	// 2. 收集所有唯一的 Pod ID
+	podIDs := make(map[string]bool)
+	for _, podID := range routes {
+		podIDs[podID] = true
+	}
+
+	// 3. 檢查每個 Pod 是否健康
+	deadPods := make(map[string]bool)
+	for podID := range podIDs {
+		healthKey := fmt.Sprintf(consts.SSEPodHealthKey, podID)
+		exists, err := m.redisClient.Exists(ctx, healthKey).Result()
+		if err != nil {
+			m.logger.WarnLog("Failed to check pod health during cleanup",
+				m.logger.Error("error", err),
+				m.logger.String("pod_id", podID))
+			continue
+		}
+		if exists == 0 {
+			deadPods[podID] = true
+		}
+	}
+
+	if len(deadPods) == 0 {
+		// 沒有死 Pod，無需清理
+		return
+	}
+
+	// 4. 清理指向死 Pod 的路由
+	cleanedPlayers := make([]string, 0)
+	for playerID, podID := range routes {
+		if deadPods[podID] {
+			if err := m.redisClient.HDel(ctx, consts.SSEPlayerRoutesKey, playerID).Err(); err != nil {
+				m.logger.WarnLog("Failed to delete dead pod route",
+					m.logger.Error("error", err),
+					m.logger.String("player_id", playerID),
+					m.logger.String("dead_pod", podID))
+			} else {
+				cleanedPlayers = append(cleanedPlayers, playerID)
+			}
+		}
+	}
+
+	// 5. 記錄清理結果
+	if len(cleanedPlayers) > 0 {
+		// 輔助函數：獲取 map 的所有 key
+		deadPodIDs := make([]string, 0, len(deadPods))
+		for podID := range deadPods {
+			deadPodIDs = append(deadPodIDs, podID)
+		}
+
+		// 輔助函數：取最小值
+		sampleSize := len(cleanedPlayers)
+		if sampleSize > 5 {
+			sampleSize = 5
+		}
+
+		m.logger.InfoLog("Cleaned up dead pod routes",
+			m.logger.Int("cleaned_count", len(cleanedPlayers)),
+			m.logger.Int("dead_pods_count", len(deadPods)),
+			m.logger.String("dead_pods", fmt.Sprintf("%v", deadPodIDs)),
+			m.logger.String("sample_players", fmt.Sprintf("%v", cleanedPlayers[:sampleSize])))
 	}
 }
 
