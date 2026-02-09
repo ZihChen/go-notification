@@ -10,12 +10,11 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
+	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
-	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 )
 
 // setupSSERedisClient 設置 SSE 測試用 Redis 客戶端
@@ -25,13 +24,12 @@ func setupSSERedisClient(t *testing.T) (*miniredis.Miniredis, *redis.Client, fun
 	require.NoError(t, err, "Failed to start mini redis")
 
 	// 創建 Redis 客戶端 - 使用明確的類型聲明避免類型推斷衝突
-	var redisClient *redis.Client
-	redisClient = redis.NewClient(&redis.Options{
+	var redisClient = redis.NewClient(&redis.Options{
 		Addr: mr.Addr(),
 	})
 
 	cleanup := func() {
-		redisClient.Close()
+		_ = redisClient.Close()
 		mr.Close()
 	}
 
@@ -67,7 +65,9 @@ func TestRedis_PubSubFunctionality(t *testing.T) {
 	t.Run("Single Channel Subscribe and Publish", func(t *testing.T) {
 		// 訂閱頻道
 		pubsub := redisClient.Subscribe(ctx, "test-channel")
-		defer pubsub.Close()
+		defer func() {
+			_ = pubsub.Close()
+		}()
 
 		// 等待訂閱完成
 		_, err := pubsub.Receive(ctx)
@@ -89,7 +89,9 @@ func TestRedis_PubSubFunctionality(t *testing.T) {
 	t.Run("Multiple Channels Subscribe", func(t *testing.T) {
 		// 訂閱多個頻道
 		pubsub := redisClient.Subscribe(ctx, consts.SSEBroadcastChannel, "sse:pod:1")
-		defer pubsub.Close()
+		defer func() {
+			_ = pubsub.Close()
+		}()
 
 		// 等待訂閱完成
 		_, err := pubsub.Receive(ctx)
@@ -358,14 +360,14 @@ func TestRedis_ConnectionPoolConfiguration(t *testing.T) {
 	// 配置連接池參數
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:         mr.Addr(),
-		PoolSize:     10,             // 最大連接數
-		MinIdleConns: 5,              // 最小空閒連接數
-		MaxRetries:   3,              // 最大重試次數
-		DialTimeout:  5 * time.Second,  // 連接超時
-		ReadTimeout:  3 * time.Second,  // 讀取超時
-		WriteTimeout: 3 * time.Second,  // 寫入超時
+		PoolSize:     10,              // 最大連接數
+		MinIdleConns: 5,               // 最小空閒連接數
+		MaxRetries:   3,               // 最大重試次數
+		DialTimeout:  5 * time.Second, // 連接超時
+		ReadTimeout:  3 * time.Second, // 讀取超時
+		WriteTimeout: 3 * time.Second, // 寫入超時
 	})
-	defer redisClient.Close()
+	defer func() { _ = redisClient.Close() }()
 
 	ctx := context.Background()
 
@@ -414,7 +416,9 @@ func TestRedis_VersionCompatibility(t *testing.T) {
 
 	// 測試 Pub/Sub
 	pubsub := redisClient.Subscribe(ctx, "test-channel")
-	defer pubsub.Close()
+	defer func() {
+		_ = pubsub.Close()
+	}()
 	assert.NotNil(t, pubsub, "Should support Pub/Sub")
 
 	t.Logf("✅ Redis Version Compatibility Test Passed - Server: %s", mr.Server().Addr())

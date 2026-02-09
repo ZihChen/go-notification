@@ -210,7 +210,11 @@ func (j *AgentCampaignTriggerJob) processCampaign(
 		j.logger.String("title", campaign.Title))
 
 	// 2. 更新狀態為發送中：sending
-	if err = j.agentUseCase.UpdateCampaignStatus(ctx, campaign.ID, consts.AgentCampaignStatusSending); err != nil {
+	if err = j.agentUseCase.UpdateCampaignStatus(
+		ctx,
+		campaign.ID,
+		consts.AgentCampaignStatusSending,
+	); err != nil {
 		j.logger.ErrorLog("Failed to mark campaign as sending",
 			j.logger.UInt64("campaign_id", campaign.ID),
 			j.logger.String("update_error", err.Error()))
@@ -222,7 +226,11 @@ func (j *AgentCampaignTriggerJob) processCampaign(
 	targetCount, sentCount, err := j.agentUseCase.SendMessageToCampaignTargets(ctx, campaign)
 	if err != nil {
 		// 標記活動失敗
-		if updateErr := j.agentUseCase.UpdateCampaignStatus(ctx, campaign.ID, consts.AgentCampaignStatusFailed); updateErr != nil {
+		if updateErr := j.agentUseCase.UpdateCampaignStatus(
+			ctx,
+			campaign.ID,
+			consts.AgentCampaignStatusFailed,
+		); updateErr != nil {
 			j.logger.ErrorLog("Failed to mark campaign as failed",
 				j.logger.UInt64("campaign_id", campaign.ID),
 				j.logger.String("update_error", updateErr.Error()))

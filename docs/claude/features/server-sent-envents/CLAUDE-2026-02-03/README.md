@@ -8,7 +8,7 @@
 - **[技術要點 (technical-details.md)](technical-details.md)** - 關鍵技術實作細節
 - **[最佳實踐 (best-practices.md)](best-practices.md)** - 開發注意事項與最佳實踐
 
-### 實作階段文檔 (Phase 1-9)
+### 實作階段文檔 (Phase 1-10)
 1. **[Phase 1: Domain Layer 實作](phase-1.md)** (第1-2天)
 2. **[Phase 2: Application Layer 實作](phase-2.md)** (第3天)
 3. **[Phase 3: Adapter Layer 實作](phase-3.md)** (第4-6天) ⭐ 核心階段
@@ -18,6 +18,7 @@
 7. **[Phase 7: 文檔撰寫](phase-7.md)** (第11天)
 8. **[Phase 8: Kubernetes 部署配置](phase-8.md)** (第12-13天)
 9. **[Phase 9: 生產驗收與上線](phase-9.md)** (第14-15天)
+10. **[Phase 10: Pod 健康心跳與路由清理優化](pod-health-optimization.md)** 🔴 **重要優化**
 
 ### 原始文檔 (詳細參考)
 - **[CLAUDE-2026-02-02-v1.0-task.md](../CLAUDE-2026-02-02-v1.0-task.md)** - 完整任務規劃 (含所有程式碼範例)
@@ -70,5 +71,5 @@
 
 ---
 
-**維護者**: Development Team  
-**最後更新**: 2026-02-02
+**維護者**: Development Team
+**最後更新**: 2026-02-09

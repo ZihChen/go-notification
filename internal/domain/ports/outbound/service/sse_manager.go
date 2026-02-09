@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 )
@@ -55,7 +56,11 @@ type SSEManager interface {
 	// 2. 本地玩家直接推送，遠端玩家透過 Pub/Sub 轉發
 	// 3. 離線玩家加入離線佇列
 	// 返回成功推送的玩家數量
-	SendToPlayers(ctx context.Context, playerIDs []string, notification *entity.SSENotification) (int, error)
+	SendToPlayers(
+		ctx context.Context,
+		playerIDs []string,
+		notification *entity.SSENotification,
+	) (int, error)
 
 	// ==================== 離線訊息處理 (Redis Streams) ====================
 
@@ -63,7 +68,11 @@ type SSEManager interface {
 	// 使用 Redis Streams 儲存，TTL 為 7 天
 	// 單個玩家最多保留 100 條離線訊息 (MAXLEN)
 	// Stream Key: sse:offline:{playerID}
-	EnqueueOfflineMessage(ctx context.Context, playerID string, notification *entity.SSENotification) error
+	EnqueueOfflineMessage(
+		ctx context.Context,
+		playerID string,
+		notification *entity.SSENotification,
+	) error
 
 	// GetOfflineMessages 獲取玩家的離線訊息清單
 	// 從 Redis Streams 讀取 (sse:offline:{playerID})

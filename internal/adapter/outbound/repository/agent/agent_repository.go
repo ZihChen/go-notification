@@ -27,7 +27,10 @@ func (r *AgentRepository) GetByGlobalID(
 	globalAgentID string,
 ) (*entity.Agent, error) {
 	var agentModel models.Agent
-	if err := r.db.WithContext(ctx).Where("global_agent_id = ?", globalAgentID).First(&agentModel).Error; err != nil {
+	if err := r.db.WithContext(ctx).
+		Where("global_agent_id = ?", globalAgentID).
+		First(&agentModel).
+		Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -94,7 +97,10 @@ func (r *AgentRepository) GetByAccount(
 	account string,
 ) (*entity.Agent, error) {
 	var agentModel models.Agent
-	if err := r.db.WithContext(ctx).Where("account = ? AND merchant_id = ?", account, merchantID).First(&agentModel).Error; err != nil {
+	if err := r.db.WithContext(ctx).
+		Where("account = ? AND merchant_id = ?", account, merchantID).
+		First(&agentModel).
+		Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}

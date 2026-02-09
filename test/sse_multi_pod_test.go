@@ -10,15 +10,14 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/redis/go-redis/v9"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	outboundService "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
+	"github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // =============================================================================
@@ -27,14 +26,18 @@ import (
 
 // PodInstance 代表一個 SSE Service Pod 實例
 type PodInstance struct {
-	ID        string                      // Pod ID (pod-1, pod-2, pod-3)
-	Manager   outboundService.SSEManager  // SSE Manager
-	Writers   map[string]*MockSSEWriter   // playerID -> MockSSEWriter
-	WritersMu sync.RWMutex                // 保護 Writers map
+	ID        string                     // Pod ID (pod-1, pod-2, pod-3)
+	Manager   outboundService.SSEManager // SSE Manager
+	Writers   map[string]*MockSSEWriter  // playerID -> MockSSEWriter
+	WritersMu sync.RWMutex               // 保護 Writers map
 }
 
 // NewPodInstance 創建一個新的 Pod 實例
-func NewPodInstance(podID string, redisClient *redis.Client, cacheManager *TestCacheManager) *PodInstance {
+func NewPodInstance(
+	podID string,
+	redisClient *redis.Client,
+	cacheManager *TestCacheManager,
+) *PodInstance {
 	logger := helper.NewMockLogger()
 	manager := service.NewSSEManager(podID, cacheManager, logger)
 
@@ -129,7 +132,7 @@ func SetupMultiPodTest(t *testing.T, podCount int) *MultiPodTestSetup {
 		for _, pod := range pods {
 			pod.Cleanup(ctx)
 		}
-		redisClient.Close()
+		_ = redisClient.Close()
 		mr.Close()
 	}
 
@@ -192,7 +195,14 @@ func TestMultiPod_BroadcastToAll(t *testing.T) {
 	time.Sleep(300 * time.Millisecond)
 
 	// 驗證所有 Pod 上的玩家都收到訊息
-	allPlayers := []string{"player-001", "player-002", "player-003", "player-004", "player-005", "player-006"}
+	allPlayers := []string{
+		"player-001",
+		"player-002",
+		"player-003",
+		"player-004",
+		"player-005",
+		"player-006",
+	}
 	podIndices := []int{0, 0, 1, 1, 2, 2}
 
 	for i, playerID := range allPlayers {

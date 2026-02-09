@@ -238,7 +238,10 @@ func (r *CampaignTargetRepository) FindByCampaignID(
 	defer r.tracingService.SpanEnd(span)
 
 	var models []*models.CampaignTarget
-	if err := r.db.WithContext(ctx).Where("campaign_id = ?", campaignID).Find(&models).Error; err != nil {
+	if err := r.db.WithContext(ctx).
+		Where("campaign_id = ?", campaignID).
+		Find(&models).
+		Error; err != nil {
 		r.tracingService.RecordSpanError(span, err)
 		return nil, fmt.Errorf("find campaign targets by campaign ID: %w", err)
 	}

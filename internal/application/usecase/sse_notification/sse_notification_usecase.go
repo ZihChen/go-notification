@@ -17,9 +17,9 @@ import (
 
 // sseNotificationUseCase SSE 通知使用案例實作（完整版，包含 KDS 審計）
 type sseNotificationUseCase struct {
-	sseManager   service.SSEManager        // SSE 連接管理與訊息推送
-	eventService service.EventProducer     // KDS 事件發布服務（用於審計日誌）
-	logger       infrastructure.Logger     // 日誌記錄器
+	sseManager   service.SSEManager    // SSE 連接管理與訊息推送
+	eventService service.EventProducer // KDS 事件發布服務（用於審計日誌）
+	logger       infrastructure.Logger // 日誌記錄器
 }
 
 // NewSSENotificationUseCase 創建 SSE 通知使用案例實例
@@ -41,7 +41,14 @@ func (u *sseNotificationUseCase) BroadcastNotification(
 	req *dto.BroadcastRequest,
 ) (*dto.BroadcastResponse, error) {
 	// 1. 創建通知實體（純記憶體對象，不持久化）
-	notification := u.createNotificationEntity(req.Title, req.Message, req.Type, req.Priority, req.IconURL, req.ActionURL)
+	notification := u.createNotificationEntity(
+		req.Title,
+		req.Message,
+		req.Type,
+		req.Priority,
+		req.IconURL,
+		req.ActionURL,
+	)
 
 	// 2. 獲取線上玩家總數
 	totalOnline, err := u.sseManager.GetOnlinePlayerCount(ctx)
@@ -81,7 +88,14 @@ func (u *sseNotificationUseCase) SendNotification(
 	}
 
 	// 2. 創建通知實體
-	notification := u.createNotificationEntity(req.Title, req.Message, req.Type, req.Priority, req.IconURL, req.ActionURL)
+	notification := u.createNotificationEntity(
+		req.Title,
+		req.Message,
+		req.Type,
+		req.Priority,
+		req.IconURL,
+		req.ActionURL,
+	)
 
 	// 3. 批次推送給目標玩家
 	successCount, err := u.sseManager.SendToPlayers(ctx, req.PlayerIDs, notification)
@@ -132,7 +146,7 @@ func (u *sseNotificationUseCase) StreamNotifications(
 			u.logger.String("player_id", playerID))
 		return fmt.Errorf("failed to send connected event: %w", err)
 	}
-	writer.Flush()
+	_ = writer.Flush()
 
 	// 3. 推送離線訊息（Redis Streams）
 	offlineMessages, err := u.sseManager.GetOfflineMessages(ctx, playerID)
@@ -169,13 +183,16 @@ func (u *sseNotificationUseCase) StreamNotifications(
 			return nil
 		case <-ticker.C:
 			// 發送心跳
-			if err := writer.Write(consts.SSEEventTypePing, `{"timestamp":"`+time.Now().Format(time.RFC3339)+`"}`); err != nil {
+			if err := writer.Write(
+				consts.SSEEventTypePing,
+				`{"timestamp":"`+time.Now().Format(time.RFC3339)+`"}`,
+			); err != nil {
 				u.logger.WarnWithContext(ctx, "Failed to send heartbeat",
 					u.logger.Error("error", err),
 					u.logger.String("player_id", playerID))
 				return fmt.Errorf("failed to send heartbeat: %w", err)
 			}
-			writer.Flush()
+			_ = writer.Flush()
 		}
 	}
 }

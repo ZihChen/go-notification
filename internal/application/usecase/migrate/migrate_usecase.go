@@ -226,7 +226,12 @@ func (uc *migrateUseCase) MigratePlayerMessages(
 				uc.logger.UInt64("legacy_id", uint64(*campaign.LegacyID)),
 			)
 
-			if err := uc.processCampaignPlayerMessages(ctx, campaign, company.Name, stats); err != nil {
+			if err := uc.processCampaignPlayerMessages(
+				ctx,
+				campaign,
+				company.Name,
+				stats,
+			); err != nil {
 				uc.logger.ErrorLog(
 					"Failed to process campaign player messages",
 					uc.logger.UInt64("campaign_id", campaign.ID),
@@ -352,7 +357,13 @@ func (uc *migrateUseCase) processCampaignPlayerMessages(
 			uc.logger.Int("batch_size", len(batch)),
 		)
 
-		if err := uc.processPlayerMessageBatch(ctx, batch, campaign, companyName, stats); err != nil {
+		if err := uc.processPlayerMessageBatch(
+			ctx,
+			batch,
+			campaign,
+			companyName,
+			stats,
+		); err != nil {
 			return fmt.Errorf("failed to process player message batch: %w", err)
 		}
 
@@ -430,7 +441,11 @@ func (uc *migrateUseCase) processPlayerMessageBatch(
 				stats.AddError(fmt.Errorf("failed to create player message: %w", err))
 				continue
 			}
-			uc.logger.DebugLog("Created player message", uc.logger.UInt64("player_id", player.ID), uc.logger.UInt64("campaign_id", campaign.ID))
+			uc.logger.DebugLog(
+				"Created player message",
+				uc.logger.UInt64("player_id", player.ID),
+				uc.logger.UInt64("campaign_id", campaign.ID),
+			)
 		}
 
 		stats.AddSuccess()

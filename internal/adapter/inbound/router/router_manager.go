@@ -39,7 +39,7 @@ func NewRouterManager(
 func (rm *Manager) SetupRoutersWithMiddleware(router *gin.Engine, cfg *config.Config) {
 	// 加入全局Middleware
 	router.Use(
-		middleware.CorsMiddleware(cfg),        // 使用環境感知的 CORS 配置
+		middleware.CorsMiddleware(cfg),           // 使用環境感知的 CORS 配置
 		middleware.MetricsMiddleware(rm.metrics), // Metrics 收集中間件
 		middleware.ErrorHandler(),
 	)

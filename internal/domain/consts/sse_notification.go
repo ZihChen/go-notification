@@ -27,7 +27,7 @@ const (
 
 // TTL 和限制常數
 const (
-	NotificationDefaultTTL        = 24 * time.Hour // 預設通知有效期 24 小時
+	NotificationDefaultTTL        = 24 * time.Hour     // 預設通知有效期 24 小時
 	NotificationOfflineMessageTTL = 7 * 24 * time.Hour // 離線訊息保留 7 天
 	NotificationMaxTitleLength    = 100                // 標題最大長度
 	NotificationMaxMessageLength  = 500                // 訊息最大長度
@@ -43,9 +43,9 @@ const (
 	RedisKeySSEOfflinePrefix  = "sse:offline:"      // Stream: 離線訊息前綴 (sse:offline:{playerID})
 
 	// 簡化別名（向後兼容）
-	SSEPlayerRoutesKey   = RedisKeySSEPlayerRoutes   // 玩家路由表 Key
-	SSEOnlineCountKey    = RedisKeySSEOnlineCount    // 線上計數 Key
-	SSEOfflineMessagesKey = "sse:offline:%s"         // 離線訊息 Key 格式化字串
+	SSEPlayerRoutesKey    = RedisKeySSEPlayerRoutes // 玩家路由表 Key
+	SSEOnlineCountKey     = RedisKeySSEOnlineCount  // 線上計數 Key
+	SSEOfflineMessagesKey = "sse:offline:%s"        // 離線訊息 Key 格式化字串
 )
 
 // Redis Pub/Sub Channel 常數
@@ -55,7 +55,7 @@ const (
 
 	// 簡化別名（向後兼容）
 	SSEBroadcastChannel = RedisChannelSSEBroadcast // 廣播頻道
-	SSEPodChannel       = "sse:pod:%s"              // Pod 頻道格式化字串
+	SSEPodChannel       = "sse:pod:%s"             // Pod 頻道格式化字串
 )
 
 // SSE 事件類型常數

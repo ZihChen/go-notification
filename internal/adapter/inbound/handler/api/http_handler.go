@@ -586,7 +586,11 @@ func (h *HTTPHandler) MarkMessageAsRead(c *gin.Context) {
 		response.BadRequest(c, "invalid message ID", err.Error()).Return()
 	}
 
-	if err = h.messageUseCase.MarkMessageAsRead(c.Request.Context(), globalPlayerID, messageID); err != nil {
+	if err = h.messageUseCase.MarkMessageAsRead(
+		c.Request.Context(),
+		globalPlayerID,
+		messageID,
+	); err != nil {
 		if err.Error() == "record not found or already read" {
 			response.NotFound(c, "message not found or already read", err.Error()).Return()
 		}

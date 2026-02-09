@@ -4,14 +4,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/event"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 // MockSSEManager SSE Manager Mock
@@ -19,7 +19,11 @@ type MockSSEManager struct {
 	mock.Mock
 }
 
-func (m *MockSSEManager) RegisterConnection(ctx context.Context, playerID string, writer inbound.SSEWriter) error {
+func (m *MockSSEManager) RegisterConnection(
+	ctx context.Context,
+	playerID string,
+	writer inbound.SSEWriter,
+) error {
 	args := m.Called(ctx, playerID, writer)
 	return args.Error(0)
 }
@@ -44,27 +48,45 @@ func (m *MockSSEManager) GetOnlinePlayerIDs(ctx context.Context) ([]string, erro
 	return args.Get(0).([]string), args.Error(1)
 }
 
-func (m *MockSSEManager) BroadcastToAll(ctx context.Context, notification *entity.SSENotification) (int, error) {
+func (m *MockSSEManager) BroadcastToAll(
+	ctx context.Context,
+	notification *entity.SSENotification,
+) (int, error) {
 	args := m.Called(ctx, notification)
 	return args.Int(0), args.Error(1)
 }
 
-func (m *MockSSEManager) SendToPlayer(ctx context.Context, playerID string, notification *entity.SSENotification) error {
+func (m *MockSSEManager) SendToPlayer(
+	ctx context.Context,
+	playerID string,
+	notification *entity.SSENotification,
+) error {
 	args := m.Called(ctx, playerID, notification)
 	return args.Error(0)
 }
 
-func (m *MockSSEManager) SendToPlayers(ctx context.Context, playerIDs []string, notification *entity.SSENotification) (int, error) {
+func (m *MockSSEManager) SendToPlayers(
+	ctx context.Context,
+	playerIDs []string,
+	notification *entity.SSENotification,
+) (int, error) {
 	args := m.Called(ctx, playerIDs, notification)
 	return args.Int(0), args.Error(1)
 }
 
-func (m *MockSSEManager) EnqueueOfflineMessage(ctx context.Context, playerID string, notification *entity.SSENotification) error {
+func (m *MockSSEManager) EnqueueOfflineMessage(
+	ctx context.Context,
+	playerID string,
+	notification *entity.SSENotification,
+) error {
 	args := m.Called(ctx, playerID, notification)
 	return args.Error(0)
 }
 
-func (m *MockSSEManager) GetOfflineMessages(ctx context.Context, playerID string) ([]*entity.SSENotification, error) {
+func (m *MockSSEManager) GetOfflineMessages(
+	ctx context.Context,
+	playerID string,
+) ([]*entity.SSENotification, error) {
 	args := m.Called(ctx, playerID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -85,29 +107,82 @@ type MockLogger struct {
 	mock.Mock
 }
 
-func (m *MockLogger) ErrorWithContext(ctx context.Context, msg string, fields ...*entity.LoggerFiled) {}
-func (m *MockLogger) WarnWithContext(ctx context.Context, msg string, fields ...*entity.LoggerFiled)  {}
-func (m *MockLogger) InfoWithContext(ctx context.Context, msg string, fields ...*entity.LoggerFiled)  {}
-func (m *MockLogger) DebugWithContext(ctx context.Context, msg string, fields ...*entity.LoggerFiled) {}
-func (m *MockLogger) FatalWithContext(ctx context.Context, msg string, fields ...*entity.LoggerFiled) {}
-func (m *MockLogger) DebugLog(msg string, fields ...*entity.LoggerFiled)                              {}
-func (m *MockLogger) InfoLog(msg string, fields ...*entity.LoggerFiled)                               {}
-func (m *MockLogger) ErrorLog(msg string, fields ...*entity.LoggerFiled)                              {}
-func (m *MockLogger) WarnLog(msg string, fields ...*entity.LoggerFiled)                               {}
-func (m *MockLogger) FatalLog(msg string, fields ...*entity.LoggerFiled)                              {}
+func (m *MockLogger) ErrorWithContext(
+	ctx context.Context,
+	msg string,
+	fields ...*entity.LoggerFiled,
+) {
+}
+
+func (m *MockLogger) WarnWithContext(
+	ctx context.Context,
+	msg string,
+	fields ...*entity.LoggerFiled,
+) {
+}
+
+func (m *MockLogger) InfoWithContext(
+	ctx context.Context,
+	msg string,
+	fields ...*entity.LoggerFiled,
+) {
+}
+
+func (m *MockLogger) DebugWithContext(
+	ctx context.Context,
+	msg string,
+	fields ...*entity.LoggerFiled,
+) {
+}
+
+func (m *MockLogger) FatalWithContext(
+	ctx context.Context,
+	msg string,
+	fields ...*entity.LoggerFiled,
+) {
+}
+func (m *MockLogger) DebugLog(msg string, fields ...*entity.LoggerFiled) {}
+func (m *MockLogger) InfoLog(msg string, fields ...*entity.LoggerFiled)  {}
+func (m *MockLogger) ErrorLog(msg string, fields ...*entity.LoggerFiled) {}
+func (m *MockLogger) WarnLog(msg string, fields ...*entity.LoggerFiled)  {}
+func (m *MockLogger) FatalLog(msg string, fields ...*entity.LoggerFiled) {}
 func (m *MockLogger) Error(key string, value error) *entity.LoggerFiled {
 	return &entity.LoggerFiled{}
 }
-func (m *MockLogger) String(key string, value string) *entity.LoggerFiled { return &entity.LoggerFiled{} }
-func (m *MockLogger) Int(key string, value int) *entity.LoggerFiled       { return &entity.LoggerFiled{} }
-func (m *MockLogger) Int64(key string, value int64) *entity.LoggerFiled   { return &entity.LoggerFiled{} }
-func (m *MockLogger) UInt64(key string, value uint64) *entity.LoggerFiled { return &entity.LoggerFiled{} }
+func (m *MockLogger) String(key string, value string) *entity.LoggerFiled {
+	return &entity.LoggerFiled{}
+}
+
+func (m *MockLogger) Int(
+	key string,
+	value int,
+) *entity.LoggerFiled {
+	return &entity.LoggerFiled{}
+}
+
+func (m *MockLogger) Int64(
+	key string,
+	value int64,
+) *entity.LoggerFiled {
+	return &entity.LoggerFiled{}
+}
+func (m *MockLogger) UInt64(key string, value uint64) *entity.LoggerFiled {
+	return &entity.LoggerFiled{}
+}
 func (m *MockLogger) Float64(key string, value float64) *entity.LoggerFiled {
 	return &entity.LoggerFiled{}
 }
-func (m *MockLogger) Bool(key string, value bool) *entity.LoggerFiled     { return &entity.LoggerFiled{} }
-func (m *MockLogger) Any(key string, value interface{}) *entity.LoggerFiled { return &entity.LoggerFiled{} }
-func (m *MockLogger) Close()                                                {}
+
+func (m *MockLogger) Bool(
+	key string,
+	value bool,
+) *entity.LoggerFiled {
+	return &entity.LoggerFiled{}
+}
+func (m *MockLogger) Any(key string, value interface{}) *entity.LoggerFiled {
+	return &entity.LoggerFiled{}
+}
+func (m *MockLogger) Close() {}
 
 // Verify interface implementation
 var _ infrastructure.Logger = (*MockLogger)(nil)
@@ -132,7 +207,10 @@ func (m *MockEventProducer) PublishManagerSync(ctx context.Context, evt *event.C
 	return args.Error(0)
 }
 
-func (m *MockEventProducer) PublishSSENotification(ctx context.Context, evt *event.CloudEvent) error {
+func (m *MockEventProducer) PublishSSENotification(
+	ctx context.Context,
+	evt *event.CloudEvent,
+) error {
 	args := m.Called(ctx, evt)
 	return args.Error(0)
 }
@@ -159,7 +237,8 @@ func TestBroadcastNotification(t *testing.T) {
 
 	// Mock 期望
 	mockSSEManager.On("GetOnlinePlayerCount", ctx).Return(100, nil)
-	mockSSEManager.On("BroadcastToAll", ctx, mock.AnythingOfType("*entity.SSENotification")).Return(95, nil)
+	mockSSEManager.On("BroadcastToAll", ctx, mock.AnythingOfType("*entity.SSENotification")).
+		Return(95, nil)
 
 	// Act
 	response, err := useCase.BroadcastNotification(ctx, req)
@@ -195,7 +274,8 @@ func TestSendNotification(t *testing.T) {
 	}
 
 	// Mock 期望
-	mockSSEManager.On("SendToPlayers", ctx, playerIDs, mock.AnythingOfType("*entity.SSENotification")).Return(3, nil)
+	mockSSEManager.On("SendToPlayers", ctx, playerIDs, mock.AnythingOfType("*entity.SSENotification")).
+		Return(3, nil)
 
 	// Act
 	response, err := useCase.SendNotification(ctx, req)

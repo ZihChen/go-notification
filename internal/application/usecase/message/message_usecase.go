@@ -415,7 +415,10 @@ func (u *MessageUseCase) GetMessageCampaign(
 			case consts.TargetPlayer:
 				// 對於 player，直接解析為 []string
 				var playerAccounts []string
-				if err := json.Unmarshal([]byte(*campaign.TargetDetail), &playerAccounts); err != nil {
+				if err := json.Unmarshal(
+					[]byte(*campaign.TargetDetail),
+					&playerAccounts,
+				); err != nil {
 					u.logger.WarnLog("Failed to unmarshal player target detail",
 						u.logger.String("target_detail", *campaign.TargetDetail),
 						u.logger.Error("err", err))
@@ -426,7 +429,10 @@ func (u *MessageUseCase) GetMessageCampaign(
 			case consts.TargetLevel:
 				// 對於 level，透過 ID 查詢並回傳 level name
 				var levelIDStrings []string
-				if err := json.Unmarshal([]byte(*campaign.TargetDetail), &levelIDStrings); err != nil {
+				if err := json.Unmarshal(
+					[]byte(*campaign.TargetDetail),
+					&levelIDStrings,
+				); err != nil {
 					u.logger.WarnLog("Failed to unmarshal level target detail",
 						u.logger.String("target_detail", *campaign.TargetDetail),
 						u.logger.Error("err", err))
@@ -458,7 +464,10 @@ func (u *MessageUseCase) GetMessageCampaign(
 			case consts.TargetTag:
 				// 對於 tag，透過 ID 查詢並回傳 tag name
 				var tagIDStrings []string
-				if err := json.Unmarshal([]byte(*campaign.TargetDetail), &tagIDStrings); err != nil {
+				if err := json.Unmarshal(
+					[]byte(*campaign.TargetDetail),
+					&tagIDStrings,
+				); err != nil {
 					u.logger.WarnLog("Failed to unmarshal tag target detail",
 						u.logger.String("target_detail", *campaign.TargetDetail),
 						u.logger.Error("err", err))
@@ -1347,7 +1356,11 @@ func (u *MessageUseCase) SendAutoNotification(
 
 	// 更新發送計數
 	if len(sentChannels) > 0 {
-		if err := u.campaignRepo.UpdateSentCount(ctx, campaign.ID, campaign.RealSentCount+1); err != nil {
+		if err := u.campaignRepo.UpdateSentCount(
+			ctx,
+			campaign.ID,
+			campaign.RealSentCount+1,
+		); err != nil {
 			u.logger.WarnWithContext(ctx, "Failed to update sent count",
 				u.logger.Error("error", err),
 				u.logger.UInt64("campaign_id", campaign.ID),

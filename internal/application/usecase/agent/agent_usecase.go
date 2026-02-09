@@ -293,8 +293,10 @@ func (u *AgentUseCase) CreateAgentCampaign(
 					u.logger.String("error", err.Error()))
 			} else {
 				// 記錄成功完成
-				u.logger.InfoLog("Asynchronous immediate agent campaign processing completed successfully",
-					u.logger.UInt64("campaign_id", createdCampaign.ID))
+				u.logger.InfoLog(
+					"Asynchronous immediate agent campaign processing completed successfully",
+					u.logger.UInt64("campaign_id", createdCampaign.ID),
+				)
 			}
 		}()
 
@@ -425,8 +427,10 @@ func (u *AgentUseCase) UpdateAgentCampaign(
 					u.logger.String("error", err.Error()))
 			} else {
 				// 記錄成功完成
-				u.logger.InfoLog("Asynchronous immediate agent campaign processing completed successfully after update",
-					u.logger.UInt64("campaign_id", campaignEntity.ID))
+				u.logger.InfoLog(
+					"Asynchronous immediate agent campaign processing completed successfully after update",
+					u.logger.UInt64("campaign_id", campaignEntity.ID),
+				)
 			}
 		}()
 
@@ -1713,7 +1717,11 @@ func (u *AgentUseCase) processCampaignImmediate(
 		u.logger.String("title", campaign.Title))
 
 	// 1. 更新狀態為發送中：sending（外層鎖已保證併發安全）
-	if err := u.UpdateCampaignStatus(ctx, campaign.ID, consts.AgentCampaignStatusSending); err != nil {
+	if err := u.UpdateCampaignStatus(
+		ctx,
+		campaign.ID,
+		consts.AgentCampaignStatusSending,
+	); err != nil {
 		u.logger.ErrorLog("Failed to mark campaign as sending",
 			u.logger.UInt64("campaign_id", campaign.ID),
 			u.logger.String("update_error", err.Error()))
@@ -1725,7 +1733,11 @@ func (u *AgentUseCase) processCampaignImmediate(
 	targetCount, sentCount, err := u.SendMessageToCampaignTargets(ctx, campaign)
 	if err != nil {
 		// 標記活動失敗
-		if updateErr := u.UpdateCampaignStatus(ctx, campaign.ID, consts.AgentCampaignStatusFailed); updateErr != nil {
+		if updateErr := u.UpdateCampaignStatus(
+			ctx,
+			campaign.ID,
+			consts.AgentCampaignStatusFailed,
+		); updateErr != nil {
 			u.logger.ErrorLog("Failed to mark campaign as failed",
 				u.logger.UInt64("campaign_id", campaign.ID),
 				u.logger.String("update_error", updateErr.Error()))

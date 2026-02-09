@@ -2,6 +2,7 @@ package inbound
 
 import (
 	"context"
+
 	"github.com/jvdiamondtech/ms-notification-cat/internal/application/dto"
 )
 
@@ -10,12 +11,18 @@ type SSENotificationUseCase interface {
 	// BroadcastNotification 廣播推送通知給所有線上玩家
 	// 透過 Redis Pub/Sub 廣播到所有 SSE Service Pods
 	// 返回成功推送的玩家數量
-	BroadcastNotification(ctx context.Context, req *dto.BroadcastRequest) (*dto.BroadcastResponse, error)
+	BroadcastNotification(
+		ctx context.Context,
+		req *dto.BroadcastRequest,
+	) (*dto.BroadcastResponse, error)
 
 	// SendNotification 個別推送通知給特定玩家清單
 	// 透過玩家路由表查詢目標 Pod，並通過 Pub/Sub 轉發
 	// 支援批次推送，最多 1000 位玩家
-	SendNotification(ctx context.Context, req *dto.SendNotificationRequest) (*dto.SendNotificationResponse, error)
+	SendNotification(
+		ctx context.Context,
+		req *dto.SendNotificationRequest,
+	) (*dto.SendNotificationResponse, error)
 
 	// StreamNotifications 建立 SSE 長連接，持續推送實時通知
 	// 當玩家連線時：

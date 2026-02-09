@@ -46,7 +46,10 @@ func (m *EventProducerMock) PublishManagerSync(ctx context.Context, event *event
 	return args.Error(0)
 }
 
-func (m *EventProducerMock) PublishSSENotification(ctx context.Context, event *event.CloudEvent) error {
+func (m *EventProducerMock) PublishSSENotification(
+	ctx context.Context,
+	event *event.CloudEvent,
+) error {
 	args := m.Called(ctx, event)
 	return args.Error(0)
 }

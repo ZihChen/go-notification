@@ -238,7 +238,9 @@ func (r *AgentRelationshipRepository) FindAncestors(
 		query = query.Where("depth_level <= ?", maxDepth)
 	}
 
-	if err := query.Order("depth_level ASC, parent_id ASC").Find(&relationModels).Error; err != nil {
+	if err := query.Order("depth_level ASC, parent_id ASC").
+		Find(&relationModels).
+		Error; err != nil {
 		return nil, fmt.Errorf("find ancestors failed: %w", err)
 	}
 

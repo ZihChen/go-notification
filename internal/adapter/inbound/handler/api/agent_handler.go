@@ -538,7 +538,11 @@ func (h *AgentHandler) MarkMessageAsRead(c *gin.Context) {
 		response.InternalServerError(c, "failed to get agent", err.Error()).Return()
 	}
 
-	if err = h.agentUseCase.MarkMessageAsRead(c.Request.Context(), messageID, agent.ID); err != nil {
+	if err = h.agentUseCase.MarkMessageAsRead(
+		c.Request.Context(),
+		messageID,
+		agent.ID,
+	); err != nil {
 		if err.Error() == "record not found or already read" {
 			response.NotFound(c, "message not found or already read", err.Error()).Return()
 		}

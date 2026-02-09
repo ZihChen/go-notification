@@ -11,15 +11,14 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redsync/redsync/v4"
-	"github.com/redis/go-redis/v9"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	"github.com/jvdiamondtech/ms-notification-cat/internal/adapter/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	outboundService "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
 	"github.com/jvdiamondtech/ms-notification-cat/test/helper"
+	"github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // =============================================================================
@@ -29,9 +28,9 @@ import (
 // MockSSEWriter 模擬 SSE Writer，用於測試
 // 實現完整的 inbound.SSEWriter 介面
 type MockSSEWriter struct {
-	mu       sync.Mutex
-	events   []SSEEvent // 儲存所有事件
-	closed   bool
+	mu     sync.Mutex
+	events []SSEEvent // 儲存所有事件
+	closed bool
 }
 
 // SSEEvent 記錄 SSE 事件數據
@@ -115,7 +114,9 @@ func (w *MockSSEWriter) EventCount() int {
 }
 
 // ParseNotificationFromEvent 從 SSEEvent 解析通知數據（測試用）
-func (w *MockSSEWriter) ParseNotificationFromEvent(event SSEEvent) (*entity.SSENotification, error) {
+func (w *MockSSEWriter) ParseNotificationFromEvent(
+	event SSEEvent,
+) (*entity.SSENotification, error) {
 	var notification entity.SSENotification
 	err := json.Unmarshal([]byte(event.Data), &notification)
 	if err != nil {
@@ -156,11 +157,21 @@ func (m *TestCacheManager) HealthCheck(ctx context.Context) error {
 	return m.Ping(ctx)
 }
 
-func (m *TestCacheManager) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) (string, error) {
+func (m *TestCacheManager) Set(
+	ctx context.Context,
+	key string,
+	value interface{},
+	expiration time.Duration,
+) (string, error) {
 	return m.client.Set(ctx, key, value, expiration).Result()
 }
 
-func (m *TestCacheManager) SetNX(ctx context.Context, key string, value interface{}, expiration time.Duration) (bool, error) {
+func (m *TestCacheManager) SetNX(
+	ctx context.Context,
+	key string,
+	value interface{},
+	expiration time.Duration,
+) (bool, error) {
 	return m.client.SetNX(ctx, key, value, expiration).Result()
 }
 
@@ -192,7 +203,11 @@ func (m *TestCacheManager) Decr(ctx context.Context, key string) (int64, error) 
 	return m.client.Decr(ctx, key).Result()
 }
 
-func (m *TestCacheManager) Expire(ctx context.Context, key string, expiration time.Duration) (bool, error) {
+func (m *TestCacheManager) Expire(
+	ctx context.Context,
+	key string,
+	expiration time.Duration,
+) (bool, error) {
 	return m.client.Expire(ctx, key, expiration).Result()
 }
 
@@ -200,7 +215,11 @@ func (m *TestCacheManager) TTL(ctx context.Context, key string) (time.Duration, 
 	return m.client.TTL(ctx, key).Result()
 }
 
-func (m *TestCacheManager) SAdd(ctx context.Context, key string, members ...interface{}) (int64, error) {
+func (m *TestCacheManager) SAdd(
+	ctx context.Context,
+	key string,
+	members ...interface{},
+) (int64, error) {
 	return m.client.SAdd(ctx, key, members...).Result()
 }
 
@@ -208,11 +227,19 @@ func (m *TestCacheManager) SMembers(ctx context.Context, key string) ([]string, 
 	return m.client.SMembers(ctx, key).Result()
 }
 
-func (m *TestCacheManager) SRem(ctx context.Context, key string, members ...interface{}) (int64, error) {
+func (m *TestCacheManager) SRem(
+	ctx context.Context,
+	key string,
+	members ...interface{},
+) (int64, error) {
 	return m.client.SRem(ctx, key, members...).Result()
 }
 
-func (m *TestCacheManager) HSet(ctx context.Context, key string, values ...interface{}) (int64, error) {
+func (m *TestCacheManager) HSet(
+	ctx context.Context,
+	key string,
+	values ...interface{},
+) (int64, error) {
 	return m.client.HSet(ctx, key, values...).Result()
 }
 
@@ -228,11 +255,19 @@ func (m *TestCacheManager) HDel(ctx context.Context, key string, fields ...strin
 	return m.client.HDel(ctx, key, fields...).Result()
 }
 
-func (m *TestCacheManager) LPush(ctx context.Context, key string, values ...interface{}) (int64, error) {
+func (m *TestCacheManager) LPush(
+	ctx context.Context,
+	key string,
+	values ...interface{},
+) (int64, error) {
 	return m.client.LPush(ctx, key, values...).Result()
 }
 
-func (m *TestCacheManager) RPush(ctx context.Context, key string, values ...interface{}) (int64, error) {
+func (m *TestCacheManager) RPush(
+	ctx context.Context,
+	key string,
+	values ...interface{},
+) (int64, error) {
 	return m.client.RPush(ctx, key, values...).Result()
 }
 
@@ -244,20 +279,36 @@ func (m *TestCacheManager) RPop(ctx context.Context, key string) (string, error)
 	return m.client.RPop(ctx, key).Result()
 }
 
-func (m *TestCacheManager) LRange(ctx context.Context, key string, start, stop int64) ([]string, error) {
+func (m *TestCacheManager) LRange(
+	ctx context.Context,
+	key string,
+	start, stop int64,
+) ([]string, error) {
 	return m.client.LRange(ctx, key, start, stop).Result()
 }
 
-func (m *TestCacheManager) ZAdd(ctx context.Context, key string, members ...interface{}) (int64, error) {
+func (m *TestCacheManager) ZAdd(
+	ctx context.Context,
+	key string,
+	members ...interface{},
+) (int64, error) {
 	// 注意：這裡簡化了實現，實際可能需要處理 ZAddArgs
 	return 0, fmt.Errorf("ZAdd not implemented in test")
 }
 
-func (m *TestCacheManager) ZRange(ctx context.Context, key string, start, stop int64) ([]string, error) {
+func (m *TestCacheManager) ZRange(
+	ctx context.Context,
+	key string,
+	start, stop int64,
+) ([]string, error) {
 	return m.client.ZRange(ctx, key, start, stop).Result()
 }
 
-func (m *TestCacheManager) ZRem(ctx context.Context, key string, members ...interface{}) (int64, error) {
+func (m *TestCacheManager) ZRem(
+	ctx context.Context,
+	key string,
+	members ...interface{},
+) (int64, error) {
 	return m.client.ZRem(ctx, key, members...).Result()
 }
 
@@ -272,7 +323,10 @@ func (m *TestCacheManager) GetRedsync() (*redsync.Redsync, error) {
 }
 
 // setupSSEIntegrationTestEnv 設置 SSE 整合測試環境
-func setupSSEIntegrationTestEnv(t *testing.T, podID string) (*miniredis.Miniredis, *redis.Client, outboundService.SSEManager, func()) {
+func setupSSEIntegrationTestEnv(
+	t *testing.T,
+	podID string,
+) (*miniredis.Miniredis, *redis.Client, outboundService.SSEManager, func()) {
 	// 啟動 miniredis
 	mr, err := miniredis.Run()
 	require.NoError(t, err, "Failed to start mini redis")
@@ -294,7 +348,7 @@ func setupSSEIntegrationTestEnv(t *testing.T, podID string) (*miniredis.Miniredi
 	sseManager := service.NewSSEManager(podID, cacheManager, logger)
 
 	cleanup := func() {
-		client.Close()
+		_ = client.Close()
 		mr.Close()
 	}
 

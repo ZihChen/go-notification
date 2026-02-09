@@ -117,7 +117,9 @@ func validateLegacyDSN(dsn string) error {
 			return fmt.Errorf("DSN missing required parameter: parseTime=True")
 		}
 	} else {
-		return fmt.Errorf("DSN missing query parameters, at least charset=utf8mb4&parseTime=True required")
+		return fmt.Errorf(
+			"DSN missing query parameters, at least charset=utf8mb4&parseTime=True required",
+		)
 	}
 
 	return nil

@@ -240,7 +240,12 @@ func (r *MerchantRepository) updateCache(
 	merchant *entity.Merchant,
 ) {
 	if merchantData, err := json.Marshal(merchant); err == nil {
-		if _, err := r.cache.Set(ctx, cacheKey, string(merchantData), merchantCacheTTL); err != nil {
+		if _, err := r.cache.Set(
+			ctx,
+			cacheKey,
+			string(merchantData),
+			merchantCacheTTL,
+		); err != nil {
 			fmt.Printf("Cache set error for key %s: %v\n", cacheKey, err)
 		}
 	}

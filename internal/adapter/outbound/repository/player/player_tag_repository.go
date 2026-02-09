@@ -81,7 +81,9 @@ func (r *PlayerTagRepository) batchUpdateWithoutRetry(
 	// 事務操作：先刪除所有舊關聯，再插入新關聯
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 刪除所有現有關聯
-		if err := tx.Where("player_id = ?", playerID).Delete(&models.PlayerTag{}).Error; err != nil {
+		if err := tx.Where("player_id = ?", playerID).
+			Delete(&models.PlayerTag{}).
+			Error; err != nil {
 			return fmt.Errorf("delete existing player tags failed: %w", err)
 		}
 

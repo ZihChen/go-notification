@@ -30,9 +30,9 @@ func NewSSERouterManager(
 func (rm *SSERouterManager) SetupRoutersWithMiddleware(router *gin.Engine, cfg *config.Config) {
 	// 加入全局 Middleware
 	router.Use(
-		middleware.CorsMiddleware(cfg),              // CORS 配置
-		middleware.MetricsMiddleware(rm.metrics),    // Metrics 收集
-		middleware.ErrorHandler(),                   // 錯誤處理
+		middleware.CorsMiddleware(cfg),           // CORS 配置
+		middleware.MetricsMiddleware(rm.metrics), // Metrics 收集
+		middleware.ErrorHandler(),                // 錯誤處理
 	)
 
 	// 創建 API Key 認證中間件（用於 Admin API）

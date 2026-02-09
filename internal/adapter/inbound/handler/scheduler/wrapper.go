@@ -79,9 +79,12 @@ func (w *JobWrapper) run() {
 			w.logger.String("job_id", jobID),
 			w.logger.String("mutex_key", mutexKey))
 	} else {
-		w.logger.InfoWithContext(ctx, "Redis manager not configured, proceeding without distributed lock",
+		w.logger.InfoWithContext(
+			ctx,
+			"Redis manager not configured, proceeding without distributed lock",
 			w.logger.String("job_name", jobName),
-			w.logger.String("job_id", jobID))
+			w.logger.String("job_id", jobID),
+		)
 	}
 
 	w.logger.InfoWithContext(ctx, "Starting scheduled job execution",

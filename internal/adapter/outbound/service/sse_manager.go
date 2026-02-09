@@ -7,27 +7,26 @@ import (
 	"sync"
 	"time"
 
-	"github.com/redis/go-redis/v9"
-
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	outboundService "github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/service"
+	"github.com/redis/go-redis/v9"
 )
 
 // sseManager SSE 連接管理器實作 (完整版 with Redis Pub/Sub)
 type sseManager struct {
-	podID        string                           // Pod ID (從環境變數注入)
-	connections  map[string]inbound.SSEWriter     // 本地連接池 (playerID → Writer)
-	mu           sync.RWMutex                     // 併發安全鎖
-	cacheManager infrastructure.CacheManager      // Cache Manager
-	redisClient  *redis.Client                    // Redis 客戶端 (用於 Pub/Sub 和 Hash/Streams 操作)
-	pubsub       *redis.PubSub                    // Pub/Sub 訂閱
-	logger       infrastructure.Logger            // 日誌記錄器
-	ctx          context.Context                  // 背景任務 Context
-	cancel       context.CancelFunc               // 取消函數
-	wg           sync.WaitGroup                   // 等待 Goroutine 結束
+	podID        string                       // Pod ID (從環境變數注入)
+	connections  map[string]inbound.SSEWriter // 本地連接池 (playerID → Writer)
+	mu           sync.RWMutex                 // 併發安全鎖
+	cacheManager infrastructure.CacheManager  // Cache Manager
+	redisClient  *redis.Client                // Redis 客戶端 (用於 Pub/Sub 和 Hash/Streams 操作)
+	pubsub       *redis.PubSub                // Pub/Sub 訂閱
+	logger       infrastructure.Logger        // 日誌記錄器
+	ctx          context.Context              // 背景任務 Context
+	cancel       context.CancelFunc           // 取消函數
+	wg           sync.WaitGroup               // 等待 Goroutine 結束
 }
 
 // NewSSEManager 創建 SSE Manager 實例並啟動 Pub/Sub 監聽器
@@ -64,8 +63,8 @@ func NewSSEManager(
 
 	// 訂閱 Pub/Sub 頻道
 	manager.pubsub = manager.redisClient.Subscribe(ctx,
-		consts.SSEBroadcastChannel,                         // sse:broadcast
-		fmt.Sprintf(consts.SSEPodChannel, manager.podID),   // sse:pod:{podID}
+		consts.SSEBroadcastChannel,                       // sse:broadcast
+		fmt.Sprintf(consts.SSEPodChannel, manager.podID), // sse:pod:{podID}
 	)
 
 	// 啟動 Pub/Sub 監聽器
@@ -81,7 +80,11 @@ func NewSSEManager(
 }
 
 // RegisterConnection 註冊玩家 SSE 連接
-func (m *sseManager) RegisterConnection(ctx context.Context, playerID string, writer inbound.SSEWriter) error {
+func (m *sseManager) RegisterConnection(
+	ctx context.Context,
+	playerID string,
+	writer inbound.SSEWriter,
+) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -90,7 +93,8 @@ func (m *sseManager) RegisterConnection(ctx context.Context, playerID string, wr
 
 	// 2. 更新全局路由表 (Redis Hash)
 	if m.redisClient != nil {
-		if err := m.redisClient.HSet(ctx, consts.SSEPlayerRoutesKey, playerID, m.podID).Err(); err != nil {
+		if err := m.redisClient.HSet(ctx, consts.SSEPlayerRoutesKey, playerID, m.podID).
+			Err(); err != nil {
 			m.logger.WarnWithContext(ctx, "Failed to update player routes in Redis",
 				m.logger.Error("error", err),
 				m.logger.String("player_id", playerID))
@@ -124,7 +128,8 @@ func (m *sseManager) UnregisterConnection(ctx context.Context, playerID string) 
 		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		if err := m.redisClient.HDel(cleanupCtx, consts.SSEPlayerRoutesKey, playerID).Err(); err != nil {
+		if err := m.redisClient.HDel(cleanupCtx, consts.SSEPlayerRoutesKey, playerID).
+			Err(); err != nil {
 			m.logger.WarnWithContext(ctx, "Failed to remove player route from Redis",
 				m.logger.Error("error", err),
 				m.logger.String("player_id", playerID))
@@ -212,7 +217,10 @@ func (m *sseManager) GetOnlinePlayerIDs(ctx context.Context) ([]string, error) {
 }
 
 // BroadcastToAll 廣播訊息給所有線上玩家
-func (m *sseManager) BroadcastToAll(ctx context.Context, notification *entity.SSENotification) (int, error) {
+func (m *sseManager) BroadcastToAll(
+	ctx context.Context,
+	notification *entity.SSENotification,
+) (int, error) {
 	// 發布到 Redis Pub/Sub: PUBLISH sse:broadcast {notification}
 	if m.redisClient != nil {
 		data, err := json.Marshal(notification)
@@ -237,7 +245,11 @@ func (m *sseManager) BroadcastToAll(ctx context.Context, notification *entity.SS
 }
 
 // SendToPlayer 推送訊息給單一玩家
-func (m *sseManager) SendToPlayer(ctx context.Context, playerID string, notification *entity.SSENotification) error {
+func (m *sseManager) SendToPlayer(
+	ctx context.Context,
+	playerID string,
+	notification *entity.SSENotification,
+) error {
 	// 先檢查玩家是否在本地連接池
 	m.mu.RLock()
 	writer, existsLocally := m.connections[playerID]
@@ -293,7 +305,11 @@ func (m *sseManager) SendToPlayer(ctx context.Context, playerID string, notifica
 }
 
 // SendToPlayers 批次推送訊息給多位玩家
-func (m *sseManager) SendToPlayers(ctx context.Context, playerIDs []string, notification *entity.SSENotification) (int, error) {
+func (m *sseManager) SendToPlayers(
+	ctx context.Context,
+	playerIDs []string,
+	notification *entity.SSENotification,
+) (int, error) {
 	successCount := 0
 
 	for _, playerID := range playerIDs {
@@ -310,7 +326,11 @@ func (m *sseManager) SendToPlayers(ctx context.Context, playerIDs []string, noti
 }
 
 // EnqueueOfflineMessage 將訊息加入玩家的離線佇列
-func (m *sseManager) EnqueueOfflineMessage(ctx context.Context, playerID string, notification *entity.SSENotification) error {
+func (m *sseManager) EnqueueOfflineMessage(
+	ctx context.Context,
+	playerID string,
+	notification *entity.SSENotification,
+) error {
 	if m.redisClient == nil {
 		return fmt.Errorf("redis client not available for offline message storage")
 	}
@@ -348,7 +368,10 @@ func (m *sseManager) EnqueueOfflineMessage(ctx context.Context, playerID string,
 }
 
 // GetOfflineMessages 獲取玩家的離線訊息清單
-func (m *sseManager) GetOfflineMessages(ctx context.Context, playerID string) ([]*entity.SSENotification, error) {
+func (m *sseManager) GetOfflineMessages(
+	ctx context.Context,
+	playerID string,
+) ([]*entity.SSENotification, error) {
 	if m.redisClient == nil {
 		return []*entity.SSENotification{}, nil
 	}
@@ -401,10 +424,10 @@ func (m *sseManager) Shutdown(ctx context.Context) error {
 
 	// 1. 發送關閉通知給所有連接
 	shutdownNotification := &entity.SSENotification{
-		ID:      fmt.Sprintf("shutdown-%d", time.Now().Unix()),
-		Title:   "Server Shutdown",
-		Message: "Server is shutting down, please reconnect",
-		Type:    "system",
+		ID:       fmt.Sprintf("shutdown-%d", time.Now().Unix()),
+		Title:    "Server Shutdown",
+		Message:  "Server is shutting down, please reconnect",
+		Type:     "system",
 		Priority: "high",
 	}
 
@@ -424,7 +447,7 @@ func (m *sseManager) Shutdown(ctx context.Context) error {
 	// 2. 關閉所有連接並清理 Redis 路由表
 	m.mu.Lock()
 	for playerID, writer := range m.connections {
-		writer.Close()
+		_ = writer.Close()
 		if m.redisClient != nil {
 			m.redisClient.HDel(ctx, consts.SSEPlayerRoutesKey, playerID)
 		}
@@ -539,7 +562,10 @@ func (m *sseManager) handleTargetedMessage(payload string) {
 }
 
 // broadcastToLocalConnections 推送訊息到本地所有連接
-func (m *sseManager) broadcastToLocalConnections(ctx context.Context, notification *entity.SSENotification) int {
+func (m *sseManager) broadcastToLocalConnections(
+	ctx context.Context,
+	notification *entity.SSENotification,
+) int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -558,7 +584,10 @@ func (m *sseManager) broadcastToLocalConnections(ctx context.Context, notificati
 }
 
 // sendNotificationToWriter 發送通知到 SSE Writer
-func (m *sseManager) sendNotificationToWriter(writer inbound.SSEWriter, notification *entity.SSENotification) error {
+func (m *sseManager) sendNotificationToWriter(
+	writer inbound.SSEWriter,
+	notification *entity.SSENotification,
+) error {
 	data, err := json.Marshal(notification)
 	if err != nil {
 		return fmt.Errorf("failed to marshal notification: %w", err)

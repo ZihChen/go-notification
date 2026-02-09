@@ -57,13 +57,17 @@ func JWTAuthMiddleware(config JWTConfig) gin.HandlerFunc {
 		}
 
 		// 解析並驗證 JWT Token
-		token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-			// 驗證簽名算法
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-			}
-			return config.SecretKey, nil
-		})
+		token, err := jwt.ParseWithClaims(
+			tokenString,
+			&JWTClaims{},
+			func(token *jwt.Token) (interface{}, error) {
+				// 驗證簽名算法
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+				}
+				return config.SecretKey, nil
+			},
+		)
 
 		if err != nil {
 			response.Unauthorized(c, "Invalid token", err.Error()).
