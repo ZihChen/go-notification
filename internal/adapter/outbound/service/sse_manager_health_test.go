@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/go-redsync/redsync/v4"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/consts"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/entity"
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/inbound"
@@ -75,25 +76,60 @@ func (m *mockCacheManager) Close() error {
 	return nil
 }
 
+func (m *mockCacheManager) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) (string, error) {
+	return m.client.Set(ctx, key, value, expiration).Result()
+}
+
+func (m *mockCacheManager) SetNX(ctx context.Context, key string, value interface{}, expiration time.Duration) (bool, error) {
+	return m.client.SetNX(ctx, key, value, expiration).Result()
+}
+
+func (m *mockCacheManager) Get(ctx context.Context, key string) (string, error) {
+	return m.client.Get(ctx, key).Result()
+}
+
 func (m *mockCacheManager) Del(ctx context.Context, keys ...string) (int64, error) {
-	return 0, nil
+	return m.client.Del(ctx, keys...).Result()
+}
+
+func (m *mockCacheManager) Exists(ctx context.Context, keys ...string) (int64, error) {
+	return m.client.Exists(ctx, keys...).Result()
+}
+
+func (m *mockCacheManager) MGet(ctx context.Context, keys ...string) ([]interface{}, error) {
+	return m.client.MGet(ctx, keys...).Result()
+}
+
+func (m *mockCacheManager) GetRedsync() (*redsync.Redsync, error) {
+	return nil, nil
 }
 
 // mockLogger 模擬 Logger
 type mockLogger struct{}
 
-func (l *mockLogger) InfoLog(msg string, fields ...interface{})                            {}
-func (l *mockLogger) WarnLog(msg string, fields ...interface{})                            {}
-func (l *mockLogger) ErrorLog(msg string, fields ...interface{})                           {}
-func (l *mockLogger) DebugLog(msg string, fields ...interface{})                           {}
-func (l *mockLogger) InfoWithContext(ctx context.Context, msg string, fields ...interface{})  {}
-func (l *mockLogger) WarnWithContext(ctx context.Context, msg string, fields ...interface{})  {}
-func (l *mockLogger) ErrorWithContext(ctx context.Context, msg string, fields ...interface{}) {}
-func (l *mockLogger) DebugWithContext(ctx context.Context, msg string, fields ...interface{}) {}
+func (l *mockLogger) InfoLog(msg string, fields ...*entity.LoggerFiled)                            {}
+func (l *mockLogger) WarnLog(msg string, fields ...*entity.LoggerFiled)                            {}
+func (l *mockLogger) ErrorLog(msg string, fields ...*entity.LoggerFiled)                           {}
+func (l *mockLogger) DebugLog(msg string, fields ...*entity.LoggerFiled)                           {}
+func (l *mockLogger) FatalLog(msg string, fields ...*entity.LoggerFiled)                           {}
+func (l *mockLogger) InfoWithContext(ctx context.Context, msg string, fields ...*entity.LoggerFiled)  {}
+func (l *mockLogger) WarnWithContext(ctx context.Context, msg string, fields ...*entity.LoggerFiled)  {}
+func (l *mockLogger) ErrorWithContext(ctx context.Context, msg string, fields ...*entity.LoggerFiled) {}
+func (l *mockLogger) DebugWithContext(ctx context.Context, msg string, fields ...*entity.LoggerFiled) {}
+func (l *mockLogger) FatalWithContext(ctx context.Context, msg string, fields ...*entity.LoggerFiled) {}
 func (l *mockLogger) String(key, value string) *entity.LoggerFiled {
 	return &entity.LoggerFiled{}
 }
 func (l *mockLogger) Int(key string, value int) *entity.LoggerFiled {
+	return &entity.LoggerFiled{}
+}
+func (l *mockLogger) Int64(key string, value int64) *entity.LoggerFiled {
+	return &entity.LoggerFiled{}
+}
+func (l *mockLogger) UInt64(key string, value uint64) *entity.LoggerFiled {
+	return &entity.LoggerFiled{}
+}
+func (l *mockLogger) Float64(key string, value float64) *entity.LoggerFiled {
 	return &entity.LoggerFiled{}
 }
 func (l *mockLogger) Error(key string, err error) *entity.LoggerFiled {
@@ -105,9 +141,7 @@ func (l *mockLogger) Any(key string, value interface{}) *entity.LoggerFiled {
 func (l *mockLogger) Bool(key string, value bool) *entity.LoggerFiled {
 	return &entity.LoggerFiled{}
 }
-func (l *mockLogger) Close() error {
-	return nil
-}
+func (l *mockLogger) Close() {}
 
 // =============================================================================
 // Phase 3.1: 單元測試 - Pod 健康心跳
