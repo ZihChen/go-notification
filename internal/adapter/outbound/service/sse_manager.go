@@ -119,15 +119,19 @@ func (m *sseManager) UnregisterConnection(ctx context.Context, playerID string) 
 	delete(m.connections, playerID)
 
 	// 2. 從全局路由表移除 (Redis Hash)
+	// 使用獨立的 context 進行 cleanup 操作，避免因原始 context 取消而失敗
 	if m.redisClient != nil {
-		if err := m.redisClient.HDel(ctx, consts.SSEPlayerRoutesKey, playerID).Err(); err != nil {
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := m.redisClient.HDel(cleanupCtx, consts.SSEPlayerRoutesKey, playerID).Err(); err != nil {
 			m.logger.WarnWithContext(ctx, "Failed to remove player route from Redis",
 				m.logger.Error("error", err),
 				m.logger.String("player_id", playerID))
 		}
 
 		// 3. 減少線上計數
-		if err := m.redisClient.Decr(ctx, consts.SSEOnlineCountKey).Err(); err != nil {
+		if err := m.redisClient.Decr(cleanupCtx, consts.SSEOnlineCountKey).Err(); err != nil {
 			m.logger.WarnWithContext(ctx, "Failed to decrement online count",
 				m.logger.Error("error", err))
 		}
