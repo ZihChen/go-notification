@@ -173,7 +173,7 @@ func InitializeWebComponents(cfg *config.Config, logger infrastructure.Logger, c
 
 // InitializeSSEComponents 初始化 SSE 服務的所有組件
 func InitializeSSEComponents(cfg *config.Config, logger infrastructure.Logger, cacheManager infrastructure.CacheManager, db *gorm.DB) (*SSEComponents, error) {
-	string2 := providePodID(cfg)
+	string2 := providePodID()
 	sseManager := provideSSEManager(string2, cacheManager, logger)
 	tracingService := provideTracingService()
 	queueService, err := queue.NewQueueService(cfg, logger, tracingService)
@@ -199,6 +199,7 @@ func InitializeSSEComponents(cfg *config.Config, logger infrastructure.Logger, c
 	sseComponents := &SSEComponents{
 		SSEHandler: sseNotificationHandler,
 		Metrics:    metrics,
+		PodID:      string2,
 	}
 	return sseComponents, nil
 }
@@ -418,6 +419,7 @@ type WebComponents struct {
 type SSEComponents struct {
 	SSEHandler *api.SSENotificationHandler
 	Metrics    *metrics.Metrics
+	PodID      string // Pod 唯一識別碼 (動態生成)
 }
 
 var baseSet = wire.NewSet(queue.NewQueueService, provideRedisClient,
@@ -673,14 +675,10 @@ func connectToLegacyDatabase(dsn string) (*gorm.DB, error) {
 	return db, nil
 }
 
-// providePodID 提供 Pod ID (從環境變數或配置讀取)
-func providePodID(cfg *config.Config) string {
-	podID := cfg.SSE.PodID
-	if podID == "" {
+// providePodID 提供 Pod ID (動態生成唯一 ID)
+func providePodID() string {
 
-		podID = fmt.Sprintf("pod-%d", time.Now().UnixNano())
-	}
-	return podID
+	return fmt.Sprintf("pod-%d", time.Now().UnixNano())
 }
 
 // provideSSEManager 提供 SSE Manager (注入 Pod ID)

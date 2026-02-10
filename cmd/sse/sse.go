@@ -110,7 +110,7 @@ func runSSEServer(cobraCmd *cobra.Command, args []string) {
 			rootCtx,
 			"Starting SSE notification server",
 			logger.Int("port", serverPort),
-			logger.String("pod_id", cfg.SSE.PodID),
+			logger.String("pod_id", svc.sseComponents.PodID),
 		)
 		if serverErr := server.ListenAndServe(); serverErr != nil &&
 			!errors.Is(serverErr, http.ErrServerClosed) {

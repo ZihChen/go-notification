@@ -172,7 +172,6 @@ type OTLPMetricsConfig struct {
 
 // SSEConfig SSE 推送配置
 type SSEConfig struct {
-	PodID         string        // Pod ID (Kubernetes 注入或自動生成)
 	JWTSecretKey  string        // JWT Token 密鑰
 	JWTExpiration time.Duration // JWT Token 過期時間
 }
@@ -323,7 +322,6 @@ func LoadConfig() (*Config, error) {
 			},
 		},
 		SSE: SSEConfig{
-			PodID:         viper.GetString("SSE_POD_ID"),
 			JWTSecretKey:  viper.GetString("SSE_JWT_SECRET_KEY"),
 			JWTExpiration: getDurationWithDefault("SSE_JWT_EXPIRATION", 24*time.Hour),
 		},

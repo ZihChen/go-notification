@@ -64,6 +64,7 @@ type WebComponents struct {
 type SSEComponents struct {
 	SSEHandler *api.SSENotificationHandler
 	Metrics    *metrics.Metrics
+	PodID      string // Pod 唯一識別碼 (動態生成)
 }
 
 var baseSet = wire.NewSet(
@@ -494,14 +495,10 @@ func connectToLegacyDatabase(dsn string) (*gorm.DB, error) {
 	return db, nil
 }
 
-// providePodID 提供 Pod ID (從環境變數或配置讀取)
-func providePodID(cfg *config.Config) string {
-	podID := cfg.SSE.PodID
-	if podID == "" {
-		// 如果未設置，生成一個唯一的 Pod ID
-		podID = fmt.Sprintf("pod-%d", time.Now().UnixNano())
-	}
-	return podID
+// providePodID 提供 Pod ID (動態生成唯一 ID)
+func providePodID() string {
+	// 統一使用動態生成的方式產生唯一 Pod ID
+	return fmt.Sprintf("pod-%d", time.Now().UnixNano())
 }
 
 // provideSSEManager 提供 SSE Manager (注入 Pod ID)

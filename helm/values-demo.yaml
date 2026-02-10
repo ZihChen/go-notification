@@ -101,8 +101,6 @@ env:
   AUTH_ENCRYPTION_TYPE: "base64"
 
   # SSE (Server-Sent Events) 配置
-  # Pod ID (Kubernetes 會自動注入 POD_NAME，本地開發留空會自動生成)
-  SSE_POD_ID:
   # JWT 密鑰 (用於驗證前端 SSE 長連接)
   SSE_JWT_SECRET_KEY: "REDACTED_SSE_JWT_KEY"
   # JWT Token 過期時間 (預設 24 小時)

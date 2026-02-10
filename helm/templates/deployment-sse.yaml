@@ -47,10 +47,6 @@ spec:
           env:
             - name: TZ
               value: Asia/Taipei
-            - name: SSE_POD_ID
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
           envFrom:
             - configMapRef:
                 name: {{ include "fatnotificationcat.fullname" . }}
