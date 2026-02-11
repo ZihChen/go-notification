@@ -6,10 +6,20 @@ linters:
   # staticcheck:進行靜態分析
   # ineffassign:檢查無效賦值
   # unused:檢查未使用的代碼
-  default: standard
+  enable-all: false
+  disable-all: false
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - ineffassign
   disable:
     - unused
+
 formatters:
+  # gofmt:格式化檢查
+  # gci:import排序
+  # golines:行長度限制
   enable:
     - gofmt
     - gci

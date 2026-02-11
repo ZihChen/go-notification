@@ -298,9 +298,12 @@ func (m *sseManager) SendToPlayer(
 
 			if exists == 0 {
 				// 目標 Pod 已死，清理殘留路由並加入離線隊列
-				m.logger.WarnWithContext(ctx, "Target pod is dead, cleaning route and enqueuing offline",
+				m.logger.WarnWithContext(
+					ctx,
+					"Target pod is dead, cleaning route and enqueuing offline",
 					m.logger.String("player_id", playerID),
-					m.logger.String("dead_pod", targetPodID))
+					m.logger.String("dead_pod", targetPodID),
+				)
 
 				// 清理殘留路由
 				m.redisClient.HDel(ctx, consts.SSEPlayerRoutesKey, playerID)
@@ -642,7 +645,8 @@ func (m *sseManager) cleanupDeadPodRoutes() {
 	cleanedPlayers := make([]string, 0)
 	for playerID, podID := range routes {
 		if deadPods[podID] {
-			if err := m.redisClient.HDel(ctx, consts.SSEPlayerRoutesKey, playerID).Err(); err != nil {
+			if err := m.redisClient.HDel(ctx, consts.SSEPlayerRoutesKey, playerID).
+				Err(); err != nil {
 				m.logger.WarnLog("Failed to delete dead pod route",
 					m.logger.Error("error", err),
 					m.logger.String("player_id", playerID),

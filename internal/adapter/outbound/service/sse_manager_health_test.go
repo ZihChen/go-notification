@@ -76,11 +76,21 @@ func (m *mockCacheManager) Close() error {
 	return nil
 }
 
-func (m *mockCacheManager) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) (string, error) {
+func (m *mockCacheManager) Set(
+	ctx context.Context,
+	key string,
+	value interface{},
+	expiration time.Duration,
+) (string, error) {
 	return m.client.Set(ctx, key, value, expiration).Result()
 }
 
-func (m *mockCacheManager) SetNX(ctx context.Context, key string, value interface{}, expiration time.Duration) (bool, error) {
+func (m *mockCacheManager) SetNX(
+	ctx context.Context,
+	key string,
+	value interface{},
+	expiration time.Duration,
+) (bool, error) {
 	return m.client.SetNX(ctx, key, value, expiration).Result()
 }
 
@@ -107,16 +117,46 @@ func (m *mockCacheManager) GetRedsync() (*redsync.Redsync, error) {
 // mockLogger 模擬 Logger
 type mockLogger struct{}
 
-func (l *mockLogger) InfoLog(msg string, fields ...*entity.LoggerFiled)                            {}
-func (l *mockLogger) WarnLog(msg string, fields ...*entity.LoggerFiled)                            {}
-func (l *mockLogger) ErrorLog(msg string, fields ...*entity.LoggerFiled)                           {}
-func (l *mockLogger) DebugLog(msg string, fields ...*entity.LoggerFiled)                           {}
-func (l *mockLogger) FatalLog(msg string, fields ...*entity.LoggerFiled)                           {}
-func (l *mockLogger) InfoWithContext(ctx context.Context, msg string, fields ...*entity.LoggerFiled)  {}
-func (l *mockLogger) WarnWithContext(ctx context.Context, msg string, fields ...*entity.LoggerFiled)  {}
-func (l *mockLogger) ErrorWithContext(ctx context.Context, msg string, fields ...*entity.LoggerFiled) {}
-func (l *mockLogger) DebugWithContext(ctx context.Context, msg string, fields ...*entity.LoggerFiled) {}
-func (l *mockLogger) FatalWithContext(ctx context.Context, msg string, fields ...*entity.LoggerFiled) {}
+func (l *mockLogger) InfoLog(msg string, fields ...*entity.LoggerFiled)  {}
+func (l *mockLogger) WarnLog(msg string, fields ...*entity.LoggerFiled)  {}
+func (l *mockLogger) ErrorLog(msg string, fields ...*entity.LoggerFiled) {}
+func (l *mockLogger) DebugLog(msg string, fields ...*entity.LoggerFiled) {}
+func (l *mockLogger) FatalLog(msg string, fields ...*entity.LoggerFiled) {}
+
+func (l *mockLogger) InfoWithContext(
+	ctx context.Context,
+	msg string,
+	fields ...*entity.LoggerFiled,
+) {
+}
+
+func (l *mockLogger) WarnWithContext(
+	ctx context.Context,
+	msg string,
+	fields ...*entity.LoggerFiled,
+) {
+}
+
+func (l *mockLogger) ErrorWithContext(
+	ctx context.Context,
+	msg string,
+	fields ...*entity.LoggerFiled,
+) {
+}
+
+func (l *mockLogger) DebugWithContext(
+	ctx context.Context,
+	msg string,
+	fields ...*entity.LoggerFiled,
+) {
+}
+
+func (l *mockLogger) FatalWithContext(
+	ctx context.Context,
+	msg string,
+	fields ...*entity.LoggerFiled,
+) {
+}
 func (l *mockLogger) String(key, value string) *entity.LoggerFiled {
 	return &entity.LoggerFiled{}
 }
@@ -157,7 +197,7 @@ func TestPodHealthHeartbeat_UpdatesRedisKey(t *testing.T) {
 	redisClient := goredis.NewClient(&goredis.Options{
 		Addr: mr.Addr(),
 	})
-	defer redisClient.Close()
+	defer func() { _ = redisClient.Close() }()
 
 	// 創建 SSE Manager
 	podID := "test-pod-1"
@@ -197,7 +237,7 @@ func TestPodHealthHeartbeat_ExpiresAfterTTL(t *testing.T) {
 	redisClient := goredis.NewClient(&goredis.Options{
 		Addr: mr.Addr(),
 	})
-	defer redisClient.Close()
+	defer func() { _ = redisClient.Close() }()
 
 	ctx := context.Background()
 	podID := "test-pod-expire"
@@ -231,7 +271,7 @@ func TestPodHealthHeartbeat_StopsOnContextCancel(t *testing.T) {
 	redisClient := goredis.NewClient(&goredis.Options{
 		Addr: mr.Addr(),
 	})
-	defer redisClient.Close()
+	defer func() { _ = redisClient.Close() }()
 
 	// 創建 SSE Manager
 	podID := "test-pod-cancel"
@@ -276,7 +316,7 @@ func TestSendToPlayer_DetectsDeadPod(t *testing.T) {
 	redisClient := goredis.NewClient(&goredis.Options{
 		Addr: mr.Addr(),
 	})
-	defer redisClient.Close()
+	defer func() { _ = redisClient.Close() }()
 
 	ctx := context.Background()
 
@@ -332,7 +372,7 @@ func TestSendToPlayer_HealthyPodRoutesCorrectly(t *testing.T) {
 	redisClient := goredis.NewClient(&goredis.Options{
 		Addr: mr.Addr(),
 	})
-	defer redisClient.Close()
+	defer func() { _ = redisClient.Close() }()
 
 	ctx := context.Background()
 
@@ -357,7 +397,7 @@ func TestSendToPlayer_HealthyPodRoutesCorrectly(t *testing.T) {
 	// 訂閱目標 Pod 的頻道（模擬 pod-b 在監聽）
 	podChannel := fmt.Sprintf(consts.SSEPodChannel, targetPodID)
 	pubsub := redisClient.Subscribe(ctx, podChannel)
-	defer pubsub.Close()
+	defer func() { _ = pubsub.Close() }()
 
 	// 創建測試通知
 	notification := &entity.SSENotification{
@@ -400,7 +440,7 @@ func TestCleanupDeadPodRoutes_RemovesDeadPods(t *testing.T) {
 	redisClient := goredis.NewClient(&goredis.Options{
 		Addr: mr.Addr(),
 	})
-	defer redisClient.Close()
+	defer func() { _ = redisClient.Close() }()
 
 	ctx := context.Background()
 
@@ -473,7 +513,7 @@ func TestCleanupDeadPodRoutes_NoCleanupWhenAllHealthy(t *testing.T) {
 	redisClient := goredis.NewClient(&goredis.Options{
 		Addr: mr.Addr(),
 	})
-	defer redisClient.Close()
+	defer func() { _ = redisClient.Close() }()
 
 	ctx := context.Background()
 
@@ -522,7 +562,7 @@ func TestCleanupDeadPodRoutes_EmptyRoutes(t *testing.T) {
 	redisClient := goredis.NewClient(&goredis.Options{
 		Addr: mr.Addr(),
 	})
-	defer redisClient.Close()
+	defer func() { _ = redisClient.Close() }()
 
 	// 創建 SSE Manager
 	podID := "pod-cleaner"
