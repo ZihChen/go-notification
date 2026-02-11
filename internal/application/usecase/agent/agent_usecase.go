@@ -621,10 +621,10 @@ func (u *AgentUseCase) DeleteAgentCampaign(ctx context.Context, id uint64, updat
 			u.logger.UInt64("campaign_id", id),
 			u.logger.String("title", campaign.Title))
 
-		if err = u.agentMessageRepo.DeleteByCampaignID(deleteCtx, id); err != nil {
+		if deleteErr := u.agentMessageRepo.DeleteByCampaignID(deleteCtx, id); deleteErr != nil {
 			u.logger.ErrorLog("Async agent messages deletion failed",
 				u.logger.UInt64("campaign_id", id),
-				u.logger.Error("error", err))
+				u.logger.Error("error", deleteErr))
 		} else {
 			u.logger.InfoLog("Async agent messages deletion completed successfully",
 				u.logger.UInt64("campaign_id", id),

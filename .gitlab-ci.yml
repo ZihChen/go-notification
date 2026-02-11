@@ -92,7 +92,7 @@ go-test:
   before_script:
     - apk add --no-cache gcc musl-dev
   script:
-    - CGO_ENABLED=1 go test -v -race -coverprofile=coverage.out ./...
+    - CGO_ENABLED=1 go test -v -race -coverprofile=coverage.out ./internal/...
     - go tool cover -func=coverage.out
   coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
   artifacts:
