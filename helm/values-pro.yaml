@@ -74,7 +74,7 @@ env:
   KINESIS_STREAM_NAME: "fatcat-extension-fat-identity-cat-pro-kds-stream"
   KINESIS_STREAM_ARN: "arn:aws:kinesis:ap-northeast-1:416777209679:stream/fatcat-extension-fat-identity-cat-pro-kds-stream"
   DYNAMODB_TABLE: "fat-notification-cat"
-  DYNAMODB_PARTITION_KEY: "partition_key"
+  DYNAMODB_PARTITION_KEY: "partition-key"
 
   # OpenObserve設置
   OPENOBSERVE_TRACE_API_ENDPOINT: "https://watchdog-ob.panpancat.click/api/jvd-prod/traces"
