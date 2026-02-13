@@ -64,4 +64,4 @@ rollout:
 	kubectl rollout status deployment/fatnotificationcat-scheduler -n $(NAMESPACE) --timeout=300s
 
 rebuild:
-	docker-compose up -d --build fat-notification-worker fat-notification-consumer
+	docker-compose up -d --build fat-notification-worker fat-notification-consumer fat-notification-worker

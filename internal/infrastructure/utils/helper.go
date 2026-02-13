@@ -9,52 +9,71 @@ import (
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
 	"github.com/redis/go-redis/v9"
+	"golang.org/x/sync/singleflight"
 )
 
-// QueryWithCache 使用泛型的安全快取查詢函數
+var sfGroup singleflight.Group
+
+// QueryWithCache 泛型快取查詢，整合 singleflight 防止快取雪崩
+// - 快取命中：直接回傳反序列化結果
+// - 快取未命中 (redis.Nil)：回退到 DB 查詢
+// - 快取錯誤（非 redis.Nil）：記錄日誌後回退到 DB 查詢（靜默降級）
+// - singleflight 防護：同一鍵同一時間只有 1 個 DB 查詢
+// - 非同步寫入快取，不阻塞主流程
 func QueryWithCache[T any](
 	ctx context.Context,
 	cache infrastructure.CacheManager,
+	logger infrastructure.Logger,
 	cacheKey string,
 	ttl time.Duration,
 	entityName string,
 	dbQuery func(ctx context.Context) (T, error),
 ) (T, error) {
-	var zeroValue T
+	var zero T
 
-	// 1. 先嘗試從快取獲取
+	// 嘗試從快取獲取
 	if cachedData, err := cache.Get(ctx, cacheKey); err == nil {
 		var entity T
 		if unmarshalErr := json.Unmarshal([]byte(cachedData), &entity); unmarshalErr == nil {
 			return entity, nil
 		}
-		// 快取數據格式錯誤，繼續查詢資料庫
-		fmt.Printf(
-			"Cache data format error for %s key %s, continuing with database query\n",
-			entityName,
-			cacheKey,
-		)
+		// 反序列化失敗，繼續查詢 DB
 	} else if !errors.Is(err, redis.Nil) {
-		// 快取服務錯誤（非 key 不存在），記錄但不中斷，繼續查詢資料庫
-		fmt.Printf("Cache get error for %s key %s: %v\n", entityName, cacheKey, err)
+		// 快取服務錯誤（非 key 不存在），記錄但不中斷，繼續查詢 DB
+		logger.WarnWithContext(ctx, "Cache get error",
+			logger.String("entity", entityName),
+			logger.String("cache_key", cacheKey),
+			logger.Error("err", err))
 	}
 
-	// 2. 從資料庫查詢
-	entity, err := dbQuery(ctx)
-	if err != nil {
-		return zeroValue, err
-	}
-
-	// 3. 更新快取（異步進行，不影響主流程）
-	go func() {
-		if entityData, err := json.Marshal(entity); err == nil {
-			if _, err := cache.Set(ctx, cacheKey, string(entityData), ttl); err != nil {
-				fmt.Printf("Cache set error for %s key %s: %v\n", entityName, cacheKey, err)
-			}
+	// 快取未命中或錯誤，使用 singleflight 確保同一鍵只有一個併發查詢
+	v, err, _ := sfGroup.Do(cacheKey, func() (interface{}, error) {
+		result, err := dbQuery(ctx)
+		if err != nil {
+			return nil, err
 		}
-	}()
 
-	return entity, nil
+		// 非同步寫入快取（不阻塞主流程）
+		// 使用 context.Background() 避免 request context 取消後寫入失敗
+		go func() {
+			if entityData, err := json.Marshal(result); err == nil {
+				if _, err := cache.Set(context.Background(), cacheKey, string(entityData), ttl); err != nil {
+					// 非同步路徑無 request context，使用 WarnLog（不帶 context）
+					logger.WarnLog("Cache set error",
+						logger.String("entity", entityName),
+						logger.String("cache_key", cacheKey),
+						logger.Error("err", err))
+				}
+			}
+		}()
+
+		return result, nil
+	})
+	if err != nil {
+		return zero, err
+	}
+
+	return v.(T), nil
 }
 
 // ExecuteWithLock 使用分佈式鎖執行函數的共用方法

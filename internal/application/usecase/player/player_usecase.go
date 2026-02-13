@@ -91,6 +91,7 @@ func (u *PlayerUseCase) SyncPlayer(ctx context.Context, data *event.PlayerEvent)
 	merchant, err := utils.QueryWithCache(
 		ctx,
 		u.cacheManager,
+		u.logger,
 		cacheKey,
 		10*time.Minute, // 商戶資訊快取10分鐘
 		"merchant",
@@ -177,6 +178,7 @@ func (u *PlayerUseCase) SyncPlayerFromIdentity(
 	merchant, err := utils.QueryWithCache(
 		ctx,
 		u.cacheManager,
+		u.logger,
 		cacheKey,
 		10*time.Minute, // 商戶資訊快取10分鐘
 		"merchant",
@@ -290,6 +292,7 @@ func (u *PlayerUseCase) syncPlayerTagsInline(
 	player, err := utils.QueryWithCache(
 		ctx,
 		u.cacheManager,
+		u.logger,
 		playerCacheKey,
 		5*time.Minute,
 		"player",
@@ -837,6 +840,7 @@ func (u *PlayerUseCase) syncPlayerTagsWithDifference(
 	existingTagIDs, err := utils.QueryWithCache(
 		ctx,
 		u.cacheManager,
+		u.logger,
 		cacheKey,
 		5*time.Minute, // 快取5分鐘
 		"player_tags",
