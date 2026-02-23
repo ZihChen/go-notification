@@ -57,7 +57,12 @@ func QueryWithCache[T any](
 		// 使用 context.Background() 避免 request context 取消後寫入失敗
 		go func() {
 			if entityData, err := json.Marshal(result); err == nil {
-				if _, err := cache.Set(context.Background(), cacheKey, string(entityData), ttl); err != nil {
+				if _, err := cache.Set(
+					context.Background(),
+					cacheKey,
+					string(entityData),
+					ttl,
+				); err != nil {
 					// 非同步路徑無 request context，使用 WarnLog（不帶 context）
 					logger.WarnLog("Cache set error",
 						logger.String("entity", entityName),
