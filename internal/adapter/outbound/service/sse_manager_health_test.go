@@ -22,7 +22,10 @@ import (
 // =============================================================================
 
 // createTestSSEManager 創建測試用的 SSE Manager
+// 自動透過 t.Cleanup 在測試結束後關閉 pubsub 和取消 context，防止 goroutine 洩漏
 func createTestSSEManager(t *testing.T, podID string, redisClient *goredis.Client) *sseManager {
+	t.Helper()
+
 	// 創建 mock cache manager
 	cacheManager := &mockCacheManager{client: redisClient}
 
@@ -47,6 +50,12 @@ func createTestSSEManager(t *testing.T, podID string, redisClient *goredis.Clien
 		consts.SSEBroadcastChannel,
 		fmt.Sprintf(consts.SSEPodChannel, manager.podID),
 	)
+
+	// 確保每個測試結束後自動清理，防止 goroutine 洩漏導致 CI 卡住
+	t.Cleanup(func() {
+		_ = manager.pubsub.Close()
+		manager.cancel()
+	})
 
 	return manager
 }
