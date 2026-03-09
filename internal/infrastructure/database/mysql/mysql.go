@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/jvdiamondtech/ms-notification-cat/internal/domain/ports/outbound/infrastructure"
@@ -14,11 +15,19 @@ import (
 	"gorm.io/gorm/logger"
 )
 
+const (
+	dbMaxRetries        = 5
+	dbHealthCheckPeriod = 10 * time.Second
+	dbFailureThreshold  = 3
+	dbPingTimeout       = 5 * time.Second
+)
+
 type Database struct {
 	dbInstance *gorm.DB
 	cfg        *config.Config
 	logger     infrastructure.Logger
 	isClose    chan struct{}
+	mu         sync.RWMutex
 }
 
 func NewDatabase(cfg *config.Config, logger infrastructure.Logger) (*Database, error) {
@@ -27,8 +36,25 @@ func NewDatabase(cfg *config.Config, logger infrastructure.Logger) (*Database, e
 		logger:  logger,
 		isClose: make(chan struct{}),
 	}
-	if err := db.connect(); err != nil {
-		return nil, err
+
+	// 初始連線帶指數退避重試，讓服務啟動時能等待 DB 就緒
+	for attempt := 1; attempt <= dbMaxRetries; attempt++ {
+		if err := db.connect(); err != nil {
+			if attempt == dbMaxRetries {
+				return nil, fmt.Errorf("failed to connect to database after %d attempts: %w", dbMaxRetries, err)
+			}
+			backoff := time.Duration(1<<uint(attempt)) * time.Second
+			if backoff > 30*time.Second {
+				backoff = 30 * time.Second
+			}
+			logger.WarnLog(
+				fmt.Sprintf("Database connection failed (attempt %d/%d), retrying in %v", attempt, dbMaxRetries, backoff),
+				logger.Error("err", err),
+			)
+			time.Sleep(backoff)
+			continue
+		}
+		break
 	}
 
 	go db.startHealthChecker()
@@ -67,13 +93,20 @@ func (d *Database) connect() error {
 	sqlDB.SetMaxOpenConns(d.cfg.Database.MaxOpen)        // 限制最大閒置連線數
 	sqlDB.SetConnMaxLifetime(d.cfg.Database.MaxLifetime) // 連線最大生命週期
 	sqlDB.SetConnMaxIdleTime(d.cfg.Database.MaxIdleTime) // 連線最大空閒時間
+
+	d.mu.Lock()
 	d.dbInstance = db
+	d.mu.Unlock()
+
 	return nil
 }
 
 func (d *Database) Close() error {
-	// 關閉Health Checker
+	// 關閉 Health Checker
 	close(d.isClose)
+
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 
 	if d.dbInstance != nil {
 		sqlDB, err := d.dbInstance.DB()
@@ -86,12 +119,16 @@ func (d *Database) Close() error {
 }
 
 func (d *Database) Ping() error {
-	sqlDB, err := d.dbInstance.DB()
+	d.mu.RLock()
+	dbInstance := d.dbInstance
+	d.mu.RUnlock()
+
+	sqlDB, err := dbInstance.DB()
 	if err != nil {
 		return fmt.Errorf("failed to get database instance: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), dbPingTimeout)
 	defer cancel()
 
 	if err = sqlDB.PingContext(ctx); err != nil {
@@ -102,7 +139,29 @@ func (d *Database) Ping() error {
 }
 
 func (d *Database) GetDBConnection() *gorm.DB {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 	return d.dbInstance
+}
+
+// resetConnectionPool 重置連線池，讓 database/sql 在下次 query 時強制重建連線。
+// 注意：不替換 *gorm.DB，避免破壞已注入的 repository 引用。
+func (d *Database) resetConnectionPool() {
+	d.mu.RLock()
+	dbInstance := d.dbInstance
+	d.mu.RUnlock()
+
+	sqlDB, err := dbInstance.DB()
+	if err != nil {
+		d.logger.ErrorLog("Failed to get sql.DB for connection pool reset", d.logger.Error("err", err))
+		return
+	}
+	// 暫時設置極短的 MaxLifetime，讓連線池清空所有壞連線
+	sqlDB.SetConnMaxLifetime(time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
+	// 恢復原始設置，database/sql 會在下次查詢時自動重建連線
+	sqlDB.SetConnMaxLifetime(d.cfg.Database.MaxLifetime)
+	d.logger.InfoLog("Database connection pool reset, will reconnect on next query")
 }
 
 func buildDSN(cfg *config.Config) string {
@@ -116,24 +175,45 @@ func buildDSN(cfg *config.Config) string {
 }
 
 func (d *Database) startHealthChecker() {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(dbHealthCheckPeriod)
 	defer ticker.Stop()
+
+	consecutiveFailures := 0
 
 	for {
 		select {
 		case <-ticker.C:
 			if err := d.Ping(); err != nil {
+				consecutiveFailures++
 				d.logger.ErrorLog(
-					"Failed to ping database, retrying to reconnect...",
+					"Database health check failed",
 					d.logger.Error("err", err),
+					d.logger.Int("consecutive_failures", consecutiveFailures),
 				)
-				// 嘗試重新連線
-				if err = d.connect(); err != nil {
-					d.logger.ErrorLog("Failed to reconnect to database", d.logger.Error("err", err))
+
+				// 連續失敗達到閾值，重置連線池觸發 database/sql 重連
+				if consecutiveFailures >= dbFailureThreshold {
+					d.logger.WarnLog(
+						"Database connection degraded, resetting connection pool to trigger reconnect",
+						d.logger.Int("consecutive_failures", consecutiveFailures),
+					)
+					d.resetConnectionPool()
 				}
 			} else {
+				if consecutiveFailures > 0 {
+					d.logger.InfoLog(
+						"Database connection recovered",
+						d.logger.Int("previous_failures", consecutiveFailures),
+					)
+					consecutiveFailures = 0
+				}
+
 				// 連線正常，輸出連接池狀態監控
-				sqlDB, err := d.dbInstance.DB()
+				d.mu.RLock()
+				dbInstance := d.dbInstance
+				d.mu.RUnlock()
+
+				sqlDB, err := dbInstance.DB()
 				if err == nil {
 					stats := sqlDB.Stats()
 
@@ -152,10 +232,10 @@ func (d *Database) startHealthChecker() {
 					// 輸出GORM配置狀態（用於驗證PrepareStmt設置）
 					d.logger.InfoLog(
 						"Database configuration status",
-						d.logger.Bool("prepare_stmt_enabled", d.dbInstance.PrepareStmt),
+						d.logger.Bool("prepare_stmt_enabled", dbInstance.PrepareStmt),
 						d.logger.Bool(
 							"skip_default_transaction",
-							d.dbInstance.SkipDefaultTransaction,
+							dbInstance.SkipDefaultTransaction,
 						),
 						d.logger.Int("max_idle_conns_config", d.cfg.Database.MaxIdle),
 						d.logger.Int("max_open_conns_config", d.cfg.Database.MaxOpen),

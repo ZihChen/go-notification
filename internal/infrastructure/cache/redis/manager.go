@@ -15,12 +15,21 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+const (
+	redisHealthCheckPeriod = 30 * time.Second
+	redisFailureThreshold  = 3
+	redisPingTimeout       = 3 * time.Second
+	redisReconnectTimeout  = 30 * time.Second
+)
+
 type Manager struct {
-	client   *redis.Client
-	redsync  *redsync.Redsync
-	config   *config.Config
-	mu       sync.RWMutex
-	isClosed bool
+	client             *redis.Client
+	redsync            *redsync.Redsync
+	config             *config.Config
+	mu                 sync.RWMutex
+	isClosed           bool
+	isClose            chan struct{}
+	healthCheckerOnce  sync.Once
 }
 
 // 確保Manager實現CacheManager介面
@@ -28,20 +37,15 @@ var _ infrastructure.CacheManager = (*Manager)(nil)
 
 func NewRedisManager(cfg *config.Config) *Manager {
 	return &Manager{
-		config: cfg,
+		config:  cfg,
+		isClose: make(chan struct{}),
 	}
 }
 
-func (m *Manager) Connect(ctx context.Context) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if m.client != nil {
-		return nil // Redis connection 還存在
-	}
-
+// doConnect 建立 Redis 連線的核心邏輯（呼叫方必須持有 m.mu.Lock()）
+func (m *Manager) doConnect(ctx context.Context) error {
 	retryCount := 0
-	maxRetries := 5
+	const maxRetries = 5
 
 	for {
 		select {
@@ -69,7 +73,7 @@ func (m *Manager) Connect(ctx context.Context) error {
 			rs := redsync.New(pool)
 
 			// 測試連接，增加超時控制
-			pingCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+			pingCtx, cancel := context.WithTimeout(ctx, redisPingTimeout)
 			pingErr := client.Ping(pingCtx).Err()
 			cancel()
 
@@ -87,10 +91,10 @@ func (m *Manager) Connect(ctx context.Context) error {
 					)
 				}
 
-				// 優化指數退避策略，避免過長等待
-				backoff := time.Duration(1<<uint(retryCount)) * 500 * time.Millisecond
-				if backoff > 10*time.Second {
-					backoff = 10 * time.Second
+				// 指數退避策略
+				backoff := time.Duration(1<<uint(retryCount)) * time.Second
+				if backoff > 30*time.Second {
+					backoff = 30 * time.Second
 				}
 
 				log.Printf("Failed to connect to Redis (attempt %d/%d): %v, retrying in %v...",
@@ -119,6 +123,108 @@ func (m *Manager) Connect(ctx context.Context) error {
 	}
 }
 
+func (m *Manager) Connect(ctx context.Context) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.client != nil {
+		return nil // Redis connection 還存在
+	}
+
+	if err := m.doConnect(ctx); err != nil {
+		return err
+	}
+
+	// 只啟動一次背景健康檢查
+	m.healthCheckerOnce.Do(func() {
+		go m.startHealthChecker()
+	})
+
+	return nil
+}
+
+// reconnect 重新建立 Redis 連線（由健康檢查器內部使用）
+func (m *Manager) reconnect() error {
+	// 先確認尚未關閉
+	select {
+	case <-m.isClose:
+		return errors.New("redis manager is closed, skipping reconnect")
+	default:
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// 關閉舊的 client
+	if m.client != nil {
+		if err := m.client.Close(); err != nil {
+			log.Printf("Error closing old Redis client during reconnect: %v", err)
+		}
+		m.client = nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), redisReconnectTimeout)
+	defer cancel()
+
+	return m.doConnect(ctx)
+}
+
+// startHealthChecker 在背景定期健康檢查，失敗達閾值時觸發重連
+func (m *Manager) startHealthChecker() {
+	ticker := time.NewTicker(redisHealthCheckPeriod)
+	defer ticker.Stop()
+
+	consecutiveFailures := 0
+
+	for {
+		select {
+		case <-ticker.C:
+			ctx, cancel := context.WithTimeout(context.Background(), redisPingTimeout)
+			err := m.HealthCheck(ctx)
+			cancel()
+
+			if err != nil {
+				consecutiveFailures++
+				log.Printf("Redis health check failed (consecutive: %d): %v", consecutiveFailures, err)
+
+				if consecutiveFailures >= redisFailureThreshold {
+					log.Printf(
+						"Redis connection degraded, attempting reconnect (consecutive failures: %d)...",
+						consecutiveFailures,
+					)
+					if reconnErr := m.reconnect(); reconnErr != nil {
+						log.Printf("Redis reconnect failed: %v", reconnErr)
+					} else {
+						log.Printf("Redis reconnected successfully")
+						consecutiveFailures = 0
+					}
+				}
+			} else {
+				if consecutiveFailures > 0 {
+					log.Printf("Redis connection recovered after %d failures", consecutiveFailures)
+					consecutiveFailures = 0
+				}
+
+				// 輸出連線池狀態監控
+				m.mu.RLock()
+				client := m.client
+				m.mu.RUnlock()
+
+				if client != nil {
+					stats := client.PoolStats()
+					log.Printf(
+						"Redis pool stats: hits=%d misses=%d timeouts=%d total=%d idle=%d stale=%d",
+						stats.Hits, stats.Misses, stats.Timeouts,
+						stats.TotalConns, stats.IdleConns, stats.StaleConns,
+					)
+				}
+			}
+		case <-m.isClose:
+			return
+		}
+	}
+}
+
 func (m *Manager) GetClient() (*redis.Client, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -140,6 +246,14 @@ func (m *Manager) Close() error {
 
 	if m.isClosed || m.client == nil {
 		return nil
+	}
+
+	// 停止健康檢查 goroutine
+	select {
+	case <-m.isClose:
+		// 已關閉，不重複操作
+	default:
+		close(m.isClose)
 	}
 
 	err := m.client.Close()
