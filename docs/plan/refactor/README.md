@@ -97,7 +97,7 @@ YYYY-MM-DD-<component>-<topic>.md
 ## 🔗 相關資源
 
 ### 專案架構文檔
-- [CLAUDE.md](../CLAUDE.md) - 專案架構規範與開發指南
+- [AGENTS.md](../../../AGENTS.md) - 專案架構規範與開發指南
 - [CLAUDE-CURRENT.md](../CLAUDE-CURRENT.md) - 當前開發狀態
 - [CLAUDE-QUICK.md](../CLAUDE-QUICK.md) - 快速參考指南
 

@@ -534,7 +534,7 @@ func (m *sseManager) RegisterConnection(ctx context.Context, playerID string, wr
 - [Phase 9: 生產驗收與上線](phase-9.md) (第14-15天)
 
 ### 專案文檔
-- **CLAUDE.md**: [專案開發指南](../../../CLAUDE.md)
+- **AGENTS.md**: [專案開發指南](../../../../../AGENTS.md)
 - **架構文件**: [Clean Architecture 說明](../../../docs/architecture/)
 
 ---

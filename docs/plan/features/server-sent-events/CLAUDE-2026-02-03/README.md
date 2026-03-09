@@ -66,7 +66,7 @@
 
 ## 🔗 相關連結
 
-- **專案開發指南**: [CLAUDE.md](../../../CLAUDE.md)
+- **專案開發指南**: [AGENTS.md](../../../../../AGENTS.md)
 - **架構文件**: [Clean Architecture 說明](../../../docs/architecture/)
 
 ---

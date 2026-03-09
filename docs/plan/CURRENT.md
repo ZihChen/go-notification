@@ -377,7 +377,7 @@ SSE 通知系統 Phase 1-7 + Phase 10 Pod 健康優化全部完成。整合測�
 
 #### 文檔與運維準備
 - [x] **技術文檔維護**
-  - [x] 架構文檔更新 (CLAUDE.md) - 反映v1.8完成狀態
+  - [x] 架構文檔更新 (AGENTS.md) - 反映v1.8完成狀態
   - [x] 當前狀態文檔更新 (CLAUDE-CURRENT.md) - 2025-09-26最新狀態
   - [x] 稽核報告更新 (audit-report-v1.8) - v1.8功能實作完成
   - [x] 專案README更新 (README.md) - 更新最新功能狀態

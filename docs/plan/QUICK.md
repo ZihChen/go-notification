@@ -135,7 +135,7 @@ wire ./internal/di
 #### 配置檔案
 - `internal/di/wire.go` - 依賴注入配置
 - `docker-compose.yml` - 本地開發環境
-- `CLAUDE.md` - 專案指引文件
+- `AGENTS.md` - 專案指引文件
 
 ### 文檔結構
 ```

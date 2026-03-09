@@ -131,7 +131,7 @@ func TestDefaultCorsMiddleware(t *testing.T) {
 - 🐛 常見問題排解指南
 
 ### 專案文檔整合
-**位置**: `CLAUDE.md`
+**位置**: `AGENTS.md`
 - 新增 CORS 配置項目到配置部分
 - 添加文檔引用連結
 

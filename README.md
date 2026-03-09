@@ -236,7 +236,7 @@
 ├── Makefile          # 建置腳本
 ├── main.go           # 應用程式主入口
 ├── go.mod            # Go 模組定義
-└── CLAUDE.md         # Claude Code 專案指導文件
+└── AGENTS.md         # AI Code Agent 專案指導文件
 ```
 
 ### 依賴注入
