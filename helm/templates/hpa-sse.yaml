@@ -1,7 +1,7 @@
 # SSE 服務 HPA 配置
 # 特性：長連接服務，需要穩定的擴縮容策略
 # 擴容：基於連接數和資源使用率，min=3, max=10
-# 閾值：CPU 70%, Memory 80%（比 Web 服務更寬鬆）
+# 閾值：CPU 70%（比 Web 服務更寬鬆）
 # 穩健擴容：120秒穩定期，避免頻繁擴容導致連接重分配
 # 極慢縮容：10分鐘穩定期，每次最多縮5%，保護現有長連接
 
@@ -26,12 +26,6 @@ spec:
         target:
           type: Utilization
           averageUtilization: 70
-    - type: Resource
-      resource:
-        name: memory
-        target:
-          type: Utilization
-          averageUtilization: 80
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 120  # 2分鐘穩定期，避免頻繁擴容
