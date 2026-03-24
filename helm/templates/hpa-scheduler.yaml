@@ -1,8 +1,4 @@
-# 最小擴容：min=1, max=2
-# 高閾值：CPU 80%
-# 極度保守：5分鐘擴容期，10分鐘縮容期
-# 避免重複排程：通常只需1個實例
-
+{{- if .Values.scheduler.hpa.enabled }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -14,15 +10,15 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: {{ include "fatnotificationcat.fullname" . }}-scheduler
-  minReplicas: 1
-  maxReplicas: 2
+  minReplicas: {{ .Values.scheduler.hpa.minReplicas }}
+  maxReplicas: {{ .Values.scheduler.hpa.maxReplicas }}
   metrics:
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 80
+          averageUtilization: {{ .Values.scheduler.hpa.targetCPUUtilizationPercentage }}
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 300
@@ -36,3 +32,4 @@ spec:
       - type: Pods
         value: 1
         periodSeconds: 300
+{{- end }}
