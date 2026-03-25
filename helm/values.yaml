@@ -24,20 +24,51 @@ app:
     tag: latest
   resources:
     requests:
-      cpu: 50m
-      memory: 256Mi
+      cpu: 10m
+      memory: 64Mi
     limits:
-      cpu: 200m
-      memory: 512Mi
+      memory: 64Mi
+  hpa:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 60
+
+consumer:
+  hpa:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 65
+
+worker:
+  hpa:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 60
+
+sse:
+  hpa:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 70
+
+scheduler:
+  hpa:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 2
+    targetCPUUtilizationPercentage: 80
 
 redis:
   resources:
     requests:
-      cpu: 100m
-      memory: 512Mi
+      cpu: 10m
+      memory: 64Mi
     limits:
-      cpu: 100m
-      memory: 512Mi
+      memory: 64Mi
   persistence:
     requests:
       storage: 1Gi

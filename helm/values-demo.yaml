@@ -118,4 +118,36 @@ app:
   image:
     repository: 637423324672.dkr.ecr.ap-northeast-1.amazonaws.com/quantumcat/fatnotificationcat
     tag: latest
-  replicas: 1
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 60
+
+consumer:
+  hpa:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 65
+
+worker:
+  hpa:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 60
+
+sse:
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 70
+
+scheduler:
+  hpa:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
