@@ -1,5 +1,5 @@
 services:
-  redis:
+  fat-notification-redis:
     image: redis:7.2-alpine
     container_name: fat-notification-redis
     ports:
@@ -28,14 +28,13 @@ services:
     environment:
       - TZ=Asia/Taipei
     ports:
-      - "8081:8080"
       - "6383:6383"   #debugger接口
     security_opt:
       - "seccomp=unconfined"
     cap_add:
       - SYS_PTRACE
     depends_on:
-      - redis
+      - fat-notification-redis
     networks:
       - fatcatnet
     restart: always
@@ -69,7 +68,7 @@ services:
     cap_add:
       - SYS_PTRACE
     depends_on:
-      - redis
+      - fat-notification-redis
     networks:
       - fatcatnet
     restart: always
@@ -94,7 +93,7 @@ services:
     ports:
       - "6385:6385"   #debugger接口
     depends_on:
-      - redis
+      - fat-notification-redis
     networks:
       - fatcatnet
     restart: always
@@ -119,7 +118,7 @@ services:
     ports:
       - "6386:6386"   #debugger接口
     depends_on:
-      - redis
+      - fat-notification-redis
     networks:
       - fatcatnet
     restart: always
@@ -142,14 +141,13 @@ services:
     environment:
       - TZ=Asia/Taipei
     ports:
-      - "8085:8081"
       - "6387:6387"   #debugger接口
     security_opt:
       - "seccomp=unconfined"
     cap_add:
       - SYS_PTRACE
     depends_on:
-      - redis
+      - fat-notification-redis
     networks:
       - fatcatnet
     restart: always
