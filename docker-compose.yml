@@ -39,6 +39,11 @@ services:
     networks:
       - fatcatnet
     restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.notification.rule=Host(`notification.localhost`)"
+      - "traefik.http.routers.notification.entrypoints=web"
+      - "traefik.http.services.notification.loadbalancer.server.port=8080"
   fat-notification-consumer:
     build:
       context: .
@@ -148,6 +153,11 @@ services:
     networks:
       - fatcatnet
     restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.notification-sse.rule=Host(`notification-sse.localhost`)"
+      - "traefik.http.routers.notification-sse.entrypoints=web"
+      - "traefik.http.services.notification-sse.loadbalancer.server.port=8081"
 volumes:
   notification_redis_data:
 
