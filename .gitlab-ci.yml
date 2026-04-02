@@ -25,29 +25,44 @@ stages:
 # ============================================
 # Templates
 # ============================================
-.build-template:
-  stage: build
-  image:
-    name: gcr.io/kaniko-project/executor:debug
-    entrypoint: [""]
-
 .build-quantumcat-template:
-  extends: .build-template
-  before_script:
-    - mkdir -p /kaniko/.docker
-    - echo "{\"credsStore\":\"ecr-login\"}" > /kaniko/.docker/config.json
-    - chmod 600 /kaniko/.docker/config.json
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
   variables:
+    AWS_REGION: ap-northeast-1
+    ECR_REGISTRY: 637423324672.dkr.ecr.ap-northeast-1.amazonaws.com
     ECR_REPOSITORY: 637423324672.dkr.ecr.ap-northeast-1.amazonaws.com/quantumcat/fatnotificationcat
+  before_script:
+    - apk add --no-cache aws-cli jq
+    - |
+      echo "Assuming role for ECR access..."
+      creds=$(aws sts assume-role \
+        --role-arn arn:aws:iam::637423324672:role/FatcatInternalRunnerAssumeRole \
+        --role-session-name "ciBuild-${CI_PIPELINE_ID}" \
+        --output json)
+      if [ $? -ne 0 ]; then
+        echo "Failed to assume role"
+        exit 1
+      fi
+      export AWS_ACCESS_KEY_ID=$(echo "$creds" | jq -r '.Credentials.AccessKeyId')
+      export AWS_SECRET_ACCESS_KEY=$(echo "$creds" | jq -r '.Credentials.SecretAccessKey')
+      export AWS_SESSION_TOKEN=$(echo "$creds" | jq -r '.Credentials.SessionToken')
+      echo "Successfully assumed role:"
+      aws sts get-caller-identity --query 'Arn' --output text
+    - |
+      echo "Logging into ECR..."
+      aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
   script:
     - |
-      /kaniko/executor \
-        --context "${CI_PROJECT_DIR}" \
-        --dockerfile "${CI_PROJECT_DIR}/Dockerfile" \
-        --destination "${ECR_REPOSITORY}:${IMAGE_TAG}" \
+      docker buildx create --use
+      docker buildx build --push \
+        --platform linux/amd64 \
         --build-arg APP_VERSION=${CI_COMMIT_SHORT_SHA} \
         --build-arg CI_COMMIT_SHA=${CI_COMMIT_SHA} \
-        --custom-platform=linux/amd64
+        -t "${ECR_REPOSITORY}:${IMAGE_TAG}" \
+        .
 
 .deploy-template:
   stage: deploy
