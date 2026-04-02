@@ -1,3 +1,4 @@
 .env
 .idea/
 coverage.out
+.gitlab-ci-local/
