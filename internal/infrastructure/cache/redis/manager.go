@@ -23,13 +23,13 @@ const (
 )
 
 type Manager struct {
-	client             *redis.Client
-	redsync            *redsync.Redsync
-	config             *config.Config
-	mu                 sync.RWMutex
-	isClosed           bool
-	isClose            chan struct{}
-	healthCheckerOnce  sync.Once
+	client            *redis.Client
+	redsync           *redsync.Redsync
+	config            *config.Config
+	mu                sync.RWMutex
+	isClosed          bool
+	isClose           chan struct{}
+	healthCheckerOnce sync.Once
 }
 
 // 確保Manager實現CacheManager介面
@@ -185,7 +185,11 @@ func (m *Manager) startHealthChecker() {
 
 			if err != nil {
 				consecutiveFailures++
-				log.Printf("Redis health check failed (consecutive: %d): %v", consecutiveFailures, err)
+				log.Printf(
+					"Redis health check failed (consecutive: %d): %v",
+					consecutiveFailures,
+					err,
+				)
 
 				if consecutiveFailures >= redisFailureThreshold {
 					log.Printf(

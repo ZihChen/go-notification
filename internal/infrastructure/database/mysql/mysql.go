@@ -41,14 +41,23 @@ func NewDatabase(cfg *config.Config, logger infrastructure.Logger) (*Database, e
 	for attempt := 1; attempt <= dbMaxRetries; attempt++ {
 		if err := db.connect(); err != nil {
 			if attempt == dbMaxRetries {
-				return nil, fmt.Errorf("failed to connect to database after %d attempts: %w", dbMaxRetries, err)
+				return nil, fmt.Errorf(
+					"failed to connect to database after %d attempts: %w",
+					dbMaxRetries,
+					err,
+				)
 			}
 			backoff := time.Duration(1<<uint(attempt)) * time.Second
 			if backoff > 30*time.Second {
 				backoff = 30 * time.Second
 			}
 			logger.WarnLog(
-				fmt.Sprintf("Database connection failed (attempt %d/%d), retrying in %v", attempt, dbMaxRetries, backoff),
+				fmt.Sprintf(
+					"Database connection failed (attempt %d/%d), retrying in %v",
+					attempt,
+					dbMaxRetries,
+					backoff,
+				),
 				logger.Error("err", err),
 			)
 			time.Sleep(backoff)
@@ -153,7 +162,10 @@ func (d *Database) resetConnectionPool() {
 
 	sqlDB, err := dbInstance.DB()
 	if err != nil {
-		d.logger.ErrorLog("Failed to get sql.DB for connection pool reset", d.logger.Error("err", err))
+		d.logger.ErrorLog(
+			"Failed to get sql.DB for connection pool reset",
+			d.logger.Error("err", err),
+		)
 		return
 	}
 	// 暫時設置極短的 MaxLifetime，讓連線池清空所有壞連線
