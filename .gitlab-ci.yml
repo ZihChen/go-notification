@@ -125,25 +125,12 @@ go-test:
         - .cache/go-build
       policy: pull-push
       when: always
-    - key: "test-tools-${CI_JOB_IMAGE}-${CI_RUNNER_EXECUTABLE_ARCH}"
-      paths:
-        - .cache/go/bin
-      policy: pull-push
-      when: always
   before_script:
     - apk add --no-cache gcc musl-dev
-    - export PATH="${GOBIN}:${PATH}"
-    - command -v gocover-cobertura || go install github.com/boumenot/gocover-cobertura@v1.4.0
   script:
     - CGO_ENABLED=1 go test -race -timeout 300s -coverprofile=coverage.out ./internal/...
     - go tool cover -func=coverage.out
-    - gocover-cobertura < coverage.out > coverage.xml
   coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
-  artifacts:
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.xml
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "dev"
