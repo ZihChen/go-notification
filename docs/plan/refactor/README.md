@@ -90,7 +90,7 @@ YYYY-MM-DD-<component>-<topic>.md
 
 | 項目 | 優先級 | 狀態 | 開始日期 | 預計完成 | 實際完成 |
 |------|--------|------|----------|----------|----------|
-| CacheManager 介面重構 | HIGH | 設計規劃 | 2026-02-11 | 2026-03-11 | - |
+| CacheManager 介面重構 | HIGH | 設計規劃 | 2026-02-11 | TBD | - |
 
 ---
 
@@ -98,8 +98,8 @@ YYYY-MM-DD-<component>-<topic>.md
 
 ### 專案架構文檔
 - [AGENTS.md](../../../AGENTS.md) - 專案架構規範與開發指南
-- [CLAUDE-CURRENT.md](../CLAUDE-CURRENT.md) - 當前開發狀態
-- [CLAUDE-QUICK.md](../CLAUDE-QUICK.md) - 快速參考指南
+- [CURRENT_STATUS.md](../../updates/CURRENT_STATUS.md) - 當前開發狀態
+- [QUICK.md](../QUICK.md) - 快速參考指南
 
 ### 稽核報告
 - [安全稽核報告](../audit/SECURITY_AUDIT_REPORT.md) - 架構合規性稽核
@@ -134,4 +134,4 @@ YYYY-MM-DD-<component>-<topic>.md
 ---
 
 **維護者**: Fat Notification Cat 開發團隊
-**最後更新**: 2026-02-11
+**最後更新**: 2026-04-07

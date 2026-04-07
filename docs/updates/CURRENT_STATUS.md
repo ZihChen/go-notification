@@ -1,6 +1,6 @@
 # Current Status
 
-**Last Updated**: 2026-03-09
+**Last Updated**: 2026-04-07
 **Overall Status**: Production Ready — SSE Phase 1-7 + Phase 10 complete, Clean Architecture v1.7 complete.
 
 ---
@@ -42,6 +42,14 @@ Phase 1-7 + Phase 10 fully complete.
 - Upgraded `golang.org/x/sync` to v0.19.0
 - Structured logging replaces `fmt.Printf` in QueryWithCache
 - 8 call sites updated (player_tag_usecase, player_usecase)
+
+### CI/CD Pipeline — COMPLETE (2026-04-07)
+
+- GitLab CI 全流程：lint-check → go-test → build → deploy
+- Kaniko 內建 ECR credential helper，無需 artifact 傳遞
+- 單次 build 同時推送 `:latest` 與 `:{commit-sha}` 兩個 tag
+- Pipeline 觸發：MR 開啟（lint+test）、push/merge 到 dev（完整流程）
+- Runner：macmini-designer (Docker executor, linux/arm64)
 
 ### Infrastructure Reliability — COMPLETE (2026-03)
 
@@ -146,7 +154,7 @@ Phase 1-7 + Phase 10 fully complete.
 | Phase 9 Production Acceptance Tests | High | Functional/performance/security/HA |
 | Monitoring & Alerting (Prometheus + Grafana) | Medium | OpenTelemetry tracing already integrated |
 | v1.6 DB Data Migration | Low | Spec complete, pending business requirements confirmation |
-| CI/CD Pipeline Optimization | Low | Automated test and deployment flow |
+| CI/CD Pipeline Optimization | Low | ✅ Complete — kaniko + ECR, lint→test→build→deploy on dev branch |
 
 ---
 

@@ -1,5 +1,12 @@
 # Recent Updates
 
+## 2026-04 CI/CD Pipeline Complete
+
+- GitLab CI 全流程 lint → test → build → deploy 首次跑通
+- Kaniko 內建 ECR credential helper，移除 ecr-auth 中間 job
+- 單次 build 推送 `:latest` + `:{commit-sha}` 雙 tag
+- Pipeline 只在 dev branch push/merge 時觸發完整部署
+
 ## 2026-03 Infrastructure Reliability
 
 - Redis Manager: background health checker (30s interval), auto-reconnect after 3 consecutive failures
