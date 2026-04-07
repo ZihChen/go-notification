@@ -145,8 +145,8 @@ build:
 deploy-fatcat-dev:
   extends: .deploy-template
   variables:
-    DEPLOY_NAME: fatcat-dev-notification-cat
-    NAMESPACE: fatcat
+    DEPLOY_NAME: fatnotificationcat
+    NAMESPACE: bonuscat
   needs: [build]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
