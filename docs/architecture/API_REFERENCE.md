@@ -185,4 +185,4 @@ Key characteristics: batch size of 100 records, UpdateOrCreate pattern (idempote
 
 ---
 
-For detailed SSE API documentation, see [docs/plan/features/server-sent-events/](../plan/features/server-sent-events/)
+For detailed SSE API documentation, see [docs/plans/features/server-sent-events/](../plans/features/server-sent-events/)

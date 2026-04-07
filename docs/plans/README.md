@@ -10,7 +10,7 @@ This file explains the `docs/` directory structure for agents and developers.
 | [`docs/development/`](../development/) | 開發指令、工作流程、測試指南 |
 | [`docs/deployment/`](../deployment/) | 環境設定、事件流程、Helm/K8s |
 | [`docs/updates/`](../updates/) | 當前狀態、近期更新、歷史 archive |
-| [`docs/plan/`](./) | Agent 計畫模板、功能規格、稽核報告 |
+| [`docs/plans/`](./) | Agent 計畫模板、功能規格、稽核報告 |
 
 ## Quick Links
 
@@ -25,7 +25,7 @@ This file explains the `docs/` directory structure for agents and developers.
 | 環境設定 | [docs/deployment/CONFIGURATION.md](../deployment/CONFIGURATION.md) |
 | 當前狀態 | [docs/updates/CURRENT_STATUS.md](../updates/CURRENT_STATUS.md) |
 | 近期更新 | [docs/updates/RECENT_UPDATES.md](../updates/RECENT_UPDATES.md) |
-| SSE 功能規格 | [docs/plan/features/server-sent-events/](features/server-sent-events/) |
+| SSE 功能規格 | [docs/plans/features/server-sent-events/](features/server-sent-events/) |
 
 ## Plan Directory Contents
 
