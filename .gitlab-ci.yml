@@ -31,13 +31,8 @@ stages:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
   variables:
-    AWS_REGION: ap-northeast-1
-    ECR_REGISTRY: 637423324672.dkr.ecr.ap-northeast-1.amazonaws.com
+    AWS_DEFAULT_REGION: ap-northeast-1
     ECR_REPOSITORY: 637423324672.dkr.ecr.ap-northeast-1.amazonaws.com/quantumcat/fatnotificationcat
-  before_script:
-    - mkdir -p /kaniko/.docker
-    # config.json is passed as file artifact from ecr-auth job
-    - cp kaniko-config/config.json /kaniko/.docker/config.json
   script:
     - |
       /kaniko/executor \
@@ -138,33 +133,8 @@ go-test:
 # ============================================
 # Build
 # ============================================
-ecr-auth:
-  stage: build
-  image: alpine:latest
-  variables:
-    AWS_REGION: ap-northeast-1
-    ECR_REGISTRY: 637423324672.dkr.ecr.ap-northeast-1.amazonaws.com
-  script:
-    - apk add --no-cache aws-cli
-    - aws sts get-caller-identity --query 'Arn' --output text
-    - |
-      ECR_PASSWORD=$(aws ecr get-login-password --region "${AWS_REGION}")
-      mkdir -p kaniko-config
-      printf '{"auths":{"%s":{"auth":"%s"}}}' \
-        "${ECR_REGISTRY}" \
-        "$(printf 'AWS:%s' "${ECR_PASSWORD}" | base64 | tr -d '\n')" \
-        > kaniko-config/config.json
-  artifacts:
-    paths:
-      - kaniko-config/config.json
-    expire_in: 10 minutes
-  rules:
-    - if: $CI_COMMIT_BRANCH == "dev"
-    - if: $CI_COMMIT_TAG
-
 build:
   extends: .build-quantumcat-template
-  needs: [ecr-auth]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
     - if: $CI_COMMIT_TAG
@@ -177,7 +147,6 @@ deploy-fatcat-dev:
   variables:
     DEPLOY_NAME: fatcat-dev-notification-cat
     NAMESPACE: fatcat
-  needs:
-    - build
+  needs: [build]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
