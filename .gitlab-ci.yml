@@ -43,7 +43,8 @@ stages:
       /kaniko/executor \
         --context "${CI_PROJECT_DIR}" \
         --dockerfile "${CI_PROJECT_DIR}/Dockerfile" \
-        --destination "${ECR_REPOSITORY}:${IMAGE_TAG}" \
+        --destination "${ECR_REPOSITORY}:latest" \
+        --destination "${ECR_REPOSITORY}:${CI_COMMIT_SHA}" \
         --build-arg APP_VERSION=${CI_COMMIT_SHORT_SHA} \
         --build-arg CI_COMMIT_SHA=${CI_COMMIT_SHA} \
         --custom-platform=linux/amd64
@@ -161,37 +162,12 @@ ecr-auth:
     - if: $CI_COMMIT_BRANCH == "dev"
     - if: $CI_COMMIT_TAG
 
-build-dev:
+build:
   extends: .build-quantumcat-template
   needs: [ecr-auth]
-  variables:
-    IMAGE_TAG: dev
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
-
-build-latest:
-  extends: .build-quantumcat-template
-  needs: [ecr-auth]
-  variables:
-    IMAGE_TAG: latest
-  rules:
-    - if: $CI_COMMIT_BRANCH == "dev"
-
-build-tag:
-  extends: .build-quantumcat-template
-  needs: [ecr-auth]
-  variables:
-    IMAGE_TAG: ${CI_COMMIT_TAG}
-  rules:
     - if: $CI_COMMIT_TAG
-
-build-commit-sha:
-  extends: .build-quantumcat-template
-  needs: [ecr-auth]
-  variables:
-    IMAGE_TAG: ${CI_COMMIT_SHA}
-  rules:
-    - if: $CI_COMMIT_BRANCH == "dev"
 
 # ============================================
 # Deploy
@@ -202,6 +178,6 @@ deploy-fatcat-dev:
     DEPLOY_NAME: fatcat-dev-notification-cat
     NAMESPACE: fatcat
   needs:
-    - build-dev
+    - build
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
