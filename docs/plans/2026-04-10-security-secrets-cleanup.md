@@ -153,25 +153,14 @@ git commit -m "security(helm): add sealed METRICS_OTLP_HEADERS to encryptedEnv"
 
 **⚠️ 警告：** 此操作會改寫所有 commit SHA。執行後需 force push，所有協作者需重新 clone。
 
-**Step 1: 建立替換規則檔案**
+**Step 1: 建立替換規則檔案**（已執行，此步驟僅供參考）
 
 ```bash
-cat > /tmp/git-replacements.txt << 'EOF'
-# OpenObserve Basic Auth (Base64)
-REDACTED_OO_AUTH_B64==>REDACTED_OO_AUTH_B64
-# SSE JWT Secret Key (plaintext)
-REDACTED_SSE_JWT_KEY==>REDACTED_SSE_JWT_KEY
-# AUTH_API_KEYS JSON (各版本)
-{"a3f7b2d9-4c81-4a5e-b3f2-8d9c1e7a4b6f": "HAW-MERCHANT-2"==>{"REDACTED": "HAW-MERCHANT-2"
-{"3d8f6a2c-7b94-4e1a-b5c9-8f3d2e6a1c7b": "PHV-MERCHANT-2"==>{"REDACTED": "PHV-MERCHANT-2"
-REDACTED_OO_PASSWORD==>REDACTED_OO_PASSWORD
-EOF
-```
-
-**Step 2: 執行 git-filter-repo**
-```bash
+# 規則包含：OO Base64 token、OO 明文密碼、SSE JWT key、AUTH_API_KEYS JSON
 git filter-repo --replace-text /tmp/git-replacements.txt --force
 ```
+
+**Step 2: 執行 git-filter-repo**（已完成）
 
 **Step 3: 重新加入 remote 並 force push**
 ```bash
